@@ -40,6 +40,13 @@ type AuthContextValue = {
   signUpWithPassword: (email: string, password: string, pending: PendingSignup) => Promise<{ confirmationRequired: boolean; role: Role }>;
   signInWithPassword: (email: string, password: string, desiredRole?: Role) => Promise<Role>;
   adminSignIn: (email: string, password: string) => Promise<Role>;
+  /** Email a password-reset link that returns the user to `redirectTo`. */
+  sendPasswordReset: (email: string, redirectTo: string) => Promise<void>;
+  /**
+   * Set a new password for the user currently in a (recovery) session and
+   * return their DB role, so the caller can gate the reset on admin access.
+   */
+  updatePassword: (password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   /** Promote the signed-in user (buyer→seller only) after Google OAuth. Admin is never self-claimable. */
@@ -199,6 +206,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user ? hydrate(data.user, data.session) : 'buyer';
   }
 
+  async function sendPasswordReset(email: string, redirectTo: string): Promise<void> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }
+
+  /**
+   * Change the password of the user in the active session (established by the
+   * recovery link Supabase opened). Returns the account's DB role so the reset
+   * screen can enforce that only admins may finish the admin reset flow.
+   */
+  async function updatePassword(password: string): Promise<Role> {
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    const uid = data.user?.id;
+    if (!uid) throw new Error('No active session. Please open the reset link from your email again.');
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+    await loadProfile(uid);
+    return (prof as { role: Role } | null)?.role ?? 'buyer';
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
@@ -223,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, profile, loading, signUpWithPassword, signInWithPassword, adminSignIn, signOut, refreshProfile, claimRole }}
+      value={{ session, profile, loading, signUpWithPassword, signInWithPassword, adminSignIn, sendPasswordReset, updatePassword, signOut, refreshProfile, claimRole }}
     >
       {children}
     </AuthContext.Provider>

@@ -13,6 +13,7 @@ import { SignUp } from '@/pages/auth/SignUp';
 import { Otp } from '@/pages/auth/Otp';
 import { AuthCallback } from '@/pages/auth/AuthCallback';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
+import { AdminResetPassword } from '@/pages/admin/AdminResetPassword';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
 import { Home } from '@/pages/buyer/Home';
@@ -120,6 +121,7 @@ export default function App() {
         />
       ))}
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/reset-password" element={<AdminResetPassword />} />
 
       {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.
           Renders the same profile the buyer app uses, so a link dropped in an
