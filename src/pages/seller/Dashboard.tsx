@@ -89,7 +89,6 @@ export function Dashboard() {
   const followers = boutique?.followers_count ?? 0;
   // Small facts shown as chips under the boutique name.
   const facts: { icon: string; text: string }[] = [
-    ...(boutique?.verified ? [{ icon: 'verified', text: 'Verified seller' }] : []),
     ...(sinceYear ? [{ icon: 'calendar_today', text: `Since ${sinceYear}` }] : []),
     ...(rating > 0 ? [{ icon: 'star', text: `${rating.toFixed(1)} rating` }] : []),
     ...(followers > 0 ? [{ icon: 'group', text: `${followers} follower${followers === 1 ? '' : 's'}` }] : []),
