@@ -23,6 +23,13 @@ function devApi(env: Record<string, string>): Plugin {
     '/api/admin-delete-user': './api/admin-delete-user.js',
     '/api/admin-list-users': './api/admin-list-users.js',
     '/api/razorpay-webhook': './api/razorpay-webhook.js',
+    // Seller ads (migration 0032): server-priced order, settlement, admin
+    // refund, and the lifecycle cron — so the Promote flow works under `npm run
+    // dev`, not only on Vercel.
+    '/api/create-ad-order': './api/create-ad-order.js',
+    '/api/activate-ad': './api/activate-ad.js',
+    '/api/refund-ad': './api/refund-ad.js',
+    '/api/run-ad-lifecycle': './api/run-ad-lifecycle.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
   // bundled or statically type-checked (the handlers are plain .js).
@@ -55,6 +62,9 @@ function devApi(env: Record<string, string>): Plugin {
       pass('RESEND_API_KEY', env.RESEND_API_KEY || env.VITE_RESEND_API_KEY);
       pass('EMAIL_FROM', env.EMAIL_FROM || env.VITE_EMAIL_FROM);
       pass('APP_URL', env.APP_URL || env.VITE_APP_URL);
+      // Lets /api/run-ad-lifecycle be exercised locally (otherwise it is an inert
+      // no-op with no secret configured).
+      pass('AD_CRON_SECRET', env.AD_CRON_SECRET);
 
       // Fail loudly at startup rather than at the worst possible moment —
       // mid-checkout, after the buyer's card has already been charged.
@@ -135,6 +145,21 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
+    },
+    build: {
+      // Peel the always-loaded framework/runtime libraries out of the main app
+      // chunk so the buyer bundle isn't one 800 kB blob: they change rarely and
+      // cache across deploys, and the remaining app code lands under the warning
+      // threshold. jspdf/html2canvas already split out via their lazy imports.
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 700,
     },
     server: { port: 5173 },
   };

@@ -11,8 +11,8 @@ import { createClient } from '@supabase/supabase-js';
  * api/place-order.js that lands after the buyer's payment is already captured,
  * which is exactly the failure you never want: money taken, no order.
  *
- * package.json pins `engines.node: 22.x` so deployments are fine, but a
- * developer on Node 20 would hit this on every checkout, and a runtime that
+ * package.json pins `engines.node: 24.x` (any Node >= 22 works) so deployments
+ * are fine, but a developer on Node 20 would hit this on every checkout, and a runtime that
  * quietly downgrades Node would reintroduce it in production. None of these
  * functions ever open a realtime channel — they use PostgREST and the Auth
  * admin API — so we pass a transport placeholder. `RealtimeClient` prefers
