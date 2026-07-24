@@ -29,6 +29,7 @@ export type SubStatus = 'active' | 'due' | 'expired';
 export type AdStatus =
   | 'pending_payment'
   | 'pending_review'
+  | 'changes_requested'
   | 'scheduled'
   | 'live'
   | 'paused'
@@ -352,6 +353,7 @@ export interface Database {
           subtext: string;
           image_url: string;
           cta_label: string;
+          tag: string;
           status: AdStatus;
           start_date: string | null;
           end_date: string | null;
@@ -412,6 +414,25 @@ export interface Database {
       };
       admin_pause_ad: {
         Args: { p_id: string };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
+      /** Admin sends a paid ad back for rework with a note (migration 0033). */
+      admin_request_ad_changes: {
+        Args: { p_id: string; p_reason?: string | null };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
+      /** Seller edits a paid ad's creative → back to review (migration 0033). */
+      seller_edit_ad_creative: {
+        Args: {
+          p_id: string;
+          p_subject_type: string;
+          p_product_id: string | null;
+          p_headline: string;
+          p_subtext: string;
+          p_image_url: string;
+          p_tag: string;
+          p_cta_label: string;
+        };
         Returns: Database['public']['Tables']['ad_campaigns']['Row'];
       };
       create_offline_sale: {

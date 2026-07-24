@@ -15,12 +15,6 @@ import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
 import { trackAdClick, trackAdImpression } from '@/data/ads';
 
-const HERO_SLIDES = [
-  { slotId: 'hero-banner', tag: 'Latest Collection', pre: 'New Arrivals for ', accent: 'Wedding', post: ' Season', sub: 'Handpicked bridal edits from 200+ boutiques', image: img('1602210901882-071c6b9e239d', 1600) },
-  { slotId: 'hero-2', tag: 'Festive Edit', pre: 'Pure Silk ', accent: 'Sarees', post: '', sub: 'Direct from the Kanchipuram looms', image: img('1601571115502-83ca3095735b', 1600) },
-  { slotId: 'hero-3', tag: 'Under ₹8,000', pre: 'Party-ready ', accent: 'Lehengas', post: '', sub: 'Ready to ship across Tamil Nadu', image: img('1601432093209-8af1fd74b054', 1600) },
-];
-
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 export function Home() {
@@ -29,27 +23,28 @@ export function Home() {
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
   const { ads } = useLiveAds();
 
-  // Paid home_hero campaigns become extra hero slides after the three editorial
-  // ones. Each carries the ad id + product so its CTA deep-links and its view is
-  // tracked; the editorial slides carry nulls so the render can branch on them.
-  const heroAdSlides = useMemo(
+  // The hero carousel is now purely paid placements: only live `home_hero`
+  // campaigns become slides, so there are no fabricated editorial banners. When
+  // no ad is running the whole hero is hidden (see the render below).
+  const SLIDES = useMemo(
     () =>
       ads.home_hero.map((ad) => ({
         slotId: `ad-${ad.id}`,
-        tag: 'Sponsored',
+        // The seller's editable eyebrow tag; a "Sponsored" pill is shown too.
+        eyebrow: ad.tag || '',
         pre: ad.headline || 'Featured',
         accent: '',
         post: '',
         sub: ad.subtext || '',
+        cta: ad.cta_label || 'Shop now',
         image: ad.image_url || img('1602210901882-071c6b9e239d', 1600),
-        adId: ad.id as string | null,
-        productId: (ad.product_id ?? null) as string | null,
+        adId: ad.id as string,
+        // The hero links to a product or the boutique, depending on the ad.
+        target: ad.subject_type === 'boutique' ? ('boutique' as const) : ('product' as const),
+        productId: ad.product_id ?? null,
+        boutiqueId: ad.boutique_id,
       })),
     [ads.home_hero],
-  );
-  const SLIDES = useMemo(
-    () => [...HERO_SLIDES.map((s) => ({ ...s, adId: null as string | null, productId: null as string | null })), ...heroAdSlides],
-    [heroAdSlides],
   );
 
   // Each rail is the top of its own See-all page, computed by the same rules —
@@ -99,23 +94,11 @@ export function Home() {
     timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % Math.max(1, countRef.current)), 4200);
   };
 
-  const heroCta = (h: { adId: string | null; productId: string | null }) => {
-    if (h.adId && h.productId) {
-      void trackAdClick(h.adId);
-      navigate(`/buyer/product/${h.productId}`);
-    } else {
-      goResults();
-    }
-  };
-
-  // Every route into the collections grid starts from a clean slate, so a tile
-  // never inherits the filters (or the search term) left behind by the last
-  // visit — that was what made the results title and breadcrumb disagree with
-  // what was actually on screen.
-  const goResults = (sort?: string) => {
-    setQuery('');
-    setFilters({ ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort });
-    navigate('/buyer/results');
+  const heroCta = (h: { adId: string; target: 'product' | 'boutique'; productId: string | null; boutiqueId: string }) => {
+    void trackAdClick(h.adId);
+    if (h.target === 'boutique') navigate(`/buyer/boutique/${h.boutiqueId}`);
+    else if (h.productId) navigate(`/buyer/product/${h.productId}`);
+    else navigate(`/buyer/boutique/${h.boutiqueId}`);
   };
 
   // A collection circle lands on results already filtered. Which field it maps
@@ -134,7 +117,8 @@ export function Home() {
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;')}>
-      {/* hero lookbook (full-bleed) */}
+      {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
+      {SLIDES.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
         <div className="agx-zoom" style={css('position:relative;height:clamp(340px,42vw,560px);overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
@@ -147,16 +131,24 @@ export function Home() {
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
                   <div style={css('max-width:1440px;width:100%;margin:0 auto;padding:0 clamp(20px,4vw,56px);color:#fff;')}>
                     <div style={css('max-width:560px;')}>
-                      <div style={css('display:inline-flex;align-items:center;gap:7px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:6px 13px;border-radius:999px;backdrop-filter:blur(4px);')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
-                        <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.tag}</span>
+                      <div style={css('display:flex;align-items:center;gap:8px;flex-wrap:wrap;')}>
+                        {/* Mandatory ad disclosure — always shown so buyers know it's paid. */}
+                        <span style={css('display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);color:#8E1C44;padding:5px 11px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;')}>
+                          <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>bolt</span>Sponsored
+                        </span>
+                        {/* The seller's own eyebrow tag. */}
+                        {h.eyebrow && (
+                          <span style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:5px 12px;border-radius:999px;backdrop-filter:blur(4px);')}>
+                            <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
+                          </span>
+                        )}
                       </div>
                       <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin-top:16px;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </div>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
                       <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
-                        {h.adId ? 'Shop now' : 'Shop the edit'}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+                        {h.cta}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -177,6 +169,7 @@ export function Home() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Sponsored — paid product placements, clearly labelled. Hidden when none. */}
       <SponsoredStrip ads={ads.sponsored_card} />

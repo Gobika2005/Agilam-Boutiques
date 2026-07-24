@@ -55,12 +55,25 @@ export interface DraftInput {
   subtext?: string;
   image_url?: string;
   cta_label?: string;
+  /** Editable eyebrow tag shown above the hero headline (the "Sponsored" pill stays). */
+  tag?: string;
   days: number;
   /** ISO yyyy-mm-dd. Defaults to today at activation when omitted. */
   start_date?: string | null;
 }
 
-/** Create (or overwrite) a draft campaign the seller then pays for. */
+/** The creative fields a seller can author/edit (shared by draft + edit paths). */
+export interface CreativeInput {
+  subject_type: AdSubjectType;
+  product_id?: string | null;
+  headline?: string;
+  subtext?: string;
+  image_url?: string;
+  cta_label?: string;
+  tag?: string;
+}
+
+/** Create a draft campaign the seller then pays for. */
 export async function saveCampaignDraft(input: DraftInput): Promise<AdCampaign> {
   const { data, error } = await supabase
     .from('ad_campaigns')
@@ -73,6 +86,7 @@ export async function saveCampaignDraft(input: DraftInput): Promise<AdCampaign> 
       subtext: input.subtext ?? '',
       image_url: input.image_url ?? '',
       cta_label: input.cta_label ?? '',
+      tag: input.tag ?? '',
       days: input.days,
       start_date: input.start_date ?? null,
     })
@@ -80,6 +94,32 @@ export async function saveCampaignDraft(input: DraftInput): Promise<AdCampaign> 
     .single();
   if (error) throw error;
   return data as AdCampaign;
+}
+
+/** Edit an UNPAID draft in place (RLS + guard allow this while pending_payment). */
+export async function updateCampaignDraft(id: string, patch: Partial<DraftInput>) {
+  const { error } = await supabase.from('ad_campaigns').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Edit a PAID campaign's creative (in review, sent back for rework, scheduled,
+ * live or paused). Server-side it rewrites only the creative and drops the
+ * campaign back to 'pending_review' for re-approval — editing a live ad takes it
+ * out of rotation until an admin approves the change.
+ */
+export async function sellerEditCreative(id: string, c: CreativeInput) {
+  const { error } = await supabase.rpc('seller_edit_ad_creative', {
+    p_id: id,
+    p_subject_type: c.subject_type,
+    p_product_id: c.product_id ?? null,
+    p_headline: c.headline ?? '',
+    p_subtext: c.subtext ?? '',
+    p_image_url: c.image_url ?? '',
+    p_tag: c.tag ?? '',
+    p_cta_label: c.cta_label ?? '',
+  });
+  if (error) throw error;
 }
 
 /** Delete an unpaid draft (RLS only allows this while status = pending_payment). */
@@ -184,6 +224,12 @@ export async function approveCampaign(id: string) {
 
 export async function pauseCampaign(id: string) {
   const { error } = await supabase.rpc('admin_pause_ad', { p_id: id });
+  if (error) throw error;
+}
+
+/** Send a paid ad back to the seller for rework with a note (payment held). */
+export async function requestChanges(id: string, reason: string) {
+  const { error } = await supabase.rpc('admin_request_ad_changes', { p_id: id, p_reason: reason });
   if (error) throw error;
 }
 
