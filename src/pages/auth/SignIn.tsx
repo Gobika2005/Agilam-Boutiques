@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
+import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
 import { useToast } from '@/components/ui/Toast';
 import { signInWithGoogle } from '@/lib/authMethods';
 
@@ -18,6 +19,8 @@ export function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sending, setSending] = useState(false);
+  // Toggles the card between normal sign-in and the "email me a reset link" flow.
+  const [mode, setMode] = useState<'signin' | 'reset'>('signin');
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
@@ -56,6 +59,23 @@ export function SignIn() {
     }
   }
 
+  if (mode === 'reset') {
+    return (
+      <AuthModal
+        icon="lock_reset"
+        heading="Reset your password"
+        sub={`We'll email a secure link to reset your ${roleWord} account password.`}
+        onBack={() => setMode('signin')}
+      >
+        <RequestResetFields
+          email={email}
+          setEmail={setEmail}
+          redirectTo={`${window.location.origin}/auth/reset-password`}
+        />
+      </AuthModal>
+    );
+  }
+
   return (
     <AuthModal
       icon={roleIcon}
@@ -80,7 +100,7 @@ export function SignIn() {
         <label style={css('display:flex;align-items:center;gap:7px;color:#7A5C67;font-weight:600;cursor:pointer;')}>
           <input type="checkbox" defaultChecked style={css('width:16px;height:16px;accent-color:#D6336C;')} />Remember me
         </label>
-        <a href="#" onClick={(e) => { e.preventDefault(); toast('Password reset coming soon'); }} style={css('font-weight:700;')}>Forgot password?</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); setMode('reset'); }} style={css('font-weight:700;')}>Forgot password?</a>
       </div>
 
       <button

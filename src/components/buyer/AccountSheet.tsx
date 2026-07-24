@@ -24,7 +24,7 @@ export function AccountSheet({
   title?: string;
   subtitle?: string;
 }) {
-  const { signInWithPassword, signUpWithPassword } = useAuth();
+  const { signInWithPassword, signUpWithPassword, sendPasswordReset } = useAuth();
   const [view, setView] = useState<'form' | 'code'>('form');
   const [mode, setMode] = useState<'signin' | 'create'>('signin');
   const [name, setName] = useState('');
@@ -33,6 +33,7 @@ export function AccountSheet({
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const code = digits.join('');
@@ -72,6 +73,24 @@ export function AccountSheet({
       }
     } catch (e) {
       setError(e instanceof Error ? friendlyAuthError(e.message) : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Email a reset link. Non-committal copy so the sheet never reveals whether an
+  // email has an account. (A buyer can also just leave the password blank to sign
+  // in with an emailed code — this is the path for those who prefer a password.)
+  const forgotPassword = async () => {
+    if (!emailOk(email)) return setError('Enter your email above first.');
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await sendPasswordReset(email.trim(), `${window.location.origin}/auth/reset-password`);
+      setNotice('If that email has an account, a reset link is on its way.');
+    } catch (e) {
+      setError(e instanceof Error ? friendlyAuthError(e.message) : 'Could not send reset email');
     } finally {
       setBusy(false);
     }
@@ -145,8 +164,14 @@ export function AccountSheet({
               <label style={labelStyle}>Password <span style={css('font-weight:600;color:#A98B98;')}>· leave blank to get an email code</span>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
               </label>
+              {mode === 'signin' && (
+                <div style={css('display:flex;justify-content:flex-end;margin-top:-4px;')}>
+                  <a href="#" onClick={(e) => { e.preventDefault(); forgotPassword(); }} style={css('font-size:12.5px;font-weight:800;color:#B02454;')}>Forgot password?</a>
+                </div>
+              )}
             </div>
 
+            {notice && <div style={css('color:#7A5C67;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}>{notice}</div>}
             {error && <div style={css('color:#C0455E;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;')}>{error}</div>}
 
             <button

@@ -9,6 +9,7 @@ import { LaunchNotice } from '@/components/layout/LaunchNotice';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
+import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { SignUp } from '@/pages/auth/SignUp';
 import { Otp } from '@/pages/auth/Otp';
 import { AuthCallback } from '@/pages/auth/AuthCallback';
@@ -101,6 +102,7 @@ export default function App() {
       <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
       <Route path="/auth/otp/:role" element={<Otp />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
