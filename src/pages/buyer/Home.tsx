@@ -131,18 +131,13 @@ export function Home() {
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
                   <div style={css('max-width:1440px;width:100%;margin:0 auto;padding:0 clamp(20px,4vw,56px);color:#fff;')}>
                     <div style={css('max-width:560px;')}>
-                      <div style={css('display:flex;align-items:center;gap:8px;flex-wrap:wrap;')}>
-                        {/* Mandatory ad disclosure — always shown so buyers know it's paid. */}
-                        <span style={css('display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);color:#8E1C44;padding:5px 11px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;')}>
-                          <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>bolt</span>Sponsored
-                        </span>
-                        {/* The seller's own eyebrow tag. */}
-                        {h.eyebrow && (
-                          <span style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:5px 12px;border-radius:999px;backdrop-filter:blur(4px);')}>
-                            <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
-                          </span>
-                        )}
-                      </div>
+                      {/* The seller's editable eyebrow tag. */}
+                      {h.eyebrow && (
+                        <div style={css('display:inline-flex;align-items:center;gap:7px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:6px 13px;border-radius:999px;backdrop-filter:blur(4px);')}>
+                          <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
+                          <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
+                        </div>
+                      )}
                       <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin-top:16px;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </div>

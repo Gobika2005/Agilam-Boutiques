@@ -299,10 +299,7 @@ function CreativePreview({ c }: { c: AdCampaignAdmin }) {
           {image && <img src={image} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
           <div style={css('position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,6,16,.72),rgba(30,6,16,.15));')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
-            <div style={css('display:flex;align-items:center;gap:6px;')}>
-              <span style={css(A_PILL)}><span style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Sponsored</span>
-              {c.tag && <span style={css('font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{c.tag}</span>}
-            </div>
+            {c.tag && <div style={css('align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{c.tag}</div>}
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{title}</div>
             {c.subtext && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:250px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{c.subtext}</div>}
             <span style={css('align-self:flex-start;margin-top:12px;background:#fff;color:#B02454;border-radius:10px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:5px;')}>
