@@ -1,13 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { serviceClient } from './_supabase.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase config');
-}
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Built lazily (null when env is missing) so a misconfigured deploy returns a
+// clean 500 from the handler instead of throwing at import time, which crashes
+// the whole function on cold start with no diagnosable response.
+const supabaseAdmin = serviceClient(supabaseUrl, supabaseServiceKey);
 
 // Validate the caller's access token with the same service-role client that
 // performs the delete, so the token check and the admin lookup always hit one
@@ -43,14 +42,40 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!supabaseAdmin) return res.status(500).json({ error: 'User service is not configured' });
+
   const auth = await authenticateAdmin(req);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   try {
-    const { userId } = req.body || {};
+    const { userId, action } = req.body || {};
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({ error: 'A userId is required' });
     }
+
+    // ── Restore an archived user ─────────────────────────────────────────────
+    // The soft-delete path below sets deleted_at + status='blocked' AND bans the
+    // auth login. Restoring must undo all three, or the user reappears as active
+    // in the list but still can't sign in. Clearing the profile flags needs the
+    // service role here (an admin could do it via RLS, but only the service role
+    // can lift the auth ban), so both happen together.
+    if (action === 'restore') {
+      const { error: profErr } = await supabaseAdmin
+        .from('profiles')
+        .update({ deleted_at: null, status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (profErr) {
+        console.error('[RESTORE_ERROR]', profErr);
+        return res.status(500).json({ error: 'Failed to restore the user' });
+      }
+      // Best-effort un-ban: a user archived without a ban (or already unbanned)
+      // must still report success, so a failure here is logged, not fatal.
+      await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' }).catch((e) => {
+        console.warn('[RESTORE_UNBAN]', e?.message ?? e);
+      });
+      return res.status(200).json({ mode: 'restored', message: 'User restored and their login re-enabled.' });
+    }
+
     if (userId === auth.adminId) {
       return res.status(400).json({ error: 'You cannot delete your own admin account' });
     }

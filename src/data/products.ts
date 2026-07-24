@@ -33,6 +33,10 @@ export async function fetchProducts(filters: ProductFilters = {}): Promise<Produ
 }
 
 export async function fetchProduct(id: string): Promise<ProductWithBoutique | null> {
+  // No status filter here on purpose: this is dual-use (buyer PDP + the seller's
+  // own ProductAnalytics), and hiding a moderation-hidden product from anonymous
+  // buyers while still letting its owner see it is enforced by RLS (migration
+  // 0034), not by a query filter that would blind the seller to their own item.
   const { data, error } = await supabase
     .from('products')
     .select(SELECT)

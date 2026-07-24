@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
@@ -17,12 +17,18 @@ export function Payment() {
     payingCash, codUnavailableReason, codDeliveries,
   } = useShop();
   const [processing, setProcessing] = useState(false);
+  // `processing` disables the button, but React re-renders asynchronously, so a
+  // same-frame double-tap can fire onPlaceOrder twice before the DOM updates.
+  // A synchronous ref closes that window — critical for COD, which has no
+  // payment_id replay guard server-side and would otherwise write two orders.
+  const inFlight = useRef(false);
   // A payment that was captured but never became an order (dropped connection,
   // server hiccup, closed tab). Read once on mount so the buyer is offered the
   // free retry instead of being asked to pay a second time.
   const [pending, setPending] = useState(() => readPendingPayment());
 
   const onPlaceOrder = async () => {
+    if (inFlight.current) return;
     if (total < 1) {
       showToast('Your bag is empty');
       return;
@@ -34,6 +40,7 @@ export function Payment() {
       return;
     }
 
+    inFlight.current = true;
     setProcessing(true);
     try {
       if (payingCash) {
@@ -72,10 +79,13 @@ export function Payment() {
       showToast(stranded ? `${msg} Your payment is safe — tap Complete my order.` : msg);
     } finally {
       setProcessing(false);
+      inFlight.current = false;
     }
   };
 
   const onCompletePending = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setProcessing(true);
     try {
       await retryPendingPayment();
@@ -91,6 +101,7 @@ export function Payment() {
       showToast(msg);
     } finally {
       setProcessing(false);
+      inFlight.current = false;
     }
   };
 

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { serviceClient } from './_supabase.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -6,11 +6,10 @@ const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_K
 const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@agilam.in';
 const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase config');
-}
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Built lazily (null when env is missing) so a misconfigured deploy returns a
+// clean 500 from the handler instead of throwing at import time, which crashes
+// the whole function on cold start with no diagnosable response.
+const supabaseAdmin = serviceClient(supabaseUrl, supabaseServiceKey);
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -247,6 +246,8 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!supabaseAdmin) return res.status(500).json({ error: 'User service is not configured' });
 
   const auth = await authenticateAdmin(req);
   if (!auth.ok) {

@@ -17,9 +17,9 @@ import { enforceRateLimit } from './_rateLimit.js';
  * settlement. So the Razorpay order is created for a server-trusted amount and a
  * tampered client can't even open checkout at the wrong price.
  *
- * A legacy `amount` (paise) body is still accepted for callers that send no
- * `items` at all; when `items` are present the server price always wins and the
- * browser's figure is ignored entirely (see the fail-closed note in the handler).
+ * `items` are mandatory: the server always derives the amount from the DB, and a
+ * request without priceable items is rejected rather than trusting any
+ * browser-supplied figure (see the fail-closed note in the handler).
  */
 
 const keyId = process.env.RAZORPAY_KEY_ID;
@@ -48,7 +48,15 @@ async function subtotalFromItems(items) {
 
   let products;
   try {
-    const { data, error } = await supabase.from('products').select('id, price').in('id', ids);
+    // Only live products can be priced/sold: moderation-hidden, rejected, pending
+    // and soft-deleted rows are excluded so a pulled item can't open checkout.
+    // (The service role bypasses RLS, so this filter must be explicit.)
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, price')
+      .in('id', ids)
+      .eq('status', 'active')
+      .is('deleted_at', null);
     if (error) throw error;
     products = data;
   } catch (err) {
@@ -83,42 +91,38 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });
   }
 
-  const { amount, items, couponCode, currency = 'INR', receipt } = req.body ?? {};
+  const { items, couponCode, currency = 'INR', receipt } = req.body ?? {};
 
-  // Amount the browser thinks it is charging. Only ever used by callers that
-  // send no `items` at all; never as a fallback for a cart we failed to price.
-  const clientPaise = Math.round(Number(amount));
+  // The cart is the only price authority. The browser's own `amount` is never
+  // trusted, so a request that carries no server-priceable items cannot open
+  // checkout — there is no client-amount fallback to abuse.
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Add items to your bag before paying.', code: 'ITEMS_REQUIRED' });
+  }
 
-  let paise;
-  if (Array.isArray(items) && items.length > 0) {
-    const priced = await subtotalFromItems(items);
+  const priced = await subtotalFromItems(items);
 
-    // ── Fail closed ────────────────────────────────────────────────────────
-    // This used to fall back to the browser's amount whenever server pricing
-    // was unavailable, reasoning that place-order re-binds the real amount at
-    // settlement. That reasoning is wrong, because both functions depend on the
-    // SAME service-role database client: if the catalogue can't be read here,
-    // place-order's very first query fails too. Opening checkout anyway takes
-    // the buyer's money and then guarantees "Could not place the order" —
-    // charged, with nothing to show for it. Refusing to start is the only
-    // honest outcome; the bag is untouched and the buyer can retry for free.
-    if (!priced.ok) {
-      if (priced.reason === 'EMPTY_CART') {
-        return res.status(400).json({
-          error: 'The items in your bag are no longer available. Please refresh your bag and try again.',
-          code: 'EMPTY_CART',
-        });
-      }
-      return res.status(503).json({
-        error: 'We can’t take payments right now. Nothing has been charged — please try again in a few minutes.',
-        code: 'CATALOGUE_UNAVAILABLE',
+  // ── Fail closed ────────────────────────────────────────────────────────
+  // Never open checkout on an amount we couldn't derive from the DB. Both this
+  // function and place-order depend on the SAME service-role client, so if the
+  // catalogue can't be read here, place-order's first query fails too. Opening
+  // checkout anyway takes the buyer's money and then guarantees "Could not place
+  // the order" — charged, with nothing to show for it. Refusing to start is the
+  // only honest outcome; the bag is untouched and the buyer can retry for free.
+  if (!priced.ok) {
+    if (priced.reason === 'EMPTY_CART') {
+      return res.status(400).json({
+        error: 'The items in your bag are no longer available. Please refresh your bag and try again.',
+        code: 'EMPTY_CART',
       });
     }
-
-    paise = computeTotals(priced.subtotal, couponCode).totalPaise;
-  } else {
-    paise = clientPaise;
+    return res.status(503).json({
+      error: 'We can’t take payments right now. Nothing has been charged — please try again in a few minutes.',
+      code: 'CATALOGUE_UNAVAILABLE',
+    });
   }
+
+  const paise = computeTotals(priced.subtotal, couponCode).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   if (!Number.isFinite(paise) || paise < 100) {

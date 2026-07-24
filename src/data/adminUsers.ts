@@ -100,9 +100,25 @@ export async function deleteUserEverywhere(id: string): Promise<DeleteUserResult
   return { mode: data.mode ?? 'deleted', message: data.message ?? 'User deleted.' };
 }
 
+/**
+ * Restore an archived user: clears the soft-delete, sets status back to active
+ * and lifts the auth-login ban. Runs server-side with the service role because
+ * only it can un-ban the auth user — a client-side profile update alone would
+ * leave the login disabled.
+ */
 export async function restoreUser(id: string) {
-  const { error } = await supabase.from('profiles').update({ deleted_at: null }).eq('id', id);
-  if (error) throw error;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error('Admin session expired. Please sign in again.');
+
+  const response = await fetch('/api/admin-delete-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ userId: id, action: 'restore' }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Failed to restore user');
 }
 
 export interface UserDetail {

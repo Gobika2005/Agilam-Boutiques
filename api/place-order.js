@@ -43,7 +43,12 @@ function verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_sign
 }
 
 function orderNumber() {
-  return 'AGL-' + Date.now().toString().slice(-7) + Math.floor(Math.random() * 10);
+  // Time component keeps numbers roughly sortable; 4 hex chars of CSPRNG entropy
+  // make same-millisecond collisions vanishingly unlikely. The DB `unique`
+  // constraint on order_number remains the final guard.
+  const ts = Date.now().toString(36).toUpperCase().slice(-6);
+  const rand = crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `AGL-${ts}${rand}`;
 }
 
 /**
@@ -220,7 +225,13 @@ export default async function handler(req, res) {
     const { data: products, error: prodErr } = await supabase
       .from('products')
       .select('id, title, price, color, boutique_id')
-      .in('id', ids);
+      .in('id', ids)
+      // Only live products are sellable: a moderation-hidden/rejected/pending or
+      // soft-deleted item is treated as "removed" and skipped below, so an admin
+      // or seller pulling a product actually stops it being bought. The service
+      // role bypasses RLS, so this filter must be explicit here.
+      .eq('status', 'active')
+      .is('deleted_at', null);
     // The first query of the request, and therefore the one that fails when the
     // service-role credentials are wrong or the project is unreachable. Answered
     // on its own terms rather than falling into the generic catch: "please try
