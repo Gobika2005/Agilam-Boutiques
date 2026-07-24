@@ -192,10 +192,10 @@ export async function rejectAndRefund(id: string, reason: string) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error('Admin session expired. Please sign in again.');
-  const res = await fetch('/api/refund-ad', {
+  const res = await fetch('/api/ads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ campaignId: id, reason }),
+    body: JSON.stringify({ action: 'refund', campaignId: id, reason }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || 'Could not refund the ad.');

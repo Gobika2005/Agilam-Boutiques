@@ -175,9 +175,10 @@ type PayForAdArgs = {
 
 /**
  * The ad-purchase sibling of payWithRazorpay: server-prices the campaign via
- * /api/create-ad-order, opens the same hosted checkout, then settles it through
- * /api/activate-ad (which verifies the signature, binds the amount and moves the
- * campaign to 'pending_review'). Resolves only after a verified activation.
+ * POST /api/ads {action:'create-order'}, opens the same hosted checkout, then
+ * settles it through /api/ads {action:'activate'} (which verifies the signature,
+ * binds the amount and moves the campaign to 'pending_review'). Resolves only
+ * after a verified activation.
  */
 export async function payForAd({
   campaignId,
@@ -191,10 +192,10 @@ export async function payForAd({
 
   const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` };
 
-  const orderRes = await fetch('/api/create-ad-order', {
+  const orderRes = await fetch('/api/ads', {
     method: 'POST',
     headers: authHeaders,
-    body: JSON.stringify({ campaignId }),
+    body: JSON.stringify({ action: 'create-order', campaignId }),
   });
   const raw = await orderRes.text();
   let order: { order_id?: string; amount?: number; currency?: string; key_id?: string; error?: string } = {};
@@ -204,7 +205,7 @@ export async function payForAd({
     /* non-JSON handled below */
   }
   if (!orderRes.ok || !order.order_id) {
-    console.error('[razorpay] create-ad-order failed', orderRes.status, raw.slice(0, 200));
+    console.error('[razorpay] ads create-order failed', orderRes.status, raw.slice(0, 200));
     throw new Error(order.error || `Could not start the ad payment (HTTP ${orderRes.status}).`);
   }
 
@@ -221,10 +222,10 @@ export async function payForAd({
       modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
       handler: async (resp: RazorpaySuccess) => {
         try {
-          const actRes = await fetch('/api/activate-ad', {
+          const actRes = await fetch('/api/ads', {
             method: 'POST',
             headers: authHeaders,
-            body: JSON.stringify({ campaignId, ...resp }),
+            body: JSON.stringify({ action: 'activate', campaignId, ...resp }),
           });
           const data = await actRes.json().catch(() => ({}));
           if (actRes.ok && data.status === 'pending_review') {

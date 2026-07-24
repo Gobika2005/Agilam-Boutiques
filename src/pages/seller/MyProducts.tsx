@@ -8,6 +8,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique, updateProduct, deleteProduct } from '@/data/products';
 import { ProductForm, type ProductFormValues } from '@/components/seller/ProductForm';
+import { BOUTIQUE_STATUS_LABEL } from '@/data/types';
 import type { ProductWithBoutique } from '@/data/types';
 
 export function MyProducts() {
@@ -16,6 +17,12 @@ export function MyProducts() {
   const { boutique } = useMyBoutique();
   const { data: rows, loading, reload } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
   const products = rows ?? [];
+
+  // Until the shop is approved, RLS hides every one of these products from
+  // buyers (schema.sql "products: public read from approved boutiques"). The
+  // seller still sees them here as the owner, so without this reminder the page
+  // looks live when it is not. Approval flips them all visible at once.
+  const pendingReview = !!boutique && boutique.status !== 'approved';
 
   const [editing, setEditing] = useState<ProductWithBoutique | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,6 +108,24 @@ export function MyProducts() {
           <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
         </button>
       </div>
+
+      {pendingReview && products.length > 0 && (
+        <div style={css('margin:0 20px 12px;')}>
+          <button
+            onClick={() => navigate('/seller/verification')}
+            style={css('width:100%;text-align:left;background:#EFF4FB;border:1px solid #CFDDF0;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px;cursor:pointer;font-family:inherit;')}
+          >
+            <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;color:#3A6EA5;")}>visibility_off</span>
+            </span>
+            <span style={css('flex:1;min-width:0;')}>
+              <span style={css('display:block;font-weight:800;font-size:13px;color:#2F4C73;')}>Not visible to buyers yet</span>
+              <span style={css('display:block;font-size:11.5px;font-weight:600;color:#4E688F;margin-top:2px;line-height:1.45;')}>Your shop is {BOUTIQUE_STATUS_LABEL[boutique!.status].toLowerCase()}. These products publish to buyers the moment your boutique is approved.</span>
+            </span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#3A6EA5;")}>chevron_right</span>
+          </button>
+        </div>
+      )}
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:4px 20px 0;')}>
         {!loading && products.length === 0 && (

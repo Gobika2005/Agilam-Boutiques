@@ -23,13 +23,11 @@ function devApi(env: Record<string, string>): Plugin {
     '/api/admin-delete-user': './api/admin-delete-user.js',
     '/api/admin-list-users': './api/admin-list-users.js',
     '/api/razorpay-webhook': './api/razorpay-webhook.js',
-    // Seller ads (migration 0032): server-priced order, settlement, admin
-    // refund, and the lifecycle cron — so the Promote flow works under `npm run
+    // Seller ads (migration 0032): a single function dispatches create-order /
+    // activate / refund / lifecycle on `action` (consolidated to stay under the
+    // Vercel Hobby 12-function limit) — so the Promote flow works under `npm run
     // dev`, not only on Vercel.
-    '/api/create-ad-order': './api/create-ad-order.js',
-    '/api/activate-ad': './api/activate-ad.js',
-    '/api/refund-ad': './api/refund-ad.js',
-    '/api/run-ad-lifecycle': './api/run-ad-lifecycle.js',
+    '/api/ads': './api/ads.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
   // bundled or statically type-checked (the handlers are plain .js).
