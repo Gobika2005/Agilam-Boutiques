@@ -29,9 +29,9 @@ export const COMPANY = {
   /** TODO: the person actually accountable for grievances. */
   grievanceOfficer: 'Grievance Officer, Agilam Boutiques',
 
-  /** TODO: the real support number. `phoneDigits` must be E.164 without "+". */
-  phone: '+91 90000 00000',
-  phoneDigits: '919000000000',
+  /** Live support number. `phoneDigits` must be E.164 without "+". */
+  phone: '+91 63790 07829',
+  phoneDigits: '916379007829',
   supportHours: 'Monday – Saturday, 10:00 – 19:00 IST',
 
   /** TODO: registered office address. */
