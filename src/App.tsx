@@ -67,6 +67,7 @@ const SellerChat = lazyNamed(() => import('@/pages/seller/Chat'), 'Chat');
 const Billing = lazyNamed(() => import('@/pages/seller/Billing'), 'Billing');
 const Earnings = lazyNamed(() => import('@/pages/seller/Earnings'), 'Earnings');
 const Analytics = lazyNamed(() => import('@/pages/seller/Analytics'), 'Analytics');
+const Promote = lazyNamed(() => import('@/pages/seller/Promote'), 'Promote');
 const BoutiqueProfileEdit = lazyNamed(() => import('@/pages/seller/BoutiqueProfileEdit'), 'BoutiqueProfileEdit');
 const ProfileHub = lazyNamed(() => import('@/pages/seller/ProfileHub'), 'ProfileHub');
 const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
@@ -196,6 +197,7 @@ export default function App() {
         <Route path="chat/:id" element={<SellerChat />} />
         <Route path="earnings" element={<Earnings />} />
         <Route path="analytics" element={<Analytics />} />
+        <Route path="promote" element={<Promote />} />
         <Route path="boutique" element={<BoutiqueProfileEdit />} />
         <Route path="profile" element={<ProfileHub />} />
         <Route path="settings" element={<Settings />} />

@@ -1,9 +1,13 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { Fragment, useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { AdImpression } from '@/components/buyer/AdImpression';
+import { PromotedBadge } from '@/components/buyer/PromotedBadge';
+import { useLiveAds } from '@/hooks/useLiveAds';
+import { trackAdClick } from '@/data/ads';
 
 /** Compact review counts the way the design shows them: 2100 → "2.1k". */
 function formatCount(n: number): string {
@@ -27,6 +31,16 @@ export function Boutiques() {
   // with the boutique profile page.
   const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
   const { boutiques: BOUTIQUES } = useCatalog();
+  const { ads } = useLiveAds();
+
+  // Promoted boutiques (paid boutique_promo campaigns) are boosted to the top of
+  // the list and tagged, whatever the current sort. One ad id per boutique is
+  // kept for impression/click tracking.
+  const adByBoutique = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of ads.boutique_promo) if (a.boutique_id && !m.has(a.boutique_id)) m.set(a.boutique_id, a.id);
+    return m;
+  }, [ads.boutique_promo]);
 
   const [query, setQuery] = useState('');
 
@@ -75,6 +89,15 @@ export function Boutiques() {
     });
     return list;
   }, [BOUTIQUES, query, city, verifiedOnly, sort, followingOnly, following]);
+
+  // Promoted boutiques bubble to the top while still respecting the active
+  // filters/search (a promoted shop that doesn't match is not forced in).
+  const display = useMemo(() => {
+    if (adByBoutique.size === 0) return filtered;
+    const promoted = filtered.filter((b) => adByBoutique.has(b.id));
+    const rest = filtered.filter((b) => !adByBoutique.has(b.id));
+    return [...promoted, ...rest];
+  }, [filtered, adByBoutique]);
 
   function toggleFollow(e: MouseEvent, id: string, name: string) {
     e.stopPropagation();
@@ -221,10 +244,15 @@ export function Boutiques() {
 
       {/* Vertical list */}
       <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
-        {filtered.map((b, i) => (
+        {display.map((b, i) => {
+          const adId = adByBoutique.get(b.id);
+          const openBoutique = () => {
+            if (adId) void trackAdClick(adId);
+            navigate(`/buyer/boutique/${b.id}`);
+          };
+          const row = (
           <div
-            key={b.id}
-            onClick={() => navigate(`/buyer/boutique/${b.id}`)}
+            onClick={openBoutique}
             className="agx-lift"
             style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;${i > 0 ? 'border-top:1px solid #F5E7ED;' : ''}`)}
           >
@@ -236,6 +264,7 @@ export function Boutiques() {
               <div style={css('display:flex;align-items:center;gap:6px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.15;color:#2A1A20;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                 {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3E9BE0;flex:none;")}>verified</span>}
+                {adId && <PromotedBadge label="Promoted" style={{ flex: 'none' }} />}
               </div>
               <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>
@@ -257,7 +286,13 @@ export function Boutiques() {
               <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : '#B02454'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
             </button>
           </div>
-        ))}
+          );
+          return adId ? (
+            <AdImpression key={b.id} adId={adId}>{row}</AdImpression>
+          ) : (
+            <Fragment key={b.id}>{row}</Fragment>
+          );
+        })}
 
         {filtered.length === 0 && followingOnly && followingCount === 0 && (
           <div style={css('padding:40px 20px;text-align:center;')}>

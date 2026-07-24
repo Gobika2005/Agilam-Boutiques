@@ -6,6 +6,8 @@ import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { SORTS, TONES, fmt, productSizes } from '@/data/demo';
+import { useLiveAds } from '@/hooks/useLiveAds';
+import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
@@ -17,6 +19,7 @@ export function Results() {
   const navigate = useNavigate();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS } = useCatalog();
+  const { ads } = useLiveAds();
   // Facets are the admin's approved vocabulary (migration 0024), so a category
   // approved today is filterable today and a seller's typo never becomes a chip.
   const { names, rows } = useTaxonomy();
@@ -216,6 +219,8 @@ export function Results() {
           </aside>
 
           <div className="agx-res-grid" style={css('flex:1;min-width:0;')}>
+            {/* Sponsored placements sit above the organic grid, clearly labelled. */}
+            <SponsoredStrip ads={ads.sponsored_card} title="Sponsored" />
             <div className="agx-rgrid">
               {results.map((p) => (
                 <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>

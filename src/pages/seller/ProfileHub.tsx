@@ -35,6 +35,7 @@ export function ProfileHub() {
     {
       title: 'Money & insights',
       rows: [
+        { label: 'Promote & Ads', sub: 'Advertise on the marketplace', icon: 'campaign', to: '/seller/promote' },
         { label: 'Earnings & payouts', sub: 'What you have earned', icon: 'payments', to: '/seller/earnings' },
         { label: 'Analytics', sub: 'Trends & performance', icon: 'insights', to: '/seller/analytics' },
         { label: 'Billing (Offline Sales)', sub: 'Walk-in invoices', icon: 'receipt_long', to: '/seller/billing' },

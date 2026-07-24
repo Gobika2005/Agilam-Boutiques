@@ -26,7 +26,17 @@ export type ProductStatus = 'pending' | 'active' | 'hidden' | 'rejected';
 export type AccountStatus = 'active' | 'blocked';
 export type SubPlan = 'boutique' | 'featured';
 export type SubStatus = 'active' | 'due' | 'expired';
-export type AdStatus = 'live' | 'paused' | 'draft';
+export type AdStatus =
+  | 'pending_payment'
+  | 'pending_review'
+  | 'scheduled'
+  | 'live'
+  | 'paused'
+  | 'rejected'
+  | 'refunded'
+  | 'expired';
+export type AdPlacementCode = 'sponsored_card' | 'home_hero' | 'boutique_promo';
+export type AdSubjectType = 'product' | 'boutique';
 
 export interface Database {
   public: {
@@ -316,10 +326,54 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
-      ads: {
-        Row: { id: string; title: string; placement: string; status: AdStatus; impressions: number; clicks: number; created_at: string };
-        Insert: Partial<Database['public']['Tables']['ads']['Row']> & { title: string };
-        Update: Partial<Database['public']['Tables']['ads']['Row']>;
+      ad_placements: {
+        Row: {
+          code: AdPlacementCode;
+          name: string;
+          description: string;
+          daily_rate: number;
+          max_active: number;
+          active: boolean;
+          sort: number;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['ad_placements']['Row']> & { code: AdPlacementCode; name: string };
+        Update: Partial<Database['public']['Tables']['ad_placements']['Row']>;
+        Relationships: [];
+      };
+      ad_campaigns: {
+        Row: {
+          id: string;
+          boutique_id: string;
+          placement_code: AdPlacementCode;
+          subject_type: AdSubjectType;
+          product_id: string | null;
+          headline: string;
+          subtext: string;
+          image_url: string;
+          cta_label: string;
+          status: AdStatus;
+          start_date: string | null;
+          end_date: string | null;
+          days: number;
+          daily_rate_snapshot: number;
+          amount: number;
+          payment_order_id: string | null;
+          payment_id: string | null;
+          paid_at: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          reject_reason: string | null;
+          impressions: number;
+          clicks: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['ad_campaigns']['Row']> & {
+          boutique_id: string;
+          placement_code: AdPlacementCode;
+        };
+        Update: Partial<Database['public']['Tables']['ad_campaigns']['Row']>;
         Relationships: [];
       };
     };
@@ -341,6 +395,24 @@ export interface Database {
       record_product_share: {
         Args: { pid: string };
         Returns: undefined;
+      };
+      /** Record a buyer impression / click of a live ad campaign (migration 0032). */
+      record_ad_impression: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
+      record_ad_click: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
+      /** Admin approve / pause an ad campaign (migration 0032). */
+      admin_approve_ad: {
+        Args: { p_id: string };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
+      admin_pause_ad: {
+        Args: { p_id: string };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
       };
       create_offline_sale: {
         Args: {

@@ -162,3 +162,87 @@ export async function payWithRazorpay({
     rzp.open();
   });
 }
+
+type PayForAdArgs = {
+  /** The draft `ad_campaigns` row (status 'pending_payment') being paid for. */
+  campaignId: string;
+  /** The seller's Supabase access token — the API binds the campaign to its owner. */
+  accessToken: string;
+  name: string;
+  description?: string;
+  prefill?: { name?: string; email?: string; contact?: string };
+};
+
+/**
+ * The ad-purchase sibling of payWithRazorpay: server-prices the campaign via
+ * /api/create-ad-order, opens the same hosted checkout, then settles it through
+ * /api/activate-ad (which verifies the signature, binds the amount and moves the
+ * campaign to 'pending_review'). Resolves only after a verified activation.
+ */
+export async function payForAd({
+  campaignId,
+  accessToken,
+  name,
+  description,
+  prefill,
+}: PayForAdArgs): Promise<{ campaign: unknown }> {
+  await loadCheckout();
+  if (!window.Razorpay) throw new Error('Payment gateway unavailable');
+
+  const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` };
+
+  const orderRes = await fetch('/api/create-ad-order', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ campaignId }),
+  });
+  const raw = await orderRes.text();
+  let order: { order_id?: string; amount?: number; currency?: string; key_id?: string; error?: string } = {};
+  try {
+    order = raw ? JSON.parse(raw) : {};
+  } catch {
+    /* non-JSON handled below */
+  }
+  if (!orderRes.ok || !order.order_id) {
+    console.error('[razorpay] create-ad-order failed', orderRes.status, raw.slice(0, 200));
+    throw new Error(order.error || `Could not start the ad payment (HTTP ${orderRes.status}).`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const rzp = new window.Razorpay!({
+      key: order.key_id || KEY_ID,
+      order_id: order.order_id,
+      amount: order.amount,
+      currency: order.currency,
+      name,
+      description,
+      prefill,
+      theme: { color: '#D6336C' },
+      modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
+      handler: async (resp: RazorpaySuccess) => {
+        try {
+          const actRes = await fetch('/api/activate-ad', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ campaignId, ...resp }),
+          });
+          const data = await actRes.json().catch(() => ({}));
+          if (actRes.ok && data.status === 'pending_review') {
+            resolve({ campaign: data.campaign });
+          } else {
+            reject(new Error(data.error || 'We could not activate your ad.'));
+          }
+        } catch {
+          reject(new Error('We could not activate your ad.'));
+        }
+      },
+    });
+
+    rzp.on('payment.failed', (resp: unknown) => {
+      const desc = (resp as { error?: { description?: string } })?.error?.description;
+      reject(new Error(desc || 'Payment failed. Please try another method.'));
+    });
+
+    rzp.open();
+  });
+}

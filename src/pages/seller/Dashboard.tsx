@@ -154,6 +154,22 @@ export function Dashboard() {
         <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
       </button>
 
+      {/* Promote CTA ------------------------------------------------------- */}
+      <button
+        onClick={() => navigate('/seller/promote')}
+        className="agx-lift"
+        style={css('width:100%;text-align:left;margin-top:16px;background:linear-gradient(135deg,#D6336C,#B02454);border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
+      >
+        <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
+        </span>
+        <span style={css('flex:1;min-width:0;')}>
+          <span style={css('display:block;font-weight:800;font-size:14.5px;')}>Promote your boutique</span>
+          <span style={css('display:block;font-size:12px;opacity:.85;margin-top:1px;')}>Book an ad slot and reach more buyers</span>
+        </span>
+        <span style={css("font-family:'Material Symbols Outlined';")}>chevron_right</span>
+      </button>
+
       {/* Quick actions ----------------------------------------------------- */}
       <div className="agx-sd-quick" style={css('margin-top:16px;')}>
         {QUICK.map((q) => (

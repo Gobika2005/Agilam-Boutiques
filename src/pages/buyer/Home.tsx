@@ -11,6 +11,9 @@ import { HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 import { buildCollections } from '@/lib/collections';
 import { useTaxonomy } from '@/state/TaxonomyContext';
+import { useLiveAds } from '@/hooks/useLiveAds';
+import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
+import { trackAdClick, trackAdImpression } from '@/data/ads';
 
 const HERO_SLIDES = [
   { slotId: 'hero-banner', tag: 'Latest Collection', pre: 'New Arrivals for ', accent: 'Wedding', post: ' Season', sub: 'Handpicked bridal edits from 200+ boutiques', image: img('1602210901882-071c6b9e239d', 1600) },
@@ -24,6 +27,30 @@ export function Home() {
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
+  const { ads } = useLiveAds();
+
+  // Paid home_hero campaigns become extra hero slides after the three editorial
+  // ones. Each carries the ad id + product so its CTA deep-links and its view is
+  // tracked; the editorial slides carry nulls so the render can branch on them.
+  const heroAdSlides = useMemo(
+    () =>
+      ads.home_hero.map((ad) => ({
+        slotId: `ad-${ad.id}`,
+        tag: 'Sponsored',
+        pre: ad.headline || 'Featured',
+        accent: '',
+        post: '',
+        sub: ad.subtext || '',
+        image: ad.image_url || img('1602210901882-071c6b9e239d', 1600),
+        adId: ad.id as string | null,
+        productId: (ad.product_id ?? null) as string | null,
+      })),
+    [ads.home_hero],
+  );
+  const SLIDES = useMemo(
+    () => [...HERO_SLIDES.map((s) => ({ ...s, adId: null as string | null, productId: null as string | null })), ...heroAdSlides],
+    [heroAdSlides],
+  );
 
   // Each rail is the top of its own See-all page, computed by the same rules —
   // so the first six here are exactly the first six there. Ranking lives in
@@ -44,17 +71,41 @@ export function Home() {
   );
   const [heroIndex, setHeroIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  // The rotation reads the live slide count off a ref so a sponsored slide
+  // appearing after the ads load extends the loop without re-arming the timer.
+  const countRef = useRef(SLIDES.length);
+  countRef.current = SLIDES.length;
 
   useEffect(() => {
-    timer.current = setInterval(() => setHeroIndex((i) => (i + 1) % 3), 4200);
+    timer.current = setInterval(() => setHeroIndex((i) => (i + 1) % Math.max(1, countRef.current)), 4200);
     return () => clearInterval(timer.current);
   }, []);
+
+  // Keep the index in range if the slide count shrinks (an ad expired).
+  useEffect(() => {
+    setHeroIndex((i) => (i >= SLIDES.length ? 0 : i));
+  }, [SLIDES.length]);
+
+  // Count an impression whenever a sponsored slide becomes the active one.
+  useEffect(() => {
+    const s = SLIDES[heroIndex];
+    if (s?.adId) void trackAdImpression(s.adId);
+  }, [heroIndex, SLIDES]);
 
   // Picking a dot restarts the rotation, as in the design.
   const goHero = (i: number) => {
     setHeroIndex(i);
     clearInterval(timer.current);
-    timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % 3), 4200);
+    timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % Math.max(1, countRef.current)), 4200);
+  };
+
+  const heroCta = (h: { adId: string | null; productId: string | null }) => {
+    if (h.adId && h.productId) {
+      void trackAdClick(h.adId);
+      navigate(`/buyer/product/${h.productId}`);
+    } else {
+      goResults();
+    }
   };
 
   // Every route into the collections grid starts from a clean slate, so a tile
@@ -87,7 +138,7 @@ export function Home() {
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
         <div className="agx-zoom" style={css('position:relative;height:clamp(340px,42vw,560px);overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
-            {HERO_SLIDES.map((h) => (
+            {SLIDES.map((h) => (
               <div key={h.slotId} style={css('flex:0 0 100%;position:relative;height:100%;')}>
                 <div style={css('position:absolute;inset:0;')}>
                   <ImageSlot src={h.image} placeholder="Drop a collection photo" style={css('position:absolute;inset:0;')} />
@@ -104,8 +155,8 @@ export function Home() {
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </div>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      <button onClick={() => goResults()} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
-                        Shop the edit<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
+                        {h.adId ? 'Shop now' : 'Shop the edit'}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -115,7 +166,7 @@ export function Home() {
           </div>
           <div style={css('position:absolute;left:0;right:0;bottom:22px;z-index:3;')}>
             <div style={css('max-width:1440px;margin:0 auto;padding:0 clamp(20px,4vw,56px);display:flex;gap:6px;')}>
-              {[0, 1, 2].map((i) => (
+              {SLIDES.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => goHero(i)}
@@ -126,6 +177,9 @@ export function Home() {
           </div>
         </div>
       </div>
+
+      {/* Sponsored — paid product placements, clearly labelled. Hidden when none. */}
+      <SponsoredStrip ads={ads.sponsored_card} />
 
       {/* SHOP BY COLLECTION — the first thing under the hero: one tap from
           landing to a filtered edit, in a ringed circle rail that reads as

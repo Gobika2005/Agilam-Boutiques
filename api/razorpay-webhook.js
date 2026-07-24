@@ -104,6 +104,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, reconciled: true, alreadyFulfilled: true });
     }
 
+    // Not a shop order. It may be an AD payment whose browser died before
+    // activate-ad ran: create-ad-order stamped the draft with this Razorpay
+    // order id, so settle it the same way the sync path would. Idempotent — a
+    // draft already moved on returns nothing and falls through.
+    if (orderId) {
+      const { data: settledAd, error: adErr } = await supabase.rpc('reconcile_ad_campaign', {
+        p_order_id: orderId,
+        p_payment_id: paymentId,
+      });
+      if (adErr) {
+        console.error('razorpay-webhook: ad reconcile failed', adErr.message ?? adErr);
+      } else if (settledAd?.id) {
+        return res.status(200).json({ ok: true, reconciled: true, adCampaign: settledAd.id });
+      }
+    }
+
     // Captured but no order yet. Record for operator follow-up. The insert is
     // best-effort and idempotent on payment_id; a missing table is not an error.
     const { error: logErr } = await supabase.from('payment_events').upsert(
