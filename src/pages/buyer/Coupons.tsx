@@ -37,7 +37,7 @@ export function Coupons() {
   });
 
   // Apply, say what it saved, and hand the buyer back to where they were.
-  const use = (c: (typeof list)[number]) => {
+  const redeem = (c: (typeof list)[number]) => {
     if (emptyBag) {
       showToast('Add something to your bag first');
       return;
@@ -56,7 +56,7 @@ export function Coupons() {
     if (!typed) return showToast('Enter a coupon code');
     const match = list.find((c) => c.code === typed);
     if (!match) return showToast(`${typed} isn’t a valid coupon`);
-    use(match);
+    redeem(match);
   };
 
   const drop = () => {
@@ -130,7 +130,7 @@ export function Coupons() {
                 </div>
               </div>
               <button
-                onClick={() => (c.applied ? drop() : use(c))}
+                onClick={() => (c.applied ? drop() : redeem(c))}
                 style={css(`align-self:center;margin-right:14px;flex:none;height:40px;padding:0 18px;border:1.5px solid ${c.applied ? '#C8E3D3' : '#D6336C'};background:#fff;color:${c.applied ? '#4B7A61' : '#B02454'};border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;`)}
               >
                 {c.applied ? 'Remove' : 'Apply'}
