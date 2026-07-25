@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { nameOk, phoneOk } from '@/lib/buyerDetails';
+import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 
 /**
  * Edit the buyer's saved profile — name, mobile, city and delivery address.
  *
  * These are the same anonymous `guest` details captured at the chat/checkout
- * gate (localStorage-backed via `@/lib/buyerDetails`). Editing them here writes
+ * gate (in-memory for this visit, via `@/lib/buyerDetails`). Editing them here writes
  * through to the shared shop state, so the profile header, chat identity and
  * checkout all reflect the change immediately. Name + phone are required; city
  * and address are optional here (checkout captures them if still missing).
@@ -18,24 +18,26 @@ export function ProfileEditSheet({
 }: {
   onClose: () => void;
   /** Fires with the saved details after a successful save (for DB sync). */
-  onSaved?: (patch: { name: string; phone: string; city: string; address: string }) => void;
+  onSaved?: (patch: { name: string; phone: string; city: string; address: string; pincode: string }) => void;
 }) {
   const { guest, setGuest, showToast } = useShop();
   const [name, setName] = useState(guest.name);
   const [phone, setPhone] = useState(guest.phone);
   const [city, setCity] = useState(guest.city);
   const [address, setAddress] = useState(guest.address);
+  const [pincode, setPincode] = useState(guest.pincode);
   const [touched, setTouched] = useState(false);
 
   const nameValid = nameOk(name);
   const phoneValid = phoneOk(phone);
+  const pincodeValid = !pincode || pincodeOk(pincode);
 
   const save = () => {
-    if (!nameValid || !phoneValid) {
+    if (!nameValid || !phoneValid || !pincodeValid) {
       setTouched(true);
       return;
     }
-    const patch = { name: name.trim(), phone: phone.trim(), city: city.trim(), address: address.trim() };
+    const patch = { name: name.trim(), phone: phone.trim(), city: city.trim(), address: address.trim(), pincode: pincode.trim() };
     setGuest(patch);
     showToast('Profile updated');
     onSaved?.(patch);
@@ -95,16 +97,28 @@ export function ProfileEditSheet({
             <textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Flat / house no, street, area, pincode"
+              placeholder="Flat / house no, street, area"
               rows={3}
               style={css('display:block;width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-bg);border-radius:14px;padding:12px 15px;font-size:15px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;resize:none;line-height:1.5;font-family:inherit;')}
             />
           </label>
 
-          {touched && (!nameValid || !phoneValid) && (
+          <label style={labelStyle}>
+            Pincode
+            <input
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              placeholder="6-digit PIN code"
+              style={inputStyle(pincodeValid)}
+            />
+          </label>
+
+          {touched && (!nameValid || !phoneValid || !pincodeValid) && (
             <div style={css('color:#C0455E;font-size:12px;font-weight:700;margin-top:-4px;')}>
               {!nameValid ? 'Please enter your name. ' : ''}
-              {!phoneValid ? 'Enter a valid 10-digit mobile number.' : ''}
+              {!phoneValid ? 'Enter a valid 10-digit mobile number. ' : ''}
+              {!pincodeValid ? 'Enter a valid 6-digit pincode.' : ''}
             </div>
           )}
         </div>

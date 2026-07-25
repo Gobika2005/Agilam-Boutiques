@@ -1,12 +1,10 @@
 /**
- * Seller-side, per-device chat preferences: pinned and favourite conversations,
+ * Seller-side, in-memory chat preferences: pinned and favourite conversations,
  * plus a manual read override. None of this needs the backend — pins and stars
  * are a personal way to organise the inbox, and "mark as read/unread" without
  * server read-receipts (deferred) is a local view over the computed unread
- * count. Stored in localStorage so it survives reloads on the same device.
+ * count. Not persisted — resets on reload.
  */
-
-const KEY = 'agx.seller.chatPrefs';
 
 type Prefs = {
   pinned: string[];
@@ -16,21 +14,14 @@ type Prefs = {
   readAt: Record<string, string>;
 };
 
+let state: Prefs = { pinned: [], favourite: [], readAt: {} };
+
 function read(): Prefs {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    return { pinned: raw.pinned ?? [], favourite: raw.favourite ?? [], readAt: raw.readAt ?? {} };
-  } catch {
-    return { pinned: [], favourite: [], readAt: {} };
-  }
+  return state;
 }
 
 function write(p: Prefs) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(p));
-  } catch {
-    /* storage full / private mode — prefs are best-effort */
-  }
+  state = p;
 }
 
 export function getChatPrefs(): Prefs {

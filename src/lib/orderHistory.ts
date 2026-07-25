@@ -1,13 +1,14 @@
 /**
- * The buyer's own order history, persisted to localStorage.
+ * The buyer's own order history, held in memory for the current visit.
  *
  * Buyers browse and check out anonymously (no account), so the orders they
  * place can't be read back from Supabase — RLS only exposes an order to its
  * `buyer_id`, and guest orders leave that null (see supabase/schema.sql and
  * api/place-order.js). We therefore mirror each successfully-placed order into
- * localStorage at checkout time, which is the source of truth for the buyer's
- * "My orders" and order-tracking screens. It's captured from the cart the buyer
- * just paid for, so it's their real purchase — not demo data.
+ * memory at checkout time, so "My orders" and order-tracking work for the rest
+ * of this visit. It's not persisted: a guest who refreshes or comes back later
+ * only sees their orders again once they sign in, at which point the account's
+ * DB-backed orders (see data/orders.ts) become the source of truth.
  */
 
 export type { OrderStatus } from '@/types/database';
@@ -42,7 +43,7 @@ export type PlacedOrder = {
   shippingFee?: number;
 };
 
-const KEY = 'agx-orders';
+let orderState: PlacedOrder[] = [];
 
 /**
  * Timeline stage (index into demo `TRACK_STAGES`) each status maps to.
@@ -70,25 +71,13 @@ export function isCancellable(o: PlacedOrder): boolean {
 }
 
 export function readOrders(): PlacedOrder[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as PlacedOrder[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return orderState;
 }
 
-/** Prepend newly-placed orders (newest first) and persist. Returns the full list. */
+/** Prepend newly-placed orders (newest first). Returns the full list. */
 export function addOrders(orders: PlacedOrder[]): PlacedOrder[] {
-  const next = [...orders, ...readOrders()];
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    /* storage unavailable — the returned list still covers this session */
-  }
-  return next;
+  orderState = [...orders, ...orderState];
+  return orderState;
 }
 
 /**
@@ -99,13 +88,8 @@ export function addOrders(orders: PlacedOrder[]): PlacedOrder[] {
  * the change reaches their screen.
  */
 export function patchLocalOrder(orderNumber: string, patch: Partial<PlacedOrder>): PlacedOrder[] {
-  const next = readOrders().map((o) => (o.orderNumber === orderNumber ? { ...o, ...patch } : o));
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    /* storage unavailable — the returned list still covers this session */
-  }
-  return next;
+  orderState = orderState.map((o) => (o.orderNumber === orderNumber ? { ...o, ...patch } : o));
+  return orderState;
 }
 
 export function findOrder(id: string | undefined): PlacedOrder | undefined {
@@ -166,11 +150,7 @@ export function mergeServerOrders(serverOrders: PlacedOrder[]): PlacedOrder[] {
   const merged = [...byNumber.values()].sort(
     (a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime(),
   );
-  try {
-    localStorage.setItem(KEY, JSON.stringify(merged));
-  } catch {
-    /* storage unavailable — the returned list still covers this session */
-  }
+  orderState = merged;
   return merged;
 }
 

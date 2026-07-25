@@ -38,20 +38,13 @@ export interface OnlineUser extends PresenceMeta {
   onlineSince: string; // earliest tracked timestamp for this session
 }
 
-const ID_KEY = 'agx-presence-id';
-
-/** A durable id for this browser so a guest keeps one identity across pages. */
+/** A per-tab id so a guest keeps one identity across pages during this visit. */
+let sessionPresenceId: string | null = null;
 export function presenceId(): string {
-  try {
-    let id = localStorage.getItem(ID_KEY);
-    if (!id) {
-      id = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string;
-      localStorage.setItem(ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return Math.random().toString(36).slice(2);
+  if (!sessionPresenceId) {
+    sessionPresenceId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
   }
+  return sessionPresenceId;
 }
 
 /** Turn a route into a human-readable "what they're doing" label. */

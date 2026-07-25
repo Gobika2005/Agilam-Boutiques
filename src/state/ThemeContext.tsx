@@ -3,18 +3,14 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 /**
  * App-wide light/dark theme.
  *
- * The default follows the device: a first-time (or storage-cleared) visitor
- * opens in whatever their OS `prefers-color-scheme` reports, and — until they
- * make an explicit choice — the app keeps tracking OS changes live. The moment
- * the user picks a theme it is saved to localStorage and that choice wins over
- * the device from then on. The theme is applied by stamping `data-theme` on
- * <html>, which drives the CSS token layer in index.css; a matching inline
- * script in index.html applies the same resolution before first paint so there
- * is never a wrong-theme flash on load.
+ * The theme always follows the device's OS `prefers-color-scheme`, tracked
+ * live. A user can override it for the current visit (not persisted — a
+ * refresh goes back to following the device). The theme is applied by
+ * stamping `data-theme` on <html>, which drives the CSS token layer in
+ * index.css; a matching inline script in index.html applies the same
+ * resolution before first paint so there is never a wrong-theme flash on load.
  */
 export type Theme = 'light' | 'dark';
-
-const STORAGE_KEY = 'ag-theme';
 
 type ThemeCtx = {
   theme: Theme;
@@ -23,16 +19,6 @@ type ThemeCtx = {
 };
 
 const Ctx = createContext<ThemeCtx | null>(null);
-
-/** The user's saved choice, or null when they've never chosen (follow device). */
-function readStored(): Theme | null {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    return v === 'dark' || v === 'light' ? v : null;
-  } catch {
-    return null;
-  }
-}
 
 /** The device's current preference. Defaults to light where unsupported. */
 function deviceTheme(): Theme {
@@ -44,11 +30,10 @@ function deviceTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Explicit saved choice wins; otherwise start from the device preference.
-  const [theme, setThemeState] = useState<Theme>(() => readStored() ?? deviceTheme());
-  // Tracks whether the user has made an explicit choice (persisted). While false
-  // the theme follows the device live.
-  const explicitRef = useRef<boolean>(readStored() !== null);
+  const [theme, setThemeState] = useState<Theme>(deviceTheme);
+  // Tracks whether the user has made an explicit choice for this visit. While
+  // false the theme follows the device live.
+  const explicitRef = useRef<boolean>(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -75,11 +60,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = useCallback((t: Theme) => {
     explicitRef.current = true;
-    try {
-      localStorage.setItem(STORAGE_KEY, t);
-    } catch {
-      /* private mode — the in-memory value still drives this session */
-    }
     setThemeState(t);
   }, []);
 

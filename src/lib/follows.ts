@@ -1,40 +1,28 @@
 /**
- * Client-side "following" store for boutiques.
- *
- * Buyers browse anonymously (no auth id to key a DB row on), so the boutiques a
- * buyer follows are kept in localStorage under a single key. Both the boutiques
- * directory and the boutique profile read/write through here so a follow on one
- * screen is reflected on the other.
+ * Client-side "following" store for boutiques (legacy/unused — superseded by
+ * src/lib/buyerLocal.ts). Kept in-memory only, no persistence.
  */
-
-export const FOLLOW_KEY = 'agx:following';
 
 /** Fires when the follow map changes, so open screens can re-read it. */
 export const FOLLOW_EVENT = 'agx:following-changed';
 
+let followState: Record<string, boolean> = {};
+
 export function readFollows(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(FOLLOW_KEY) || '{}') as Record<string, boolean>;
-  } catch {
-    return {};
-  }
+  return followState;
 }
 
 export function isFollowing(id: string): boolean {
-  return !!readFollows()[id];
+  return !!followState[id];
 }
 
 /** Sets the follow state for a boutique and returns the new value. */
 export function setFollow(id: string, follow: boolean): boolean {
-  const map = readFollows();
+  const map = { ...followState };
   if (follow) map[id] = true;
   else delete map[id];
-  try {
-    localStorage.setItem(FOLLOW_KEY, JSON.stringify(map));
-    window.dispatchEvent(new Event(FOLLOW_EVENT));
-  } catch {
-    /* storage may be unavailable (private mode) — callers keep their in-memory copy */
-  }
+  followState = map;
+  window.dispatchEvent(new Event(FOLLOW_EVENT));
   return follow;
 }
 

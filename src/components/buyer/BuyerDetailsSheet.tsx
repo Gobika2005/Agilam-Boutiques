@@ -6,8 +6,8 @@ import { nameOk, phoneOk } from '@/lib/buyerDetails';
 /**
  * Lightweight identity gate. Buyers browse anonymously, so before they can chat
  * with a boutique or place an order we ask for a name + phone once. It writes
- * through to the shared `guest` details (localStorage-backed), so it's captured
- * a single time and reused across chat and checkout.
+ * through to the shared `guest` details (held in memory for this visit), so
+ * it's captured a single time and reused across chat and checkout.
  */
 export function BuyerDetailsSheet({
   title = 'Almost there',

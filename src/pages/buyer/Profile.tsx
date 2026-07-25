@@ -23,8 +23,8 @@ export function Profile() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  // Real-time figures: the buyer's own placed orders (localStorage, merged with
-  // any read from their account), saved wishlist and current bag.
+  // Real-time figures: the buyer's own placed orders (in-memory for this visit,
+  // merged with any read from their account), saved wishlist and current bag.
   const [orderCount, setOrderCount] = useState(() => readOrders().length);
   const wishCount = Object.keys(wishlist).length;
 
@@ -35,7 +35,7 @@ export function Profile() {
 
   // Push edits to the account, pull the saved profile + orders back, merge
   // locally. An empty `msg` runs it silently (used for the on-return refresh).
-  const doSync = async (patch?: { name: string; phone: string; city: string; address: string }, msg = 'Synced across devices') => {
+  const doSync = async (patch?: { name: string; phone: string; city: string; address: string; pincode: string }, msg = 'Synced across devices') => {
     setSyncing(true);
     try {
       // Pass the current local details so anything entered as a guest migrates
@@ -47,6 +47,7 @@ export function Profile() {
         phone: prof.phone || guest.phone,
         city: prof.city || guest.city,
         address: prof.address || guest.address,
+        pincode: prof.pincode || guest.pincode,
       });
       setOrderCount(readOrders().length);
       if (msg) showToast(msg);

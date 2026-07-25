@@ -8,40 +8,21 @@ import { css } from '@/lib/css';
  * Agilam is live but not officially launched, so first-time visitors get a small
  * slide-in card telling them the site is a preview and the real launch is coming.
  * It's deliberately low-key: bottom-left (the floating cart bag owns bottom-right),
- * dismissible, and once closed it stays closed for this browser. Bump NOTICE_KEY
- * to show a fresh notice again after a real change (e.g. the actual launch).
+ * dismissible for this visit — not persisted, so it shows again on refresh.
  *
  * Only shown on the public buyer surface — the seller and admin consoles are for
  * operators who already know the site's status, so they never see it.
  */
 
-// Bump the suffix to re-show the notice to everyone after an update.
-const NOTICE_KEY = 'agx-launch-notice-dismissed-v1';
-
-function alreadyDismissed(): boolean {
-  try {
-    return localStorage.getItem(NOTICE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 export function LaunchNotice() {
   const { pathname } = useLocation();
-  const [dismissed, setDismissed] = useState(alreadyDismissed);
+  const [dismissed, setDismissed] = useState(false);
 
   // Operator consoles and the bare auth/landing routes don't need the notice.
   const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
   if (dismissed || onOperatorSurface) return null;
 
-  const close = () => {
-    try {
-      localStorage.setItem(NOTICE_KEY, '1');
-    } catch {
-      /* storage unavailable — dismiss for this view only */
-    }
-    setDismissed(true);
-  };
+  const close = () => setDismissed(true);
 
   return (
     <div

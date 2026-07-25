@@ -1,33 +1,24 @@
 import type { Guest } from '@/state/ShopContext';
 
 /**
- * The buyer's saved contact/delivery details, persisted to localStorage.
+ * The buyer's contact/delivery details, held in memory for the current visit.
  *
  * Buyers never create an account, so this is how we remember who they are
  * across the anonymous chat identity and guest checkout: capture name + phone
  * once (the lightweight gate before chatting or ordering), reuse everywhere.
+ * Not persisted — a refresh clears it and the buyer re-enters their details.
  */
-
-const KEY = 'agx-guest';
 
 export const EMPTY_GUEST: Guest = { name: '', phone: '', city: '', address: '', pincode: '' };
 
+let guestState: Guest = EMPTY_GUEST;
+
 export function readGuest(): Guest {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return { ...EMPTY_GUEST, ...(JSON.parse(raw) as Partial<Guest>) };
-  } catch {
-    /* storage unavailable or corrupt — fall through to empty */
-  }
-  return EMPTY_GUEST;
+  return guestState;
 }
 
 export function writeGuest(g: Guest): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(g));
-  } catch {
-    /* storage unavailable — in-memory state still covers this session */
-  }
+  guestState = g;
 }
 
 /** Indian 10-digit mobile number. */

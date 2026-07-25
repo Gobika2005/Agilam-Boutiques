@@ -5,6 +5,7 @@ export type ProfilePatch = Partial<{
   phone: string | null;
   city: string | null;
   address: string | null;
+  pincode: string | null;
 }>;
 
 /** Update the signed-in user's own profile row (self-update RLS). */
