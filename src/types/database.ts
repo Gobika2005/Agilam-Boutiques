@@ -268,6 +268,10 @@ export interface Database {
            * buyer was quoted.
            */
           shipping_fee: number;
+          /** Seller-coupon discount netted off this boutique's order (migration
+           *  0036); 0 unless a seller coupon applied. `total` is already net of
+           *  it, so payouts settle unchanged. */
+          discount: number;
           cancelled_at: string | null;
           cancel_reason: string | null;
           payment_method: string | null;
@@ -277,6 +281,7 @@ export interface Database {
           guest_phone: string | null;
           guest_city: string | null;
           guest_address: string | null;
+          guest_pincode: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -286,6 +291,29 @@ export interface Database {
         Row: { id: string; order_id: string; product_id: string | null; title: string; price: number; qty: number; size: string | null; color: string | null };
         Insert: Partial<Database['public']['Tables']['order_items']['Row']> & { order_id: string; title: string };
         Update: Partial<Database['public']['Tables']['order_items']['Row']>;
+        Relationships: [];
+      };
+      // Buyer discount codes (migration 0036). boutique_id null = platform coupon
+      // (admin, whole cart, platform-funded); set = seller coupon (that boutique's
+      // items only, seller-funded).
+      coupons: {
+        Row: {
+          id: string;
+          code: string;
+          boutique_id: string | null;
+          type: 'pct' | 'flat' | 'ship';
+          off: number;
+          min_subtotal: number;
+          max_discount: number | null;
+          description: string;
+          expires_at: string;
+          active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['coupons']['Row']> & { code: string; type: 'pct' | 'flat' | 'ship'; expires_at: string };
+        Update: Partial<Database['public']['Tables']['coupons']['Row']>;
         Relationships: [];
       };
       conversations: {
@@ -357,6 +385,9 @@ export interface Database {
           status: AdStatus;
           start_date: string | null;
           end_date: string | null;
+          /** The real serving window (migration 0037): N days = N × 24h from go-live. */
+          start_at: string | null;
+          end_at: string | null;
           days: number;
           daily_rate_snapshot: number;
           amount: number;

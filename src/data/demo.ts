@@ -20,6 +20,10 @@ export type Product = {
   price: number;
   cat: string;
   boutique: string;
+  /** The owning boutique's id. The reliable join key — `boutique` (name) is for
+   *  display only and is not unique. Absent on the legacy demo records, which
+   *  fall back to the name match. */
+  boutiqueId?: string;
   city: string;
   color: string;
   occasion: string;
@@ -224,13 +228,10 @@ export const TRACK_STAGES = [
   { label: 'Delivered', icon: 'home', sub: 'Order delivered — enjoy!' },
 ];
 
-export type Coupon = { code: string; desc: string; off: number; type: 'pct' | 'flat' | 'ship'; min: number; cap?: number; tone: number; expires: string };
-
-export const COUPONS: Coupon[] = [
-  { code: 'WELCOME10', desc: '10% off your first order', off: 10, type: 'pct', min: 0, cap: 600, tone: 0, expires: '31 Jul 2026' },
-  { code: 'FESTIVE500', desc: '₹500 off on orders above ₹5,000', off: 500, type: 'flat', min: 5000, tone: 3, expires: '20 Aug 2026' },
-  { code: 'FREESHIP', desc: 'Free delivery on any order value', off: 0, type: 'ship', min: 0, tone: 5, expires: '30 Sep 2026' },
-];
+// Coupons now live in the `coupons` table (migration 0036) and are served from
+// `@/data/coupons`; the pricing maths are in `@/lib/pricing`, mirrored by the
+// server in api/_pricing.js. The old hardcoded COUPONS list was removed with that
+// migration.
 
 // Prepaid only — every order settles through the gateway before it is placed.
 /**

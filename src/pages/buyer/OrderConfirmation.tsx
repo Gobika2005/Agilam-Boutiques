@@ -119,7 +119,7 @@ export function OrderConfirmation() {
             <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:800;font-size:13.5px;')}>Delivering to</div>
-              <div style={css('color:#8A7078;font-size:12px;')}>{guest.address ? `${guest.address}${guest.city ? ', ' + guest.city : ''}` : guest.city || 'Your saved address'}</div>
+              <div style={css('color:#8A7078;font-size:12px;')}>{[guest.address, guest.city, guest.pincode].filter(Boolean).join(', ') || 'Your saved address'}</div>
             </div>
           </div>
           <div style={css('display:flex;align-items:center;gap:12px;padding:13px 0;')}>

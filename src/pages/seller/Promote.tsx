@@ -113,8 +113,8 @@ export function Promote() {
                   <div style={css('min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{rate?.name ?? c.placement_code}</div>
                     <div style={css('font-size:12px;color:#A98D99;margin-top:2px;')}>
-                      {c.days} day{c.days === 1 ? '' : 's'} · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
-                      {c.start_date ? ` · from ${c.start_date}` : ''}
+                      {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
+                      {c.status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
                   </div>
                   <span style={css(`font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;flex:none;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
@@ -474,6 +474,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <button key={d} onClick={() => setDays(d)} style={css(`flex:1;height:38px;border-radius:10px;border:1.5px solid ${days === d ? '#D6336C' : '#F0D8E2'};background:${days === d ? '#FCE9F0' : '#fff'};color:${days === d ? '#B02454' : '#8A7078'};font-weight:800;font-size:12.5px;cursor:pointer;`)}>{d}d</button>
               ))}
             </div>
+            <div style={css('font-size:11.5px;color:#A98D99;margin-top:8px;')}>Each day is a full 24 hours, counted from when your ad goes live.</div>
             <label style={css('font-size:12.5px;font-weight:700;color:#7A5C67;display:block;margin-top:14px;')}>
               Start date
               <input type="date" min={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} style={css(field)} />

@@ -68,6 +68,7 @@ const Billing = lazyNamed(() => import('@/pages/seller/Billing'), 'Billing');
 const Earnings = lazyNamed(() => import('@/pages/seller/Earnings'), 'Earnings');
 const Analytics = lazyNamed(() => import('@/pages/seller/Analytics'), 'Analytics');
 const Promote = lazyNamed(() => import('@/pages/seller/Promote'), 'Promote');
+const SellerCoupons = lazyNamed(() => import('@/pages/seller/Coupons'), 'Coupons');
 const BoutiqueProfileEdit = lazyNamed(() => import('@/pages/seller/BoutiqueProfileEdit'), 'BoutiqueProfileEdit');
 const ProfileHub = lazyNamed(() => import('@/pages/seller/ProfileHub'), 'ProfileHub');
 const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
@@ -88,6 +89,7 @@ const OrdersAdmin = lazyNamed(() => import('@/pages/admin/OrdersAdmin'), 'Orders
 const Reports = lazyNamed(() => import('@/pages/admin/Reports'), 'Reports');
 const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
 const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
+const AdminCoupons = lazyNamed(() => import('@/pages/admin/Coupons'), 'Coupons');
 
 export default function App() {
   return (
@@ -198,6 +200,7 @@ export default function App() {
         <Route path="earnings" element={<Earnings />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="promote" element={<Promote />} />
+        <Route path="coupons" element={<SellerCoupons />} />
         <Route path="boutique" element={<BoutiqueProfileEdit />} />
         <Route path="profile" element={<ProfileHub />} />
         <Route path="settings" element={<Settings />} />
@@ -229,6 +232,7 @@ export default function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="payments" element={<Payments />} />
         <Route path="ads" element={<Ads />} />
+        <Route path="coupons" element={<AdminCoupons />} />
       </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

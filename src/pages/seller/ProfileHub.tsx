@@ -36,6 +36,7 @@ export function ProfileHub() {
       title: 'Money & insights',
       rows: [
         { label: 'Promote & Ads', sub: 'Advertise on the marketplace', icon: 'campaign', to: '/seller/promote' },
+        { label: 'Coupons', sub: 'Discount codes for your boutique', icon: 'local_offer', to: '/seller/coupons' },
         { label: 'Earnings & payouts', sub: 'What you have earned', icon: 'payments', to: '/seller/earnings' },
         { label: 'Analytics', sub: 'Trends & performance', icon: 'insights', to: '/seller/analytics' },
         { label: 'Billing (Offline Sales)', sub: 'Walk-in invoices', icon: 'receipt_long', to: '/seller/billing' },

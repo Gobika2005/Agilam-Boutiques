@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
-const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, guest_address, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color)`;
+const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color)`;
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { signInWithGoogle, sendEmailOtp, verifyEmailOtp, friendlyAuthError } from '@/lib/authMethods';
+import { ConsentCheckbox, ConsentNotice, CONSENT_REQUIRED } from '@/components/legal/Consent';
 
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
@@ -31,6 +32,7 @@ export function AccountSheet({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -61,6 +63,7 @@ export function AccountSheet({
         if (mode === 'create') {
           if (name.trim().length < 2) { setBusy(false); return setError('Enter your name.'); }
           if (password.length < 6) { setBusy(false); return setError('Password must be at least 6 characters.'); }
+          if (!consent) { setBusy(false); return setError(CONSENT_REQUIRED); }
           const { confirmationRequired } = await signUpWithPassword(email.trim(), password, { full_name: name.trim(), role: 'buyer' });
           if (confirmationRequired) { setBusy(false); return setError('Check your email to confirm, then sign in.'); }
         } else {
@@ -171,6 +174,12 @@ export function AccountSheet({
               )}
             </div>
 
+            {mode === 'create' && (
+              <div style={css('margin-top:14px;')}>
+                <ConsentCheckbox checked={consent} onChange={setConsent} />
+              </div>
+            )}
+
             {notice && <div style={css('color:#7A5C67;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}>{notice}</div>}
             {error && <div style={css('color:#C0455E;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;')}>{error}</div>}
 
@@ -188,6 +197,12 @@ export function AccountSheet({
               <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === 'signin' ? 'create' : 'signin'); setError(''); }} style={css('font-weight:800;color:#B02454;')}>
                 {mode === 'signin' ? 'Create account' : 'Sign in'}
               </a>
+            </div>
+
+            {/* Clickwrap covering the one-tap methods above (Google, email code)
+                and returning sign-in; create mode also has the required tickbox. */}
+            <div style={css('margin-top:14px;')}>
+              <ConsentNotice />
             </div>
           </>
         ) : (

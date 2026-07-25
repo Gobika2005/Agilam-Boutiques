@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { couponSavings, isEligible } from '@/lib/pricing';
-import { COUPONS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { couponSavings, isEligible, isExpired } from '@/lib/pricing';
+import { TONES, fmt } from '@/data/demo';
+import type { CouponRow } from '@/data/coupons';
 
 // Where "Apply" sends the buyer back to. The bag and the payment screen both
 // open this page, and landing back on the one you came from — with the new
@@ -14,47 +16,90 @@ const RETURN_LABELS: Record<string, string> = {
   '/buyer/checkout': 'delivery',
 };
 
+// A coupon row carries no colour of its own (the tone lived on the old hardcoded
+// list). Pick a stable one from the shared palette by hashing the code, so a
+// given code always shows the same colour without a schema field for it.
+function toneFor(code: string): string {
+  let h = 0;
+  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
+  return TONES[h % TONES.length];
+}
+
+const prettyDate = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 export function Coupons() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: { from?: string } | null };
-  const { appliedCoupon, applyCoupon, removeCoupon, coupon, subtotal, discount, shipFee, total, showToast } = useShop();
+  const {
+    appliedCoupon, applyCoupon, removeCoupon, coupon, coupons, boutiqueSubtotals,
+    subtotal, discount, shipFee, total, showToast,
+  } = useShop();
+  const { boutiques } = useCatalog();
   const [code, setCode] = useState('');
 
   const from = state?.from && RETURN_LABELS[state.from] ? state.from : '/buyer/cart';
   const backLabel = RETURN_LABELS[from];
   const emptyBag = subtotal === 0;
 
-  const list = COUPONS.map((c) => {
-    const eligible = isEligible(c, subtotal);
-    const savings = couponSavings(c, subtotal);
+  const boutiqueName = (id: string) => boutiques.find((b) => b.id === id)?.name ?? 'this boutique';
+
+  // Show every platform coupon, plus a seller's coupon only when that seller has
+  // something in the bag — an offer for a shop you aren't buying from is noise.
+  const relevant = coupons.filter((c) => !c.boutique_id || (boutiqueSubtotals[c.boutique_id] ?? 0) > 0);
+
+  const list = relevant.map((c) => {
+    const base = c.boutique_id ? (boutiqueSubtotals[c.boutique_id] ?? 0) : subtotal;
+    const expired = isExpired(c);
+    // An expired coupon can never be redeemed, so it can't be "eligible" however
+    // full the bag is — that keeps the button and savings badge honest.
+    const eligible = !expired && isEligible(c, subtotal, boutiqueSubtotals);
+    const savings = expired ? 0 : couponSavings(c, subtotal, boutiqueSubtotals);
     return {
       ...c,
+      base,
+      expired,
       eligible,
       savings,
-      applied: appliedCoupon === c.code,
-      shortfall: eligible ? 0 : c.min - subtotal,
+      applied: appliedCoupon?.toUpperCase() === c.code.toUpperCase(),
+      shortfall: eligible ? 0 : Math.max(0, c.min_subtotal - base),
     };
   });
 
   // Apply, say what it saved, and hand the buyer back to where they were.
-  const redeem = (c: (typeof list)[number]) => {
+  const redeem = (c: CouponRow) => {
+    if (isExpired(c)) {
+      showToast(`${c.code} has expired`);
+      return;
+    }
     if (emptyBag) {
       showToast('Add something to your bag first');
       return;
     }
-    if (!c.eligible) {
-      showToast(`Add ${fmt(c.shortfall)} more to use ${c.code}`);
+    if (!isEligible(c, subtotal, boutiqueSubtotals)) {
+      const base = c.boutique_id ? (boutiqueSubtotals[c.boutique_id] ?? 0) : subtotal;
+      if (c.boutique_id && base <= 0) {
+        showToast(`${c.code} only applies to items from ${boutiqueName(c.boutique_id)}`);
+        return;
+      }
+      showToast(`Add ${fmt(Math.max(0, c.min_subtotal - base))} more to use ${c.code}`);
       return;
     }
     applyCoupon(c.code);
-    showToast(c.savings > 0 ? `${c.code} applied · you save ${fmt(c.savings)}` : `${c.code} applied`);
+    const savings = couponSavings(c, subtotal, boutiqueSubtotals);
+    showToast(savings > 0 ? `${c.code} applied · you save ${fmt(savings)}` : `${c.code} applied`);
     navigate(from);
   };
 
   const applyTyped = () => {
     const typed = code.trim().toUpperCase();
     if (!typed) return showToast('Enter a coupon code');
-    const match = list.find((c) => c.code === typed);
+    // Typed codes match against ALL active coupons, not just the ones on screen.
+    const match = coupons.find((c) => c.code.toUpperCase() === typed);
     if (!match) return showToast(`${typed} isn’t a valid coupon`);
     redeem(match);
   };
@@ -110,30 +155,42 @@ export function Coupons() {
           <button onClick={applyTyped} style={css('height:44px;padding:0 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;')}>Apply</button>
         </div>
 
+        {list.length === 0 && (
+          <div style={css('margin-top:18px;background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:26px 18px;text-align:center;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:#E0C4D0;")}>local_offer</span>
+            <div style={css('font-weight:800;font-size:14px;color:#4B3840;margin-top:8px;')}>No offers right now</div>
+            <div style={css('color:#8A7078;font-size:12.5px;margin-top:4px;')}>Have a code? Enter it above — it still works.</div>
+          </div>
+        )}
+
         <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:18px;')}>
           {list.map((c) => (
-            <div key={c.code} style={css(`display:flex;background:#fff;border:1.5px solid ${c.applied ? '#9BD3B0' : '#F2E4EA'};border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);opacity:${c.eligible ? 1 : 0.72};`)}>
-              <div style={css(`width:66px;flex:none;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;`)}>
+            <div key={c.id} style={css(`display:flex;background:#fff;border:1.5px solid ${c.applied ? '#9BD3B0' : '#F2E4EA'};border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);opacity:${c.eligible ? 1 : 0.72};`)}>
+              <div style={css(`width:66px;flex:none;background:${toneFor(c.code)};display:flex;align-items:center;justify-content:center;`)}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:rgba(42,26,32,.55);")}>local_offer</span>
               </div>
               <div style={css('flex:1;min-width:0;padding:15px;')}>
                 <div style={css('display:flex;align-items:center;gap:9px;flex-wrap:wrap;')}>
                   <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:#B02454;letter-spacing:.04em;")}>{c.code}</span>
+                  {c.boutique_id && (
+                    <span style={css('font-size:10px;font-weight:800;color:#8A5A20;background:#FBEFD8;border-radius:6px;padding:2px 7px;')}>{boutiqueName(c.boutique_id)}</span>
+                  )}
                   {c.applied && <span style={css('font-size:10px;font-weight:800;color:#218456;background:#E5F3EC;border-radius:6px;padding:2px 7px;')}>APPLIED</span>}
                   {!c.applied && c.eligible && c.savings > 0 && (
                     <span style={css('font-size:10.5px;font-weight:800;color:#B02454;background:#FCE0EC;border-radius:6px;padding:2px 7px;')}>SAVE {fmt(c.savings)}</span>
                   )}
                 </div>
-                <div style={css('font-weight:700;font-size:13.5px;color:#4B3840;margin-top:5px;')}>{c.desc}</div>
-                <div style={css(`font-size:11.5px;margin-top:4px;color:${c.eligible ? '#8A7078' : '#C08A2E'};`)}>
-                  {c.eligible ? `Valid till ${c.expires}` : `Add ${fmt(c.shortfall)} more to use this`}
+                <div style={css('font-weight:700;font-size:13.5px;color:#4B3840;margin-top:5px;')}>{c.description || c.code}</div>
+                <div style={css(`font-size:11.5px;margin-top:4px;color:${c.expired ? '#B03A3A' : c.eligible ? '#8A7078' : '#C08A2E'};`)}>
+                  {c.expired ? `Expired on ${prettyDate(c.expires_at)}` : c.eligible ? `Valid till ${prettyDate(c.expires_at)}` : `Add ${fmt(c.shortfall)} more to use this`}
                 </div>
               </div>
               <button
                 onClick={() => (c.applied ? drop() : redeem(c))}
-                style={css(`align-self:center;margin-right:14px;flex:none;height:40px;padding:0 18px;border:1.5px solid ${c.applied ? '#C8E3D3' : '#D6336C'};background:#fff;color:${c.applied ? '#4B7A61' : '#B02454'};border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;`)}
+                disabled={c.expired && !c.applied}
+                style={css(`align-self:center;margin-right:14px;flex:none;height:40px;padding:0 18px;border:1.5px solid ${c.expired && !c.applied ? '#E3D6DB' : c.applied ? '#C8E3D3' : '#D6336C'};background:#fff;color:${c.expired && !c.applied ? '#B79FA9' : c.applied ? '#4B7A61' : '#B02454'};border-radius:12px;font-weight:800;font-size:13px;cursor:${c.expired && !c.applied ? 'not-allowed' : 'pointer'};`)}
               >
-                {c.applied ? 'Remove' : 'Apply'}
+                {c.applied ? 'Remove' : c.expired ? 'Expired' : 'Apply'}
               </button>
             </div>
           ))}

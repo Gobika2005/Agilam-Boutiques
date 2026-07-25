@@ -13,6 +13,8 @@ export type OrderView = {
   phone: string | null;
   /** Street address to ship to — the seller can't fulfil the order without it. */
   address: string | null;
+  /** 6-digit delivery pincode — the courier can't route the parcel without it. */
+  pincode: string | null;
   item: string;     // first item title (+ "+N more")
   color: string | null;
   size: string | null;
@@ -61,6 +63,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     city: o.buyer?.city ?? o.guest_city ?? null,
     phone: o.buyer?.phone ?? o.guest_phone ?? null,
     address: o.guest_address ?? null,
+    pincode: o.guest_pincode ?? null,
     item: (first?.title ?? 'Item') + extra,
     color: first?.color ?? null,
     size: first?.size ?? null,

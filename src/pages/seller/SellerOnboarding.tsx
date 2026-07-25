@@ -8,6 +8,7 @@ import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/compone
 import { resolveDisplayName } from '@/lib/displayName';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
+import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import {
   fetchMyBoutique,
   fetchBoutiquePrivate,
@@ -226,6 +227,10 @@ export function SellerOnboarding() {
   const [errors, setErrors] = useState<Errors>({});
   const [account, setAccount] = useState<Account>({ fullName: '', email: '', password: '' });
   const [accountErrors, setAccountErrors] = useState<AccountErrors>({});
+  // Legal acceptance: the account step (Terms + Privacy) and the final shop
+  // submission (Seller Agreement + commission) each need explicit opt-in.
+  const [accountConsent, setAccountConsent] = useState(false);
+  const [sellerConsent, setSellerConsent] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -386,6 +391,10 @@ export function SellerOnboarding() {
       toast('Please fix the highlighted fields');
       return;
     }
+    if (!accountConsent) {
+      toast(CONSENT_REQUIRED);
+      return;
+    }
     setBusy(true);
     try {
       // Drop a lingering anonymous chat session first: signing up on top of one
@@ -444,6 +453,10 @@ export function SellerOnboarding() {
     if (incomplete.length) {
       toast(`Finish step ${incomplete[0].n} first`);
       goTo(incomplete[0].n);
+      return;
+    }
+    if (!sellerConsent) {
+      toast(CONSENT_REQUIRED);
       return;
     }
     setBusy(true);
@@ -543,6 +556,8 @@ export function SellerOnboarding() {
               hint="At least 6 characters."
             />
 
+            <ConsentCheckbox checked={accountConsent} onChange={setAccountConsent} />
+
             <div style={css('display:flex;align-items:center;gap:10px;')}>
               <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
               <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>OR</span>
@@ -555,6 +570,8 @@ export function SellerOnboarding() {
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Continue with Google
             </button>
+
+            <ConsentNotice />
 
             <div style={css('text-align:center;font-size:13px;color:#8A7078;font-weight:600;')}>
               Already have a boutique account?{' '}
@@ -704,6 +721,14 @@ export function SellerOnboarding() {
         )}
 
         {step === 7 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} />}
+
+        {step === 7 && (
+          <div style={css('margin-top:16px;background:#fff;border:1px solid #F2E4EA;border-radius:16px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
+            <ConsentCheckbox checked={sellerConsent} onChange={setSellerConsent}>
+              I have read and agree to the Seller Agreement, <PolicyLinks />, including the 8% platform commission and payout terms.
+            </ConsentCheckbox>
+          </div>
+        )}
 
         {/* Footer nav ------------------------------------------------------ */}
         <div style={css('display:flex;gap:12px;margin-top:20px;')}>

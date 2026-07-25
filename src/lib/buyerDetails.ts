@@ -10,7 +10,7 @@ import type { Guest } from '@/state/ShopContext';
 
 const KEY = 'agx-guest';
 
-export const EMPTY_GUEST: Guest = { name: '', phone: '', city: '', address: '' };
+export const EMPTY_GUEST: Guest = { name: '', phone: '', city: '', address: '', pincode: '' };
 
 export function readGuest(): Guest {
   try {
@@ -39,6 +39,11 @@ export function nameOk(name: string): boolean {
   return name.trim().length >= 2;
 }
 
+/** Indian 6-digit PIN code (first digit 1–9). */
+export function pincodeOk(pincode: string): boolean {
+  return /^[1-9]\d{5}$/.test(pincode.trim());
+}
+
 /** The minimum needed to start a chat or place an order: a name and a phone. */
 export function hasContactDetails(g: Guest): boolean {
   return nameOk(g.name) && phoneOk(g.phone);
@@ -46,5 +51,10 @@ export function hasContactDetails(g: Guest): boolean {
 
 /** Everything checkout needs to ship an order. */
 export function hasDeliveryDetails(g: Guest): boolean {
-  return hasContactDetails(g) && g.address.trim().length >= 5 && g.city.trim().length >= 2;
+  return (
+    hasContactDetails(g) &&
+    g.address.trim().length >= 5 &&
+    g.city.trim().length >= 2 &&
+    pincodeOk(g.pincode)
+  );
 }

@@ -1,6 +1,6 @@
 import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
-import { computeTotals } from './_pricing.js';
+import { computeCartPricing, loadCoupon } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
 /**
@@ -28,23 +28,19 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
- * Sum the server-priced goods value for the given cart items.
+ * Group the server-priced goods value for the given cart items by boutique.
  *
- * Returns `{ ok: true, subtotal }` when the catalogue answered, or
- * `{ ok: false, reason }` when it could not. The two are kept apart on purpose:
- * "the catalogue is unreachable" and "none of these products exist" need
- * opposite answers from the caller, and collapsing them into a single `null`
- * is what previously let an unreachable database turn into a real charge.
+ * Returns `{ ok: true, groupTotals }` (a `{ boutiqueId: rupees }` map) when the
+ * catalogue answered, or `{ ok: false, reason }` when it could not. The two are
+ * kept apart on purpose: "the catalogue is unreachable" and "none of these
+ * products exist" need opposite answers from the caller, and collapsing them
+ * into a single `null` is what previously let an unreachable database turn into
+ * a real charge. The per-boutique breakdown is what lets a seller coupon price
+ * against just its own boutique's items.
  */
-async function subtotalFromItems(items) {
+async function groupTotalsFromItems(supabase, items) {
   const ids = [...new Set(items.map((it) => it?.product_id).filter(Boolean))];
   if (ids.length === 0) return { ok: false, reason: 'EMPTY_CART' };
-
-  const supabase = serviceClient(supabaseUrl, serviceRoleKey);
-  if (!supabase) {
-    console.error('create-order: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing or blank');
-    return { ok: false, reason: 'CATALOGUE_UNAVAILABLE' };
-  }
 
   let products;
   try {
@@ -53,7 +49,7 @@ async function subtotalFromItems(items) {
     // (The service role bypasses RLS, so this filter must be explicit.)
     const { data, error } = await supabase
       .from('products')
-      .select('id, price')
+      .select('id, price, boutique_id')
       .in('id', ids)
       .eq('status', 'active')
       .is('deleted_at', null);
@@ -66,17 +62,17 @@ async function subtotalFromItems(items) {
     return { ok: false, reason: 'CATALOGUE_UNAVAILABLE' };
   }
 
-  const priceById = new Map((products ?? []).map((p) => [p.id, Number(p.price)]));
-  let subtotal = 0;
+  const byId = new Map((products ?? []).map((p) => [p.id, p]));
+  const groupTotals = {};
   let matched = 0;
   for (const it of items) {
-    const price = priceById.get(it?.product_id);
-    if (price == null) continue;
+    const p = byId.get(it?.product_id);
+    if (!p) continue;
     const qty = Math.max(1, Math.floor(Number(it.qty) || 1));
-    subtotal += price * qty;
+    groupTotals[p.boutique_id] = (groupTotals[p.boutique_id] ?? 0) + Number(p.price) * qty;
     matched += 1;
   }
-  return matched === 0 ? { ok: false, reason: 'EMPTY_CART' } : { ok: true, subtotal };
+  return matched === 0 ? { ok: false, reason: 'EMPTY_CART' } : { ok: true, groupTotals };
 }
 
 export default async function handler(req, res) {
@@ -100,7 +96,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Add items to your bag before paying.', code: 'ITEMS_REQUIRED' });
   }
 
-  const priced = await subtotalFromItems(items);
+  const supabase = serviceClient(supabaseUrl, serviceRoleKey);
+  if (!supabase) {
+    console.error('create-order: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing or blank');
+    return res.status(503).json({
+      error: 'We can’t take payments right now. Nothing has been charged — please try again in a few minutes.',
+      code: 'CATALOGUE_UNAVAILABLE',
+    });
+  }
+
+  const priced = await groupTotalsFromItems(supabase, items);
 
   // ── Fail closed ────────────────────────────────────────────────────────
   // Never open checkout on an amount we couldn't derive from the DB. Both this
@@ -122,7 +127,10 @@ export default async function handler(req, res) {
     });
   }
 
-  const paise = computeTotals(priced.subtotal, couponCode).totalPaise;
+  // The coupon (if any) is re-fetched and applied here so the Razorpay order is
+  // opened for the exact discounted amount place-order will re-verify.
+  const coupon = await loadCoupon(supabase, couponCode);
+  const paise = computeCartPricing(priced.groupTotals, coupon).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   if (!Number.isFinite(paise) || paise < 100) {

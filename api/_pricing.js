@@ -1,30 +1,23 @@
 /**
  * Server-side pricing — the single source of truth for what a cart costs.
  *
- * These rules MUST stay identical to the client's ShopContext totals
- * (src/state/ShopContext.tsx) and the coupon table in src/data/demo.ts, because
- * api/place-order.js re-derives the amount here and asserts that the Razorpay
- * order was created (and paid) for exactly this many paise. Any drift between
- * this file and the client would reject legitimate checkouts, so change both
- * together.
+ * These rules MUST stay identical to the client's pricing (src/lib/pricing.ts,
+ * used by src/state/ShopContext.tsx), because api/place-order.js re-derives the
+ * amount here and asserts the Razorpay order was created (and paid) for exactly
+ * this many paise. Any drift between this file and the client would reject
+ * legitimate checkouts, so change both together.
+ *
+ * Coupons live in the `coupons` table (migration 0036), not a hardcoded list.
+ * `loadCoupon` fetches the row by code; `computeCartPricing` applies it:
+ *   • a PLATFORM coupon (boutique_id null) discounts the whole cart and is
+ *     platform-funded — it is NOT allocated to any boutique's order.
+ *   • a SELLER coupon (boutique_id set) discounts only that boutique's goods and
+ *     is returned in `perBoutiqueDiscount` so place-order.js can store that one
+ *     boutique's order `total` net of it (which is how the seller funds it).
  *
  * The leading underscore keeps this out of Vercel's /api routing — it is a
- * helper imported by place-order.js, not an endpoint.
+ * helper imported by create-order.js / place-order.js, not an endpoint.
  */
-
-// Mirror of src/data/demo.ts COUPONS (only the fields pricing depends on).
-export const COUPONS = [
-  { code: 'WELCOME10', off: 10, type: 'pct', min: 0, cap: 600 },
-  { code: 'FESTIVE500', off: 500, type: 'flat', min: 5000 },
-  { code: 'FREESHIP', off: 0, type: 'ship', min: 0 },
-];
-
-// Mirror of ShopContext `coupon` memo: a flat coupon only counts once its
-// minimum subtotal is met; pct/ship apply whenever the code matches.
-export function findCoupon(code, subtotal) {
-  if (!code) return undefined;
-  return COUPONS.find((c) => c.code === code && (c.type !== 'flat' || subtotal >= c.min));
-}
 
 // Mirror of POLICY_TERMS.codFee / codMaxOrder in src/data/company.ts (which
 // src/lib/pricing.ts and the buyer policy pages both read). The COD fee is per
@@ -34,32 +27,112 @@ export function findCoupon(code, subtotal) {
 export const COD_FEE = 49;
 export const COD_MAX_ORDER = 10000;
 
-/**
- * Given the DB-derived subtotal (in rupees) and an optional coupon code,
- * return { discount, shipFee, codFee, total, totalPaise } using the exact same
- * arithmetic as the browser so the paise value matches to the rupee.
- *
- * `codDeliveries` is the number of boutique orders being paid in cash — 0 for a
- * prepaid checkout, which is the case place-order.js binds the Razorpay amount
- * against.
- */
-export function computeTotals(subtotal, couponCode, codDeliveries = 0) {
-  const coupon = findCoupon(couponCode, subtotal);
+// Free delivery over this cart value; a flat fee below it. Mirror of
+// FREE_SHIP_MIN / SHIP_FEE in src/lib/pricing.ts.
+const FREE_SHIP_MIN = 2000;
+const SHIP_FEE = 99;
 
-  let discount = 0;
-  if (coupon) {
-    if (coupon.type === 'pct') {
-      discount = Math.min(Math.round((subtotal * coupon.off) / 100), coupon.cap ?? Infinity);
-    } else if (coupon.type === 'flat') {
-      discount = coupon.off;
+/**
+ * Fetch the coupon row for a code, or null. Only an active, unexpired coupon is
+ * returned — the same filter the buyer app's active list uses — so an expired or
+ * deactivated code simply prices as no coupon on both sides. Codes are stored
+ * uppercased (unique on upper(code)), so an exact uppercased match is correct.
+ *
+ * Never throws: a lookup failure prices the cart without the coupon rather than
+ * failing the whole checkout on a discount the buyer may not even have.
+ */
+export async function loadCoupon(supabase, code) {
+  if (!supabase || !code) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('id, code, boutique_id, type, off, min_subtotal, max_discount, expires_at, active')
+      .eq('code', String(code).trim().toUpperCase())
+      .eq('active', true)
+      .gte('expires_at', today)
+      .maybeSingle();
+    if (error) {
+      console.error('loadCoupon failed:', error?.message ?? error);
+      return null;
     }
+    if (!data) return null;
+    return {
+      id: data.id,
+      code: data.code,
+      boutique_id: data.boutique_id ?? null,
+      type: data.type,
+      off: Number(data.off) || 0,
+      min_subtotal: Number(data.min_subtotal) || 0,
+      max_discount: data.max_discount == null ? null : Number(data.max_discount),
+    };
+  } catch (e) {
+    console.error('loadCoupon threw:', e?.message ?? e);
+    return null;
+  }
+}
+
+// The subtotal a coupon measures against: the owning boutique's goods for a
+// seller coupon, the whole cart for a platform coupon.
+function couponBase(coupon, cartSubtotal, groupTotals) {
+  return coupon.boutique_id ? (groupTotals[coupon.boutique_id] ?? 0) : cartSubtotal;
+}
+
+// Mirror of isEligible() in src/lib/pricing.ts (expiry is already filtered out by
+// loadCoupon; the min / in-the-bag checks are what remain).
+function isEligible(coupon, cartSubtotal, groupTotals) {
+  const base = couponBase(coupon, cartSubtotal, groupTotals);
+  if (coupon.boutique_id && base <= 0) return false; // seller coupon, its shop not in the bag
+  return base >= coupon.min_subtotal;
+}
+
+// Mirror of couponSavings() in src/lib/pricing.ts.
+function couponSavings(coupon, cartSubtotal, groupTotals) {
+  if (!isEligible(coupon, cartSubtotal, groupTotals)) return 0;
+  const base = couponBase(coupon, cartSubtotal, groupTotals);
+  if (coupon.type === 'pct') {
+    return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
+  }
+  if (coupon.type === 'flat') return Math.min(coupon.off, base);
+  return cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE; // 'ship'
+}
+
+/**
+ * Given the DB-derived per-boutique goods totals (`{ boutiqueId: rupees }`) and
+ * an optional coupon row, return the same figures the browser shows plus the
+ * paise the payment must carry — using the exact same arithmetic as
+ * src/lib/pricing.ts so the value matches to the rupee.
+ *
+ * `perBoutiqueDiscount` is the seller-funded portion to net off each boutique's
+ * order total (empty for a platform coupon). `codDeliveries` is the number of
+ * boutique orders being paid in cash — 0 for a prepaid checkout.
+ */
+export function computeCartPricing(groupTotals, coupon, codDeliveries = 0) {
+  const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
+  const eligible = coupon && isEligible(coupon, cartSubtotal, groupTotals) ? coupon : null;
+
+  const freeShip = eligible?.type === 'ship';
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals) : 0;
+
+  // Only a seller coupon's discount is allocated to a boutique (and so funded by
+  // that seller). A platform coupon reduces the buyer's payment but no order.
+  const perBoutiqueDiscount = {};
+  if (eligible && eligible.boutique_id && discount > 0) {
+    perBoutiqueDiscount[eligible.boutique_id] = discount;
   }
 
-  const freeShip = coupon?.type === 'ship';
-  const baseShip = subtotal === 0 || subtotal >= 2000 ? 0 : 99;
+  const baseShip = cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
   const shipFee = freeShip ? 0 : baseShip;
   const codFee = Math.max(0, codDeliveries) * COD_FEE;
+  const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
 
-  const total = Math.max(0, subtotal - discount) + shipFee + codFee;
-  return { discount, shipFee, codFee, total, totalPaise: Math.round(total * 100) };
+  return {
+    cartSubtotal,
+    discount,
+    perBoutiqueDiscount,
+    shipFee,
+    codFee,
+    total,
+    totalPaise: Math.round(total * 100),
+  };
 }

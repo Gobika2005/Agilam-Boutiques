@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
+import { ConsentCheckbox, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import { useToast } from '@/components/ui/Toast';
 
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
@@ -21,6 +22,7 @@ export function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('');
+  const [consent, setConsent] = useState(false);
   const [sending, setSending] = useState(false);
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
@@ -38,6 +40,7 @@ export function SignUp() {
     if (!fullName.trim()) return toast('Enter your full name');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
     if (password.length < 6) return toast('Password must be at least 6 characters');
+    if (!consent) return toast(CONSENT_REQUIRED);
 
     setSending(true);
     try {
@@ -83,10 +86,12 @@ export function SignUp() {
         <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Coimbatore" style={css(fieldStyle)} />
       </label>
 
+      <ConsentCheckbox checked={consent} onChange={setConsent} />
+
       <button
         onClick={handleSignUp}
-        disabled={sending}
-        style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;')}
+        disabled={sending || !consent}
+        style={css(`width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;opacity:${sending || !consent ? 0.6 : 1};`)}
       >
         {sending ? 'Creating account…' : 'Create Account'}
         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>

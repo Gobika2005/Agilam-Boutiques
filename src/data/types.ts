@@ -144,6 +144,7 @@ export interface OrderWithDetails {
   guest_phone: string | null;
   guest_city: string | null;
   guest_address?: string | null;
+  guest_pincode?: string | null;
   payment_id?: string | null;
   refunded?: boolean;
   channel?: 'online' | 'offline';

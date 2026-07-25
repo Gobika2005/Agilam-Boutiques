@@ -162,14 +162,15 @@ export interface LiveAds {
  * feed. Grouped by placement for the render sites.
  */
 export async function fetchLiveAds(): Promise<LiveAds> {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
   const { data, error } = await supabase.from('ad_campaigns').select('*');
   if (error) throw error;
   const grouped: LiveAds = { sponsored_card: [], home_hero: [], boutique_promo: [] };
   for (const row of (data ?? []) as AdCampaign[]) {
     if (row.status !== 'live') continue;
-    if (row.start_date && row.start_date > today) continue;
-    if (row.end_date && row.end_date < today) continue;
+    // Serve on the real 24h×days window (migration 0037), not the calendar day.
+    if (row.start_at && new Date(row.start_at).getTime() > now) continue;
+    if (row.end_at && new Date(row.end_at).getTime() <= now) continue;
     (grouped[row.placement_code] ??= []).push(row);
   }
   return grouped;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { nameOk, phoneOk } from '@/lib/buyerDetails';
+import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
 
 export function Checkout() {
@@ -15,8 +15,9 @@ export function Checkout() {
     phone: !phoneOk(guest.phone),
     address: guest.address.trim().length < 5,
     city: guest.city.trim().length < 2,
+    pincode: !pincodeOk(guest.pincode),
   };
-  const invalid = errors.name || errors.phone || errors.address || errors.city;
+  const invalid = errors.name || errors.phone || errors.address || errors.city || errors.pincode;
 
   const continueToPayment = () => {
     if (invalid) {
@@ -61,25 +62,16 @@ export function Checkout() {
               </label>
               <label style={css('flex:1;min-width:130px;font-size:12.5px;font-weight:800;color:#7A5C67;')}>
                 Pincode
-                <input defaultValue="641011" inputMode="numeric" style={css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;')} />
+                <input value={guest.pincode} onChange={(e) => setGuest({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} inputMode="numeric" placeholder="6-digit PIN" style={css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${errorRing(errors.pincode)};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;`)} />
               </label>
             </div>
             <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Delivery speed</div>
-              <div style={css('display:flex;gap:12px;margin-top:9px;flex-wrap:wrap;')}>
-                <div style={css('flex:1;min-width:160px;border:1.5px solid #D6336C;background:#FCE0EC;border-radius:15px;padding:13px 15px;cursor:pointer;')}>
-                  <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-                    <span style={css('font-weight:800;font-size:14px;color:#B02454;')}>Standard</span>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>radio_button_checked</span>
-                  </div>
+              <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Delivery</div>
+              <div style={css('display:flex;align-items:center;gap:12px;margin-top:9px;border:1.5px solid #D6336C;background:#FCE0EC;border-radius:15px;padding:13px 15px;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
+                <div style={css('flex:1;min-width:0;')}>
+                  <div style={css('font-weight:800;font-size:14px;color:#B02454;')}>Standard delivery</div>
                   <div style={css('color:#8A7078;font-size:12px;margin-top:3px;')}>4–6 days · FREE over ₹2,000</div>
-                </div>
-                <div style={css('flex:1;min-width:160px;border:1.5px solid #F0D8E2;background:#fff;border-radius:15px;padding:13px 15px;cursor:pointer;')}>
-                  <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-                    <span style={css('font-weight:800;font-size:14px;color:#4B3840;')}>Express</span>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>radio_button_unchecked</span>
-                  </div>
-                  <div style={css('color:#8A7078;font-size:12px;margin-top:3px;')}>1–2 days · +₹149</div>
                 </div>
               </div>
             </div>
@@ -101,12 +93,18 @@ export function Checkout() {
             </div>
             {touched && invalid && (
               <div style={css('color:#C0455E;font-size:12px;font-weight:700;margin-top:16px;text-align:center;')}>
-                Enter your name, a 10-digit mobile number and delivery address to continue.
+                Enter your name, a 10-digit mobile number, full address and a valid 6-digit pincode to continue.
               </div>
             )}
             <button onClick={continueToPayment} style={css(`width:100%;height:54px;margin-top:${touched && invalid ? '10px' : '18px'};border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
               Continue to payment<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
             </button>
+            <div style={css('text-align:center;font-size:11.5px;line-height:1.5;color:#9A8088;font-weight:600;margin-top:11px;')}>
+              By placing your order you agree to our{' '}
+              <a href="/buyer/policy/terms" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:#B02454;text-decoration:underline;')}>Terms</a>,{' '}
+              <a href="/buyer/policy/return-refund-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:#B02454;text-decoration:underline;')}>Return &amp; Refund</a> and{' '}
+              <a href="/buyer/policy/cancellation-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:#B02454;text-decoration:underline;')}>Cancellation</a> policies.
+            </div>
             <button onClick={() => navigate('/buyer/cart')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:#8A7078;font-weight:800;font-size:13px;')}>Back to bag</button>
           </div>
         </div>

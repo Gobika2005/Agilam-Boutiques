@@ -6,6 +6,7 @@ import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
+import { ConsentNotice } from '@/components/legal/Consent';
 import { useToast } from '@/components/ui/Toast';
 import { signInWithGoogle } from '@/lib/authMethods';
 
@@ -121,6 +122,8 @@ export function SignIn() {
         </button>
         <button onClick={() => toast('Apple sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;')}>Apple</button>
       </div>
+
+      <ConsentNotice />
 
       <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
         New to Agilam?{' '}

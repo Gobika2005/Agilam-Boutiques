@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { PAY_METHODS, type Coupon } from '@/data/demo';
-import { computeTotals, codBlockedReason } from '@/lib/pricing';
+import { PAY_METHODS } from '@/data/demo';
+import { computeTotals, codBlockedReason, findCoupon } from '@/lib/pricing';
+import { fetchActiveCoupons, type CouponRow } from '@/data/coupons';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
@@ -53,7 +54,7 @@ export type Filters = {
 export type CartLine = { qty: number; size: string };
 export type Cart = Record<string, CartLine>;
 
-export type Guest = { name: string; phone: string; city: string; address: string };
+export type Guest = { name: string; phone: string; city: string; address: string; pincode: string };
 export type PaymentInfo = {
   razorpay_order_id: string;
   razorpay_payment_id: string;
@@ -97,6 +98,11 @@ type ShopValue = {
   appliedCoupon: string | null;
   applyCoupon: (code: string) => void;
   removeCoupon: () => void;
+  /** Active coupons (platform + all sellers') the buyer can browse / type. */
+  coupons: CouponRow[];
+  /** Goods value in the bag per boutique — a seller coupon measures against its
+   *  own boutique's slice, so the coupon screen needs this to preview savings. */
+  boutiqueSubtotals: Record<string, number>;
 
   /**
    * The cart as the server-priced order payload — product ids + quantities +
@@ -147,7 +153,7 @@ type ShopValue = {
   /** COD handling fee across the bag; 0 unless paying cash. */
   codFee: number;
   total: number;
-  coupon: Coupon | undefined;
+  coupon: CouponRow | undefined;
 
   /** True when the buyer has chosen cash on delivery. */
   payingCash: boolean;
@@ -174,6 +180,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [coupons, setCoupons] = useState<CouponRow[]>([]);
   const [payMethod, setPayMethod] = useState(PAY_METHODS[0].key);
   const [guest, setGuestState] = useState<Guest>(() => readGuest());
   // Empty until this session actually places an order — the confirmation screen
@@ -369,6 +376,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const removeCoupon = useCallback(() => setAppliedCoupon(null), []);
 
+  // Load the live coupon list once. Best-effort: a failure just leaves the buyer
+  // with no offers to browse (they can still checkout), and the server re-derives
+  // any typed code independently, so this never blocks a purchase.
+  useEffect(() => {
+    let active = true;
+    fetchActiveCoupons()
+      .then((list) => { if (active) setCoupons(list); })
+      .catch(() => { /* offline / RLS lag — no offers shown */ });
+    return () => { active = false; };
+  }, []);
+
   const cartCount = useMemo(
     () => Object.values(cart).reduce((a, l) => a + l.qty, 0),
     [cart],
@@ -382,6 +400,21 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     [cart, productById],
   );
 
+  // Goods value per boutique in the bag, keyed by the same boutique id the server
+  // groups orders on (see place-order.js). This is what lets a seller coupon
+  // price against just its own boutique's slice, matching the server exactly.
+  const boutiqueSubtotals = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const [id, line] of Object.entries(cart)) {
+      const p = productById(id);
+      if (!p) continue;
+      const bid = p.boutiqueId ?? boutiques.find((x) => x.name === p.boutique)?.id;
+      if (!bid) continue;
+      map[bid] = (map[bid] ?? 0) + p.price * line.qty;
+    }
+    return map;
+  }, [cart, productById, boutiques]);
+
   /**
    * The boutiques this bag will split into — one order, and one cash
    * collection, per boutique. Also tells us whether every one of them accepts
@@ -393,7 +426,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     for (const id of Object.keys(cart)) {
       const p = productById(id);
       if (!p) continue;
-      const b = boutiques.find((x) => x.name === p.boutique);
+      // Resolve by boutique id (unique); fall back to the display name only for
+      // legacy records that predate boutiqueId. Two shops can share a name, so
+      // the id path is what keeps COD splitting attached to the right boutique.
+      const b = p.boutiqueId
+        ? boutiques.find((x) => x.id === p.boutiqueId)
+        : boutiques.find((x) => x.name === p.boutique);
       if (!b) continue;
       ids.add(b.id);
       if (b.codEnabled === false) allAcceptCod = false;
@@ -403,10 +441,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const payingCash = payMethod === 'cod';
 
+  // The applied code resolved to the coupon row that actually qualifies on this
+  // bag (per-boutique aware), or undefined. Shared by the totals and the COD gate
+  // so both price the identical discount.
+  const coupon = useMemo(
+    () => findCoupon(coupons, appliedCoupon, subtotal, boutiqueSubtotals),
+    [coupons, appliedCoupon, subtotal, boutiqueSubtotals],
+  );
+
   /** Why cash isn't offered on this bag, or null when it is. */
   const codUnavailableReason = useMemo(
-    () => codBlockedReason(subtotal, appliedCoupon, cartBoutiques.allAcceptCod),
-    [subtotal, appliedCoupon, cartBoutiques.allAcceptCod],
+    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod),
+    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod],
   );
 
   // Adding one more item can push a bag past the COD cap. Silently leaving
@@ -423,9 +469,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   //
   // The COD handling fee is one per delivery, so it only enters the total once
   // the buyer has actually chosen to pay cash.
-  const { coupon, discount, shipFee, codFee, total } = useMemo(
-    () => computeTotals(subtotal, appliedCoupon, payingCash ? cartBoutiques.deliveries : 0),
-    [subtotal, appliedCoupon, payingCash, cartBoutiques.deliveries],
+  const { discount, shipFee, codFee, total } = useMemo(
+    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash ? cartBoutiques.deliveries : 0),
+    [subtotal, boutiqueSubtotals, coupon, payingCash, cartBoutiques.deliveries],
   );
 
   const orderItems = useMemo(
@@ -502,7 +548,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     for (const line of items) {
       const p = productById(line.product_id);
       if (!p) continue;
-      const bid = boutiqueIdByName.get(p.boutique);
+      // Group by the product's boutique id — the same key the server split the
+      // order on — so each line lands under the right boutique even when two
+      // shops share a name. Name lookup remains only for legacy records.
+      const bid = p.boutiqueId ?? boutiqueIdByName.get(p.boutique);
       if (!bid) continue;
       const arr = itemsByBoutique.get(bid) ?? [];
       arr.push({ pid: line.product_id, title: p.title, tone: p.tone, qty: line.qty, size: line.size, price: p.price });
@@ -603,7 +652,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     cart, cartCount, addToCart, buyNow, cartQty, setCartSize, removeCart, clearCart,
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,
-    appliedCoupon, applyCoupon, removeCoupon,
+    appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals,
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,

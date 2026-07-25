@@ -197,8 +197,12 @@ export function Ads() {
                     </div>
 
                     <div style={css('display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#6B5560;')}>
-                      <span><b>{money(c.amount)}</b> · {c.days}d</span>
-                      {c.start_date && <span>{c.start_date} → {c.end_date}</span>}
+                      <span><b>{money(c.amount)}</b> · {c.days}d ({c.days * 24}h)</span>
+                      {c.end_at ? (
+                        <span>ends {new Date(c.end_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      ) : c.start_date ? (
+                        <span>from {c.start_date}</span>
+                      ) : null}
                       <span>{compact(c.impressions)} views</span>
                       <span>{compact(c.clicks)} clicks</span>
                     </div>

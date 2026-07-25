@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
-import { computeTotals, COD_FEE, COD_MAX_ORDER } from './_pricing.js';
+import { computeCartPricing, loadCoupon, COD_FEE, COD_MAX_ORDER } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
 /**
@@ -164,9 +164,10 @@ export default async function handler(req, res) {
     const name = String(guest?.name ?? '').trim();
     const phone = String(guest?.phone ?? '').replace(/\D/g, '');
     const address = String(guest?.address ?? '').trim();
-    if (name.length < 2 || !/^[6-9]\d{9}$/.test(phone) || address.length < 10) {
+    const pincode = String(guest?.pincode ?? '').replace(/\D/g, '');
+    if (name.length < 2 || !/^[6-9]\d{9}$/.test(phone) || address.length < 10 || !/^[1-9]\d{5}$/.test(pincode)) {
       return res.status(400).json({
-        error: 'Cash on delivery needs your name, a valid 10-digit mobile number and a full delivery address.',
+        error: 'Cash on delivery needs your name, a valid 10-digit mobile number, a full delivery address and a 6-digit pincode.',
       });
     }
   }
@@ -271,13 +272,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'None of the cart items are still available' });
     }
 
-    const subtotal = [...groups.values()].reduce((sum, g) => sum + g.total, 0);
+    // Per-boutique goods totals drive coupon pricing: a seller coupon discounts
+    // only its own boutique's slice, a platform coupon the whole cart.
+    const groupTotals = Object.fromEntries([...groups.values()].map((g) => [g.boutique_id, g.total]));
+    const coupon = await loadCoupon(supabase, couponCode);
 
     // ── Cash on Delivery ───────────────────────────────────────────────────
     // No payment to bind an amount against, so the checks are about whether
     // this unpaid order should be allowed to consume a seller's stock at all.
     if (isCod) {
-      const codTotals = computeTotals(subtotal, couponCode, groups.size);
+      const codTotals = computeCartPricing(groupTotals, coupon, groups.size);
 
       if (codTotals.total > COD_MAX_ORDER) {
         return res.status(400).json({
@@ -348,7 +352,7 @@ export default async function handler(req, res) {
       if (!razorpay) {
         return res.status(500).json({ error: 'Payment verification is not configured' });
       }
-      const expectedPaise = computeTotals(subtotal, couponCode).totalPaise;
+      const expectedPaise = computeCartPricing(groupTotals, coupon).totalPaise;
 
       let rzPayment;
       try {
@@ -437,6 +441,7 @@ export default async function handler(req, res) {
       guest_phone: guest?.phone ?? null,
       guest_city: guest?.city ?? null,
       guest_address: guest?.address ?? null,
+      guest_pincode: guest?.pincode ? String(guest.pincode).replace(/\D/g, '').slice(0, 6) : null,
       payment_id: isCod ? null : payment.razorpay_payment_id,
       payment_method: isCod ? 'COD' : 'Razorpay',
       // Prepaid orders are settled the moment they are written; a COD order is
@@ -451,7 +456,7 @@ export default async function handler(req, res) {
     // first order of the checkout. Summed across the orders this request
     // creates, total + shipping_fee + cod_fee equals exactly what the buyer was
     // quoted — which is what lets a seller collect the right cash at the door.
-    const cartTotals = computeTotals(subtotal, couponCode, isCod ? groups.size : 0);
+    const cartTotals = computeCartPricing(groupTotals, coupon, isCod ? groups.size : 0);
     let shippingToAssign = cartTotals.shipFee;
 
     // Stock is now reserved — if the order rows fail to write, put it back
@@ -461,13 +466,20 @@ export default async function handler(req, res) {
       for (const g of groups.values()) {
         const shippingForThisOrder = shippingToAssign;
         shippingToAssign = 0;
+        // A seller coupon is funded by that seller: its discount is netted off
+        // this boutique's goods total here, so the existing payout math (0025)
+        // settles — and takes commission on — the discounted amount unchanged. A
+        // platform coupon never lands in perBoutiqueDiscount, so those orders
+        // keep their full goods total (the platform funds that discount).
+        const orderDiscount = cartTotals.perBoutiqueDiscount[g.boutique_id] ?? 0;
         const { data: order, error: orderErr } = await supabase
           .from('orders')
           .insert({
             order_number: orderNumber(),
             buyer_id: buyerId,
             boutique_id: g.boutique_id,
-            total: g.total,
+            total: g.total - orderDiscount,
+            discount: orderDiscount,
             status: 'pending',
             // One handling fee per delivery, stored on the order it belongs to
             // so the seller knows the exact cash to collect at that door.
