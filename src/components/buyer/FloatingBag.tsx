@@ -37,11 +37,15 @@ export function FloatingBag() {
   const { productById } = useCatalog();
 
   // Pulse when the count goes up, so adding from the feed is visibly acknowledged
-  // even though the button is at the other end of the screen.
+  // even though the button is at the other end of the screen. Skipped on the very
+  // first item: the pill itself is only just appearing then (it renders nothing
+  // while the bag is empty), so its own CSS entrance animation is already the
+  // acknowledgement — stacking the pulse on top of that made it read as two
+  // separate blinks instead of one.
   const [bumped, setBumped] = useState(false);
   const previous = useRef(cartCount);
   useEffect(() => {
-    if (cartCount > previous.current) {
+    if (cartCount > previous.current && previous.current > 0) {
       setBumped(true);
       const t = setTimeout(() => setBumped(false), 520);
       previous.current = cartCount;
