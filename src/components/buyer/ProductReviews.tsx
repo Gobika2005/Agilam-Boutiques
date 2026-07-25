@@ -93,28 +93,28 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
   return (
     <div style={css('display:flex;flex-direction:column;gap:12px;')}>
       {/* Rating summary — real average + spread over the reviews on file. */}
-      <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:18px;')}>
+      <div style={css('background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;padding:18px;')}>
         <div style={css('display:flex;align-items:center;gap:18px;')}>
           <div style={css('text-align:center;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:#B02454;")}>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:var(--ag-crimson);")}>
               {summary.count ? summary.avg.toFixed(1) : '—'}
             </div>
             <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>
               {summary.count ? starsFor(Math.round(summary.avg)) : '☆☆☆☆☆'}
             </div>
-            <div style={css('color:#8A7078;font-size:12px;margin-top:6px;')}>
+            <div style={css('color:var(--ag-muted);font-size:12px;margin-top:6px;')}>
               {summary.count} review{summary.count === 1 ? '' : 's'}
             </div>
           </div>
           <div style={css('flex:1;display:flex;flex-direction:column;gap:7px;')}>
             {summary.bars.map((r) => (
               <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
-                <span style={css('font-size:11px;font-weight:700;color:#8A7078;width:10px;')}>{r.stars}</span>
+                <span style={css('font-size:11px;font-weight:700;color:var(--ag-muted);width:10px;')}>{r.stars}</span>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
-                <span style={css('flex:1;height:7px;border-radius:4px;background:#EFDCE4;overflow:hidden;')}>
+                <span style={css('flex:1;height:7px;border-radius:4px;background:var(--ag-border-soft);overflow:hidden;')}>
                   <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
                 </span>
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8A7078;width:30px;text-align:right;")}>{r.pct}%</span>
+                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ag-muted);width:30px;text-align:right;")}>{r.pct}%</span>
               </div>
             ))}
           </div>
@@ -123,16 +123,16 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
 
       <button
         onClick={onWriteClick}
-        style={css('height:44px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+        style={css('height:44px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
       >
         <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>
         {myReview ? 'Edit your review' : signedIn ? 'Write a review' : 'Sign in to write a review'}
       </button>
 
       {formOpen && (
-        <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;')}>
+        <div style={css('background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;')}>
           <div style={css('display:flex;align-items:center;gap:8px;')}>
-            <span style={css('font-weight:800;font-size:13px;color:#5C4650;')}>Your rating</span>
+            <span style={css('font-weight:800;font-size:13px;color:var(--ag-ink-2);')}>Your rating</span>
             <div style={css('display:flex;gap:2px;')}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -151,7 +151,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             onChange={(e) => setBody(e.target.value)}
             placeholder="Share what you loved — fit, fabric, delivery…"
             rows={3}
-            style={css("width:100%;box-sizing:border-box;resize:vertical;border:1px solid #F0D8E2;border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;color:#3A2A30;background:#fff;")}
+            style={css("width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--ag-border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;color:#3A2A30;background:var(--ag-surface);")}
           />
           {error && <div style={css('color:#C0344A;font-size:12.5px;font-weight:700;')}>{error}</div>}
           <div style={css('display:flex;gap:9px;')}>
@@ -164,7 +164,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             </button>
             <button
               onClick={() => setFormOpen(false)}
-              style={css('height:42px;padding:0 16px;border:1.5px solid #F0D8E2;background:#fff;color:#8A7078;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}
+              style={css('height:42px;padding:0 16px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}
             >
               Cancel
             </button>
@@ -173,9 +173,9 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
       )}
 
       {loading && reviews.length === 0 ? (
-        <div style={css('color:#8A7078;font-size:13px;padding:8px 2px;')}>Loading reviews…</div>
+        <div style={css('color:var(--ag-muted);font-size:13px;padding:8px 2px;')}>Loading reviews…</div>
       ) : reviews.length === 0 ? (
-        <div style={css('background:#fff;border:1px dashed #EAD3DD;border-radius:16px;padding:22px;text-align:center;color:#8A7078;font-size:13.5px;')}>
+        <div style={css('background:var(--ag-surface);border:1px dashed #EAD3DD;border-radius:16px;padding:22px;text-align:center;color:var(--ag-muted);font-size:13.5px;')}>
           No reviews yet. Be the first to share your experience.
         </div>
       ) : (
@@ -183,26 +183,26 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
           const name = rv.author_name?.trim() || 'Agilam buyer';
           const tone = TONE_BG[Math.abs(name.charCodeAt(0)) % TONE_BG.length];
           return (
-            <div key={rv.id} style={css('background:#fff;border:1px solid #F0E2E9;border-radius:16px;padding:16px 18px;')}>
+            <div key={rv.id} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}>
               <div style={css('display:flex;align-items:center;gap:12px;')}>
                 <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
                     <span style={css('font-weight:700;font-size:14px;')}>{name}</span>
                     {rv.verified_purchase && (
-                      <span style={css('display:inline-flex;align-items:center;gap:3px;background:#E9F6EF;color:#2FA36B;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>
+                      <span style={css('display:inline-flex;align-items:center;gap:3px;background:var(--ag-good-bg);color:var(--ag-good);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>
                         <span style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>verified</span>Verified
                       </span>
                     )}
                     {rv.buyer_id === buyerId && (
-                      <span style={css('background:#FCE0EC;color:#B02454;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>You</span>
+                      <span style={css('background:var(--ag-surface-2);color:var(--ag-crimson);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>You</span>
                     )}
                   </div>
-                  <div style={css('color:#8A7078;font-size:12px;margin-top:2px;')}>{timeAgo(rv.created_at)}</div>
+                  <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{timeAgo(rv.created_at)}</div>
                 </div>
                 <span style={css('color:#E0B84B;font-size:13px;letter-spacing:1px;')}>{starsFor(rv.rating)}</span>
               </div>
-              {rv.body && <div style={css('color:#5C4650;font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.body}</div>}
+              {rv.body && <div style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.body}</div>}
             </div>
           );
         })

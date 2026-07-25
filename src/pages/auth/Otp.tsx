@@ -48,7 +48,7 @@ export function Otp() {
             onKeyDown={(e) => onKeyDown(i, e)}
             maxLength={1}
             inputMode="numeric"
-            style={css(`width:48px;height:58px;text-align:center;font-size:24px;font-weight:800;border:1.5px solid ${d ? '#D6336C' : '#F0D8E2'};background:#fff;border-radius:14px;color:#2A1A20;`)}
+            style={css(`width:48px;height:58px;text-align:center;font-size:24px;font-weight:800;border:1.5px solid ${d ? '#D6336C' : 'var(--ag-border)'};background:var(--ag-surface);border-radius:14px;color:var(--ag-ink);`)}
           />
         ))}
       </div>
@@ -60,7 +60,7 @@ export function Otp() {
         Verify &amp; Continue
       </button>
 
-      <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
+      <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
         Didn&apos;t get the code? <a href="#" onClick={(e) => { e.preventDefault(); toast('Code resent'); }} style={css('font-weight:700;')}>Resend</a>
       </div>
     </AuthModal>

@@ -59,7 +59,7 @@ export function TopBoutiques() {
   }
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <DiscoveryHeader
         eyebrow="Shops buyers love"
         title="Best-selling"
@@ -81,7 +81,7 @@ export function TopBoutiques() {
       />
 
       {!loading && !anySalesData && BOUTIQUES.length > 0 && (
-        <div style={css('display:flex;gap:10px;align-items:flex-start;background:#FFF8E9;border:1px solid #F3E2BE;border-radius:16px;padding:13px 15px;margin-top:14px;')}>
+        <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid #F3E2BE;border-radius:16px;padding:13px 15px;margin-top:14px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
           <span style={css('font-size:12.5px;color:#7A5C1E;line-height:1.55;')}>
             Too early to rank by sales, so these are ordered by rating, following and catalogue size for now.
@@ -101,14 +101,14 @@ export function TopBoutiques() {
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;')}>
         <button
           onClick={() => { setVerifiedOnly((v) => !v); setShown(PAGE); }}
-          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${verifiedOnly ? 'transparent' : '#EFDCE4'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${verifiedOnly ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${verifiedOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${verifiedOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
           <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>
           Verified only
         </button>
         <button
           onClick={() => navigate('/buyer/boutiques')}
-          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:#B02454;font-size:12.5px;font-weight:700;font-family:inherit;')}
+          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Search the full directory
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>search</span>
@@ -138,7 +138,7 @@ export function TopBoutiques() {
               key={b.id}
               onClick={() => navigate(`/buyer/boutique/${b.id}`)}
               className="agx-lift"
-              style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}
+              style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}
             >
               <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
                 <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
@@ -155,7 +155,7 @@ export function TopBoutiques() {
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                       {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                     </div>
-                    <div style={css('color:#8A7078;font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
+                    <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>
                       {b.area && b.area !== b.city ? `${b.area}, ${b.city}` : b.city}
                     </div>
@@ -164,9 +164,9 @@ export function TopBoutiques() {
                     onClick={(e) => follow(e, b.id, b.name)}
                     aria-label={follows[b.id] ? `Unfollow ${b.name}` : `Follow ${b.name}`}
                     aria-pressed={!!follows[b.id]}
-                    style={css(`width:38px;height:38px;flex:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${follows[b.id] ? 'transparent' : '#EFDCE4'};background:${follows[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};`)}
+                    style={css(`width:38px;height:38px;flex:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${follows[b.id] ? 'transparent' : 'var(--ag-border-soft)'};background:${follows[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};`)}
                   >
-                    <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${follows[b.id] ? '#fff' : '#B02454'};`)}>
+                    <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${follows[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>
                       {follows[b.id] ? 'how_to_reg' : 'person_add'}
                     </span>
                   </button>
@@ -174,10 +174,10 @@ export function TopBoutiques() {
 
                 {/* The numbers behind the rank, stated plainly. A leaderboard
                     that will not show its working is just an advert. */}
-                <div style={css('display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid #F4E6EC;')}>
+                <div style={css('display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
                   <Stat icon="star" tint="#E0B84B" value={String(b.rating)} sub={`${compactCount(b.reviews)} reviews`} />
                   {(b.unitsSold ?? 0) > 0 && (
-                    <Stat icon="local_fire_department" tint="#2FA36B" value={compactCount(b.unitsSold ?? 0)} sub="sold" />
+                    <Stat icon="local_fire_department" tint="var(--ag-good)" value={compactCount(b.unitsSold ?? 0)} sub="sold" />
                   )}
                   <Stat icon="checkroom" tint="#B02454" value={String(b.products)} sub="styles" />
                   {b.followers > 0 && (
@@ -199,10 +199,10 @@ export function TopBoutiques() {
 
 function Stat({ icon, tint, value, sub }: { icon: string; tint: string; value: string; sub: string }) {
   return (
-    <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:#241019;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:5px 9px;white-space:nowrap;')}>
+    <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--ag-ink);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 9px;white-space:nowrap;')}>
       <span style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${tint};`)}>{icon}</span>
       {value}
-      <span style={css('color:#B79AA6;font-weight:600;')}>{sub}</span>
+      <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>{sub}</span>
     </span>
   );
 }
@@ -211,7 +211,7 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-      style={css(`flex:none;border:1px solid ${on ? 'transparent' : '#EFDCE4'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
+      style={css(`flex:none;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
     >
       {label}
     </button>

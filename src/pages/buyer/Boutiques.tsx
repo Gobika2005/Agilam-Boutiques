@@ -112,37 +112,37 @@ export function Boutiques() {
   }
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       {/* Screen header */}
       <div style={css('padding:2px 0 4px;')}>
-        <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>The directory</div>
+        <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>The directory</div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin-top:6px;letter-spacing:-.01em;")}>Boutiques</div>
       </div>
 
       {/* Search bar with a filter action on the right, per the design */}
-      <div style={css('display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFDCE4;border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:21px;")}>search</span>
+      <div style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
+        <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:21px;")}>search</span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search boutiques by name…"
-          style={css('border:none;background:none;flex:1;font-size:14px;font-weight:500;color:#241019;min-width:0;')}
+          style={css('border:none;background:none;flex:1;font-size:14px;font-weight:500;color:var(--ag-ink);min-width:0;')}
         />
         {query && (
           <button
             onClick={() => setQuery('')}
-            style={css('width:38px;height:38px;flex:none;border-radius:12px;border:none;background:#FBF0F4;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            style={css('width:38px;height:38px;flex:none;border-radius:12px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:20px;")}>close</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:20px;")}>close</span>
           </button>
         )}
         <button
           onClick={() => setShowFilters((s) => !s)}
-          style={css(`position:relative;width:38px;height:38px;flex:none;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${showFilters || activeFilters ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#FBF0F4'};box-shadow:${showFilters || activeFilters ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
+          style={css(`position:relative;width:38px;height:38px;flex:none;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${showFilters || activeFilters ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface-2)'};box-shadow:${showFilters || activeFilters ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${showFilters || activeFilters ? '#fff' : '#B02454'};`)}>tune</span>
+          <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${showFilters || activeFilters ? '#fff' : 'var(--ag-crimson)'};`)}>tune</span>
           {!!activeFilters && (
-            <span style={css('position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#fff;color:#B02454;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid #B02454;')}>
+            <span style={css('position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--ag-surface);color:var(--ag-crimson);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid #B02454;')}>
               {activeFilters}
             </span>
           )}
@@ -150,37 +150,37 @@ export function Boutiques() {
       </div>
 
       {/* Browse mode — All vs. the boutiques this buyer follows */}
-      <div style={css('display:flex;gap:8px;background:#F3E6EC;border-radius:14px;padding:4px;margin-top:12px;')}>
+      <div style={css('display:flex;gap:8px;background:var(--ag-surface-2);border-radius:14px;padding:4px;margin-top:12px;')}>
         <button
           onClick={() => setFollowingOnly(false)}
-          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${!followingOnly ? '#fff' : 'transparent'};color:${!followingOnly ? '#B02454' : '#8A7078'};box-shadow:${!followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
+          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${!followingOnly ? 'var(--ag-surface)' : 'transparent'};color:${!followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};box-shadow:${!followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
         >
           All boutiques
         </button>
         <button
           onClick={() => setFollowingOnly(true)}
-          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${followingOnly ? '#fff' : 'transparent'};color:${followingOnly ? '#B02454' : '#8A7078'};box-shadow:${followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
+          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${followingOnly ? 'var(--ag-surface)' : 'transparent'};color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};box-shadow:${followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? '#B02454' : '#8A7078'};`)}>how_to_reg</span>
+          <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>how_to_reg</span>
           Following
-          <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? '#FCE0EC' : '#E7D3DC'};color:#B02454;`)}>{followingCount}</span>
+          <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? 'var(--ag-surface-2)' : '#E7D3DC'};color:var(--ag-crimson);`)}>{followingCount}</span>
         </button>
       </div>
 
       {/* Filter panel */}
       {showFilters && (
-        <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:16px;margin-top:12px;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
+        <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px;margin-top:12px;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:#2A1A20;")}>Filters</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:var(--ag-ink);")}>Filters</div>
             {!!activeFilters && (
-              <button onClick={clearFilters} style={css('border:none;background:none;cursor:pointer;color:#B02454;font-size:12.5px;font-weight:700;font-family:inherit;')}>
+              <button onClick={clearFilters} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}>
                 Clear all
               </button>
             )}
           </div>
 
           {/* Sort */}
-          <div style={css('font-size:10px;color:#B79AA6;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:14px 0 8px;')}>Sort by</div>
+          <div style={css('font-size:10px;color:var(--ag-muted-soft);letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:14px 0 8px;')}>Sort by</div>
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
             {SORTS.map((s) => {
               const on = sort === s.key;
@@ -188,7 +188,7 @@ export function Boutiques() {
                 <button
                   key={s.key}
                   onClick={() => setSort(s.key)}
-                  style={css(`border:1px solid ${on ? 'transparent' : '#EFDCE4'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+                  style={css(`border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
                 >
                   {s.label}
                 </button>
@@ -197,11 +197,11 @@ export function Boutiques() {
           </div>
 
           {/* City */}
-          <div style={css('font-size:10px;color:#B79AA6;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:16px 0 8px;')}>City</div>
+          <div style={css('font-size:10px;color:var(--ag-muted-soft);letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:16px 0 8px;')}>City</div>
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
             <button
               onClick={() => setCity(null)}
-              style={css(`border:1px solid ${!city ? 'transparent' : '#EFDCE4'};background:${!city ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${!city ? '#fff' : '#6B4A56'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+              style={css(`border:1px solid ${!city ? 'transparent' : 'var(--ag-border-soft)'};background:${!city ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${!city ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
             >
               All cities
             </button>
@@ -211,7 +211,7 @@ export function Boutiques() {
                 <button
                   key={c}
                   onClick={() => setCity(on ? null : c)}
-                  style={css(`border:1px solid ${on ? 'transparent' : '#EFDCE4'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+                  style={css(`border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
                 >
                   {c}
                 </button>
@@ -223,7 +223,7 @@ export function Boutiques() {
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;')}>
             <button
               onClick={() => setVerifiedOnly((v) => !v)}
-              style={css(`display:flex;align-items:center;gap:6px;border:1px solid ${verifiedOnly ? 'transparent' : '#EFDCE4'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${verifiedOnly ? '#fff' : '#6B4A56'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+              style={css(`display:flex;align-items:center;gap:6px;border:1px solid ${verifiedOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${verifiedOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
             >
               <span style={css('font-family:\'Material Symbols Outlined\';font-size:16px;')}>verified</span>
               Verified only
@@ -234,16 +234,16 @@ export function Boutiques() {
 
       {/* Section label */}
       <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:20px 2px 6px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#2A1A20;")}>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);")}>
           {followingOnly ? 'Following' : query || activeFilters ? 'Results' : 'All Boutiques'}
         </div>
-        <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;")}>
+        <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>
           {filtered.length} {filtered.length === 1 ? 'boutique' : 'boutiques'}
         </div>
       </div>
 
       {/* Vertical list */}
-      <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
+      <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
         {display.map((b, i) => {
           const adId = adByBoutique.get(b.id);
           const openBoutique = () => {
@@ -254,7 +254,7 @@ export function Boutiques() {
           <div
             onClick={openBoutique}
             className="agx-lift"
-            style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;${i > 0 ? 'border-top:1px solid #F5E7ED;' : ''}`)}
+            style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;${i > 0 ? 'border-top:1px solid var(--ag-surface-2);' : ''}`)}
           >
             {/* The shop's own logo is the boutique's identity in the directory —
                 it falls back to the cover photo, then to a monogram. */}
@@ -262,16 +262,16 @@ export function Boutiques() {
 
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('display:flex;align-items:center;gap:6px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.15;color:#2A1A20;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
+                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.15;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                 {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3E9BE0;flex:none;")}>verified</span>}
                 {adId && <PromotedBadge label="Promoted" style={{ flex: 'none' }} />}
               </div>
               <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>
-                <span style={css('font-size:13px;font-weight:700;color:#2A1A20;')}>{b.rating}</span>
-                <span style={css('font-size:12.5px;color:#B79AA6;font-weight:600;')}>({formatCount(b.reviews)})</span>
+                <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{b.rating}</span>
+                <span style={css('font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>({formatCount(b.reviews)})</span>
               </div>
-              <div style={css('display:flex;align-items:center;gap:4px;margin-top:5px;color:#8A7078;font-size:12.5px;')}>
+              <div style={css('display:flex;align-items:center;gap:4px;margin-top:5px;color:var(--ag-muted);font-size:12.5px;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>location_on</span>
                 <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{b.area && b.area !== b.city ? `${b.area}, ${b.city}` : b.city}</span>
               </div>
@@ -281,9 +281,9 @@ export function Boutiques() {
               onClick={(e: MouseEvent) => toggleFollow(e, b.id, b.name)}
               aria-label={following[b.id] ? `Unfollow ${b.name}` : `Follow ${b.name}`}
               aria-pressed={following[b.id]}
-              style={css(`width:42px;height:42px;flex:none;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${following[b.id] ? 'transparent' : '#EFDCE4'};background:${following[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};box-shadow:${following[b.id] ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
+              style={css(`width:42px;height:42px;flex:none;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${following[b.id] ? 'transparent' : 'var(--ag-border-soft)'};background:${following[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};box-shadow:${following[b.id] ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
             >
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : '#B02454'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
+              <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
             </button>
           </div>
           );
@@ -297,8 +297,8 @@ export function Boutiques() {
         {filtered.length === 0 && followingOnly && followingCount === 0 && (
           <div style={css('padding:40px 20px;text-align:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(176,36,84,.3);")}>person_add</span>
-            <div style={css('color:#2A1A20;font-size:15px;font-weight:700;margin-top:10px;')}>No boutiques followed yet</div>
-            <div style={css('color:#8A7078;font-size:13.5px;margin-top:4px;')}>Tap the follow button on any boutique to find it here.</div>
+            <div style={css('color:var(--ag-ink);font-size:15px;font-weight:700;margin-top:10px;')}>No boutiques followed yet</div>
+            <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:4px;')}>Tap the follow button on any boutique to find it here.</div>
             <button
               onClick={() => setFollowingOnly(false)}
               style={css('margin-top:14px;border:none;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);cursor:pointer;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;font-family:inherit;')}
@@ -311,11 +311,11 @@ export function Boutiques() {
         {filtered.length === 0 && !(followingOnly && followingCount === 0) && (
           <div style={css('padding:40px 20px;text-align:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(107,20,54,.2);")}>storefront</span>
-            <div style={css('color:#8A7078;font-size:14px;margin-top:10px;')}>No boutiques match your filters.</div>
+            <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;')}>No boutiques match your filters.</div>
             {(query || activeFilters) && (
               <button
                 onClick={() => { setQuery(''); clearFilters(); }}
-                style={css('margin-top:14px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;color:#B02454;font-family:inherit;')}
+                style={css('margin-top:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ag-crimson);font-family:inherit;')}
               >
                 Reset
               </button>

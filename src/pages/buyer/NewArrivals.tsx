@@ -75,7 +75,7 @@ export function NewArrivals() {
   const setCategory = (name: string | null) => { setCat(name); setShown(PAGE); };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <DiscoveryHeader
         eyebrow="Fresh off the loom"
         title="New"
@@ -106,14 +106,14 @@ export function NewArrivals() {
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;')}>
         <button
           onClick={() => { setInStockOnly((v) => !v); setShown(PAGE); }}
-          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : '#EFDCE4'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${inStockOnly ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${inStockOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
           <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
           In stock only
         </button>
         <button
           onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Latest' }); navigate('/buyer/results'); }}
-          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:#B02454;font-size:12.5px;font-weight:700;font-family:inherit;')}
+          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Browse the full catalogue
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
@@ -184,9 +184,9 @@ function BucketedGrid({
       {groups.map((g, gi) => (
         <div key={`${g.label}-${gi}`}>
           <div style={css(`display:flex;align-items:center;gap:10px;margin:${gi === 0 ? '0' : '30px'} 2px 14px;`)}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;color:#2A1A20;white-space:nowrap;")}>{g.label}</span>
-            <span style={css('flex:1;height:1px;background:#F0E2E9;')} />
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;")}>{g.items.length}</span>
+            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;color:var(--ag-ink);white-space:nowrap;")}>{g.label}</span>
+            <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
+            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{g.items.length}</span>
           </div>
           <div className="agx-rgrid">
             {g.items.map((p) => (
@@ -210,10 +210,10 @@ function Chip({ label, count, on, onClick }: { label: string; count: number; on:
   return (
     <button
       onClick={onClick}
-      style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : '#EFDCE4'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
+      style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
     >
       {label}
-      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : '#B79AA6'};`)}>{count}</span>
+      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
     </button>
   );
 }

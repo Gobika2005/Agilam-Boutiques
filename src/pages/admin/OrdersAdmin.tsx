@@ -145,7 +145,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
   return (
     <div style={css('display:flex;flex-direction:column;gap:16px;')}>
       {/* Status timeline */}
-      <div style={css('background:#fff;border-radius:14px;padding:16px;')}>
+      <div style={css('background:var(--ag-surface);border-radius:14px;padding:16px;')}>
         <div style={css('font-weight:800;font-size:13px;margin-bottom:14px;')}>Fulfilment</div>
         {rejected ? (
           <StatusPill status="rejected" label="Cancelled" />
@@ -156,10 +156,10 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
               return (
                 <div key={step} style={css('display:flex;align-items:center;flex:1;')}>
                   <div style={css('display:flex;flex-direction:column;align-items:center;gap:5px;')}>
-                    <div style={css(`width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;${done ? 'background:#D6336C;color:#fff;' : 'background:#F3DFE8;color:#B79AA6;'}`)}>
+                    <div style={css(`width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;${done ? 'background:#D6336C;color:#fff;' : 'background:var(--ag-surface-2);color:var(--ag-muted-soft);'}`)}>
                       <Icon name={i === 0 ? 'receipt' : i === 1 ? 'local_shipping' : 'check'} size={16} />
                     </div>
-                    <span style={css(`font-size:10.5px;font-weight:700;color:${done ? '#B02454' : '#B79AA6'};`)}>{step}</span>
+                    <span style={css(`font-size:10.5px;font-weight:700;color:${done ? 'var(--ag-crimson)' : 'var(--ag-muted-soft)'};`)}>{step}</span>
                   </div>
                   {i < FLOW.length - 1 && <div style={css(`flex:1;height:2px;margin:0 4px 16px;background:${i < currentIdx ? '#D6336C' : '#F3DFE8'};`)} />}
                 </div>
@@ -168,7 +168,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
           </div>
         )}
         <div style={css('display:flex;gap:8px;margin-top:14px;')}>
-          <select value={o.status} onChange={(e) => onSetStatus(e.target.value as OrderWithDetails['status'])} style={css(`flex:1;height:38px;border:1.5px solid ${T.field};border-radius:10px;background:#FBF6F2;font-size:13px;font-weight:700;color:#6B5560;padding:0 10px;cursor:pointer;font-family:inherit;`)}>
+          <select value={o.status} onChange={(e) => onSetStatus(e.target.value as OrderWithDetails['status'])} style={css(`flex:1;height:38px;border:1.5px solid ${T.field};border-radius:10px;background:var(--ag-bg);font-size:13px;font-weight:700;color:var(--ag-label);padding:0 10px;cursor:pointer;font-family:inherit;`)}>
             <option value="pending">Pending</option>
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
@@ -178,7 +178,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
       </div>
 
       {/* Customer */}
-      <div style={css('background:#fff;border-radius:14px;padding:4px 16px;')}>
+      <div style={css('background:var(--ag-surface);border-radius:14px;padding:4px 16px;')}>
         <Field label="Customer" value={name} />
         <Field label="Phone" value={phone} />
         <Field label="City" value={city} />
@@ -190,7 +190,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
         <div style={css('font-weight:800;font-size:13px;margin-bottom:8px;')}>Items</div>
         <div style={css('display:flex;flex-direction:column;gap:8px;')}>
           {o.items.map((it) => (
-            <div key={it.id} style={css('background:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;')}>
+            <div key={it.id} style={css('background:var(--ag-surface);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;')}>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('font-weight:700;font-size:12.5px;')}>{it.title}</div>
                 <div style={css(`font-size:11px;color:${T.muted};`)}>Qty {it.qty}{it.size ? ` · ${it.size}` : ''}{it.color ? ` · ${it.color}` : ''}</div>
@@ -202,7 +202,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
       </div>
 
       {/* Payment summary */}
-      <div style={css('background:#fff;border-radius:14px;padding:4px 16px;')}>
+      <div style={css('background:var(--ag-surface);border-radius:14px;padding:4px 16px;')}>
         <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery'} />
         {o.payment_id && <Field label="Payment ID" value={<span style={css('font-size:11.5px;')}>{o.payment_id}</span>} />}
         <Field label="Order total" value={fmtInr(o.total)} />

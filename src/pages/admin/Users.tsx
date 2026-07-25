@@ -41,9 +41,9 @@ import type { Role } from '@/types/database';
 
 const PAGE_SIZE = 12;
 const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
-  buyer: { bg: '#E6F0FA', fg: '#3A6EA5' },
-  seller: { bg: '#F3EAF5', fg: '#9B7FC7' },
-  admin: { bg: '#FCE0EC', fg: '#D6336C' },
+  buyer: { bg: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)' },
+  seller: { bg: 'var(--ag-purple-bg)', fg: '#9B7FC7' },
+  admin: { bg: 'var(--ag-surface-2)', fg: '#D6336C' },
 };
 
 export function Users() {
@@ -243,13 +243,13 @@ export function Users() {
       key: 'city',
       header: 'CITY',
       width: '1fr',
-      render: (user) => <span style={css('font-size:13px;color:#6B5560;')}>{user.city || '-'}</span>,
+      render: (user) => <span style={css('font-size:13px;color:var(--ag-label);')}>{user.city || '-'}</span>,
     },
     {
       key: 'orders',
       header: 'ORDERS',
       width: '.7fr',
-      render: (user) => <span style={css('font-size:13px;color:#6B5560;')}>{user.orders}</span>,
+      render: (user) => <span style={css('font-size:13px;color:var(--ag-label);')}>{user.orders}</span>,
     },
     {
       key: 'spent',
@@ -332,7 +332,7 @@ export function Users() {
       </div>
 
       {error && (
-        <div style={css('background:#FDE7EC;border:1px solid #F3B9C8;color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
+        <div style={css('background:var(--ag-bad-bg);border:1px solid #F3B9C8;color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
           <Icon name="error" size={18} color="#B02454" />
           Couldn&apos;t load users: {error}
         </div>
@@ -367,14 +367,14 @@ export function Users() {
           onClick={() => setCredentials(null)}
         >
           <div
-            style={css('background:#fff;border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 28px 80px -40px rgba(83,24,43,0.55);')}
+            style={css('background:var(--ag-surface);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 28px 80px -40px rgba(83,24,43,0.55);')}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={css('font-weight:800;font-size:16px;margin-bottom:6px;')}>Share these credentials</div>
             <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-bottom:16px;`)}>
               The welcome email could not be sent, so give the new user their sign-in details directly. They should change the password on first login.
             </div>
-            <div style={css('background:#FFF7FA;border:1px solid #F0D8E2;border-radius:12px;padding:14px;margin-bottom:16px;')}>
+            <div style={css('background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:12px;padding:14px;margin-bottom:16px;')}>
               <div style={css(`font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${T.muted};margin-bottom:4px;`)}>Email</div>
               <div style={css('font-size:14px;font-weight:600;word-break:break-word;margin-bottom:12px;')}>{credentials.email}</div>
               <div style={css(`font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${T.muted};margin-bottom:4px;`)}>Temporary password</div>
@@ -424,55 +424,55 @@ export function Users() {
           style={css('display:flex;flex-direction:column;gap:14px;')}
         >
           <div>
-            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>Full Name *</label>
+            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>Full Name *</label>
             <input
               value={createData.fullName}
               onChange={(e) => setCreateData({ ...createData, fullName: e.target.value })}
               placeholder="John Doe"
-              style={css('width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
+              style={css('width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
             />
           </div>
           <div>
-            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>Email *</label>
+            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>Email *</label>
             <input
               value={createData.email}
               onChange={(e) => setCreateData({ ...createData, email: e.target.value })}
               placeholder="john@example.com"
               type="email"
-              style={css('width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
+              style={css('width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
             />
           </div>
           <div>
-            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>Phone</label>
+            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>Phone</label>
             <input
               value={createData.phone}
               onChange={(e) => setCreateData({ ...createData, phone: e.target.value })}
               placeholder="+91 98765 43210"
-              style={css('width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
+              style={css('width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
             />
           </div>
           <div>
-            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>City</label>
+            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>City</label>
             <input
               value={createData.city}
               onChange={(e) => setCreateData({ ...createData, city: e.target.value })}
               placeholder="Chennai"
-              style={css('width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
+              style={css('width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;')}
             />
           </div>
           <div>
-            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>Role *</label>
+            <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>Role *</label>
             <select
               value={createData.role}
               onChange={(e) => setCreateData({ ...createData, role: e.target.value as Role })}
-              style={css('width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;cursor:pointer;')}
+              style={css('width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;cursor:pointer;')}
             >
               <option value="buyer">Buyer</option>
               <option value="seller">Seller</option>
               <option value="admin">Admin</option>
             </select>
           </div>
-          <div style={css('background:#FCE0EC;border-left:4px solid #B02454;padding:12px;border-radius:8px;font-size:12px;color:#6B5560;line-height:1.5;')}>
+          <div style={css('background:var(--ag-surface-2);border-left:4px solid #B02454;padding:12px;border-radius:8px;font-size:12px;color:var(--ag-label);line-height:1.5;')}>
             <strong>Note:</strong> A temporary password will be generated and sent to the email address. The user must change it on first login.
           </div>
         </form>
@@ -506,8 +506,8 @@ export function Users() {
           style={css('display:flex;flex-direction:column;gap:14px;')}
         >
           {editUser?.email && (
-            <div style={css(`font-size:12.5px;color:${T.muted};background:#fff;border-radius:12px;padding:12px 14px;`)}>
-              <Icon name="mail" size={16} color="#B79AA6" /> {editUser.email}
+            <div style={css(`font-size:12.5px;color:${T.muted};background:var(--ag-surface);border-radius:12px;padding:12px 14px;`)}>
+              <Icon name="mail" size={16} color="var(--ag-muted-soft)" /> {editUser.email}
               <div style={css('font-size:11px;margin-top:4px;')}>Email is the login identity and can't be changed here.</div>
             </div>
           )}
@@ -536,12 +536,12 @@ export function Users() {
   );
 }
 
-const EDIT_FIELD = 'width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
+const EDIT_FIELD = 'width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
 
 function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>{label}</label>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>{label}</label>
       {children}
     </div>
   );
@@ -563,7 +563,7 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
       )}
 
       {row && (
-        <div style={css('background:#fff;border-radius:14px;padding:4px 16px;margin-bottom:16px;')}>
+        <div style={css('background:var(--ag-surface);border-radius:14px;padding:4px 16px;margin-bottom:16px;')}>
           <Field label="Role" value={row.role} />
           <Field label="Status" value={<StatusPill status={row.deleted_at ? 'rejected' : row.status} label={row.deleted_at ? 'Deleted' : undefined} />} />
           <Field label="City" value={row.city || '-'} />
@@ -583,8 +583,8 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
       {!loading && (data?.orders.length ?? 0) === 0 && <EmptyState icon="receipt_long" title="No orders" />}
       <div style={css('display:flex;flex-direction:column;gap:8px;')}>
         {(data?.orders ?? []).map((order) => (
-          <div key={order.id} style={css('background:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;')}>
-            <Icon name="receipt_long" size={18} color="#B79AA6" />
+          <div key={order.id} style={css('background:var(--ag-surface);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;')}>
+            <Icon name="receipt_long" size={18} color="var(--ag-muted-soft)" />
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:700;font-size:12.5px;')}>{order.order_number}</div>
               <div style={css(`font-size:11px;color:${T.muted};`)}>
@@ -604,7 +604,7 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={css('background:#fff;border-radius:12px;padding:12px;text-align:center;')}>
+    <div style={css('background:var(--ag-surface);border-radius:12px;padding:12px;text-align:center;')}>
       <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;line-height:1;")}>{value}</div>
       <div style={css(`font-size:11px;color:${T.muted};margin-top:3px;`)}>{label}</div>
     </div>

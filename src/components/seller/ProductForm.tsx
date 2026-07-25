@@ -29,10 +29,10 @@ export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   description: '', mrp: '', sizes: [], washCare: '', imageUrl: '', images: [],
 };
 
-const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
-const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid #E7A7B4;background:#FFF7F8;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
-const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
-const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
+const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
+const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid #E7A7B4;background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
+const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
+const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
 const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
 
 /**
@@ -176,7 +176,7 @@ export function ProductForm({
       <div style={css('display:flex;gap:10px;')}>
         <div
           onClick={() => coverInput.current?.click()}
-          style={css(`width:96px;height:96px;flex:none;border-radius:16px;border:2px dashed ${errors.imageUrl ? '#E7A7B4' : '#E6BCCF'};background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
+          style={css(`width:96px;height:96px;flex:none;border-radius:16px;border:2px dashed ${errors.imageUrl ? '#E7A7B4' : 'var(--ag-border)'};background:var(--ag-surface);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
         >
           {form.imageUrl ? (
             <img src={form.imageUrl} alt="Cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
@@ -185,7 +185,7 @@ export function ProductForm({
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>
                 {uploading === 'cover' ? 'progress_activity' : 'add_a_photo'}
               </span>
-              <span style={css('font-size:10px;color:#B79AA6;font-weight:700;')}>Cover *</span>
+              <span style={css('font-size:10px;color:var(--ag-muted-soft);font-weight:700;')}>Cover *</span>
             </>
           )}
           {/* Clearing the value lets the same photo be re-picked after a cancelled crop. */}
@@ -198,7 +198,7 @@ export function ProductForm({
             <div
               key={i}
               onClick={() => (url ? set('images', form.images.filter((x) => x !== url)) : galleryInput.current?.click())}
-              style={css('width:72px;height:96px;flex:none;border-radius:16px;border:2px dashed #E6BCCF;background:#fff;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;')}
+              style={css('width:72px;height:96px;flex:none;border-radius:16px;border:2px dashed #E6BCCF;background:var(--ag-surface);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;')}
             >
               {url ? (
                 <>
@@ -251,10 +251,10 @@ export function ProductForm({
                     key={name}
                     type="button"
                     onClick={() => { set('color', name); setColorSuggestions([]); }}
-                    style={css('display:flex;align-items:center;gap:7px;border:1.5px solid #E6BCCF;background:#FFF9FB;border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;')}
+                    style={css('display:flex;align-items:center;gap:7px;border:1.5px solid #E6BCCF;background:var(--ag-surface-2);border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;')}
                   >
                     <span style={css(`flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid rgba(0,0,0,.08);background:${taxonomy.hexOf(name)};`)} />
-                    <span style={css('font-size:12px;font-weight:700;color:#B02454;')}>{name}</span>
+                    <span style={css('font-size:12px;font-weight:700;color:var(--ag-crimson);')}>{name}</span>
                   </button>
                 ))}
               </div>
@@ -278,7 +278,7 @@ export function ProductForm({
         MRP (₹) — optional, shows a discount badge to buyers
         <input value={form.mrp} onChange={(e) => set('mrp', e.target.value)} inputMode="numeric" placeholder="5999" style={css(errors.mrp ? inputErrStyle : inputStyle)} />
         {errors.mrp && <span style={css(errStyle)}>{errors.mrp}</span>}
-        {discountPct != null && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#2FA36B;')}>{discountPct}% off badge will show to buyers</span>}
+        {discountPct != null && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-good);')}>{discountPct}% off badge will show to buyers</span>}
       </label>
 
       <div>
@@ -287,7 +287,7 @@ export function ProductForm({
           {sizeOptions.map((s) => {
             const on = form.sizes.includes(s);
             return (
-              <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>
+              <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>
             );
           })}
         </div>

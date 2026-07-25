@@ -87,7 +87,7 @@ export function ResetPasswordCard({
   return (
     <AuthModal icon="lock_reset" heading={heading} sub={sub} onBack={() => navigate(backTo, { replace: true })}>
       {ready === 'checking' ? (
-        <div style={css('text-align:center;color:#8A7078;font-size:14px;')}>Verifying your reset link…</div>
+        <div style={css('text-align:center;color:var(--ag-muted);font-size:14px;')}>Verifying your reset link…</div>
       ) : (
         <>
           <PasswordField value={password} onChange={setPassword} label="New password" />
@@ -137,8 +137,8 @@ export function RequestResetFields({
 
   if (sent) {
     return (
-      <div style={css('text-align:center;color:#7A5C67;font-size:14px;line-height:1.6;')}>
-        If <strong style={css('color:#2A1A20;')}>{email}</strong> has an account, a reset link is on its way.
+      <div style={css('text-align:center;color:var(--ag-label);font-size:14px;line-height:1.6;')}>
+        If <strong style={css('color:var(--ag-ink);')}>{email}</strong> has an account, a reset link is on its way.
         Open it on this device and set a new password.
       </div>
     );
@@ -146,14 +146,14 @@ export function RequestResetFields({
 
   return (
     <>
-      <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+      <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
         Email
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="hello@agilam.in"
-          style={css('width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;')}
+          style={css('width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);')}
         />
       </label>
 

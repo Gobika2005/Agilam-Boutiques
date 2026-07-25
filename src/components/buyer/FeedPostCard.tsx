@@ -78,25 +78,25 @@ function SizeSheet({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Choose a size"
-        style={css('width:100%;max-width:620px;background:#fff;border-radius:26px 26px 0 0;padding:10px 18px calc(20px + env(safe-area-inset-bottom));animation:agx-sheet .26s cubic-bezier(.2,.8,.25,1);max-height:88vh;overflow-y:auto;')}
+        style={css('width:100%;max-width:620px;background:var(--ag-surface);border-radius:26px 26px 0 0;padding:10px 18px calc(20px + env(safe-area-inset-bottom));animation:agx-sheet .26s cubic-bezier(.2,.8,.25,1);max-height:88vh;overflow-y:auto;')}
       >
-        <div style={css('width:44px;height:4px;border-radius:999px;background:#EEDCE5;margin:0 auto 16px;')} />
+        <div style={css('width:44px;height:4px;border-radius:999px;background:var(--ag-surface-2);margin:0 auto 16px;')} />
 
         <div style={css('display:flex;align-items:center;gap:12px;')}>
           <span style={css(`flex:none;width:56px;height:70px;border-radius:14px;overflow:hidden;position:relative;background:${TONES[tone % TONES.length]};`)}>
             <ImageSlot src={image} placeholder={title} alt={title} className="agx-prod-fill" />
           </span>
           <span style={css('flex:1;min-width:0;')}>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:16.5px;color:#241019;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:16.5px;color:var(--ag-ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
               {title}
             </span>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;margin-top:4px;")}>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:4px;")}>
               {fmt(price)}
             </span>
           </span>
         </div>
 
-        <div className="agx-eyebrow" style={css('font-size:9.5px;color:#8A7078;margin-top:20px;')}>
+        <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);margin-top:20px;')}>
           {picked ? `Size · ${picked}` : 'Choose a size'}
         </div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
@@ -107,7 +107,7 @@ function SizeSheet({
                 key={s}
                 onClick={() => setPicked(s)}
                 aria-pressed={on}
-                style={css(`min-width:52px;height:48px;padding:0 15px;border-radius:14px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}
+                style={css(`min-width:52px;height:48px;padding:0 15px;border-radius:14px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}
               >
                 {s}
               </button>
@@ -255,7 +255,7 @@ export function FeedPostCard({
   };
 
   return (
-    <article style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
+    <article style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
       {/* ── Boutique identity ── */}
       <div style={css('display:flex;align-items:center;gap:11px;padding:13px 14px;')}>
         <button onClick={openBoutique} aria-label={`Open ${boutique?.name ?? 'boutique'}`} style={css('border:none;background:none;padding:0;cursor:pointer;')}>
@@ -263,14 +263,14 @@ export function FeedPostCard({
         </button>
         <button onClick={openBoutique} style={css('flex:1;min-width:0;border:none;background:none;padding:0;cursor:pointer;text-align:left;')}>
           <span style={css('display:flex;align-items:center;gap:5px;')}>
-            <span style={css('font-weight:800;font-size:14.5px;color:#241019;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>
+            <span style={css('font-weight:800;font-size:14.5px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>
               {boutique?.name ?? 'Boutique'}
             </span>
             {boutique?.verified && (
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>
             )}
           </span>
-          <span style={css('display:block;font-size:12px;color:#8A7078;margin-top:1px;')}>
+          <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;')}>
             {timeAgo(product.created_at)}{boutique?.city ? ` · ${boutique.city}` : ''}
           </span>
         </button>
@@ -280,7 +280,7 @@ export function FeedPostCard({
         {boutique && !following && (
           <button
             onClick={onFollow}
-            style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:#fff;color:#B02454;font-size:12.5px;font-weight:800;cursor:pointer;')}
+            style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:var(--ag-surface);color:var(--ag-crimson);font-size:12.5px;font-weight:800;cursor:pointer;')}
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
           </button>
@@ -320,7 +320,7 @@ export function FeedPostCard({
         )}
 
         {hasMrp && (
-          <div style={css('position:absolute;left:12px;top:12px;background:linear-gradient(135deg,#2FA36B,#1E8455);color:#fff;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 8px 20px -10px rgba(30,132,85,.9);')}>
+          <div style={css('position:absolute;left:12px;top:12px;background:linear-gradient(135deg,var(--ag-good),#1E8455);color:#fff;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 8px 20px -10px rgba(30,132,85,.9);')}>
             {discountPct}% off
           </div>
         )}
@@ -358,10 +358,10 @@ export function FeedPostCard({
           aria-pressed={liked}
           style={css('display:flex;align-items:center;gap:7px;border:none;background:none;padding:6px 2px;cursor:pointer;')}
         >
-          <span className={`agx-heart${liked ? ' agx-heart-on' : ''}`} style={css(`font-size:24px;color:${liked ? '#E11D48' : '#5C4650'};`)}>
+          <span className={`agx-heart${liked ? ' agx-heart-on' : ''}`} style={css(`font-size:24px;color:${liked ? '#E11D48' : 'var(--ag-ink-2)'};`)}>
             favorite
           </span>
-          <span style={css('font-size:13.5px;font-weight:800;color:#4B3840;')}>{compact(likes)}</span>
+          <span style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink-2);')}>{compact(likes)}</span>
         </button>
 
         <button
@@ -369,14 +369,14 @@ export function FeedPostCard({
           aria-label="Share this piece"
           style={css('display:flex;align-items:center;border:none;background:none;padding:6px 2px;cursor:pointer;')}
         >
-          <span className="agx-heart" style={css('font-size:23px;color:#5C4650;')}>send</span>
+          <span className="agx-heart" style={css('font-size:23px;color:var(--ag-ink-2);')}>send</span>
         </button>
 
         <div style={css('flex:1;')} />
 
         <button
           onClick={openProduct}
-          style={css('display:flex;align-items:center;gap:4px;border:none;background:none;padding:6px 2px;cursor:pointer;color:#B02454;font-size:12.5px;font-weight:800;')}
+          style={css('display:flex;align-items:center;gap:4px;border:none;background:none;padding:6px 2px;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:800;')}
         >
           View details
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>chevron_right</span>
@@ -386,15 +386,15 @@ export function FeedPostCard({
       {/* ── The piece ── */}
       <div style={css('padding:4px 16px 0;')}>
         <button onClick={openProduct} style={css('border:none;background:none;padding:0;cursor:pointer;text-align:left;width:100%;')}>
-          <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.2;color:#241019;")}>
+          <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.2;color:var(--ag-ink);")}>
             {product.title}
           </span>
         </button>
 
         <div style={css('display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:7px;')}>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:24px;")}>{fmt(price)}</span>
-          {hasMrp && <span style={css('text-decoration:line-through;color:#B79AA6;font-size:14px;font-weight:700;')}>{fmt(mrp as number)}</span>}
-          <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:#5C4650;')}>
+          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:24px;")}>{fmt(price)}</span>
+          {hasMrp && <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:14px;font-weight:700;')}>{fmt(mrp as number)}</span>}
+          <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--ag-ink-2);')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>
             {product.rating}
           </span>
@@ -402,7 +402,7 @@ export function FeedPostCard({
         </div>
 
         {product.description && (
-          <div style={css('font-size:13.5px;line-height:1.55;color:#5C4650;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>
+          <div style={css('font-size:13.5px;line-height:1.55;color:var(--ag-ink-2);margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>
             {product.description}
           </div>
         )}
@@ -415,7 +415,7 @@ export function FeedPostCard({
         {soldOut ? (
           <button
             onClick={openProduct}
-            style={css('width:100%;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}
+            style={css('width:100%;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}
           >
             View details
           </button>

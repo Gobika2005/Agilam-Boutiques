@@ -135,20 +135,20 @@ export function Earnings() {
   const peak = Math.max(...bars.map((b) => b.total), 1);
 
   const TILES = [
-    { label: 'Orders this month', value: String(thisMonth.length), color: '#2A1A20' },
+    { label: 'Orders this month', value: String(thisMonth.length), color: 'var(--ag-ink)' },
     { label: 'Pending payout', value: fmt(pendingPayout), color: '#C99A3F' },
-    { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: '#2FA36B' },
-    { label: `Commission (${POLICY_TERMS.commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: '#8A7078' },
+    { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
+    { label: `Commission (${POLICY_TERMS.commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
   ];
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 0 12px;display:flex;align-items:center;gap:10px;')}>
         <button
           onClick={() => navigate('/seller/profile')}
-          style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Earnings</div>
       </div>
@@ -177,7 +177,7 @@ export function Earnings() {
 
       <div className="agx-sd-quick" style={css('margin-top:14px;')}>
         {TILES.map((t) => (
-          <div key={t.label} style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
+          <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
             <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>{t.label}</div>
             <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:5px;color:${t.color};word-break:break-word;`)}>{t.value}</div>
           </div>
@@ -187,28 +187,28 @@ export function Earnings() {
       {/* Cash on delivery — the seller holds the money, so Agilam's cut on it
           is a debt rather than a deduction. Stated plainly, with the figure. */}
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
-        <div style={css('margin-top:14px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:20px;padding:16px 18px;')}>
+        <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:20px;")}>payments</span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#7A5C2A;")}>Cash on delivery</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery</div>
           </div>
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Cash you collected</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#7A5C2A;")}>{fmt(codCash)}</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codCash)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Commission owed on it</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#C0392B;")}>– {fmt(codCommissionOwed)}</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-bad-text);")}>– {fmt(codCommissionOwed)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Still to collect</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#7A5C2A;")}>{fmt(codOutstanding)}</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codOutstanding)}</div>
             </div>
           </div>
 
-          <div style={css('font-size:12.5px;color:#7A5C2A;font-weight:600;line-height:1.6;margin-top:12px;')}>
+          <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.6;margin-top:12px;')}>
             You keep the cash your customers hand over. Agilam’s {POLICY_TERMS.commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
             {codOutstanding > 0 && ' Cash you have not collected yet is not counted as earnings.'}
           </div>
@@ -226,8 +226,8 @@ export function Earnings() {
 
       {/* Offline takings — collected by the seller, not settled by Agilam --- */}
       {offline.length > 0 && (
-        <div style={css('margin-top:14px;background:#F3F9F5;border:1px solid #CFE6D9;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>storefront</span>
+        <div style={css('margin-top:14px;background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>storefront</span>
           <span style={css('flex:1;min-width:200px;font-size:13px;font-weight:600;color:#2C6249;line-height:1.5;')}>
             You also collected <strong>{fmt(offlineCollected)}</strong> from {offline.length} walk-in bill{offline.length > 1 ? 's' : ''} this month. Agilam charges no commission on offline sales, so this is yours in full and is not part of the payout above.
           </span>
@@ -236,18 +236,18 @@ export function Earnings() {
 
       {/* Last 7 days -------------------------------------------------------- */}
       <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Last 7 days</div>
-      <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:18px 16px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
+      <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px 16px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
         {peak === 1 && !loading ? (
-          <div style={css('padding:14px 4px;text-align:center;color:#8A7078;font-size:13.5px;font-weight:600;')}>
+          <div style={css('padding:14px 4px;text-align:center;color:var(--ag-muted);font-size:13.5px;font-weight:600;')}>
             No sales in the last 7 days yet.
           </div>
         ) : (
           <div style={css('display:flex;align-items:flex-end;gap:10px;height:150px;')}>
             {bars.map((b, i) => (
               <div key={i} title={fmt(b.total)} style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;')}>
-                <span style={css('font-size:10px;color:#B79AA6;font-weight:800;')}>{b.total > 0 ? fmt(b.total) : ''}</span>
+                <span style={css('font-size:10px;color:var(--ag-muted-soft);font-weight:800;')}>{b.total > 0 ? fmt(b.total) : ''}</span>
                 <div style={css(`width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#E7719F,#D6336C);height:${Math.max(3, Math.round((b.total / peak) * 100))}%;`)} />
-                <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>{b.label}</span>
+                <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>{b.label}</span>
               </div>
             ))}
           </div>
@@ -256,24 +256,24 @@ export function Earnings() {
 
       {/* Payout destination -------------------------------------------------- */}
       <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Payout account</div>
-      <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:16px 18px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
+      <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
         {payout?.upi || payout?.account ? (
           <div style={css('display:flex;flex-direction:column;gap:9px;')}>
             {payout.upi && (
               <div style={css('display:flex;gap:12px;align-items:baseline;')}>
                 <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:#A98D99;')}>UPI ID</span>
-                <span style={css('font-size:13.5px;font-weight:700;color:#2A1A20;')}>{payout.upi}</span>
+                <span style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>{payout.upi}</span>
               </div>
             )}
             {payout.account && (
               <div style={css('display:flex;gap:12px;align-items:baseline;')}>
                 <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:#A98D99;')}>Bank account</span>
-                <span style={css('font-size:13.5px;font-weight:700;color:#2A1A20;')}>{payout.account}{payout.ifsc ? ` · ${payout.ifsc}` : ''}</span>
+                <span style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>{payout.account}{payout.ifsc ? ` · ${payout.ifsc}` : ''}</span>
               </div>
             )}
             <button
               onClick={() => navigate('/seller/onboarding')}
-              style={css('align-self:flex-start;margin-top:4px;border:none;background:none;color:#B02454;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
+              style={css('align-self:flex-start;margin-top:4px;border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Change payout details
             </button>
@@ -281,7 +281,7 @@ export function Earnings() {
         ) : (
           <div style={css('display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;")}>account_balance</span>
-            <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:#7A5C2A;line-height:1.5;')}>
+            <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
               No payout account on file — Agilam cannot settle your online orders until you add one.
             </span>
             <button

@@ -15,18 +15,18 @@ export function ThreadList({ threads, chatBase }: { threads: Thread[]; chatBase:
   const navigate = useNavigate();
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);')}>
       <div style={css('padding:6px 20px 12px;')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>Messages</div>
       </div>
 
       {threads.length === 0 && (
         <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:64px 30px;')}>
-          <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,#FCE0EC,#F7CFDF);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#B02454;")}>forum</span>
+          <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>forum</span>
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:18px;")}>No messages yet</div>
-          <div style={css('color:#8A7078;font-size:14px;margin-top:8px;max-width:320px;line-height:1.55;')}>
+          <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:320px;line-height:1.55;')}>
             Chats you start with a boutique appear here — ask about sizing, custom stitching or an order any time.
           </div>
         </div>
@@ -34,15 +34,15 @@ export function ThreadList({ threads, chatBase }: { threads: Thread[]; chatBase:
 
       <div style={css('display:flex;flex-direction:column;')}>
         {threads.map((m) => (
-          <div key={m.id} onClick={() => navigate(`${chatBase}/${m.id}`)} style={css('display:flex;gap:12px;align-items:center;padding:12px 20px;cursor:pointer;border-bottom:1px solid #F5E4EC;')}>
+          <div key={m.id} onClick={() => navigate(`${chatBase}/${m.id}`)} style={css('display:flex;gap:12px;align-items:center;padding:12px 20px;cursor:pointer;border-bottom:1px solid var(--ag-border-soft);')}>
             <BoutiqueLogo name={m.name} src={m.avatar} size={52} radius={16} />
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('display:flex;justify-content:space-between;align-items:center;')}>
                 <span style={css('font-weight:800;font-size:14.5px;')}>{m.name}</span>
-                <span style={css('font-size:11.5px;color:#B79AA6;')}>{m.time}</span>
+                <span style={css('font-size:11.5px;color:var(--ag-muted-soft);')}>{m.time}</span>
               </div>
               <div style={css('display:flex;justify-content:space-between;align-items:center;margin-top:2px;')}>
-                <span style={css('font-size:13px;color:#8A7078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;')}>{m.last}</span>
+                <span style={css('font-size:13px;color:var(--ag-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;')}>{m.last}</span>
                 {m.unread > 0 && (
                   <span style={css('min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#D6336C;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>{m.unread}</span>
                 )}

@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
+import { useTheme } from '@/state/ThemeContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 
@@ -23,6 +24,7 @@ export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   // The buyer AppShell renders the global toast, but admin pages live outside it,
   // so every showToast() on the console (create user, block, delete, errors…) was
   // silently discarded. Render it here too so admin actions give feedback.
@@ -35,10 +37,10 @@ export function AdminLayout() {
   };
 
   return (
-    <div style={css('min-height:100vh;display:flex;background:#FBF6F2;')}>
-      <div style={css('min-height:100vh;width:100%;background:#fff;display:flex;')}>
+    <div style={css('min-height:100vh;display:flex;background:var(--ag-bg);')}>
+      <div style={css('min-height:100vh;width:100%;background:var(--ag-surface);display:flex;')}>
         {/* admin sidebar — desktop only (hidden ≤900px, replaced by bottom tab bar) */}
-        <div className="agx-scroll agx-admin-sidebar" style={css('width:238px;flex:none;background:#F7EAF0;border-right:1px solid #F0D8E2;padding:20px 14px;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;')}>
+        <div className="agx-scroll agx-admin-sidebar" style={css('width:238px;flex:none;background:var(--ag-surface-2);border-right:1px solid var(--ag-border);padding:20px 14px;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;')}>
           <div style={css('display:flex;align-items:center;gap:10px;padding:0 8px 16px;')}>
             <div style={css("width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>A</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;")}>Agilam Admin</div>
@@ -50,7 +52,7 @@ export function AdminLayout() {
               <button
                 key={a.to}
                 onClick={() => navigate(a.to)}
-                style={css(`width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:${on ? 700 : 600};text-align:left;margin-top:3px;background:${on ? '#fff' : 'transparent'};color:${on ? '#B02454' : '#6B5560'};box-shadow:${on ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};font-family:inherit;`)}
+                style={css(`width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:${on ? 700 : 600};text-align:left;margin-top:3px;background:${on ? 'var(--ag-surface)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};box-shadow:${on ? '0 6px 16px -10px var(--ag-shadow)' : 'none'};font-family:inherit;`)}
               >
                 <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{a.icon}</span>
                 <span>{a.label}</span>
@@ -66,17 +68,25 @@ export function AdminLayout() {
 
         {/* admin main */}
         <div className="agx-scroll" style={css('flex:1;display:flex;flex-direction:column;min-width:0;')}>
-          <div className="agx-admin-header" style={css('flex:none;padding:20px 30px;border-bottom:1px solid #F5E4EC;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:#fff;z-index:6;')}>
+          <div className="agx-admin-header" style={css('flex:none;padding:20px 30px;border-bottom:1px solid var(--ag-border-soft);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--ag-surface);z-index:6;')}>
             <div style={css('min-width:0;')}>
               <div className="agx-admin-header-title" style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{active.title}</div>
-              <div style={css('color:#8A7078;font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{active.sub}</div>
+              <div style={css('color:var(--ag-muted);font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{active.sub}</div>
             </div>
             <div style={css('display:flex;align-items:center;gap:14px;flex:none;')}>
-              <div className="agx-admin-search" style={css('display:flex;align-items:center;gap:8px;background:#F7EAF0;border-radius:12px;padding:0 12px;height:40px;width:220px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;")}>search</span>
-                <input placeholder="Search…" style={css('border:none;background:none;flex:1;font-size:13px;min-width:0;')} />
+              <div className="agx-admin-search" style={css('display:flex;align-items:center;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:0 12px;height:40px;width:220px;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+                <input placeholder="Search…" style={css('border:none;background:none;flex:1;font-size:13px;min-width:0;color:var(--ag-ink);')} />
               </div>
-              <div style={css('width:40px;height:40px;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;position:relative;flex:none;')}>
+              <button
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+                aria-label="Toggle theme"
+                style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;')}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+              </button>
+              <div style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;position:relative;flex:none;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>notifications</span>
                 <span style={css('position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:#D6455A;')} />
               </div>
@@ -88,7 +98,7 @@ export function AdminLayout() {
 
           {/* `agx-scroll-main` marks this as the page's scroller, so ScrollManager
               resets it on navigation — the window never scrolls in the console. */}
-          <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:#FBF6F2;')}>
+          <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:var(--ag-bg);')}>
             <RouteErrorBoundary>
               <Outlet />
             </RouteErrorBoundary>
@@ -105,7 +115,7 @@ export function AdminLayout() {
               key={a.to}
               onClick={() => navigate(a.to)}
               aria-label={a.label}
-              style={css(`flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:${on ? '#FCE0EC' : 'transparent'};color:${on ? '#B02454' : '#8A7078'};`)}
+              style={css(`flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}
             >
               <span translate="no" style={css(`font-family:'Material Symbols Outlined';font-size:22px;font-variation-settings:'FILL' ${on ? 1 : 0};`)}>{a.icon}</span>
               <span style={css('font-size:10px;font-weight:700;white-space:nowrap;')}>{a.label}</span>

@@ -35,7 +35,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
       <div
         className="no-scrollbar absolute inset-x-0 bottom-0 max-h-[88%] overflow-y-auto rounded-t-[28px] bg-white px-5.5 pb-6 pt-3.5 animate-sheet"
       >
-        <div className="mx-auto mb-3.5 h-[5px] w-11 rounded-full" style={{ background: '#EAD3DE' }} />
+        <div className="mx-auto mb-3.5 h-[5px] w-11 rounded-full" style={{ background: 'var(--ag-border)' }} />
         <div className="flex items-center justify-between">
           <div className="font-serif text-[26px] font-bold">Filters</div>
           <button onClick={() => onChange({ maxPrice: 10000, categories: [], colors: [], occasions: [], sort: 'Latest' })} className="border-none bg-transparent text-sm font-bold text-rose-primaryDark">
@@ -70,7 +70,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
                 key={c}
                 onClick={() => onChange({ ...f, categories: toggleIn(f.categories, c) })}
                 className="rounded-full border-[1.5px] px-3.5 py-2 text-[13px] font-bold"
-                style={{ borderColor: on ? '#D6336C' : '#F0D8E2', background: on ? '#FCE0EC' : '#fff', color: on ? '#B02454' : '#6B5560' }}
+                style={{ borderColor: on ? '#D6336C' : 'var(--ag-border)', background: on ? 'var(--ag-surface-2)' : 'var(--ag-surface)', color: on ? 'var(--ag-crimson)' : 'var(--ag-label)' }}
               >
                 {c}
               </button>
@@ -84,7 +84,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
             const on = f.colors?.includes(c.name);
             return (
               <button key={c.name} onClick={() => onChange({ ...f, colors: toggleIn(f.colors, c.name) })} className="flex flex-col items-center gap-1.5 border-none bg-transparent">
-                <span className="h-10 w-10 rounded-full" style={{ background: c.hex, boxShadow: `0 0 0 ${on ? '3px #D6336C' : '1px #EAD3DE'}` }} />
+                <span className="h-10 w-10 rounded-full" style={{ background: c.hex, boxShadow: `0 0 0 ${on ? '3px #D6336C' : '1px var(--ag-border)'}` }} />
                 <span className="text-[11px] font-bold text-rose-label">{c.name}</span>
               </button>
             );
@@ -100,7 +100,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
                 key={o}
                 onClick={() => onChange({ ...f, occasions: toggleIn(f.occasions, o) })}
                 className="rounded-full border-[1.5px] px-3.5 py-2 text-[13px] font-bold"
-                style={{ borderColor: on ? '#D6336C' : '#F0D8E2', background: on ? '#FCE0EC' : '#fff', color: on ? '#B02454' : '#6B5560' }}
+                style={{ borderColor: on ? '#D6336C' : 'var(--ag-border)', background: on ? 'var(--ag-surface-2)' : 'var(--ag-surface)', color: on ? 'var(--ag-crimson)' : 'var(--ag-label)' }}
               >
                 {o}
               </button>
@@ -115,7 +115,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
               key={s}
               onClick={() => onChange({ ...f, sort: s })}
               className="flex items-center justify-between border-none border-b border-rose-borderSoft bg-transparent py-2.5 text-left text-sm"
-              style={{ fontWeight: f.sort === s ? 800 : 600, color: f.sort === s ? '#2A1A20' : '#6B5560' }}
+              style={{ fontWeight: f.sort === s ? 800 : 600, color: f.sort === s ? 'var(--ag-ink)' : 'var(--ag-label)' }}
             >
               {s}
               <Icon name="check_circle" style={{ color: '#D6336C', opacity: f.sort === s ? 1 : 0 }} />

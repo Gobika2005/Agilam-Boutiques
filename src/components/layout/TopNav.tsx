@@ -27,7 +27,7 @@ export function TopNav({ tabs, brand }: { tabs: TabDef[]; brand: string }) {
               onClick={() => navigate(t.to)}
               aria-current={active ? 'page' : undefined}
               className="flex items-center gap-1.5 rounded-xl border-none px-3.5 py-2 text-[13.5px] font-bold"
-              style={{ background: active ? '#FCE0EC' : 'transparent', color: active ? '#B02454' : '#6B5560' }}
+              style={{ background: active ? 'var(--ag-surface-2)' : 'transparent', color: active ? 'var(--ag-crimson)' : 'var(--ag-label)' }}
             >
               <Icon name={t.icon} className="text-lg" />
               {t.label}

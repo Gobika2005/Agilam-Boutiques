@@ -14,7 +14,7 @@ import { css } from '@/lib/css';
  */
 
 export const WISH_RED = '#E11D48';
-const WISH_IDLE = '#8A7078';
+const WISH_IDLE = 'var(--ag-muted)';
 
 export function WishButton({
   wished,

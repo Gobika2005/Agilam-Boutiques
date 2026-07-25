@@ -83,7 +83,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
       <div
         onClick={(e) => e.stopPropagation()}
         className="agx-reveal"
-        style={css('width:100%;max-width:440px;margin:auto;background:#fff;border-radius:30px;overflow:hidden;box-shadow:0 34px 90px -30px rgba(107,20,54,.7);')}
+        style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:30px;overflow:hidden;box-shadow:0 34px 90px -30px rgba(107,20,54,.7);')}
       >
         {/* Header */}
         <div style={css('display:flex;align-items:center;justify-content:space-between;padding:20px 22px 12px;')}>
@@ -91,15 +91,15 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
           <button
             onClick={onClose}
             aria-label="Close"
-            style={css('width:36px;height:36px;border-radius:12px;border:none;background:#F7ECF1;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            style={css('width:36px;height:36px;border-radius:12px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:#8A7078;font-size:20px;")}>close</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);font-size:20px;")}>close</span>
           </button>
         </div>
 
         {/* Preview card — the template a recipient sees */}
         <div style={css('padding:0 22px;')}>
-          <div style={css('position:relative;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('position:relative;border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;background:var(--ag-surface);box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css(`height:74px;background:linear-gradient(135deg,${TONES[boutique.tone]},#F7DCE7);`)} />
             <div style={css('padding:0 18px 18px;')}>
               <div style={css('display:flex;align-items:flex-end;gap:12px;margin-top:-30px;')}>
@@ -111,25 +111,25 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
                     <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{boutique.name}</span>
                     {boutique.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                   </div>
-                  <div style={css('display:flex;align-items:center;gap:4px;margin-top:3px;color:#8A7078;font-size:12px;')}>
+                  <div style={css('display:flex;align-items:center;gap:4px;margin-top:3px;color:var(--ag-muted);font-size:12px;')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>
-                    <span style={css('font-weight:700;color:#5C4650;')}>{boutique.rating}</span>
+                    <span style={css('font-weight:700;color:var(--ag-ink-2);')}>{boutique.rating}</span>
                     <span>·</span>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#B02454;")}>location_on</span>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-crimson);")}>location_on</span>
                     {boutique.area && boutique.area !== boutique.city ? `${boutique.area}, ${boutique.city}` : boutique.city}
                   </div>
                 </div>
               </div>
-              <p style={css("margin:12px 0 0;color:#5C4650;font-size:13px;line-height:1.5;font-family:'Playfair Display',serif;font-style:italic;")}>{boutique.desc}</p>
-              <div style={css('display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid #F4E6EC;')}>
+              <p style={css("margin:12px 0 0;color:var(--ag-ink-2);font-size:13px;line-height:1.5;font-family:'Playfair Display',serif;font-style:italic;")}>{boutique.desc}</p>
+              <div style={css('display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
                 {[
                   { v: compact(boutique.followers), l: 'Followers' },
                   { v: `${boutique.products}+`, l: 'Products' },
                   { v: `${boutique.positiveRating}%`, l: 'Positive' },
                 ].map((s) => (
                   <div key={s.l}>
-                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:#241019;")}>{s.v}</span>
-                    <span style={css('font-size:11px;color:#8A7078;margin-left:5px;')}>{s.l}</span>
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:var(--ag-ink);")}>{s.v}</span>
+                    <span style={css('font-size:11px;color:var(--ag-muted);margin-left:5px;')}>{s.l}</span>
                   </div>
                 ))}
               </div>
@@ -138,9 +138,9 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
         </div>
 
         {/* Clean link + copy */}
-        <div style={css('display:flex;align-items:center;gap:10px;margin:18px 22px 0;padding:6px 6px 6px 16px;border:1.5px solid #F0D8E2;border-radius:16px;background:#FCFAFB;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:19px;flex:none;")}>link</span>
-          <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241019;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{prettyLink}</span>
+        <div style={css('display:flex;align-items:center;gap:10px;margin:18px 22px 0;padding:6px 6px 6px 16px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface-2);')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:19px;flex:none;")}>link</span>
+          <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{prettyLink}</span>
           <button
             onClick={() => copy()}
             style={css(`flex:none;display:flex;align-items:center;gap:6px;border:none;border-radius:12px;padding:10px 15px;font-weight:800;font-size:13px;cursor:pointer;color:#fff;background:${copied ? '#3FA45E' : 'linear-gradient(135deg,#D6336C,#B02454)'};`)}
@@ -162,7 +162,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
               <span style={css(`width:52px;height:52px;border-radius:17px;display:flex;align-items:center;justify-content:center;background:${t.bg};box-shadow:0 12px 26px -14px rgba(0,0,0,.5);`)}>
                 <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:25px;")}>{t.icon}</span>
               </span>
-              <span style={css('font-size:11.5px;color:#6B5560;font-weight:700;')}>{t.label}</span>
+              <span style={css('font-size:11.5px;color:var(--ag-label);font-weight:700;')}>{t.label}</span>
             </button>
           ))}
         </div>
@@ -171,13 +171,13 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
         <div style={css('padding:12px 22px 22px;')}>
           <button
             onClick={nativeShare}
-            style={css('width:100%;height:50px;border:1.5px solid #E7C6D4;border-radius:16px;background:#fff;color:#B02454;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
+            style={css('width:100%;height:50px;border:1.5px solid #E7C6D4;border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>ios_share</span>
             More options
           </button>
-          <div style={css('text-align:center;margin-top:14px;font-size:11px;color:#B79AA6;letter-spacing:.08em;font-weight:700;')}>
-            POWERED BY <span style={css('color:#B02454;')}>AGILAM</span>
+          <div style={css('text-align:center;margin-top:14px;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.08em;font-weight:700;')}>
+            POWERED BY <span style={css('color:var(--ag-crimson);')}>AGILAM</span>
           </div>
         </div>
       </div>

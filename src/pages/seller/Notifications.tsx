@@ -8,9 +8,9 @@ import { fetchNotifications, markNotificationRead } from '@/data/notifications';
 const TABS = ['All', 'Orders', 'Messages', 'Updates'];
 
 const STYLE: Record<string, { icon: string; tint: string; ic: string }> = {
-  Orders: { icon: 'shopping_bag', tint: '#FCE0EC', ic: '#D6336C' },
-  Messages: { icon: 'chat_bubble', tint: '#E6F0FA', ic: '#3A6EA5' },
-  Updates: { icon: 'notifications', tint: '#F3EAF5', ic: '#9B7FC7' },
+  Orders: { icon: 'shopping_bag', tint: 'var(--ag-surface-2)', ic: '#D6336C' },
+  Messages: { icon: 'chat_bubble', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)' },
+  Updates: { icon: 'notifications', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7' },
 };
 
 const relTime = (iso: string) => {
@@ -51,10 +51,10 @@ export function Notifications() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Notifications</div>
       </div>
@@ -63,7 +63,7 @@ export function Notifications() {
         {TABS.map((t) => {
           const on = tab === t;
           return (
-            <button key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 15px;border:none;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;background:${on ? '#B02454' : '#fff'};color:${on ? '#fff' : '#6B5560'};`)}>
+            <button key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 15px;border:none;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};`)}>
               {t}
             </button>
           );
@@ -72,13 +72,13 @@ export function Notifications() {
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
         {!loading && notifs.length === 0 && (
-          <div style={css('color:#8A7078;font-size:14px;padding:8px 2px;')}>Nothing here yet — new orders and messages land in this inbox.</div>
+          <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Nothing here yet — new orders and messages land in this inbox.</div>
         )}
         {notifs.map((n) => (
           <div
             key={n.id}
             onClick={() => open(n)}
-            style={css(`background:${n.unread ? '#FFF3F8' : '#fff'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${n.orderId ? 'pointer' : 'default'};`)}
+            style={css(`background:${n.unread ? '#FFF3F8' : 'var(--ag-surface)'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${n.orderId ? 'pointer' : 'default'};`)}
           >
             <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${n.tint};display:flex;align-items:center;justify-content:center;`)}>
               <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${n.ic};`)}>{n.icon}</span>
@@ -86,9 +86,9 @@ export function Notifications() {
             <div style={css('flex:1;')}>
               <div style={css('display:flex;justify-content:space-between;align-items:center;gap:8px;')}>
                 <span style={css('font-weight:800;font-size:13.5px;')}>{n.title}</span>
-                <span style={css('font-size:11px;color:#B79AA6;flex:none;')}>{n.time}</span>
+                <span style={css('font-size:11px;color:var(--ag-muted-soft);flex:none;')}>{n.time}</span>
               </div>
-              <div style={css('font-size:12.5px;color:#8A7078;line-height:1.4;margin-top:2px;')}>{n.body}</div>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.4;margin-top:2px;')}>{n.body}</div>
             </div>
           </div>
         ))}

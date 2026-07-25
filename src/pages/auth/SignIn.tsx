@@ -84,21 +84,21 @@ export function SignIn() {
       sub={`Sign in to continue to your ${roleWord} workspace.`}
       onBack={() => navigate('/buyer/home')}
     >
-      <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+      <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
         Email or phone
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="hello@agilam.in"
-          style={css('width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;')}
+          style={css('width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);')}
         />
       </label>
 
       <PasswordField value={password} onChange={setPassword} />
 
       <div style={css('display:flex;align-items:center;justify-content:space-between;font-size:13px;')}>
-        <label style={css('display:flex;align-items:center;gap:7px;color:#7A5C67;font-weight:600;cursor:pointer;')}>
+        <label style={css('display:flex;align-items:center;gap:7px;color:var(--ag-label);font-weight:600;cursor:pointer;')}>
           <input type="checkbox" defaultChecked style={css('width:16px;height:16px;accent-color:#D6336C;')} />Remember me
         </label>
         <a href="#" onClick={(e) => { e.preventDefault(); setMode('reset'); }} style={css('font-weight:700;')}>Forgot password?</a>
@@ -113,19 +113,19 @@ export function SignIn() {
         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </button>
 
-      <div style={css('display:flex;align-items:center;gap:12px;color:#B79AA6;font-size:13px;')}>
-        <div style={css('flex:1;height:1px;background:#F0D8E2;')} />or continue with<div style={css('flex:1;height:1px;background:#F0D8E2;')} />
+      <div style={css('display:flex;align-items:center;gap:12px;color:var(--ag-muted-soft);font-size:13px;')}>
+        <div style={css('flex:1;height:1px;background:var(--ag-border);')} />or continue with<div style={css('flex:1;height:1px;background:var(--ag-border);')} />
       </div>
       <div style={css('display:flex;gap:12px;')}>
-        <button onClick={handleGoogle} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+        <button onClick={handleGoogle} style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;cursor:pointer;color:var(--ag-ink);display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Google
         </button>
-        <button onClick={() => toast('Apple sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;')}>Apple</button>
+        <button onClick={() => toast('Apple sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;cursor:pointer;color:var(--ag-ink);')}>Apple</button>
       </div>
 
       <ConsentNotice />
 
-      <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
+      <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
         New to Agilam?{' '}
         <a
           href="#"

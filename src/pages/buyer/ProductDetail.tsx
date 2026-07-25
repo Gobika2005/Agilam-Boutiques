@@ -76,7 +76,7 @@ export function ProductDetail() {
   const ap = PRODUCTS.find((p) => p.id === id);
   if (!ap) {
     return (
-      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:#8A7078;font-size:15px;')}>
+      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:var(--ag-muted);font-size:15px;')}>
         {loading ? 'Loading product…' : 'Product not found.'}
       </div>
     );
@@ -91,7 +91,7 @@ export function ProductDetail() {
     .slice(0, 30);
 
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
-  const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : '#2FA36B';
+  const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : 'var(--ag-good)';
 
   const sizeOptions = sortSizes(ap.sizes?.length ? ap.sizes : FALLBACK_SIZES);
   // What the buyer picked, else the size this piece is already in the bag at,
@@ -126,7 +126,7 @@ export function ProductDetail() {
   const thumbs = gallery.map((src, i) => ({
     id: `prod-${ap.id}-t${i}`,
     src,
-    ring: i === imgIndex ? '2px #D6336C' : '1px #EFDCE4',
+    ring: i === imgIndex ? '2px #D6336C' : '1px var(--ag-border-soft)',
   }));
 
   const openBoutique = () => {
@@ -225,12 +225,12 @@ export function ProductDetail() {
   const renderPanel = (id: string, icon: string, title: string, meta: string, body: JSX.Element) => {
     const isOpen = !!openPanels[id];
     return (
-      <div style={css('border:1px solid #F0E2E9;border-radius:16px;overflow:hidden;background:#fff;')}>
+      <div style={css('border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;background:var(--ag-surface);')}>
         <button onClick={() => togglePanel(id)} style={css('width:100%;display:flex;align-items:center;gap:12px;padding:16px 16px;border:none;background:none;cursor:pointer;text-align:left;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>{icon}</span>
-          <span style={css('flex:1;font-weight:800;font-size:14.5px;color:#241019;')}>{title}</span>
-          {meta && <span style={css('font-size:12px;color:#8A7078;font-weight:600;')}>{meta}</span>}
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:#B02454;transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
+          <span style={css('flex:1;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>{title}</span>
+          {meta && <span style={css('font-size:12px;color:var(--ag-muted);font-weight:600;')}>{meta}</span>}
+          <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
         </button>
         {isOpen && <div style={css('padding:0 16px 18px;')}>{body}</div>}
       </div>
@@ -257,10 +257,10 @@ export function ProductDetail() {
         </div>
         <div style={css('padding:10px 2px 0;')}>
           <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
-          <div className="agx-card-sub" style={css('font-size:12px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
+          <div className="agx-card-sub" style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:6px;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(p.price)}</span>
-            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#5C4650;')}>
+            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
+            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>{p.rating}
             </span>
           </div>
@@ -270,12 +270,12 @@ export function ProductDetail() {
   };
 
   return (
-    <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#FBF6F2;')}>
+    <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
       <div style={css('max-width:1300px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 0;')}>
-        <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8A7078;')}>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:#8A7078;')}>Home</a><span>/</span>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/results'); }} style={css('color:#8A7078;')}>{ap.cat}</a><span>/</span>
-          <span style={css('color:#241019;font-weight:700;')}>{ap.title}</span>
+        <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);')}>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:var(--ag-muted);')}>Home</a><span>/</span>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/results'); }} style={css('color:var(--ag-muted);')}>{ap.cat}</a><span>/</span>
+          <span style={css('color:var(--ag-ink);font-weight:700;')}>{ap.title}</span>
         </div>
       </div>
 
@@ -299,7 +299,7 @@ export function ProductDetail() {
               ))}
             </div>
             <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
             </button>
             {/* No zoom button: the photo itself opens the viewer on tap, and
                 `cursor:zoom-in` on the slide says so without extra chrome. */}
@@ -310,7 +310,7 @@ export function ProductDetail() {
                 title="Share"
                 style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}
               >
-                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>share</span>
+                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>share</span>
               </button>
               <WishButton
                 wished={!!wishlist[ap.id]}
@@ -324,12 +324,12 @@ export function ProductDetail() {
               <>
                 {imgIndex > 0 && (
                   <button aria-label="Previous photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex - 1)} style={css('position:absolute;left:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>chevron_left</span>
+                    <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_left</span>
                   </button>
                 )}
                 {imgIndex < gallery.length - 1 && (
                   <button aria-label="Next photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex + 1)} style={css('position:absolute;right:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>chevron_right</span>
+                    <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_right</span>
                   </button>
                 )}
                 <div style={css('position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(36,16,25,.42);backdrop-filter:blur(6px);')}>
@@ -362,47 +362,47 @@ export function ProductDetail() {
         </div>
 
         <div style={css('padding:clamp(20px,3vw,40px) clamp(16px,4vw,44px);display:flex;flex-direction:column;')}>
-          <div className="agx-eyebrow" style={css('font-size:11px;color:#B02454;')}>{ap.cat} · {ap.occasion}</div>
+          <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>{ap.cat} · {ap.occasion}</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin-top:10px;padding-bottom:2px;")}>{ap.title}</div>
           <div style={css('display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
             {hasMrp && (
               <>
-                <span style={css('text-decoration:line-through;color:#B79AA6;font-size:16px;font-weight:700;')}>{fmt(ap.mrp as number)}</span>
-                <span style={css('background:#E9F6EF;color:#2FA36B;font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
+                <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:16px;font-weight:700;')}>{fmt(ap.mrp as number)}</span>
+                <span style={css('background:var(--ag-good-bg);color:var(--ag-good);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
               </>
             )}
-            <span style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#5C4650;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:6px 10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:#8A7078;font-weight:500;')}>· {reviewsF(ap.reviews)} reviews</span>
+            <span style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} reviews</span>
             </span>
             <span style={css(`font-size:12.5px;font-weight:800;color:${stockFg};`)}>{stockLabel}</span>
           </div>
 
           <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:20px;')}>
             {highlights.map((h) => (
-              <span key={h.label} style={css('display:flex;align-items:center;gap:7px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:12px;padding:9px 13px;font-size:12.5px;font-weight:700;color:#4B3840;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#B02454;")}>{h.icon}</span>{h.label}
+              <span key={h.label} style={css('display:flex;align-items:center;gap:7px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;padding:9px 13px;font-size:12.5px;font-weight:700;color:var(--ag-ink-2);')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>{h.icon}</span>{h.label}
               </span>
             ))}
           </div>
 
-          <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;cursor:pointer;')}>
+          <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;cursor:pointer;')}>
             <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
             <div style={css('flex:1;')}>
               <div style={css('display:flex;align-items:center;gap:5px;')}>
                 <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
               </div>
-              <div style={css('color:#8A7078;font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+              <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
             </div>
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:#B02454;")}>VISIT →</span>
+            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
           </div>
 
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
-                <span className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Size · {selectedSize}</span>
-                <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(true); }} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#B02454;')}>
+                <span className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size · {selectedSize}</span>
+                <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(true); }} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ag-crimson);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
                 </a>
               </div>
@@ -410,21 +410,21 @@ export function ProductDetail() {
                 {sizeOptions.map((s) => {
                   const on = selectedSize === s;
                   return (
-                    <span key={s} onClick={() => pickSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : 'transparent'};color:${on ? '#B02454' : '#4B3840'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
+                    <span key={s} onClick={() => pickSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
                   );
                 })}
               </div>
             </div>
             {ap.color && (
               <div>
-                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Colour</div>
-                <div style={css('display:flex;align-items:center;height:44px;margin-top:9px;padding:0 16px;border-radius:12px;border:1.5px solid #F0D8E2;background:#FBF6F2;font-weight:700;font-size:14px;color:#4B3840;')}>{ap.color}</div>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Colour</div>
+                <div style={css('display:flex;align-items:center;height:44px;margin-top:9px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-bg);font-weight:700;font-size:14px;color:var(--ag-ink-2);')}>{ap.color}</div>
               </div>
             )}
           </div>
 
           <div className="agx-pdp-actions" style={css('display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;')}>
-            <button onClick={openChat} style={css('flex:1;min-width:160px;height:56px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+            <button onClick={openChat} style={css('flex:1;min-width:160px;height:56px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>chat</span>Chat
             </button>
             {renderBagControl(56)}
@@ -434,14 +434,14 @@ export function ProductDetail() {
           <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:24px;')}>
             {renderPanel('details', 'description', 'Product details', '', (
               <>
-                <div style={css('color:#5C4650;font-size:14.5px;line-height:1.65;')}>
+                <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;')}>
                   {ap.description || `${ap.fabric} · ${ap.occasion} wear. Handcrafted with intricate zari work and tailored for a graceful drape.`}
                 </div>
-                <div style={css('margin-top:12px;border:1px solid #F0E2E9;border-radius:14px;overflow:hidden;')}>
+                <div style={css('margin-top:12px;border:1px solid var(--ag-surface-3);border-radius:14px;overflow:hidden;')}>
                   {specs.map((s, i) => (
-                    <div key={s.label} style={css(`display:flex;align-items:center;gap:12px;padding:11px 14px;font-size:13.5px;background:${i % 2 === 0 ? '#FBF6F2' : '#fff'};`)}>
-                      <span style={css('flex:none;width:104px;color:#8A7078;font-weight:600;')}>{s.label}</span>
-                      <span style={css('flex:1;color:#241019;font-weight:700;')}>{s.value}</span>
+                    <div key={s.label} style={css(`display:flex;align-items:center;gap:12px;padding:11px 14px;font-size:13.5px;background:${i % 2 === 0 ? 'var(--ag-bg)' : 'var(--ag-surface)'};`)}>
+                      <span style={css('flex:none;width:104px;color:var(--ag-muted);font-weight:600;')}>{s.label}</span>
+                      <span style={css('flex:1;color:var(--ag-ink);font-weight:700;')}>{s.value}</span>
                     </div>
                   ))}
                 </div>
@@ -450,17 +450,17 @@ export function ProductDetail() {
 
             {renderPanel('delivery', 'local_shipping', 'Delivery & returns', '', (
               <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
-                <div style={css('text-align:center;padding:14px 8px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#B02454;")}>local_shipping</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:#4B3840;margin-top:6px;line-height:1.3;')}>Free delivery over ₹2,000</div>
+                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
+                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>Free delivery over ₹2,000</div>
                 </div>
-                <div style={css('text-align:center;padding:14px 8px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#B02454;")}>verified_user</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:#4B3840;margin-top:6px;line-height:1.3;')}>Verified boutique</div>
+                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
+                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>Verified boutique</div>
                 </div>
-                <div style={css('text-align:center;padding:14px 8px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#B02454;")}>autorenew</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:#4B3840;margin-top:6px;line-height:1.3;')}>7-day easy returns</div>
+                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
+                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>7-day easy returns</div>
                 </div>
               </div>
             ))}
@@ -480,10 +480,10 @@ export function ProductDetail() {
           <div style={css('display:flex;align-items:center;gap:12px;flex-wrap:wrap;')}>
             <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={44} radius={13} />
             <div style={css('flex:1;min-width:0;')}>
-              <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>From the same shop</div>
+              <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>From the same shop</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(22px,2.6vw,32px);line-height:1.08;margin-top:2px;")}>More from {ap.boutique}</div>
             </div>
-            <a href="#" onClick={(e) => { e.preventDefault(); openBoutique(); }} style={css('display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#B02454;border:1.5px solid #F0D8E2;border-radius:999px;padding:9px 15px;')}>
+            <a href="#" onClick={(e) => { e.preventDefault(); openBoutique(); }} style={css('display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:999px;padding:9px 15px;')}>
               Visit shop<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
             </a>
           </div>
@@ -496,9 +496,9 @@ export function ProductDetail() {
       {/* YOU MAY ALSO LIKE */}
       <div style={css('max-width:1300px;margin:0 auto;padding:clamp(24px,4vw,44px) clamp(16px,4vw,44px) clamp(28px,4vw,56px);')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Complete the look</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Complete the look</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1.06;margin-top:6px;")}>You may also like</div>
-          <div style={css('color:#8A7078;font-size:13px;margin-top:6px;')}>{youMayLike.length} handpicked pieces you can explore right here — tap the heart to save any for later.</div>
+          <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>{youMayLike.length} handpicked pieces you can explore right here — tap the heart to save any for later.</div>
         </div>
         <div className="agx-pgrid" style={css('gap:clamp(12px,1.8vw,20px);margin-top:22px;')}>
           {youMayLike.map((p) => renderCard(p))}
@@ -507,7 +507,7 @@ export function ProductDetail() {
 
       {/* STICKY MOBILE ACTION BAR */}
       <div className="agx-pdp-sticky">
-        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid #ECC6D6;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid #ECC6D6;background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
         </button>
         {renderBagControl(52)}
@@ -527,24 +527,24 @@ export function ProductDetail() {
       {/* SIZE CHART MODAL */}
       {showSizeChart && (
         <div onClick={() => setShowSizeChart(false)} style={css('position:fixed;inset:0;z-index:1000;background:rgba(36,16,25,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;')}>
-          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:#fff;border-radius:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.6);padding:24px clamp(18px,3vw,28px);')}>
+          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--ag-surface);border-radius:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.6);padding:24px clamp(18px,3vw,28px);')}>
             <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:14px;')}>
               <div>
-                <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Fit guide</div>
+                <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fit guide</div>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:4px;")}>Size chart</div>
-                <div style={css('color:#8A7078;font-size:12.5px;margin-top:4px;')}>Blouse measurements in inches</div>
+                <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Blouse measurements in inches</div>
               </div>
-              <button onClick={() => setShowSizeChart(false)} style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:#FBF6F2;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>close</span>
+              <button onClick={() => setShowSizeChart(false)} style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>
             </div>
 
-            <div style={css('margin-top:18px;border:1px solid #F0E2E9;border-radius:16px;overflow:hidden;')}>
+            <div style={css('margin-top:18px;border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;')}>
               <table style={css('width:100%;border-collapse:collapse;font-size:13px;')}>
                 <thead>
-                  <tr style={css('background:#FBF6F2;')}>
+                  <tr style={css('background:var(--ag-bg);')}>
                     {['Size', 'Bust', 'Waist', 'Shoulder', 'Length'].map((h) => (
-                      <th key={h} style={css('text-align:left;padding:11px 12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A7078;')}>{h}</th>
+                      <th key={h} style={css('text-align:left;padding:11px 12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ag-muted);')}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -552,12 +552,12 @@ export function ProductDetail() {
                   {SIZE_CHART.map((r) => {
                     const on = r.size === selectedSize;
                     return (
-                      <tr key={r.size} onClick={() => { pickSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid #F0E2E9;background:${on ? '#FCE0EC' : '#fff'};`)}>
-                        <td style={css(`padding:12px;font-weight:800;color:${on ? '#B02454' : '#241019'};`)}>{r.size}</td>
-                        <td style={css('padding:12px;color:#4B3840;')}>{r.bust}"</td>
-                        <td style={css('padding:12px;color:#4B3840;')}>{r.waist}"</td>
-                        <td style={css('padding:12px;color:#4B3840;')}>{r.shoulder}"</td>
-                        <td style={css('padding:12px;color:#4B3840;')}>{r.length}"</td>
+                      <tr key={r.size} onClick={() => { pickSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid var(--ag-surface-3);background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};`)}>
+                        <td style={css(`padding:12px;font-weight:800;color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink)'};`)}>{r.size}</td>
+                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.bust}"</td>
+                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.waist}"</td>
+                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.shoulder}"</td>
+                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.length}"</td>
                       </tr>
                     );
                   })}
@@ -565,10 +565,10 @@ export function ProductDetail() {
               </table>
             </div>
 
-            <div style={css('display:flex;gap:10px;margin-top:16px;padding:14px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>info</span>
-              <div style={css('color:#5C4650;font-size:12.5px;line-height:1.5;')}>
-                Measure around the fullest part of your bust and natural waistline. If you fall between two sizes, we recommend sizing up. Need a custom fit? <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(false); openChat(); }} style={css('color:#B02454;font-weight:700;')}>Chat with the boutique</a>.
+            <div style={css('display:flex;gap:10px;margin-top:16px;padding:14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>info</span>
+              <div style={css('color:var(--ag-ink-2);font-size:12.5px;line-height:1.5;')}>
+                Measure around the fullest part of your bust and natural waistline. If you fall between two sizes, we recommend sizing up. Need a custom fit? <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(false); openChat(); }} style={css('color:var(--ag-crimson);font-weight:700;')}>Chat with the boutique</a>.
               </div>
             </div>
 

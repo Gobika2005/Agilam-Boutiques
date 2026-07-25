@@ -190,9 +190,9 @@ export function GlobalSearch({
     <form
       onSubmit={onSubmit}
       role="search"
-      style={css('display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #EFDCE4;border-radius:14px;padding:0 8px 0 14px;height:44px;width:100%;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
+      style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:14px;padding:0 8px 0 14px;height:44px;width:100%;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
     >
-      <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;flex:none;")}>search</span>
+      <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;flex:none;")}>search</span>
       <input
         ref={inputRef}
         value={text}
@@ -207,16 +207,16 @@ export function GlobalSearch({
         autoComplete="off"
         aria-label="Search boutiques and styles"
         placeholder="Search boutiques &amp; styles"
-        style={css('border:none;background:none;flex:1;font-size:15px;font-weight:600;color:#241019;min-width:0;')}
+        style={css('border:none;background:none;flex:1;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')}
       />
       {text && (
         <button
           type="button"
           onClick={clear}
           aria-label="Clear search"
-          style={css('width:30px;height:30px;flex:none;border-radius:9px;border:none;background:#FBF0F4;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          style={css('width:30px;height:30px;flex:none;border-radius:9px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:18px;")}>close</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:18px;")}>close</span>
         </button>
       )}
     </form>
@@ -228,11 +228,11 @@ export function GlobalSearch({
   const results = (
     <>
       {suggestions.length === 0 ? (
-        <div style={css('padding:24px 14px;text-align:center;color:#8A7078;font-size:13.5px;')}>
+        <div style={css('padding:24px 14px;text-align:center;color:var(--ag-muted);font-size:13.5px;')}>
           Nothing matched “{term}”.
           <button
             onClick={() => commit(term)}
-            style={css('display:block;margin:12px auto 0;border:none;background:#FCE0EC;color:#B02454;border-radius:10px;padding:9px 15px;font-weight:800;font-size:13px;cursor:pointer;')}
+            style={css('display:block;margin:12px auto 0;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);border-radius:10px;padding:9px 15px;font-weight:800;font-size:13px;cursor:pointer;')}
           >
             Search anyway
           </button>
@@ -253,22 +253,22 @@ export function GlobalSearch({
               )}
               {s.kind === 'boutique' && <BoutiqueLogo name={s.title} src={s.logo} size={38} radius={12} />}
               {s.kind === 'term' && (
-                <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+                <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
                   <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>category</span>
                 </span>
               )}
               <span style={css('flex:1;min-width:0;')}>
-                <span style={css('display:block;font-size:13.5px;font-weight:800;color:#241019;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.title}</span>
-                <span style={css('display:block;font-size:11.5px;color:#8A7078;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.sub}</span>
+                <span style={css('display:block;font-size:13.5px;font-weight:800;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.title}</span>
+                <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.sub}</span>
               </span>
               {s.kind === 'product' && (
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:14.5px;flex:none;")}>{fmt(s.price)}</span>
+                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:14.5px;flex:none;")}>{fmt(s.price)}</span>
               )}
             </button>
           ))}
           <button
             onClick={() => commit(term)}
-            style={css('width:100%;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:4px;padding:12px;border:none;border-top:1px solid #F5E7ED;background:none;cursor:pointer;color:#B02454;font-weight:800;font-size:12.5px;')}
+            style={css('width:100%;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:4px;padding:12px;border:none;border-top:1px solid var(--ag-surface-2);background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:12.5px;')}
           >
             See all results for “{term}”
             <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
@@ -287,13 +287,13 @@ export function GlobalSearch({
           onClick={() => setSheetOpen(true)}
           aria-label="Search boutiques and styles"
           className={className}
-          style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);position:relative;')}
+          style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);position:relative;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:23px;")}>search</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>search</span>
           {/* A live search stays visible as a dot, so the buyer can tell the
               grid is filtered without opening the sheet. */}
           {query.trim() && (
-            <span style={css('position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#D6336C;border:2px solid #FBF6F2;')} />
+            <span style={css('position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#D6336C;border:2px solid var(--ag-bg);')} />
           )}
         </button>
 
@@ -305,28 +305,28 @@ export function GlobalSearch({
             <div style={css('position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;animation:agx-fade .18s ease;')}>
               <div onClick={() => setSheetOpen(false)} style={css('position:absolute;inset:0;background:rgba(42,10,24,.45);backdrop-filter:blur(3px);')} />
 
-              <div style={css('position:relative;background:#FBF6F2;border-bottom:1px solid #EFDCE4;padding:calc(10px + env(safe-area-inset-top)) 12px 12px;display:flex;align-items:center;gap:10px;')}>
+              <div style={css('position:relative;background:var(--ag-bg);border-bottom:1px solid var(--ag-border-soft);padding:calc(10px + env(safe-area-inset-top)) 12px 12px;display:flex;align-items:center;gap:10px;')}>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
                   aria-label="Close search"
-                  style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:#FBF1F5;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                  style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:22px;")}>arrow_back</span>
+                  <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
                 </button>
                 <div style={css('flex:1;min-width:0;')}>{field}</div>
               </div>
 
               <div
                 className="agx-scroll"
-                style={css('position:relative;flex:1;min-height:0;overflow-y:auto;background:#fff;padding:6px 8px calc(16px + env(safe-area-inset-bottom));')}
+                style={css('position:relative;flex:1;min-height:0;overflow-y:auto;background:var(--ag-surface);padding:6px 8px calc(16px + env(safe-area-inset-bottom));')}
               >
                 {term.length >= 2 ? (
                   results
                 ) : (
                   <div style={css('padding:38px 24px;text-align:center;')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:36px;color:#E7A9C1;")}>search</span>
-                    <div style={css('color:#8A7078;font-size:13.5px;margin-top:10px;line-height:1.55;')}>
+                    <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:10px;line-height:1.55;')}>
                       Search for a saree, a boutique, or an occasion like “bridal”.
                     </div>
                   </div>
@@ -346,7 +346,7 @@ export function GlobalSearch({
       {open && term.length >= 2 && (
         <div
           className="agx-scroll"
-          style={css('position:absolute;left:0;right:0;top:52px;z-index:80;max-height:min(60vh,420px);overflow-y:auto;background:#fff;border:1px solid #F2E4EA;border-radius:18px;box-shadow:0 26px 60px -26px rgba(107,20,54,.55);padding:6px;')}
+          style={css('position:absolute;left:0;right:0;top:52px;z-index:80;max-height:min(60vh,420px);overflow-y:auto;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;box-shadow:0 26px 60px -26px rgba(107,20,54,.55);padding:6px;')}
         >
           {results}
         </div>

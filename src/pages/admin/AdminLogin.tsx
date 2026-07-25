@@ -6,7 +6,7 @@ import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
 import { useToast } from '@/components/ui/Toast';
 
-const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
+const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
 
 export function AdminLogin() {
   const { adminSignIn, signOut } = useAuth();
@@ -67,7 +67,7 @@ export function AdminLogin() {
       sub="Restricted access to the Agilam marketplace console."
       onBack={() => navigate('/')}
     >
-      <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+      <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
         Email
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@agilam.in" style={css(fieldStyle)} />
       </label>
@@ -78,7 +78,7 @@ export function AdminLogin() {
         <a
           href="#"
           onClick={(e) => { e.preventDefault(); setMode('reset'); }}
-          style={css('font-weight:700;color:#B02454;')}
+          style={css('font-weight:700;color:var(--ag-crimson);')}
         >
           Forgot password?
         </a>

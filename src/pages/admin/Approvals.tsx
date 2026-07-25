@@ -26,11 +26,11 @@ type Tab = 'pending' | 'changes_requested' | 'draft' | 'approved' | 'rejected';
 const TAB_ORDER: Tab[] = ['pending', 'changes_requested', 'draft', 'approved', 'rejected'];
 
 const STATUS_CHIP: Record<BoutiqueStatus, { bg: string; fg: string }> = {
-  draft: { bg: '#F1E4EB', fg: '#8A7078' },
-  pending: { bg: '#FBF0DA', fg: '#B8860B' },
-  changes_requested: { bg: '#FFF1D6', fg: '#B9862F' },
-  approved: { bg: '#E5F3EC', fg: '#218456' },
-  rejected: { bg: '#FBE3E3', fg: '#C0392B' },
+  draft: { bg: 'var(--ag-surface-2)', fg: 'var(--ag-muted)' },
+  pending: { bg: 'var(--ag-warn-bg)', fg: 'var(--ag-warn-text)' },
+  changes_requested: { bg: 'var(--ag-gold-bg)', fg: 'var(--ag-gold-text)' },
+  approved: { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' },
+  rejected: { bg: 'var(--ag-bad-bg)', fg: 'var(--ag-bad-text)' },
 };
 
 const fmtDate = (iso: string | null) =>
@@ -66,7 +66,7 @@ export function Approvals() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              style={css(`padding:8px 16px;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;background:${on ? '#B02454' : '#fff'};color:${on ? '#fff' : '#6B5560'};font-family:inherit;`)}
+              style={css(`padding:8px 16px;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};font-family:inherit;`)}
             >
               {BOUTIQUE_STATUS_LABEL[key]} · {count}
             </button>
@@ -74,35 +74,35 @@ export function Approvals() {
         })}
       </div>
 
-      <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+      <div style={css('background:var(--ag-surface);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
         <div className="agx-adm-tablewrap">
         <div className="agx-adm-tablegrid">
-        <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;letter-spacing:.04em;`)}>
+        <div style={css(`${GRID}padding:14px 20px;background:var(--ag-surface-2);font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.04em;`)}>
           <span>BOUTIQUE</span><span>CITY</span><span>OWNER</span><span>SUBMITTED</span><span style={css('text-align:right;')}>ACTION</span>
         </div>
 
-        {loading && <div style={css('padding:20px;color:#8A7078;font-size:13.5px;')}>Loading…</div>}
+        {loading && <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>Loading…</div>}
         {!loading && list.length === 0 && (
-          <div style={css('padding:20px;color:#8A7078;font-size:13.5px;')}>
+          <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>
             No boutiques in “{BOUTIQUE_STATUS_LABEL[tab]}”.
           </div>
         )}
 
         {list.map((a, i) => (
-          <div key={a.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
+          <div key={a.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid var(--ag-border-soft);`)}>
             <div style={css('display:flex;align-items:center;gap:10px;min-width:0;')}>
               <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;overflow:hidden;background:${TONES[a.tone ?? i % TONES.length]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>
                 {a.logo_url ? <img src={a.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : a.name.charAt(0)}
               </div>
               <span style={css('font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{a.name}</span>
             </div>
-            <span style={css('font-size:13px;color:#6B5560;')}>{a.city || '—'}</span>
-            <span style={css('font-size:13px;color:#6B5560;')}>{a.owner_name || a.owner?.full_name || '—'}</span>
-            <span style={css('font-size:12.5px;color:#8A7078;')}>{fmtDate(a.submitted_at)}</span>
+            <span style={css('font-size:13px;color:var(--ag-label);')}>{a.city || '—'}</span>
+            <span style={css('font-size:13px;color:var(--ag-label);')}>{a.owner_name || a.owner?.full_name || '—'}</span>
+            <span style={css('font-size:12.5px;color:var(--ag-muted);')}>{fmtDate(a.submitted_at)}</span>
             <div style={css('display:flex;justify-content:flex-end;')}>
               <button
                 onClick={() => setSelected(a)}
-                style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+                style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
               >
                 Review
               </button>
@@ -208,7 +208,7 @@ function ReviewDrawer({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={css('width:min(560px,100%);height:100%;background:#FBF6F2;overflow-y:auto;box-shadow:-24px 0 60px -30px rgba(0,0,0,.6);')}
+        style={css('width:min(560px,100%);height:100%;background:var(--ag-bg);overflow-y:auto;box-shadow:-24px 0 60px -30px rgba(0,0,0,.6);')}
       >
         <div style={css('position:sticky;top:0;z-index:2;background:linear-gradient(135deg,#8E1C44,#B02454 60%,#D6336C);color:#fff;padding:20px;')}>
           <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
@@ -231,20 +231,20 @@ function ReviewDrawer({
 
         <div style={css('padding:16px 20px 24px;display:flex;flex-direction:column;gap:14px;')}>
           {priv?.review_note && (
-            <div style={css('background:#FFF6E8;border:1px solid #F0DCB4;border-radius:16px;padding:13px 15px;')}>
+            <div style={css('background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:13px 15px;')}>
               <div style={css('font-size:11.5px;font-weight:800;color:#B9862F;letter-spacing:.04em;')}>PREVIOUS NOTE TO SELLER</div>
-              <div style={css('font-size:13px;color:#7A5C2A;font-weight:600;line-height:1.6;margin-top:5px;white-space:pre-wrap;')}>{priv.review_note}</div>
+              <div style={css('font-size:13px;color:var(--ag-gold-text);font-weight:600;line-height:1.6;margin-top:5px;white-space:pre-wrap;')}>{priv.review_note}</div>
             </div>
           )}
 
           {groups.map((g) => (
-            <div key={g.title} style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:15px 17px;')}>
+            <div key={g.title} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px 17px;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>{g.title}</div>
               <div style={css('margin-top:9px;display:flex;flex-direction:column;gap:7px;')}>
                 {g.rows.map(([k, v]) => (
                   <div key={k} style={css('display:flex;gap:12px;align-items:baseline;')}>
                     <span style={css('flex:none;width:130px;font-size:11.5px;font-weight:700;color:#A98D99;')}>{k}</span>
-                    <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:#2A1A20;word-break:break-word;')}>{v}</span>
+                    <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-ink);word-break:break-word;')}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -253,7 +253,7 @@ function ReviewDrawer({
 
           {/* Decision --------------------------------------------------- */}
           {asking ? (
-            <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:16px 17px;')}>
+            <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:16px 17px;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>
                 {asking === 'rejected' ? 'Reason for rejection' : 'What needs changing?'}
               </div>
@@ -267,20 +267,20 @@ function ReviewDrawer({
                 placeholder={asking === 'rejected'
                   ? 'We could not verify the business registration provided…'
                   : '1. The shop address does not match the map link\n2. Upload a clearer boutique logo'}
-                style={css('width:100%;margin-top:11px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:#2A1A20;box-sizing:border-box;font-family:inherit;resize:vertical;min-height:110px;')}
+                style={css('width:100%;margin-top:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;resize:vertical;min-height:110px;')}
               />
               <div style={css('display:flex;gap:10px;margin-top:12px;')}>
                 <button
                   onClick={() => { setAsking(null); setNote(''); }}
                   disabled={busy}
-                  style={css('height:46px;padding:0 18px;border:1.5px solid #F0D8E2;background:#fff;color:#6B5560;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
+                  style={css('height:46px;padding:0 18px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirm}
                   disabled={busy || note.trim().length < 5}
-                  style={css(`flex:1;height:46px;border:none;border-radius:13px;background:${asking === 'rejected' ? '#C0392B' : '#B9862F'};color:#fff;font-weight:800;font-size:14px;cursor:pointer;opacity:${busy || note.trim().length < 5 ? 0.55 : 1};font-family:inherit;`)}
+                  style={css(`flex:1;height:46px;border:none;border-radius:13px;background:${asking === 'rejected' ? 'var(--ag-bad-text)' : 'var(--ag-gold-text)'};color:#fff;font-weight:800;font-size:14px;cursor:pointer;opacity:${busy || note.trim().length < 5 ? 0.55 : 1};font-family:inherit;`)}
                 >
                   {busy ? 'Saving…' : asking === 'rejected' ? 'Reject boutique' : 'Send correction list'}
                 </button>
@@ -290,19 +290,19 @@ function ReviewDrawer({
             <div style={css('display:flex;gap:10px;flex-wrap:wrap;')}>
               <button
                 onClick={() => setAsking('rejected')}
-                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid #E7A7B4;background:#fff;color:#C0392B;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
+                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:var(--ag-bad-text);border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
               >
                 Reject
               </button>
               <button
                 onClick={() => setAsking('changes_requested')}
-                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid #F0DCB4;background:#fff;color:#B9862F;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
+                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid var(--ag-gold-border);background:var(--ag-surface);color:#B9862F;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
               >
                 Needs changes
               </button>
               <button
                 onClick={() => onDecide(boutique, 'approved')}
-                style={css('flex:1;min-width:130px;height:48px;border:none;background:#218456;color:#fff;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
+                style={css('flex:1;min-width:130px;height:48px;border:none;background:var(--ag-good-text);color:#fff;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
               >
                 Approve
               </button>

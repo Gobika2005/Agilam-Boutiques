@@ -10,10 +10,10 @@ import type { BoutiqueStatus } from '@/data/types';
 // Every status gets a colour + icon so the seller can read their standing at a
 // glance from the header, not only when something is wrong.
 const STATUS_TONE: Record<BoutiqueStatus, { fg: string; icon: string }> = {
-  draft: { fg: '#B9862F', icon: 'edit_note' },
-  pending: { fg: '#3A6EA5', icon: 'hourglass_top' },
-  changes_requested: { fg: '#B9862F', icon: 'feedback' },
-  approved: { fg: '#2FA36B', icon: 'verified' },
+  draft: { fg: 'var(--ag-gold-text)', icon: 'edit_note' },
+  pending: { fg: 'var(--ag-info-text)', icon: 'hourglass_top' },
+  changes_requested: { fg: 'var(--ag-gold-text)', icon: 'feedback' },
+  approved: { fg: 'var(--ag-good)', icon: 'verified' },
   rejected: { fg: '#D6455A', icon: 'cancel' },
 };
 
@@ -87,7 +87,7 @@ export function ProfileHub() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:24px 20px 30px;color:#fff;')}>
         {/* The whole identity card opens the profile editor — one tap to manage
             "who am I" from the top of the hub — with an explicit Edit chip so the
@@ -117,7 +117,7 @@ export function ProfileHub() {
           <div style={css('display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:16px;')}>
             <button
               onClick={() => status !== 'approved' && navigate('/seller/verification')}
-              style={css(`display:inline-flex;align-items:center;gap:6px;background:#fff;color:${tone.fg};border:none;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}
+              style={css(`display:inline-flex;align-items:center;gap:6px;background:var(--ag-surface);color:${tone.fg};border:none;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{tone.icon}</span>
               {status === 'approved' ? 'Live on Agilam' : BOUTIQUE_STATUS_LABEL[status]}
@@ -138,11 +138,11 @@ export function ProfileHub() {
 
       {sections.map((sec) => (
         <div key={sec.title} style={css('margin:18px 20px 0;')}>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;margin:0 4px 8px;')}>{sec.title}</div>
-          <div style={css('background:#fff;border-radius:18px;padding:6px;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);')}>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 4px 8px;')}>{sec.title}</div>
+          <div style={css('background:var(--ag-surface);border-radius:18px;padding:6px;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);')}>
             {sec.rows.map((r, i) => (
-              <button key={r.label} onClick={() => navigate(r.to)} style={css(`width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;border-bottom:${i < sec.rows.length - 1 ? '1px solid #F5E4EC' : 'none'};text-align:left;`)}>
-                <span style={css('width:38px;height:38px;flex:none;border-radius:11px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+              <button key={r.label} onClick={() => navigate(r.to)} style={css(`width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;border-bottom:${i < sec.rows.length - 1 ? '1px solid var(--ag-border-soft)' : 'none'};text-align:left;`)}>
+                <span style={css('width:38px;height:38px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
                   <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>{r.icon}</span>
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
@@ -156,7 +156,7 @@ export function ProfileHub() {
         </div>
       ))}
 
-      <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid #F0D8E2;background:#fff;color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;')}>
+      <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;')}>
         Log out
       </button>
     </div>

@@ -116,7 +116,7 @@ export function Home() {
   const openBoutique = (id: string) => navigate(`/buyer/boutique/${id}`);
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);')}>
       {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
       {SLIDES.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
@@ -142,7 +142,7 @@ export function Home() {
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </div>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
+                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
                         {h.cta}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
                       </button>
                     </div>
@@ -174,10 +174,10 @@ export function Home() {
           jewellery rather than as a row of buttons. */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 16px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Browse every edit</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Shop by collection</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CIRCLES.map((c) => (
@@ -190,7 +190,7 @@ export function Home() {
             {/* Gradient ring → page-coloured gap → photo, so the circle reads as
                 a framed piece instead of a cropped thumbnail. */}
             <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
-              <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:#FBF6F2;')}>
+              <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
                 <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
                   <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
                   <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
@@ -198,7 +198,7 @@ export function Home() {
                 </span>
               </span>
             </span>
-            <span style={css('font-size:13px;font-weight:800;color:#3F2E36;letter-spacing:-.005em;white-space:nowrap;')}>{c.name}</span>
+            <span style={css('font-size:13px;font-weight:800;color:var(--ag-ink-2);letter-spacing:-.005em;white-space:nowrap;')}>{c.name}</span>
           </button>
         ))}
 
@@ -210,30 +210,30 @@ export function Home() {
           style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
         >
           <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
-            <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:#FBF6F2;')}>
+            <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
               <span style={css('display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:linear-gradient(140deg,#FBEAF1,#F3D3DF);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:#B02454;")}>grid_view</span>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-crimson);")}>grid_view</span>
               </span>
             </span>
           </span>
-          <span style={css('font-size:13px;font-weight:800;color:#3F2E36;letter-spacing:-.005em;white-space:nowrap;')}>More</span>
+          <span style={css('font-size:13px;font-weight:800;color:var(--ag-ink-2);letter-spacing:-.005em;white-space:nowrap;')}>More</span>
         </button>
       </div>
 
       {/* NEW ARRIVALS */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:38px 0 16px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Fresh off the loom</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fresh off the loom</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>New arrivals</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {NEW_ARRIVALS.map((p) => (
           <div key={p.id} onClick={() => openProduct(p.id)} className="agx-lift" style={css('flex:none;width:230px;cursor:pointer;')}>
             <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
               <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
-              <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:#B02454;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
+              <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
                 <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>New</span>
               </div>
@@ -246,10 +246,10 @@ export function Home() {
             </div>
             <div style={css('padding:12px 2px 0;')}>
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
-              <div style={css('font-size:12.5px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;")}>{fmt(p.price)}</span>
-                <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#5C4650;')}>
+                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>{p.rating}
                 </span>
               </div>
@@ -261,10 +261,10 @@ export function Home() {
       {/* BEST SELLERS */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 18px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Most-loved right now</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Most-loved right now</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best sellers</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
       </div>
       <div className="agx-rgrid">
         {BEST_SELLERS.map((p) => (
@@ -277,15 +277,15 @@ export function Home() {
                 onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                 className="agx-card-wish"
               />
-              <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>star</span>{p.rating}
-                <span style={css('width:1px;height:10px;background:#D9C4CE;')} />
-                <span style={css('color:#8A7078;')}>{reviewsF(p.reviews)}</span>
+              <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:var(--ag-ink);box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>star</span>{p.rating}
+                <span style={css('width:1px;height:10px;background:var(--ag-surface-2);')} />
+                <span style={css('color:var(--ag-muted);')}>{reviewsF(p.reviews)}</span>
               </div>
             </div>
             <div style={css('padding:12px 2px 0;')}>
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;margin-top:3px;")}>{fmt(p.price)}</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:3px;")}>{fmt(p.price)}</div>
             </div>
           </div>
         ))}
@@ -294,14 +294,14 @@ export function Home() {
       {/* BEST-SELLING BOUTIQUES */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 16px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Shops buyers love</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best-selling boutiques</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {TOP_BOUTIQUES.map((b) => (
-          <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {/* Cover — image only, no name overlay */}
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
               <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
@@ -315,15 +315,15 @@ export function Home() {
                     <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                     {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                   </div>
-                  <div style={css('color:#8A7078;font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
+                  <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{b.city}
                   </div>
                 </div>
               </div>
-              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid #F4E6EC;')}>
-                <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;")}>{b.products} styles</div>
-                <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{b.rating} <span style={css('color:#B79AA6;font-weight:600;')}>· {b.reviews}</span>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
+                <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>{b.products} styles</div>
+                <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
                 </div>
               </div>
             </div>
@@ -337,14 +337,14 @@ export function Home() {
           now have a dedicated, centred track (`.agx-testimonials`) that caps at
           three across, and each card is a proper pull-quote: the mark, the
           words, then the person — equal height whatever the quote length. */}
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,#FBF6F2 0%,#F8EFF3 100%);margin-top:44px;border-top:1px solid #F2E4EA;')}>
+      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,#F8EFF3 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
-            <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Loved across Tamil Nadu</div>
+            <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across Tamil Nadu</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
-              What shoppers say about {' '}<span style={css('font-style:italic;color:#B02454;')}>Agilam</span>
+              What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>Agilam</span>
             </div>
-            <div style={css('color:#8A7078;font-size:14px;margin-top:10px;line-height:1.6;')}>
+            <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;line-height:1.6;')}>
               Real reviews from buyers who found their piece through a local boutique.
             </div>
           </div>
@@ -353,12 +353,12 @@ export function Home() {
             {HOME_REVIEWS.map((r) => (
               <figure
                 key={r.name}
-                style={css('margin:0;background:#fff;border:1px solid #F0E2E9;border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
+                style={css('margin:0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
               >
                 {/* Opening mark — anchors the quote without shouting. */}
                 <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:#F3C6D8;height:26px;")}>“</span>
 
-                <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:#3F2E36;text-wrap:pretty;flex:1;')}>
+                <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:var(--ag-ink-2);text-wrap:pretty;flex:1;')}>
                   {r.text}
                 </blockquote>
 
@@ -375,17 +375,17 @@ export function Home() {
                   ))}
                 </div>
 
-                <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #F5E7ED;')}>
+                <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--ag-surface-2);')}>
                   <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${TONES[r.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#5C1E38;`)}>
                     {r.name[0]}
                   </span>
                   <span style={css('min-width:0;')}>
-                    <span style={css('display:block;font-size:14.5px;font-weight:800;color:#241019;')}>{r.name}</span>
-                    <span style={css('display:flex;align-items:center;gap:3px;font-size:12.5px;color:#8A7078;margin-top:2px;')}>
+                    <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{r.name}</span>
+                    <span style={css('display:flex;align-items:center;gap:3px;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{r.city}
                     </span>
                   </span>
-                  <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:#2FA36B;background:#E9F6EF;border-radius:999px;padding:5px 10px;')} title="Verified purchase">
+                  <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
                     <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
                   </span>
                 </figcaption>

@@ -46,10 +46,10 @@ export function AddProduct() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/products')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        <button onClick={() => navigate('/seller/products')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Add New Product</div>
       </div>
@@ -58,7 +58,7 @@ export function AddProduct() {
         {boutique ? (
           <ProductForm boutiqueId={boutique.id} submitLabel="Publish Product" busy={saving} onSubmit={publish} />
         ) : (
-          <div style={css('color:#8A7078;font-size:14px;padding:20px 2px;')}>Loading your boutique…</div>
+          <div style={css('color:var(--ag-muted);font-size:14px;padding:20px 2px;')}>Loading your boutique…</div>
         )}
       </div>
     </div>

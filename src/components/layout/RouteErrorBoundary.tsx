@@ -22,22 +22,22 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { err
     if (!error) return this.props.children;
 
     return (
-      <div style={css('max-width:560px;margin:40px auto;background:#fff;border-radius:18px;padding:28px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
-        <div style={css('width:52px;height:52px;border-radius:15px;background:#FBE3E3;display:flex;align-items:center;justify-content:center;')}>
-          <span translate="no" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#C0392B;")}>error</span>
+      <div style={css('max-width:560px;margin:40px auto;background:var(--ag-surface);border-radius:18px;padding:28px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <div style={css('width:52px;height:52px;border-radius:15px;background:var(--ag-bad-bg);display:flex;align-items:center;justify-content:center;')}>
+          <span translate="no" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-bad-text);")}>error</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin-top:14px;")}>This page hit an error</div>
-        <div style={css('color:#8A7078;font-size:13.5px;margin-top:6px;line-height:1.5;')}>
+        <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;line-height:1.5;')}>
           The rest of the console still works. Try again, or reload — if it keeps happening, send this message across:
         </div>
-        <pre style={css('margin-top:12px;background:#FBF6F2;border:1px solid #F0D8E2;border-radius:12px;padding:12px 14px;font-size:12px;color:#B02454;white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:180px;')}>
+        <pre style={css('margin-top:12px;background:var(--ag-bg);border:1px solid var(--ag-border);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--ag-crimson);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:180px;')}>
           {error.message || String(error)}
         </pre>
         <div style={css('display:flex;gap:10px;margin-top:18px;')}>
           <button
             type="button"
             onClick={() => this.setState({ error: null })}
-            style={css('height:44px;border-radius:12px;border:1.5px solid #F0D8E2;background:#fff;color:#6B5560;font-weight:700;font-size:13.5px;padding:0 16px;cursor:pointer;font-family:inherit;')}
+            style={css('height:44px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:13.5px;padding:0 16px;cursor:pointer;font-family:inherit;')}
           >
             Try again
           </button>

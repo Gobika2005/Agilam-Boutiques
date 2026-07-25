@@ -3,6 +3,75 @@
 @tailwind utilities;
 
 /* ------------------------------------------------------------------
+   Theme tokens.
+   The whole app is styled with inline CSS strings (see src/lib/css.ts),
+   which pass values through verbatim — so `var(--ag-*)` resolves at
+   render time and one token layer drives both themes. Light is the
+   default; `:root[data-theme="dark"]` (set by ThemeContext) opts in to
+   the premium dark palette. The OS preference is intentionally ignored.
+   Semantic names, not colour names, so a card stays "surface" in both.
+   ------------------------------------------------------------------ */
+:root {
+  --ag-bg: #FBF6F2;          /* page background */
+  --ag-surface: #FFFFFF;     /* cards / panels (background:#fff) */
+  --ag-surface-2: #FDEEF4;   /* rose-tinted cards & chips */
+  --ag-surface-3: #F2E4EA;   /* deeper chips / rails */
+  --ag-border: #F0D8E2;      /* card & control borders */
+  --ag-border-soft: #EFDCE4; /* soft dividers */
+  --ag-ink: #241019;         /* primary text */
+  --ag-ink-2: #4B3840;       /* secondary text */
+  --ag-muted: #8A7078;       /* muted text */
+  --ag-muted-soft: #B79AA6;  /* softest text / placeholders */
+  --ag-label: #6B5560;       /* field labels */
+  --ag-crimson: #B02454;     /* deep-crimson text/icons (brightened on dark) */
+  --ag-deep: #8E1C44;        /* deepest crimson text (brightened on dark) */
+  --ag-ink-3: #6B4A56;       /* muted mauve secondary text */
+  --ag-purple: #9B7FC7; --ag-purple-bg: #F3ECFA;  /* purple accent (analytics) */
+  --ag-frost: rgba(251,246,242,.88);   /* sticky header glass */
+  --ag-frost-strong: rgba(255,255,255,.94); /* dock / tab bar glass */
+  --ag-frost-border: #EFDCE4;          /* glass edge */
+  --ag-shadow: rgba(107,20,54,.55);    /* elevation tint */
+  --ag-cover-fade: rgba(251,246,242,.55); /* cover image → page fade */
+  --ag-shimmer-1: #F1E5EC;             /* skeleton loader */
+  --ag-shimmer-2: #F9F0F4;
+  /* status chips */
+  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #218456;
+  --ag-warn-bg: #FBF0DA; --ag-warn-text: #B8860B;
+  --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;
+  --ag-info-bg: #E6F0FA; --ag-info-text: #3A6EA5;
+  --ag-gold: #C99A3F; --ag-gold-text: #8A6420; --ag-gold-bg: #FFF8E8; --ag-gold-border: #F0DCB4;
+}
+:root[data-theme="dark"] {
+  --ag-bg: #120A0E;
+  --ag-surface: #1C1216;
+  --ag-surface-2: #241820;
+  --ag-surface-3: #2C1E26;
+  --ag-border: #3A2730;
+  --ag-border-soft: #33222B;
+  --ag-ink: #F7ECF0;
+  --ag-ink-2: #D8C4CD;
+  --ag-muted: #A98D99;
+  --ag-muted-soft: #8A7078;
+  --ag-label: #B79AA6;
+  --ag-crimson: #E85088;
+  --ag-deep: #F06A96;
+  --ag-ink-3: #C9B4BE;
+  --ag-purple: #B9A3E0; --ag-purple-bg: #241830;
+  --ag-frost: rgba(18,10,14,.82);
+  --ag-frost-strong: rgba(28,18,22,.92);
+  --ag-frost-border: #3A2730;
+  --ag-shadow: rgba(0,0,0,.6);
+  --ag-cover-fade: rgba(18,10,14,.7);
+  --ag-shimmer-1: #241820;
+  --ag-shimmer-2: #33222B;
+  --ag-good: #43C489; --ag-good-bg: #143026; --ag-good-text: #6FE0AE;
+  --ag-warn-bg: #34260E; --ag-warn-text: #E7C169;
+  --ag-bad-bg: #3A1A1A; --ag-bad-text: #F09797;
+  --ag-info-bg: #142430; --ag-info-text: #82BEF0;
+  --ag-gold: #E0B84B; --ag-gold-text: #E0B84B; --ag-gold-bg: #34260E; --ag-gold-border: #4A3A18;
+}
+
+/* ------------------------------------------------------------------
    Ported verbatim from the `Agilam Boutiques v2.dc.html` design file.
    Keep these rules byte-identical to the design so the UI matches it
    exactly; screen markup relies on the `agx-*` class names below.
@@ -10,7 +79,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { font-family: 'Manrope', system-ui, sans-serif; color: #241019; letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; background: #FBF6F2; }
+body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ag-ink); letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; background: var(--ag-bg); }
 a { color: #D6336C; text-decoration: none; }
 a:hover { color: #B02454; }
 ::-webkit-scrollbar { width: 0; height: 0; }
@@ -101,7 +170,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-reveal { animation: agx-rise .55s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
-.agx-shimmer { background:linear-gradient(100deg,#F1E5EC 30%,#F9F0F4 50%,#F1E5EC 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
+.agx-shimmer { background:linear-gradient(100deg,var(--ag-shimmer-1) 30%,var(--ag-shimmer-2) 50%,var(--ag-shimmer-1) 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
 /* responsive nav: horizontal top nav on desktop, floating dock on mobile */
 .agx-topnav { display:none; }
 .agx-only-desktop { display:none !important; }
@@ -156,10 +225,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     display:flex; align-items:center; gap:12px;
     position:fixed; left:0; right:0; bottom:0; z-index:60;
     padding:11px clamp(14px,4vw,20px) calc(13px + env(safe-area-inset-bottom));
-    background:rgba(255,255,255,.92);
+    background:var(--ag-frost-strong);
     backdrop-filter:blur(20px) saturate(1.2);
-    border-top:1px solid #F3DFE8;
-    box-shadow:0 -14px 36px -22px rgba(107,20,54,.42);
+    border-top:1px solid var(--ag-frost-border);
+    box-shadow:0 -14px 36px -22px var(--ag-shadow);
   }
 }
 /* Chat: a focused full-screen conversation surface. The composer is the last
@@ -207,11 +276,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
     align-items: stretch; gap: 2px;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-    background: rgba(255,255,255,.94);
+    background: var(--ag-frost-strong);
     -webkit-backdrop-filter: blur(18px) saturate(1.3);
     backdrop-filter: blur(18px) saturate(1.3);
-    border-top: 1px solid #F3DFE8;
-    box-shadow: 0 -14px 36px -22px rgba(107,20,54,.42);
+    border-top: 1px solid var(--ag-frost-border);
+    box-shadow: 0 -14px 36px -22px var(--ag-shadow);
     overflow-x: auto; scrollbar-width: none;
   }
   .agx-admin-tabbar::-webkit-scrollbar { display: none; }
@@ -270,6 +339,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .agx-app-header { gap: 10px !important; padding-top: 10px !important; padding-bottom: 10px !important; }
   .agx-brand-mark { width: 108px !important; height: 42px !important; }
 }
+
+/* Dark mode: the wordmark art is dark lettering on transparency, which
+   vanishes on the dark header — lift it to near-white so it stays legible. */
+:root[data-theme="dark"] .agx-brand-mark { filter: brightness(0) invert(1) opacity(.92); }
 
 /* ---------- wishlist heart ----------
    The app loads Material *Symbols*, where fill is the variable `FILL` axis —

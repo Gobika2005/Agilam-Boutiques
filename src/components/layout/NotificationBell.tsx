@@ -26,11 +26,11 @@ export function NotificationBell({ to }: { to: string }) {
       onClick={() => navigate(to)}
       aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}
       title="Notifications"
-      style={css('position:relative;width:44px;height:44px;flex:none;border-radius:14px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
+      style={css('position:relative;width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
     >
-      <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:#B02454;")}>notifications</span>
+      <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>notifications</span>
       {count > 0 && (
-        <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #FBF6F2;')}>
+        <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-bg);')}>
           {count > 99 ? '99+' : count}
         </span>
       )}

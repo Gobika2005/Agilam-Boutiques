@@ -84,20 +84,20 @@ function TilePicker({
   return (
     <div>
       {cropper}
-      <div style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>Tile picture — optional</div>
+      <div style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>Tile picture — optional</div>
       <div style={css('display:flex;gap:12px;align-items:flex-start;margin-top:8px;')}>
         {/* 4:5, the aspect the Collections tiles crop to. */}
         <button
           type="button"
           onClick={() => input.current?.click()}
-          style={css(`width:104px;height:130px;flex:none;border-radius:16px;border:2px dashed ${value ? 'transparent' : '#E6BCCF'};background:${value ? '#fff' : '#FFFDFE'};position:relative;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0;`)}
+          style={css(`width:104px;height:130px;flex:none;border-radius:16px;border:2px dashed ${value ? 'transparent' : 'var(--ag-border)'};background:${value ? 'var(--ag-surface)' : 'var(--ag-surface-2)'};position:relative;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0;`)}
         >
           {value ? (
             <img src={value} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
           ) : (
             <>
               <Icon name={uploading ? 'progress_activity' : 'add_photo_alternate'} size={26} color={T.accent2} />
-              <span style={css('font-size:11px;color:#B79AA6;font-weight:700;')}>
+              <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;')}>
                 {uploading ? 'Uploading…' : 'Upload'}
               </span>
             </>
@@ -339,7 +339,7 @@ export function Catalogue() {
             {pending.map((r) => (
               <div
                 key={r.id}
-                style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid ${T.field};border-radius:14px;background:#FFFDFE;flex-wrap:wrap;`)}
+                style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid ${T.field};border-radius:14px;background:var(--ag-surface-2);flex-wrap:wrap;`)}
               >
                 <span style={css(`width:38px;height:38px;flex:none;border-radius:11px;background:${T.head};display:flex;align-items:center;justify-content:center;`)}>
                   <Icon name={r.kind === 'fabric' ? 'texture' : r.kind === 'occasion' ? 'celebration' : 'checkroom'} size={19} color={T.accent} />
@@ -402,7 +402,7 @@ export function Catalogue() {
           onChange={(e) => setReviewNote(e.target.value)}
           autoFocus
           placeholder="e.g. Please list this under “Sarees” — we keep fabric detail in the Fabric field."
-          style={css(`width:100%;margin-top:14px;min-height:120px;border:1.5px solid ${T.field};border-radius:14px;padding:12px 14px;font-size:13.5px;font-family:inherit;resize:vertical;color:#2A1A20;`)}
+          style={css(`width:100%;margin-top:14px;min-height:120px;border:1.5px solid ${T.field};border-radius:14px;padding:12px 14px;font-size:13.5px;font-family:inherit;resize:vertical;color:var(--ag-ink);`)}
         />
       </Drawer>
 
@@ -420,7 +420,7 @@ export function Catalogue() {
         }
       >
         <div style={css('display:flex;flex-direction:column;gap:14px;')}>
-          <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+          <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
             List
             <div style={css('margin-top:6px;')}>
               <Select
@@ -430,30 +430,30 @@ export function Catalogue() {
               />
             </div>
           </label>
-          <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+          <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
             Name
             <input
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               placeholder="e.g. Dupattas"
-              style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;`)}
+              style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:var(--ag-ink);`)}
             />
           </label>
           {draft.kind === 'color' && (
-            <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+            <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
               Swatch — buyers filter by this dot, so it has to look like the cloth
               <div style={css('display:flex;gap:10px;align-items:center;margin-top:6px;')}>
                 <input
                   type="color"
                   value={draft.hex || '#E7719F'}
                   onChange={(e) => setDraft({ ...draft, hex: e.target.value })}
-                  style={css(`width:52px;height:48px;border:1.5px solid ${T.field};border-radius:13px;background:#fff;cursor:pointer;padding:4px;`)}
+                  style={css(`width:52px;height:48px;border:1.5px solid ${T.field};border-radius:13px;background:var(--ag-surface);cursor:pointer;padding:4px;`)}
                 />
                 <input
                   value={draft.hex}
                   onChange={(e) => setDraft({ ...draft, hex: e.target.value })}
                   placeholder="#E7719F"
-                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#2A1A20;`)}
+                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--ag-ink);`)}
                 />
               </div>
             </label>
@@ -483,13 +483,13 @@ export function Catalogue() {
         }
       >
         <div style={css('display:flex;flex-direction:column;gap:14px;')}>
-          <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+          <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
             Name
             <input
               value={editDraft.name}
               onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
               autoFocus
-              style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;`)}
+              style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:var(--ag-ink);`)}
             />
             <span style={css(`display:block;color:${T.muted};font-size:12px;margin-top:6px;line-height:1.5;`)}>
               Renaming changes the browsing term only — products already listed keep
@@ -499,20 +499,20 @@ export function Catalogue() {
           </label>
 
           {edit?.kind === 'color' && (
-            <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+            <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
               Swatch
               <div style={css('display:flex;gap:10px;align-items:center;margin-top:6px;')}>
                 <input
                   type="color"
                   value={editDraft.hex || '#E7719F'}
                   onChange={(e) => setEditDraft({ ...editDraft, hex: e.target.value })}
-                  style={css(`width:52px;height:48px;border:1.5px solid ${T.field};border-radius:13px;background:#fff;cursor:pointer;padding:4px;`)}
+                  style={css(`width:52px;height:48px;border:1.5px solid ${T.field};border-radius:13px;background:var(--ag-surface);cursor:pointer;padding:4px;`)}
                 />
                 <input
                   value={editDraft.hex}
                   onChange={(e) => setEditDraft({ ...editDraft, hex: e.target.value })}
                   placeholder="#E7719F"
-                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#2A1A20;`)}
+                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--ag-ink);`)}
                 />
               </div>
             </label>

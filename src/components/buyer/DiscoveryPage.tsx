@@ -39,20 +39,20 @@ export function DiscoveryHeader({
     <div style={css('padding:2px 0 0;')}>
       {/* Breadcrumb — these pages are usually entered from a Home rail, and the
           buyer needs a way back that is not the browser button. */}
-      <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:#B79AA6;font-weight:600;')}>
-        <Link to="/buyer/home" style={css('color:#B02454;text-decoration:none;')}>Home</Link>
+      <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>
+        <Link to="/buyer/home" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
         <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
-        <span style={css('color:#8A7078;')}>{title}</span>
+        <span style={css('color:var(--ag-muted);')}>{title}</span>
       </div>
 
-      <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;margin-top:14px;')}>{eyebrow}</div>
+      <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin-top:14px;')}>{eyebrow}</div>
       <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin-top:6px;letter-spacing:-.015em;text-wrap:balance;")}>
-        {title}{accent && <> <span style={css('font-style:italic;color:#B02454;')}>{accent}</span></>}
+        {title}{accent && <> <span style={css('font-style:italic;color:var(--ag-crimson);')}>{accent}</span></>}
       </div>
       <div style={css('display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-top:10px;')}>
-        <div style={css('color:#8A7078;font-size:14px;line-height:1.6;max-width:620px;')}>{subtitle}</div>
+        <div style={css('color:var(--ag-muted);font-size:14px;line-height:1.6;max-width:620px;')}>{subtitle}</div>
         {count != null && (
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;white-space:nowrap;")}>
+          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>
             {count} {countLabel ?? (count === 1 ? 'piece' : 'pieces')}
           </div>
         )}
@@ -75,15 +75,15 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;margin-top:18px;overflow:hidden;')}>
+    <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;margin-top:18px;overflow:hidden;')}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         style={css('width:100%;display:flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:14px 16px;text-align:left;font-family:inherit;')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>insights</span>
-        <span style={css('flex:1;font-size:13.5px;font-weight:700;color:#2A1A20;')}>How this list is ordered</span>
-        <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B79AA6;transition:transform .25s ease;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>insights</span>
+        <span style={css('flex:1;font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>How this list is ordered</span>
+        <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-muted-soft);transition:transform .25s ease;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
       </button>
       {open && (
         <div style={css('padding:0 16px 16px;')}>
@@ -91,17 +91,17 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
             {lines.map((l) => (
               <div key={l.term} style={css('display:flex;gap:10px;align-items:flex-start;')}>
                 {l.weight && (
-                  <span style={css("flex:none;min-width:42px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#B02454;background:#FBF0F4;border-radius:8px;padding:4px 7px;text-align:center;")}>
+                  <span style={css("flex:none;min-width:42px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--ag-crimson);background:var(--ag-surface-2);border-radius:8px;padding:4px 7px;text-align:center;")}>
                     {l.weight}
                   </span>
                 )}
-                <span style={css('font-size:13px;color:#5C4650;line-height:1.55;')}>
-                  <b style={css('color:#2A1A20;')}>{l.term}</b> — {l.why}
+                <span style={css('font-size:13px;color:var(--ag-ink-2);line-height:1.55;')}>
+                  <b style={css('color:var(--ag-ink);')}>{l.term}</b> — {l.why}
                 </span>
               </div>
             ))}
           </div>
-          <div style={css('margin-top:12px;padding-top:12px;border-top:1px solid #F5E7ED;display:flex;gap:8px;align-items:flex-start;color:#2FA36B;font-size:12.5px;font-weight:600;line-height:1.5;')}>
+          <div style={css('margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-surface-2);display:flex;gap:8px;align-items:flex-start;color:var(--ag-good);font-size:12.5px;font-weight:600;line-height:1.5;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>verified_user</span>
             <span>No boutique can pay for a place in this list. Ads are sold separately and always labelled.</span>
           </div>
@@ -117,11 +117,11 @@ export function SectionLabel({ icon, title, note }: { icon: string; title: strin
   return (
     <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 2px 14px;')}>
       <div style={css('display:flex;align-items:center;gap:9px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>{icon}</span>
-        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:#2A1A20;")}>{title}</span>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
+        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:var(--ag-ink);")}>{title}</span>
       </div>
       {note && (
-        <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
+        <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
       )}
     </div>
   );
@@ -170,7 +170,7 @@ export function CatalogCard({
         )}
 
         {badge && rank == null && (
-          <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:#B02454;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
+          <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>{badge.icon}</span>
             <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>{badge.label}</span>
           </div>
@@ -180,13 +180,13 @@ export function CatalogCard({
 
         {soldOut && (
           <div style={css('position:absolute;inset:0;background:rgba(36,16,25,.42);display:flex;align-items:center;justify-content:center;')}>
-            <span style={css('background:rgba(255,255,255,.95);color:#8E1C44;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:800;letter-spacing:.02em;')}>Sold out</span>
+            <span style={css('background:rgba(255,255,255,.95);color:var(--ag-deep);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:800;letter-spacing:.02em;')}>Sold out</span>
           </div>
         )}
 
         {proof && !soldOut && (
-          <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>local_fire_department</span>
+          <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:var(--ag-ink);box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>local_fire_department</span>
             {proof}
           </div>
         )}
@@ -194,14 +194,14 @@ export function CatalogCard({
 
       <div style={css('padding:12px 2px 0;')}>
         <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
-        <div style={css('font-size:12.5px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
+        <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;")}>{fmt(p.price)}</span>
+          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
           {p.reviews > 0 && (
-            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#5C4650;')}>
+            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>
               {p.rating}
-              <span style={css('color:#B79AA6;font-weight:600;')}>({compactCount(p.reviews)})</span>
+              <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>({compactCount(p.reviews)})</span>
             </span>
           )}
         </div>
@@ -214,10 +214,10 @@ export function CatalogCard({
 
 export function EmptyState({ icon, title, body, action }: { icon: string; title: string; body: string; action?: ReactNode }) {
   return (
-    <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:48px 24px;text-align:center;margin-top:20px;')}>
+    <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:48px 24px;text-align:center;margin-top:20px;')}>
       <span style={css(`font-family:'Material Symbols Outlined';font-size:44px;color:rgba(176,36,84,.28);`)}>{icon}</span>
-      <div style={css('color:#2A1A20;font-size:16px;font-weight:700;margin-top:12px;')}>{title}</div>
-      <div style={css('color:#8A7078;font-size:13.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;')}>{body}</div>
+      <div style={css('color:var(--ag-ink);font-size:16px;font-weight:700;margin-top:12px;')}>{title}</div>
+      <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;')}>{body}</div>
       {action && <div style={css('margin-top:18px;')}>{action}</div>}
     </div>
   );
@@ -230,8 +230,8 @@ export function CardSkeletons({ count = 10 }: { count?: number }) {
       {Array.from({ length: count }, (_, i) => (
         <div key={i}>
           <div className="agx-prod-media" style={css('background:linear-gradient(90deg,#F3E6EC 25%,#FBF3F6 37%,#F3E6EC 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
-          <div style={css('height:12px;border-radius:6px;background:#F3E6EC;margin-top:12px;width:80%;')} />
-          <div style={css('height:12px;border-radius:6px;background:#F6EDF1;margin-top:8px;width:45%;')} />
+          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:12px;width:80%;')} />
+          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:8px;width:45%;')} />
         </div>
       ))}
     </div>
@@ -246,11 +246,11 @@ export function ShowMore({ shown, total, onMore }: { shown: number; total: numbe
     <div style={css('display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:28px;')}>
       <button
         onClick={onMore}
-        style={css('border:1px solid #EFDCE4;background:#fff;cursor:pointer;padding:12px 26px;border-radius:999px;font-size:13.5px;font-weight:700;color:#B02454;font-family:inherit;box-shadow:0 12px 28px -20px rgba(107,20,54,.6);')}
+        style={css('border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;padding:12px 26px;border-radius:999px;font-size:13.5px;font-weight:700;color:var(--ag-crimson);font-family:inherit;box-shadow:0 12px 28px -20px rgba(107,20,54,.6);')}
       >
         Show more
       </button>
-      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;")}>{shown} of {total}</span>
+      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{shown} of {total}</span>
     </div>
   );
 }

@@ -116,8 +116,8 @@ export function Coupons() {
       width: '1.4fr',
       render: (c) => (
         <div style={css('min-width:0;')}>
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13.5px;color:#B02454;letter-spacing:.03em;")}>{c.code}</div>
-          <div style={css('font-size:12px;color:#8A7078;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{c.description || '—'}</div>
+          <div style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13.5px;color:var(--ag-crimson);letter-spacing:.03em;")}>{c.code}</div>
+          <div style={css('font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{c.description || '—'}</div>
         </div>
       ),
     },
@@ -127,11 +127,11 @@ export function Coupons() {
       width: '1fr',
       render: (c) =>
         c.boutique_id
-          ? <span style={css('font-size:12.5px;font-weight:700;color:#8A5A20;background:#FBEFD8;border-radius:8px;padding:3px 9px;')}>{boutiqueName(c.boutique_id)}</span>
-          : <span style={css('font-size:12.5px;font-weight:700;color:#3A6EA5;background:#E6F0FA;border-radius:8px;padding:3px 9px;')}>Platform</span>,
+          ? <span style={css('font-size:12.5px;font-weight:700;color:#8A5A20;background:var(--ag-gold-bg);border-radius:8px;padding:3px 9px;')}>{boutiqueName(c.boutique_id)}</span>
+          : <span style={css('font-size:12.5px;font-weight:700;color:var(--ag-info-text);background:var(--ag-info-bg);border-radius:8px;padding:3px 9px;')}>Platform</span>,
     },
-    { key: 'discount', header: 'Discount', width: '1.4fr', render: (c) => <span style={css('font-size:13px;font-weight:700;color:#2A1A20;')}>{describeCoupon(c)}</span> },
-    { key: 'expires', header: 'Expires', width: '0.9fr', render: (c) => <span style={css(`font-size:12.5px;font-weight:600;color:${isExpired(c) ? '#C0392B' : '#6B5560'};`)}>{fmtDate(c.expires_at)}</span> },
+    { key: 'discount', header: 'Discount', width: '1.4fr', render: (c) => <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{describeCoupon(c)}</span> },
+    { key: 'expires', header: 'Expires', width: '0.9fr', render: (c) => <span style={css(`font-size:12.5px;font-weight:600;color:${isExpired(c) ? 'var(--ag-bad-text)' : 'var(--ag-label)'};`)}>{fmtDate(c.expires_at)}</span> },
     {
       key: 'status',
       header: 'Status',
@@ -184,7 +184,7 @@ export function Coupons() {
         title={editing?.id ? 'Edit coupon' : 'New platform coupon'}
         footer={
           <div style={css('display:flex;gap:10px;')}>
-            <button onClick={() => setEditing(null)} disabled={busy} style={css(`flex:none;height:48px;padding:0 18px;border-radius:14px;border:1.5px solid ${T.field};background:#fff;color:#6B5560;font-weight:700;font-size:14px;cursor:pointer;`)}>Cancel</button>
+            <button onClick={() => setEditing(null)} disabled={busy} style={css(`flex:none;height:48px;padding:0 18px;border-radius:14px;border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:14px;cursor:pointer;`)}>Cancel</button>
             <button onClick={save} disabled={busy} style={css(`flex:1;height:48px;border-radius:14px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14px;cursor:pointer;opacity:${busy ? 0.7 : 1};`)}>
               {busy ? 'Saving…' : editing?.id ? 'Save changes' : 'Create coupon'}
             </button>
@@ -194,7 +194,7 @@ export function Coupons() {
         {editing && (
           <>
             {editing.input.boutique_id && (
-              <div style={css('margin-bottom:14px;padding:11px 13px;background:#FBEFD8;border:1px solid #F0DCB4;border-radius:12px;font-size:12.5px;color:#7A5C2A;font-weight:600;line-height:1.5;')}>
+              <div style={css('margin-bottom:14px;padding:11px 13px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:12px;font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.5;')}>
                 Seller coupon for {boutiqueName(editing.input.boutique_id)} — the boutique funds this one.
               </div>
             )}

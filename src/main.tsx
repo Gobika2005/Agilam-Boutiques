@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/auth/AuthContext';
+import { ThemeProvider } from '@/state/ThemeContext';
 import { CatalogProvider } from '@/state/CatalogContext';
 import { TaxonomyProvider } from '@/state/TaxonomyContext';
 import { ShopProvider } from '@/state/ShopContext';
@@ -37,21 +38,23 @@ createRoot(document.getElementById('root')!).render(
     {supabaseConfigError ? (
       <ConfigErrorScreen message={supabaseConfigError} />
     ) : (
-      <BrowserRouter>
-        <AuthProvider>
-          <CatalogProvider>
-            <TaxonomyProvider>
-              <ShopProvider>
-                <ToastProvider>
-                  <App />
-                  {/* Offers the new build; never takes the page away mid-task. */}
-                  <UpdateNotice />
-                </ToastProvider>
-              </ShopProvider>
-            </TaxonomyProvider>
-          </CatalogProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <CatalogProvider>
+              <TaxonomyProvider>
+                <ShopProvider>
+                  <ToastProvider>
+                    <App />
+                    {/* Offers the new build; never takes the page away mid-task. */}
+                    <UpdateNotice />
+                  </ToastProvider>
+                </ShopProvider>
+              </TaxonomyProvider>
+            </CatalogProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     )}
   </StrictMode>,
 );

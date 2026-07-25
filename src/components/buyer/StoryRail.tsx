@@ -98,7 +98,7 @@ export function StoryRail() {
   if (stories.length === 0) return null;
 
   const badgeColor = (badge: Story['badge']) =>
-    badge === 'NEW' ? '#D6336C' : badge === 'OFFERS' ? '#C0392B' : '#B0863B';
+    badge === 'NEW' ? '#D6336C' : badge === 'OFFERS' ? 'var(--ag-bad-text)' : '#B0863B';
 
   return (
     <>
@@ -114,7 +114,7 @@ export function StoryRail() {
               {/* Gradient ring → page-coloured gap → logo, so it reads as a story
                   ring rather than a plain avatar. */}
               <span style={css('display:block;width:70px;height:70px;border-radius:50%;padding:2.5px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);')}>
-                <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:2.5px;background:#FBF6F2;')}>
+                <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:2.5px;background:var(--ag-bg);')}>
                   <BoutiqueLogo name={s.name} src={s.logo} size={60} />
                 </span>
               </span>
@@ -123,14 +123,14 @@ export function StoryRail() {
                   style={css(
                     `position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);background:${badgeColor(s.badge)};color:#fff;` +
                       "font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;letter-spacing:.1em;" +
-                      'padding:3px 7px;border-radius:999px;border:1.5px solid #FBF6F2;white-space:nowrap;',
+                      'padding:3px 7px;border-radius:999px;border:1.5px solid var(--ag-bg);white-space:nowrap;',
                   )}
                 >
                   {s.badge}
                 </span>
               )}
             </span>
-            <span style={css('font-size:11px;font-weight:700;color:#3F2E36;line-height:1.2;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>
+            <span style={css('font-size:11px;font-weight:700;color:var(--ag-ink-2);line-height:1.2;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>
               {s.name}
             </span>
           </button>

@@ -95,29 +95,29 @@ export function Dashboard() {
   ];
 
   const STATS = [
-    { label: 'Total Products', value: String(products.length), icon: 'inventory_2', tint: '#FCE0EC', ic: '#D6336C', to: '/seller/products' },
-    { label: 'Total Orders', value: String(orders.length), icon: 'receipt_long', tint: '#E6F0FA', ic: '#3A6EA5', to: '/seller/orders' },
-    { label: 'Total Customers', value: String(customerCount), icon: 'group', tint: '#E5F3EC', ic: '#2FA36B', to: '/seller/customers' },
-    { label: 'Total Revenue', value: fmt(totalRevenue), icon: 'payments', tint: '#F3EAF5', ic: '#9B7FC7', to: '/seller/earnings' },
+    { label: 'Total Products', value: String(products.length), icon: 'inventory_2', tint: 'var(--ag-surface-2)', ic: '#D6336C', to: '/seller/products' },
+    { label: 'Total Orders', value: String(orders.length), icon: 'receipt_long', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)', to: '/seller/orders' },
+    { label: 'Total Customers', value: String(customerCount), icon: 'group', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/customers' },
+    { label: 'Total Revenue', value: fmt(totalRevenue), icon: 'payments', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7', to: '/seller/earnings' },
   ];
 
   const QUICK = [
-    { label: 'New Bill', sub: 'Create invoice', icon: 'receipt_long', tint: '#FCE0EC', ic: '#D6336C', to: '/seller/billing', badge: 0 },
-    { label: 'Notifications', sub: 'View alerts', icon: 'notifications', tint: '#FFF1D6', ic: '#C99A3F', to: '/seller/notifications', badge: unread ?? 0 },
-    { label: 'Orders', sub: 'Manage orders', icon: 'shopping_bag', tint: '#F3EAF5', ic: '#9B7FC7', to: '/seller/orders', badge: pendingCount },
-    { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: '#E5F3EC', ic: '#2FA36B', to: '/seller/add-product', badge: 0 },
+    { label: 'New Bill', sub: 'Create invoice', icon: 'receipt_long', tint: 'var(--ag-surface-2)', ic: '#D6336C', to: '/seller/billing', badge: 0 },
+    { label: 'Notifications', sub: 'View alerts', icon: 'notifications', tint: 'var(--ag-gold-bg)', ic: '#C99A3F', to: '/seller/notifications', badge: unread ?? 0 },
+    { label: 'Orders', sub: 'Manage orders', icon: 'shopping_bag', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7', to: '/seller/orders', badge: pendingCount },
+    { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/add-product', badge: 0 },
   ];
 
   const TODAY = [
-    { label: "Today's orders", value: String(todaysOrders.length), ic: '#3A6EA5' },
-    { label: "Today's revenue", value: fmt(todaysRevenue), ic: '#2FA36B' },
+    { label: "Today's orders", value: String(todaysOrders.length), ic: 'var(--ag-info-text)' },
+    { label: "Today's revenue", value: fmt(todaysRevenue), ic: 'var(--ag-good)' },
     { label: 'Pending orders', value: String(pendingCount), ic: '#C99A3F' },
-    { label: 'Cash to collect', value: fmt(toCollect), ic: '#B9862F' },
+    { label: 'Cash to collect', value: fmt(toCollect), ic: 'var(--ag-gold-text)' },
     { label: 'Low stock', value: String(lowStock.length), ic: '#D6455A' },
   ];
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       {/* Boutique identity ------------------------------------------------- */}
       <button
         onClick={() => navigate('/seller/boutique')}
@@ -128,25 +128,25 @@ export function Dashboard() {
           {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
         </span>
         <span style={css('flex:1;min-width:0;')}>
-          <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2.4vw,25px);color:#2A1A20;")}>
+          <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2.4vw,25px);color:var(--ag-ink);")}>
             <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{boutiqueName}</span>
-            {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#3A6EA5;")}>verified</span>}
+            {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-info-text);")}>verified</span>}
           </span>
-          <span style={css('display:block;font-size:12.5px;color:#8A7078;font-weight:600;margin-top:2px;')}>
+          <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;')}>
             {[boutique?.category, boutique?.area || boutique?.city].filter(Boolean).join(' · ') || 'Complete your boutique profile'}
           </span>
           {facts.length > 0 && (
             <span style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;')}>
               {facts.map((f) => (
-                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#FBF0F5;border:1px solid #F3DCE7;font-size:10.5px;font-weight:800;color:#8A5A72;')}>
-                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? '#3A6EA5' : f.icon === 'star' ? '#E0B84B' : '#B02454'};`)}>{f.icon}</span>
+                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--ag-surface-2);border:1px solid #F3DCE7;font-size:10.5px;font-weight:800;color:#8A5A72;')}>
+                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? 'var(--ag-info-text)' : f.icon === 'star' ? '#E0B84B' : 'var(--ag-crimson)'};`)}>{f.icon}</span>
                   {f.text}
                 </span>
               ))}
             </span>
           )}
-          <span style={css(`display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:${approved ? '#E5F3EC' : '#FBF0DA'};color:${approved ? '#218456' : '#B8860B'};`)}>
-            <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? '#2FA36B' : '#C99A3F'};`)} />
+          <span style={css(`display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:${approved ? 'var(--ag-good-bg)' : 'var(--ag-warn-bg)'};color:${approved ? 'var(--ag-good-text)' : 'var(--ag-warn-text)'};`)}>
+            <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? 'var(--ag-good)' : '#C99A3F'};`)} />
             {approved ? 'Active seller' : 'Awaiting verification'}
           </span>
         </span>
@@ -176,7 +176,7 @@ export function Dashboard() {
             key={q.label}
             onClick={() => navigate(q.to)}
             className="agx-lift"
-            style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:14px;display:flex;align-items:center;gap:11px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
+            style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;display:flex;align-items:center;gap:11px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
           >
             <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${q.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
               <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${q.ic};`)}>{q.icon}</span>
@@ -187,7 +187,7 @@ export function Dashboard() {
               )}
             </span>
             <span style={css('flex:1;min-width:0;')}>
-              <span style={css('display:block;font-weight:800;font-size:14px;color:#2A1A20;')}>{q.label}</span>
+              <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>{q.label}</span>
               <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;')}>{q.sub}</span>
             </span>
           </button>
@@ -217,7 +217,7 @@ export function Dashboard() {
       {/* Business overview -------------------------------------------------- */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 14px;gap:12px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Business overview</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business overview</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-top:5px;")}>Your numbers</div>
         </div>
         <div style={css('font-size:12px;color:#A98D99;font-weight:700;white-space:nowrap;')}>
@@ -231,14 +231,14 @@ export function Dashboard() {
             key={st.label}
             onClick={() => navigate(st.to)}
             className="agx-lift"
-            style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:16px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);cursor:pointer;text-align:left;font-family:inherit;')}
+            style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);cursor:pointer;text-align:left;font-family:inherit;')}
           >
             <span style={css(`width:40px;height:40px;border-radius:13px;background:${st.tint};display:flex;align-items:center;justify-content:center;`)}>
               <span style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${st.ic};`)}>{st.icon}</span>
             </span>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:#2A1A20;word-break:break-word;")}>{st.value}</span>
-            <span style={css('display:block;color:#8A7078;font-size:12.5px;font-weight:600;margin-top:5px;')}>{st.label}</span>
-            <span style={css('display:flex;align-items:center;gap:3px;color:#B02454;font-size:11.5px;font-weight:800;margin-top:8px;')}>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:var(--ag-ink);word-break:break-word;")}>{st.value}</span>
+            <span style={css('display:block;color:var(--ag-muted);font-size:12.5px;font-weight:600;margin-top:5px;')}>{st.label}</span>
+            <span style={css('display:flex;align-items:center;gap:3px;color:var(--ag-crimson);font-size:11.5px;font-weight:800;margin-top:8px;')}>
               View all<span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
             </span>
           </button>
@@ -246,7 +246,7 @@ export function Dashboard() {
       </div>
 
       {/* Today's summary ---------------------------------------------------- */}
-      <div style={css('margin-top:16px;background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:16px 18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);display:flex;gap:12px;flex-wrap:wrap;')}>
+      <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);display:flex;gap:12px;flex-wrap:wrap;')}>
         {TODAY.map((s) => (
           <div key={s.label} style={css('flex:1;min-width:120px;')}>
             <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>{s.label}</div>
@@ -262,18 +262,18 @@ export function Dashboard() {
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Recent orders</div>
             <button
               onClick={() => navigate('/seller/orders')}
-              style={css('border:none;background:none;color:#B02454;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
+              style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
             >
               View all<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
             </button>
           </div>
 
           <div style={css('display:flex;flex-direction:column;gap:10px;')}>
-            {ordersLoading && <div style={css('color:#8A7078;font-size:14px;padding:8px 2px;')}>Loading orders…</div>}
+            {ordersLoading && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Loading orders…</div>}
             {!ordersLoading && recentOrders.length === 0 && (
-              <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:22px;text-align:center;')}>
+              <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:22px;text-align:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:#E0C2CE;")}>receipt_long</span>
-                <div style={css('font-weight:700;font-size:14px;margin-top:6px;color:#2A1A20;')}>No orders yet</div>
+                <div style={css('font-weight:700;font-size:14px;margin-top:6px;color:var(--ag-ink);')}>No orders yet</div>
                 <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;margin-top:3px;')}>
                   Orders from buyers and your offline bills both show up here.
                 </div>
@@ -286,18 +286,18 @@ export function Dashboard() {
                   key={o.id}
                   onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)}
                   className="agx-lift"
-                  style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:13px;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
+                  style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:13px;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
                 >
                   <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[o.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:rgba(42,26,32,.5);`)}>
                     {o.customer.charAt(0).toUpperCase()}
                   </div>
                   <div style={css('flex:1;min-width:0;')}>
-                    <div style={css('font-weight:700;font-size:14px;color:#2A1A20;')}>{o.customer}</div>
-                    <div style={css('font-size:12.5px;color:#8A7078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
-                    <div style={css('font-size:11px;color:#B79AA6;font-weight:700;margin-top:2px;')}>{o.number} · {o.date}</div>
+                    <div style={css('font-weight:700;font-size:14px;color:var(--ag-ink);')}>{o.customer}</div>
+                    <div style={css('font-size:12.5px;color:var(--ag-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
+                    <div style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;margin-top:2px;')}>{o.number} · {o.date}</div>
                   </div>
                   <div style={css('text-align:right;flex:none;')}>
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#B02454;")}>{fmt(o.amount)}</div>
+                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-crimson);")}>{fmt(o.amount)}</div>
                     <span style={css(`display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                   </div>
                 </div>
@@ -311,17 +311,17 @@ export function Dashboard() {
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Low stock</div>
             <button
               onClick={() => navigate('/seller/products')}
-              style={css('border:none;background:none;color:#B02454;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
+              style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
             >
               Restock<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
             </button>
           </div>
 
-          <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:8px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:8px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {lowStock.length === 0 && (
               <div style={css('padding:18px 12px;text-align:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#B6DCC6;")}>check_circle</span>
-                <div style={css('font-size:13px;color:#8A7078;font-weight:700;margin-top:5px;')}>
+                <div style={css('font-size:13px;color:var(--ag-muted);font-weight:700;margin-top:5px;')}>
                   {products.length === 0 ? 'No products listed yet' : 'Everything is well stocked'}
                 </div>
               </div>
@@ -336,10 +336,10 @@ export function Dashboard() {
                   {p.image_url && <img src={p.image_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
-                  <span style={css('display:block;font-weight:700;font-size:13px;color:#2A1A20;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</span>
+                  <span style={css('display:block;font-weight:700;font-size:13px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</span>
                   <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;')}>{fmt(Number(p.price))}</span>
                 </span>
-                <span style={css(`flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:8px;background:${p.stock === 0 ? '#FBE3E3' : '#FBF0DA'};color:${p.stock === 0 ? '#C0392B' : '#B8860B'};`)}>
+                <span style={css(`flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:8px;background:${p.stock === 0 ? 'var(--ag-bad-bg)' : 'var(--ag-warn-bg)'};color:${p.stock === 0 ? 'var(--ag-bad-text)' : 'var(--ag-warn-text)'};`)}>
                   {p.stock === 0 ? 'Out of stock' : `${p.stock} left`}
                 </span>
               </button>

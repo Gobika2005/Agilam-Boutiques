@@ -21,9 +21,9 @@ import { requestTaxonomy, KIND_LABEL, type TaxonomyKind } from '@/data/taxonomy'
  */
 
 const SELECT =
-  "width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B02454' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>\") no-repeat right 14px center;border-radius:13px;padding:0 40px 0 14px;height:50px;font-size:14px;font-weight:600;color:#2A1A20;box-sizing:border-box;font-family:inherit;appearance:none;-webkit-appearance:none;cursor:pointer;";
-const SELECT_ERR = SELECT.replace('#F0D8E2', '#E7A7B4');
-const LABEL = 'display:block;font-size:13px;font-weight:700;color:#7A5C67;';
+  "width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface) url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B02454' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>\") no-repeat right 14px center;border-radius:13px;padding:0 40px 0 14px;height:50px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;appearance:none;-webkit-appearance:none;cursor:pointer;";
+const SELECT_ERR = SELECT.replace('var(--ag-border)', '#E7A7B4');
+const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
 const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
 const HINT = 'display:block;margin-top:5px;font-size:11.5px;font-weight:600;color:#A98D99;line-height:1.5;';
 
@@ -151,8 +151,8 @@ export function TaxonomySelect({
           category is a two-second aside in the middle of listing a product,
           not a task of its own. */}
       {adding && (
-        <div style={css('margin-top:8px;border:1.5px dashed #E6BCCF;background:#FFF9FB;border-radius:13px;padding:12px;')}>
-          <div style={css('font-size:12px;font-weight:700;color:#B02454;')}>
+        <div style={css('margin-top:8px;border:1.5px dashed #E6BCCF;background:var(--ag-surface-2);border-radius:13px;padding:12px;')}>
+          <div style={css('font-size:12px;font-weight:700;color:var(--ag-crimson);')}>
             New {KIND_LABEL[kind].toLowerCase()}
           </div>
           <div style={css('display:flex;gap:8px;margin-top:8px;')}>
@@ -163,7 +163,7 @@ export function TaxonomySelect({
               autoFocus
               maxLength={40}
               placeholder={kind === 'category' ? 'e.g. Dupattas' : kind === 'fabric' ? 'e.g. Tussar Silk' : 'e.g. Sangeet'}
-              style={css('flex:1;min-width:0;border:1.5px solid #F0D8E2;background:#fff;border-radius:11px;padding:0 12px;height:44px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;')}
+              style={css('flex:1;min-width:0;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:11px;padding:0 12px;height:44px;font-size:14px;font-weight:600;font-family:inherit;color:var(--ag-ink);')}
             />
             <button
               type="button"
@@ -176,9 +176,9 @@ export function TaxonomySelect({
             <button
               type="button"
               onClick={() => { setAdding(false); setDraft(''); }}
-              style={css('flex:none;border:1.5px solid #F0D8E2;background:#fff;border-radius:11px;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              style={css('flex:none;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:11px;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B79AA6;")}>close</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-muted-soft);")}>close</span>
             </button>
           </div>
           <span style={css(HINT)}>
@@ -188,14 +188,14 @@ export function TaxonomySelect({
       )}
 
       {isPending && !adding && (
-        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:#B8860B;line-height:1.5;')}>
+        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.5;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>schedule</span>
           Awaiting approval — your product still sells under this name; buyers will be able to browse by it once we approve.
         </span>
       )}
 
       {rejected && !adding && (
-        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:#C0392B;line-height:1.5;')}>
+        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-bad-text);line-height:1.5;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>cancel</span>
           Not approved{rejected.review_note ? ` — ${rejected.review_note}` : ''}. Please pick the closest option instead.
         </span>

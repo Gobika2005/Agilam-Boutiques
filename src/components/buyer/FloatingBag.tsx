@@ -91,7 +91,7 @@ export function FloatingBag() {
           <span
             style={css(
               'width:38px;height:38px;margin-left:-15px;border-radius:12px;border:2px solid #fff;flex:none;' +
-                'background:#F7EAF0;color:#B02454;font-size:11.5px;font-weight:800;' +
+                'background:var(--ag-surface-2);color:var(--ag-crimson);font-size:11.5px;font-weight:800;' +
                 'display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -8px rgba(107,20,54,.75);',
             )}
           >
@@ -106,7 +106,7 @@ export function FloatingBag() {
         </span>
         {/* A ₹0 subtotal means the catalogue hasn't priced these lines yet — show
             the destination instead of a number that reads like a broken bag. */}
-        <span style={css('font-weight:800;font-size:15px;color:#241019;letter-spacing:-.01em;')}>
+        <span style={css('font-weight:800;font-size:15px;color:var(--ag-ink);letter-spacing:-.01em;')}>
           {subtotal > 0 ? fmt(subtotal) : 'View bag'}
         </span>
       </span>

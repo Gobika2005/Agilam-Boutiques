@@ -46,7 +46,7 @@ export function Collections() {
 
   if (!loading && PRODUCTS.length === 0) {
     return (
-      <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+      <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
         <DiscoveryHeader
           eyebrow="Browse every edit"
           title="Shop by collection"
@@ -62,7 +62,7 @@ export function Collections() {
   }
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <DiscoveryHeader
         eyebrow="Browse every edit"
         title="Shop by"
@@ -111,18 +111,18 @@ export function Collections() {
                 key={o.name}
                 onClick={() => open({ occasions: [o.name] })}
                 className="agx-lift"
-                style={css(`display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid #F2E4EA;background:#fff;border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);`)}
+                style={css(`display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid var(--ag-surface-3);background:var(--ag-surface);border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);`)}
               >
                 <span style={css(`position:relative;width:44px;height:44px;flex:none;border-radius:14px;overflow:hidden;background:${o.toneHex};display:flex;align-items:center;justify-content:center;`)}>
                   {o.image ? (
                     <ImageSlot src={o.image} placeholder={o.name} style={css('position:absolute;inset:0;')} />
                   ) : (
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#8E1C44;")}>{o.icon}</span>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-deep);")}>{o.icon}</span>
                   )}
                 </span>
                 <span style={css('min-width:0;flex:1;')}>
-                  <span style={css('display:block;font-size:14.5px;font-weight:800;color:#2A1A20;')}>{o.name}</span>
-                  <span style={css('display:block;font-size:12px;color:#8A7078;margin-top:2px;')}>{o.count} {o.count === 1 ? 'piece' : 'pieces'}</span>
+                  <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{o.name}</span>
+                  <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;')}>{o.count} {o.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>chevron_right</span>
               </button>
@@ -143,11 +143,11 @@ export function Collections() {
                 key={b.maxPrice}
                 onClick={() => open({ maxPrice: b.maxPrice })}
                 className="agx-lift"
-                style={css('display:flex;align-items:center;gap:12px;width:100%;padding:16px;border:1px solid #F2E4EA;background:linear-gradient(140deg,#fff,#FDF6F9);border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
+                style={css('display:flex;align-items:center;gap:12px;width:100%;padding:16px;border:1px solid var(--ag-surface-3);background:linear-gradient(140deg,#fff,#FDF6F9);border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
               >
                 <span style={css('min-width:0;flex:1;')}>
-                  <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#B02454;line-height:1.1;")}>{b.label}</span>
-                  <span style={css('display:block;font-size:12px;color:#8A7078;margin-top:4px;')}>{b.count} {b.count === 1 ? 'piece' : 'pieces'}</span>
+                  <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-crimson);line-height:1.1;")}>{b.label}</span>
+                  <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:4px;')}>{b.count} {b.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>arrow_forward</span>
               </button>
@@ -169,8 +169,8 @@ export function Collections() {
                 style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:9px;padding:0;border:none;background:none;cursor:pointer;width:78px;')}
               >
                 <span className="agx-circle-ring" style={css(`display:block;width:62px;height:62px;border-radius:50%;background:${c.hex};box-shadow:0 12px 26px -14px ${c.hex};border:3px solid #fff;`)} />
-                <span style={css('font-size:12.5px;font-weight:800;color:#3F2E36;')}>{c.name}</span>
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B79AA6;margin-top:-5px;")}>{c.count}</span>
+                <span style={css('font-size:12.5px;font-weight:800;color:var(--ag-ink-2);')}>{c.name}</span>
+                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted-soft);margin-top:-5px;")}>{c.count}</span>
               </button>
             ))}
           </div>
@@ -189,10 +189,10 @@ export function Collections() {
               <button
                 key={f.name}
                 onClick={() => { setQuery(f.name); setFilters(DEFAULT_FILTERS); navigate('/buyer/results'); }}
-                style={css('display:flex;align-items:center;gap:7px;border:1px solid #EFDCE4;background:#fff;color:#6B4A56;cursor:pointer;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;')}
+                style={css('display:flex;align-items:center;gap:7px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);color:var(--ag-ink-3);cursor:pointer;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;')}
               >
                 {f.name}
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;")}>{f.count}</span>
+                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{f.count}</span>
               </button>
             ))}
           </div>

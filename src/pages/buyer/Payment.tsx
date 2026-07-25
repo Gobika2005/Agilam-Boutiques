@@ -116,15 +116,15 @@ export function Payment() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Step 3 of 3 · Payment</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 3 of 3 · Payment</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>How would you like to pay?</div>
         </div>
 
         {pending && (
-          <div style={css('margin-top:16px;background:#FFF8E8;border:1.5px solid #F0D8A2;border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
+          <div style={css('margin-top:16px;background:var(--ag-gold-bg);border:1.5px solid #F0D8A2;border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:24px;")}>error</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:14.5px;')}>We received your {fmt(pending.total)} payment</div>
@@ -135,7 +135,7 @@ export function Payment() {
                 <button onClick={onCompletePending} disabled={processing} style={css(`height:44px;padding:0 18px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};`)}>
                   {processing ? 'Completing…' : 'Complete my order'}
                 </button>
-                <button onClick={onDismissPending} disabled={processing} style={css('height:44px;padding:0 14px;border:none;background:none;color:#8A7078;font-weight:800;font-size:13px;cursor:pointer;')}>
+                <button onClick={onDismissPending} disabled={processing} style={css('height:44px;padding:0 14px;border:none;background:none;color:var(--ag-muted);font-weight:800;font-size:13px;cursor:pointer;')}>
                   Not now
                 </button>
               </div>
@@ -155,14 +155,14 @@ export function Payment() {
                 <div
                   key={m.key}
                   onClick={() => !blocked && setPayMethod(m.key)}
-                  style={css(`display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:16px;cursor:${blocked ? 'default' : 'pointer'};border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};opacity:${blocked ? 0.55 : 1};`)}
+                  style={css(`display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:16px;cursor:${blocked ? 'default' : 'pointer'};border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};opacity:${blocked ? 0.55 : 1};`)}
                 >
-                  <span style={css(`width:46px;height:46px;flex:none;border-radius:13px;background:${on ? '#D6336C' : '#FCE0EC'};display:flex;align-items:center;justify-content:center;`)}>
+                  <span style={css(`width:46px;height:46px;flex:none;border-radius:13px;background:${on ? '#D6336C' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;`)}>
                     <span style={css(`font-family:'Material Symbols Outlined';color:${on ? '#fff' : '#D6336C'};`)}>{m.icon}</span>
                   </span>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{m.label}</div>
-                    <div style={css('color:#8A7078;font-size:12.5px;margin-top:2px;line-height:1.45;')}>
+                    <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;line-height:1.45;')}>
                       {blocked ?? (m.kind === 'cod' && codDeliveries > 1
                         ? `${m.sub} · ${fmt(COD_FEE)} handling fee × ${codDeliveries} deliveries`
                         : m.kind === 'cod'
@@ -176,50 +176,50 @@ export function Payment() {
                 </div>
               );
             })}
-            <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;color:#8A7078;font-size:12.5px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#2FA36B;")}>lock</span>
+            <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;color:var(--ag-muted);font-size:12.5px;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-good);")}>lock</span>
               {payingCash ? 'Keep the exact amount ready — our partner may not carry change.' : '100% secure payments · encrypted end-to-end'}
             </div>
           </div>
 
-          <div className="agx-cart-sticky" style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
+          <div className="agx-cart-sticky" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Order total</div>
             {/* Coupons are worth one last offer here: this is the screen where
                 the buyer is looking hardest at the number they're about to pay. */}
             {coupon ? (
-              <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:#F3FBF5;border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>verified</span>
-                <div style={css('flex:1;min-width:0;font-weight:800;font-size:13px;color:#218456;')}>{coupon.code} applied</div>
+              <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:var(--ag-good-bg);border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified</span>
+                <div style={css('flex:1;min-width:0;font-weight:800;font-size:13px;color:var(--ag-good-text);')}>{coupon.code} applied</div>
                 <button onClick={openCoupons} style={css('border:none;background:none;cursor:pointer;color:#4B7A61;font-size:12px;font-weight:800;')}>Change</button>
               </div>
             ) : (
-              <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed #E7B7CB;background:#FCF3F7;border-radius:13px;cursor:pointer;text-align:left;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>confirmation_number</span>
-                <span style={css('flex:1;font-weight:800;font-size:13px;color:#B02454;')}>Have a coupon?</span>
+              <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed #E7B7CB;background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
+                <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>Have a coupon?</span>
                 <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
               </button>
             )}
 
             <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:14px;')}>
-              <div style={css('display:flex;justify-content:space-between;color:#5C4650;')}><span>Subtotal</span><span style={css('font-weight:700;')}>{fmt(subtotal)}</span></div>
+              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Subtotal</span><span style={css('font-weight:700;')}>{fmt(subtotal)}</span></div>
               {discount > 0 && (
-                <div style={css('display:flex;justify-content:space-between;color:#2FA36B;')}><span>Discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
+                <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
               )}
-              <div style={css('display:flex;justify-content:space-between;color:#5C4650;')}><span>Delivery</span><span style={css('font-weight:800;color:#2FA36B;')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
+              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
               {codFee > 0 && (
-                <div style={css('display:flex;justify-content:space-between;color:#5C4650;')}>
+                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
                   <span>Cash handling{codDeliveries > 1 ? ` (${codDeliveries} deliveries)` : ''}</span>
                   <span style={css('font-weight:700;')}>{fmt(codFee)}</span>
                 </div>
               )}
             </div>
-            <div style={css('height:1px;background:#F0E2E9;margin:16px 0;')} />
+            <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
               <span style={css('font-weight:800;')}>{payingCash ? 'Pay on delivery' : 'To pay'}</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:26px;")}>{fmt(total)}</span>
+              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
             </div>
             {payingCash && codDeliveries > 1 && (
-              <div style={css('margin-top:8px;font-size:12px;color:#8A7078;line-height:1.5;')}>
+              <div style={css('margin-top:8px;font-size:12px;color:var(--ag-muted);line-height:1.5;')}>
                 Your bag comes from {codDeliveries} boutiques, so it arrives as {codDeliveries} separate deliveries — you pay each one on arrival.
               </div>
             )}
@@ -227,7 +227,7 @@ export function Payment() {
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{payingCash ? 'local_shipping' : 'lock'}</span>
               {processing ? 'Processing…' : payingCash ? 'Place order' : `Pay ${fmt(total)}`}
             </button>
-            <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:#8A7078;font-weight:800;font-size:13px;')}>Back to delivery</button>
+            <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to delivery</button>
           </div>
         </div>
       </div>

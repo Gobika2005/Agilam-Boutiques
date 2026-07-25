@@ -83,7 +83,7 @@ function RaisedTab({ tab, active, onClick }: { tab: TabDef; active: boolean; onC
       >
         <span style={css("font-family:'Material Symbols Outlined';font-size:26px;")}>{tab.icon}</span>
       </span>
-      <span style={css(`font-size:11px;font-weight:800;color:${active ? '#B02454' : '#9A8189'};transition:color .28s ease;`)}>
+      <span style={css(`font-size:11px;font-weight:800;color:${active ? 'var(--ag-crimson)' : '#9A8189'};transition:color .28s ease;`)}>
         {tab.label}
       </span>
     </button>
@@ -119,11 +119,11 @@ export function AppShell({
   const initials = initialsFrom(resolveDisplayName(profile, session, guest.name));
 
   return (
-    <div style={css('min-height:100vh;background:#FBF6F2;')}>
+    <div style={css('min-height:100vh;background:var(--ag-bg);')}>
       {sellModal && <SellModal />}
 
-      <div style={css('min-height:100vh;display:flex;flex-direction:column;background:#FBF6F2;')}>
-        <header style={css('position:sticky;top:0;z-index:30;background:rgba(251,246,242,.88);backdrop-filter:blur(14px);border-bottom:1px solid #EFDCE4;')}>
+      <div style={css('min-height:100vh;display:flex;flex-direction:column;background:var(--ag-bg);')}>
+        <header style={css('position:sticky;top:0;z-index:30;background:var(--ag-frost);backdrop-filter:blur(14px);border-bottom:1px solid var(--ag-border-soft);')}>
           <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:14px 16px;')}>
             {/* The wordmark is the way home from anywhere in the app. */}
             <button
@@ -164,7 +164,7 @@ export function AppShell({
 
         <div
           className="agx-dock"
-          style={css('position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;display:flex;gap:5px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(251,246,242,.9));backdrop-filter:blur(22px) saturate(1.3);border:1px solid rgba(255,255,255,.7);border-radius:28px;padding:8px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 1px 3px rgba(107,20,54,.1),0 26px 60px -20px rgba(107,20,54,.55);animation:agx-sheet .35s ease;')}
+          style={css('position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;display:flex;gap:5px;background:var(--ag-frost-strong);backdrop-filter:blur(22px) saturate(1.3);border:1px solid var(--ag-frost-border);border-radius:28px;padding:8px;box-shadow:0 2px 0 rgba(255,255,255,.15) inset,0 1px 3px rgba(107,20,54,.1),0 26px 60px -20px var(--ag-shadow);animation:agx-sheet .35s ease;')}
         >
           {tabs.map((t) => {
             const Item = t.raised ? RaisedTab : Tab;

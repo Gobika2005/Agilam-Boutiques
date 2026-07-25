@@ -7,7 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique, fetchCustomersForBoutique } from '@/data/orders';
 import { fetchProductsByBoutique } from '@/data/products';
 
-const CAT_COLORS = ['#D6336C', '#B0863B', '#9B7FC7', '#5FA37E', '#3A6EA5', '#E0B84B'];
+const CAT_COLORS = ['#D6336C', '#B0863B', '#9B7FC7', '#5FA37E', 'var(--ag-info-text)', '#E0B84B'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const compactInr = (n: number) =>
   n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmt(n);
@@ -111,10 +111,10 @@ export function Analytics() {
   const topCustomers = (customerRows ?? []).slice(0, 3);
 
   const tiles = [
-    { icon: 'account_balance_wallet', tint: '#FCE0EC', ic: '#D6336C', value: compactInr(totalRevenue), label: 'Revenue', sub: range },
-    { icon: 'shopping_bag', tint: '#F3EAD9', ic: '#B8860B', value: String(totalOrders), label: 'Orders', sub: range },
-    { icon: 'sync', tint: '#E9F6EF', ic: '#2FA36B', value: `${returning}/${uniqueCustomers}`, label: 'Returning customers', sub: 'Two or more orders' },
-    { icon: 'visibility', tint: '#E6F0FA', ic: '#3A6EA5', value: String(totalViews), label: 'Product views', sub: 'All time' },
+    { icon: 'account_balance_wallet', tint: 'var(--ag-surface-2)', ic: '#D6336C', value: compactInr(totalRevenue), label: 'Revenue', sub: range },
+    { icon: 'shopping_bag', tint: 'var(--ag-gold-bg)', ic: 'var(--ag-warn-text)', value: String(totalOrders), label: 'Orders', sub: range },
+    { icon: 'sync', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', value: `${returning}/${uniqueCustomers}`, label: 'Returning customers', sub: 'Two or more orders' },
+    { icon: 'visibility', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)', value: String(totalViews), label: 'Product views', sub: 'All time' },
   ];
 
   const Bars = ({ data, max, kind }: { data: typeof trend; max: number; kind: 'revenue' | 'orders' }) => (
@@ -122,11 +122,11 @@ export function Analytics() {
       {data.map((b, i) => {
         const val = kind === 'revenue' ? b.revenue : b.orders;
         const h = `${Math.max(6, Math.round((val / max) * 100))}%`;
-        const grad = kind === 'revenue' ? 'linear-gradient(180deg,#E14A7E,#B02454)' : 'linear-gradient(180deg,#6FA8DC,#3A6EA5)';
+        const grad = kind === 'revenue' ? 'linear-gradient(180deg,#E14A7E,#B02454)' : 'linear-gradient(180deg,#6FA8DC,var(--ag-info-text))';
         return (
           <div key={`${b.label}-${i}`} style={css('flex:1;min-width:16px;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;')}>
             <div style={css(`width:100%;max-width:42px;height:${h};border-radius:9px 9px 4px 4px;background:${grad};box-shadow:0 10px 22px -12px rgba(176,36,84,.6);`)} />
-            <span style={css('font-size:10.5px;font-weight:800;color:#8A7078;white-space:nowrap;')}>{b.label}</span>
+            <span style={css('font-size:10.5px;font-weight:800;color:var(--ag-muted);white-space:nowrap;')}>{b.label}</span>
           </div>
         );
       })}
@@ -134,10 +134,10 @@ export function Analytics() {
   );
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:1240px;margin:0 auto;')}>
         <div style={css('padding:6px 0 4px;')}>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Business insights</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business insights</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</div>
         </div>
 
@@ -146,7 +146,7 @@ export function Analytics() {
           {RANGES.map((r) => {
             const on = range === r;
             return (
-              <button key={r} onClick={() => setRange(r)} style={css(`flex:none;padding:8px 14px;border:1px solid ${on ? '#B02454' : '#F0E2E9'};border-radius:11px;background:${on ? '#B02454' : '#fff'};color:${on ? '#fff' : '#8A7078'};font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;`)}>
+              <button key={r} onClick={() => setRange(r)} style={css(`flex:none;padding:8px 14px;border:1px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-surface-3)'};border-radius:11px;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-muted)'};font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;`)}>
                 {r}
               </button>
             );
@@ -156,28 +156,28 @@ export function Analytics() {
         {/* Stat tiles */}
         <div className="agx-rgrid" style={css('margin-top:14px;')}>
           {tiles.map((t) => (
-            <div key={t.label} className="agx-lift" style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:18px;box-shadow:0 18px 40px -28px rgba(107,20,54,.55);')}>
+            <div key={t.label} className="agx-lift" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 18px 40px -28px rgba(107,20,54,.55);')}>
               <div style={css(`width:42px;height:42px;border-radius:13px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}><span style={css(`font-family:'Material Symbols Outlined';color:${t.ic};`)}>{t.icon}</span></div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:12px;")}>{t.value}</div>
-              <div style={css('color:#8A7078;font-size:12.5px;font-weight:700;')}>{t.label}</div>
-              <div style={css('font-size:11.5px;font-weight:800;color:#8A7078;margin-top:6px;')}>{t.sub}</div>
+              <div style={css('color:var(--ag-muted);font-size:12.5px;font-weight:700;')}>{t.label}</div>
+              <div style={css('font-size:11.5px;font-weight:800;color:var(--ag-muted);margin-top:6px;')}>{t.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Revenue + orders trend */}
         <div className="agx-an-grid" style={css('display:grid;gap:18px;margin-top:18px;align-items:start;')}>
-          <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Revenue trend</div>
-              <span style={css('font-size:12px;font-weight:800;color:#8A7078;')}>₹ · {range}</span>
+              <span style={css('font-size:12px;font-weight:800;color:var(--ag-muted);')}>₹ · {range}</span>
             </div>
             <Bars data={trend} max={maxRev} kind="revenue" />
           </div>
-          <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Orders trend</div>
-              <span style={css('font-size:12px;font-weight:800;color:#8A7078;')}>Orders · {range}</span>
+              <span style={css('font-size:12px;font-weight:800;color:var(--ag-muted);')}>Orders · {range}</span>
             </div>
             <Bars data={trend} max={maxOrd} kind="orders" />
           </div>
@@ -185,20 +185,20 @@ export function Analytics() {
 
         {/* Top categories + most viewed */}
         <div className="agx-an-grid" style={css('display:grid;gap:18px;margin-top:18px;align-items:start;')}>
-          <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Top categories</div>
-            <div style={css('font-size:12px;color:#8A7078;margin-top:2px;')}>By revenue · {range}</div>
+            <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>By revenue · {range}</div>
             <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:18px;')}>
-              {topCats.length === 0 && <div style={css('color:#8A7078;font-size:13px;')}>No sales in this period.</div>}
+              {topCats.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;')}>No sales in this period.</div>}
               {topCats.map(([name, rev], i) => (
                 <div key={name}>
                   <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
                     <span style={css('display:flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px;')}>
                       <span style={css(`width:11px;height:11px;border-radius:4px;background:${CAT_COLORS[i % CAT_COLORS.length]};`)} />{name}
                     </span>
-                    <span style={css('font-weight:800;font-size:12.5px;color:#B02454;')}>{compactInr(rev)}</span>
+                    <span style={css('font-weight:800;font-size:12.5px;color:var(--ag-crimson);')}>{compactInr(rev)}</span>
                   </div>
-                  <div style={css('height:8px;border-radius:5px;background:#F1E1E9;overflow:hidden;margin-top:7px;')}>
+                  <div style={css('height:8px;border-radius:5px;background:var(--ag-surface-2);overflow:hidden;margin-top:7px;')}>
                     <span style={css(`display:block;height:100%;width:${Math.round((rev / catMax) * 100)}%;background:${CAT_COLORS[i % CAT_COLORS.length]};border-radius:5px;`)} />
                   </div>
                 </div>
@@ -206,20 +206,20 @@ export function Analytics() {
             </div>
           </div>
 
-          <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+          <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Most viewed products</div>
-            <div style={css('font-size:12px;color:#8A7078;margin-top:2px;')}>All-time views</div>
+            <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>All-time views</div>
             <div style={css('display:flex;flex-direction:column;gap:4px;margin-top:12px;')}>
-              {mostViewed.length === 0 && <div style={css('color:#8A7078;font-size:13px;margin-top:6px;')}>No views recorded yet.</div>}
+              {mostViewed.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>No views recorded yet.</div>}
               {mostViewed.map((p, i) => (
-                <div key={p.id} onClick={() => navigate(`/seller/products/${p.id}`)} style={css('display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F5E4EC;cursor:pointer;')}>
+                <div key={p.id} onClick={() => navigate(`/seller/products/${p.id}`)} style={css('display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ag-border-soft);cursor:pointer;')}>
                   <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${TONES[p.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:rgba(42,26,32,.55);`)}>{i + 1}</div>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-                    <div style={css('color:#8A7078;font-size:12px;margin-top:2px;')}>{p.category}</div>
+                    <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{p.category}</div>
                   </div>
                   <div style={css('text-align:right;flex:none;')}>
-                    <div style={css('display:flex;align-items:center;gap:4px;font-weight:800;color:#3A6EA5;font-size:13px;')}>
+                    <div style={css('display:flex;align-items:center;gap:4px;font-weight:800;color:var(--ag-info-text);font-size:13px;')}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>{p.views_count ?? 0}
                     </div>
                     <div style={css('display:flex;align-items:center;gap:4px;font-size:11px;color:#D6336C;font-weight:700;margin-top:2px;justify-content:flex-end;')}>
@@ -233,18 +233,18 @@ export function Analytics() {
         </div>
 
         {/* Top customers */}
-        <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;margin-top:18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+        <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;margin-top:18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Top customers</div>
           <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:12px;')}>
-            {topCustomers.length === 0 && <div style={css('color:#8A7078;font-size:13px;margin-top:6px;')}>No customers yet.</div>}
+            {topCustomers.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>No customers yet.</div>}
             {topCustomers.map((c) => (
-              <div key={c.name} style={css('display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid #F5E4EC;')}>
+              <div key={c.name} style={css('display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--ag-border-soft);')}>
                 <div style={css(`width:44px;height:44px;flex:none;border-radius:13px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:rgba(42,26,32,.55);`)}>{c.name[0]}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('font-weight:800;font-size:14px;')}>{c.name}</div>
-                  <div style={css('color:#8A7078;font-size:12px;margin-top:2px;')}>{c.orders} orders</div>
+                  <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{c.orders} orders</div>
                 </div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:17px;")}>{fmt(c.spent)}</div>
+                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:17px;")}>{fmt(c.spent)}</div>
               </div>
             ))}
           </div>

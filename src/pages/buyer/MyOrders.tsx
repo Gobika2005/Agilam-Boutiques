@@ -84,13 +84,13 @@ export function MyOrders() {
     <>
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0 6px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Purchases</div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Purchases</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>My orders</div>
         </div>
         <button
           onClick={() => void refresh()}
           disabled={refreshing}
-          style={css(`display:flex;align-items:center;gap:7px;height:40px;padding:0 15px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:${refreshing ? 'wait' : 'pointer'};opacity:${refreshing ? 0.65 : 1};`)}
+          style={css(`display:flex;align-items:center;gap:7px;height:40px;padding:0 15px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:${refreshing ? 'wait' : 'pointer'};opacity:${refreshing ? 0.65 : 1};`)}
         >
           <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{refreshing ? 'sync' : 'refresh'}</span>
           {refreshing ? 'Refreshing' : 'Refresh'}
@@ -100,7 +100,7 @@ export function MyOrders() {
       {/* A failed refresh is worth saying out loud — the statuses on screen
           might be behind what the boutique has already done. */}
       {error && (
-        <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:#FFF8E8;border:1px solid #F0D8A2;border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
+        <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:var(--ag-gold-bg);border:1px solid #F0D8A2;border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:19px;flex:none;")}>cloud_off</span>
           {error}
         </div>
@@ -114,10 +114,10 @@ export function MyOrders() {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1.5px solid ${on ? 'transparent' : '#F0D8E2'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;`)}
+                style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1.5px solid ${on ? 'transparent' : 'var(--ag-border)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;`)}
               >
                 {t.label}
-                <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${on ? 'rgba(255,255,255,.24)' : '#F5E7ED'};color:${on ? '#fff' : '#B02454'};`)}>
+                <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${on ? 'rgba(255,255,255,.24)' : 'var(--ag-surface-2)'};color:${on ? '#fff' : 'var(--ag-crimson)'};`)}>
                   {counts[t.key]}
                 </span>
               </button>
@@ -131,17 +131,17 @@ export function MyOrders() {
   if (orders.length === 0) {
     const empty = allOrders.length === 0;
     return (
-      <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+      <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
         <div style={css('max-width:820px;margin:0 auto;')}>
           {header}
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 30px;')}>
-            <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,#FCE0EC,#F7CFDF);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:#B02454;")}>receipt_long</span>
+            <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-crimson);")}>receipt_long</span>
             </div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>
               {empty ? 'No orders yet' : `Nothing ${tab === 'active' ? 'in progress' : tab}`}
             </div>
-            <div style={css('color:#8A7078;font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>
+            <div style={css('color:var(--ag-muted);font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>
               {empty
                 ? 'When you place an order it shows up here — track every piece from checkout to your doorstep.'
                 : 'Try another tab to see the rest of your orders.'}
@@ -156,7 +156,7 @@ export function MyOrders() {
   }
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:820px;margin:0 auto;')}>
         {header}
 
@@ -180,11 +180,11 @@ export function MyOrders() {
                 key={o.id}
                 onClick={() => navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`)}
                 className="agx-lift"
-                style={css('cursor:pointer;background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:15px;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}
+                style={css('cursor:pointer;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:15px;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}
               >
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-                  <span style={css("font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#8A7078;")}>{o.id}</span>
-                  <span style={css(`font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px;background:${delivered ? '#E5F3EC' : rejected ? '#FBE3E3' : '#FCE0EC'};color:${delivered ? '#2FA36B' : rejected ? '#C0455E' : '#B02454'};`)}>
+                  <span style={css("font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--ag-muted);")}>{o.id}</span>
+                  <span style={css(`font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px;background:${delivered ? 'var(--ag-good-bg)' : rejected ? 'var(--ag-bad-bg)' : 'var(--ag-surface-2)'};color:${delivered ? 'var(--ag-good)' : rejected ? '#C0455E' : 'var(--ag-crimson)'};`)}>
                     {badge}
                   </span>
                 </div>
@@ -196,10 +196,10 @@ export function MyOrders() {
                     <div style={css('font-weight:800;font-size:15px;line-height:1.2;')}>
                       {item?.title ?? 'Order'}{extra > 0 ? ` +${extra} more` : ''}
                     </div>
-                    <div style={css('color:#8A7078;font-size:12.5px;margin-top:3px;')}>{o.boutique} · Qty {o.items.reduce((s, it) => s + it.qty, 0)}</div>
+                    <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:3px;')}>{o.boutique} · Qty {o.items.reduce((s, it) => s + it.qty, 0)}</div>
                     {/* What the buyer actually wants to know at a glance: when
                         it should arrive, or when it did. */}
-                    <div style={css(`display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:6px;color:${delivered ? '#2FA36B' : rejected ? '#C0455E' : '#B02454'};`)}>
+                    <div style={css(`display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:6px;color:${delivered ? 'var(--ag-good)' : rejected ? '#C0455E' : 'var(--ag-crimson)'};`)}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>
                         {delivered ? 'check_circle' : rejected ? 'cancel' : 'schedule'}
                       </span>
@@ -220,21 +220,21 @@ export function MyOrders() {
                       </div>
                     )}
                     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:8px;')}>
-                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(o.total)}</span>
-                      <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#8A7078;')}>
+                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(o.total)}</span>
+                      <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ag-muted);')}>
                         <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>event</span>{formatOrderDate(o.placedAt)}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid #F4E6EC;flex-wrap:wrap;')}>
+                <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid var(--ag-border-soft);flex-wrap:wrap;')}>
                   {/* Cancelling is only offered while it's genuinely free to do
                       — an un-dispatched COD order costs nobody anything yet. */}
                   {canCancel && (
                     <button
                       onClick={(e) => { e.stopPropagation(); void cancel(o); }}
                       disabled={cancelling === o.orderNumber}
-                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid #E7A7B4;background:#fff;color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
+                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
                     >
                       <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
                       {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}
@@ -242,13 +242,13 @@ export function MyOrders() {
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); chatWithBoutique(o); }}
-                    style={css('flex:1;min-width:140px;height:42px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
+                    style={css('flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`); }}
-                    style={css('flex:1;min-width:140px;height:42px;border:none;background:#FCE0EC;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
+                    style={css('flex:1;min-width:140px;height:42px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>
                     {delivered || rejected ? 'Order details' : 'Track order'}

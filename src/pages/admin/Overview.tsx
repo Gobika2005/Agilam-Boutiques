@@ -58,10 +58,10 @@ export function Overview() {
 
       {/* Top KPI row — real time-window revenue with sparklines */}
       <div className="agx-adm-g4">
-        <StatCard label="Today's sales" value={compactInr(win.today.revenue)} icon="payments" tint="#FCE0EC" ic="#D6336C" sub={delta(win.today.revenue, win.yesterday.revenue)} bars={ordBars} />
-        <StatCard label="This month" value={compactInr(win.month.revenue)} icon="calendar_month" tint="#E6F0FA" ic="#3A6EA5" sub={`${win.month.orders} orders`} bars={revBars} />
+        <StatCard label="Today's sales" value={compactInr(win.today.revenue)} icon="payments" tint="var(--ag-surface-2)" ic="#D6336C" sub={delta(win.today.revenue, win.yesterday.revenue)} bars={ordBars} />
+        <StatCard label="This month" value={compactInr(win.month.revenue)} icon="calendar_month" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" sub={`${win.month.orders} orders`} bars={revBars} />
         <StatCard label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} icon="trending_up" tint="#F3EAF5" ic="#9B7FC7" sub="gross" />
-        <StatCard label="Platform revenue" value={compactInr(d?.platformRevenue ?? 0)} icon="account_balance" tint="#FBF0DA" ic="#C99A3F" sub={`${POLICY_TERMS.commissionPct}% commission`} />
+        <StatCard label="Platform revenue" value={compactInr(d?.platformRevenue ?? 0)} icon="account_balance" tint="var(--ag-warn-bg)" ic="#C99A3F" sub={`${POLICY_TERMS.commissionPct}% commission`} />
       </div>
 
       {/* Counters row */}
@@ -74,8 +74,8 @@ export function Overview() {
           { label: 'Low stock', value: d?.counts.lowStock ?? 0, icon: 'inventory_2', to: '/admin/products', hot: (d?.counts.lowStock ?? 0) > 0 },
         ].map((c) => (
           <button key={c.label} onClick={() => navigate(c.to)} style={css(T.card + 'padding:16px;text-align:left;border:none;cursor:pointer;display:flex;align-items:center;gap:12px;font-family:inherit;')}>
-            <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${c.hot ? '#FBE3E3' : '#F7EAF0'};display:flex;align-items:center;justify-content:center;`)}>
-              <Icon name={c.icon} size={20} color={c.hot ? '#D6455A' : '#B02454'} />
+            <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${c.hot ? 'var(--ag-bad-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;`)}>
+              <Icon name={c.icon} size={20} color={c.hot ? '#D6455A' : 'var(--ag-crimson)'} />
             </div>
             <div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1;")}>{c.value}</div>
@@ -162,7 +162,7 @@ export function Overview() {
             <div style={css('display:flex;flex-direction:column;gap:11px;')}>
               {(d?.topProducts ?? []).map((p, i) => (
                 <div key={p.title} style={css('display:flex;align-items:center;gap:10px;')}>
-                  <span style={css(`width:22px;height:22px;flex:none;border-radius:7px;background:#F7EAF0;color:${T.accent};font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;`)}>{i + 1}</span>
+                  <span style={css(`width:22px;height:22px;flex:none;border-radius:7px;background:var(--ag-surface-2);color:${T.accent};font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;`)}>{i + 1}</span>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{p.title}</div>
                     <div style={css(`font-size:11px;color:${T.muted};`)}>{p.qty} sold</div>
@@ -217,9 +217,9 @@ function PaySplit({ online, cod }: { online: number; cod: number }) {
     <div style={css('display:flex;flex-direction:column;align-items:center;padding:8px 0;')}>
       <div style={css('position:relative;width:120px;height:120px;border-radius:50%;')}>
         <div style={css(`position:absolute;inset:0;border-radius:50%;background:conic-gradient(#D6336C ${pct}%, #E7C3D3 0);`)} />
-        <div style={css('position:absolute;inset:14px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
+        <div style={css('position:absolute;inset:14px;border-radius:50%;background:var(--ag-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>{pct}%</div>
-          <div style={css('font-size:10px;color:#8A7078;')}>online</div>
+          <div style={css('font-size:10px;color:var(--ag-muted);')}>online</div>
         </div>
       </div>
     </div>

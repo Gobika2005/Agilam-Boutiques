@@ -22,7 +22,7 @@ export function BottomTabBar({ tabs }: { tabs: TabDef[] }) {
             aria-label={t.label}
             aria-current={active ? 'page' : undefined}
             className="flex min-h-[44px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-none bg-transparent py-1"
-            style={{ color: active ? '#D6336C' : '#B79AA6' }}
+            style={{ color: active ? '#D6336C' : 'var(--ag-muted-soft)' }}
           >
             <Icon name={t.icon} className="text-2xl" />
             <span className="text-[10.5px] font-bold">{t.label}</span>

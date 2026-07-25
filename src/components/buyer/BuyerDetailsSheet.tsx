@@ -40,7 +40,7 @@ export function BuyerDetailsSheet({
   };
 
   const fieldStyle = (valid: boolean) =>
-    css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${touched && !valid ? '#E0748C' : '#F0D8E2'};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;`);
+    css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${touched && !valid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);`);
 
   return (
     <div
@@ -49,16 +49,16 @@ export function BuyerDetailsSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={css('width:100%;max-width:440px;margin:auto;background:#fff;border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
+        style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>badge</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>{title}</div>
-        <div style={css('text-align:center;color:#8A7078;font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>{subtitle}</div>
+        <div style={css('text-align:center;color:var(--ag-muted);font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>{subtitle}</div>
 
         <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:22px;')}>
-          <label style={css('font-size:12.5px;font-weight:800;color:#7A5C67;')}>
+          <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
             Full name
             <input
               value={name}
@@ -68,17 +68,17 @@ export function BuyerDetailsSheet({
               style={fieldStyle(nameValid)}
             />
           </label>
-          <label style={css('font-size:12.5px;font-weight:800;color:#7A5C67;')}>
+          <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
             Mobile number
-            <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : '#F0D8E2'};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;`)}>
-              <span style={css('font-weight:800;color:#8A7078;font-size:15px;')}>+91</span>
+            <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
+              <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
                 inputMode="numeric"
                 placeholder="10-digit number"
-                style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:#241019;min-width:0;')}
+                style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')}
               />
             </div>
           </label>
@@ -96,7 +96,7 @@ export function BuyerDetailsSheet({
           >
             {cta}<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
           </button>
-          <button onClick={onClose} style={css('height:44px;border:none;background:none;color:#8A7078;font-weight:700;font-size:14px;cursor:pointer;')}>
+          <button onClick={onClose} style={css('height:44px;border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:14px;cursor:pointer;')}>
             Not now
           </button>
         </div>

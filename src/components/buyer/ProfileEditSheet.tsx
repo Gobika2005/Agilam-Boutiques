@@ -42,9 +42,9 @@ export function ProfileEditSheet({
     onClose();
   };
 
-  const labelStyle = css('font-size:12.5px;font-weight:800;color:#7A5C67;display:block;');
+  const labelStyle = css('font-size:12.5px;font-weight:800;color:var(--ag-label);display:block;');
   const inputStyle = (valid: boolean) =>
-    css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${touched && !valid ? '#E0748C' : '#F0D8E2'};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;box-sizing:border-box;`);
+    css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${touched && !valid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;`);
 
   return (
     <div
@@ -53,7 +53,7 @@ export function ProfileEditSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={css('width:100%;max-width:440px;margin:auto;background:#fff;border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
+        style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('display:flex;align-items:center;gap:12px;')}>
           <div style={css('width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 14px 30px -16px rgba(214,51,108,.8);')}>
@@ -61,7 +61,7 @@ export function ProfileEditSheet({
           </div>
           <div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.1;")}>Your details</div>
-            <div style={css('color:#8A7078;font-size:12.5px;margin-top:3px;')}>Used for chat &amp; delivery</div>
+            <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:3px;')}>Used for chat &amp; delivery</div>
           </div>
         </div>
 
@@ -73,14 +73,14 @@ export function ProfileEditSheet({
 
           <label style={labelStyle}>
             Mobile number
-            <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : '#F0D8E2'};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;`)}>
-              <span style={css('font-weight:800;color:#8A7078;font-size:15px;')}>+91</span>
+            <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
+              <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 inputMode="numeric"
                 placeholder="10-digit number"
-                style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:#241019;min-width:0;')}
+                style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')}
               />
             </div>
           </label>
@@ -97,7 +97,7 @@ export function ProfileEditSheet({
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Flat / house no, street, area, pincode"
               rows={3}
-              style={css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:12px 15px;font-size:15px;font-weight:600;color:#241019;box-sizing:border-box;resize:none;line-height:1.5;font-family:inherit;')}
+              style={css('display:block;width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-bg);border-radius:14px;padding:12px 15px;font-size:15px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;resize:none;line-height:1.5;font-family:inherit;')}
             />
           </label>
 
@@ -116,7 +116,7 @@ export function ProfileEditSheet({
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>check</span>Save details
           </button>
-          <button onClick={onClose} style={css('height:44px;border:none;background:none;color:#8A7078;font-weight:700;font-size:14px;cursor:pointer;')}>
+          <button onClick={onClose} style={css('height:44px;border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:14px;cursor:pointer;')}>
             Cancel
           </button>
         </div>

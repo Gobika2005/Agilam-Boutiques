@@ -60,7 +60,7 @@ export function BestSellers() {
   const setCategory = (name: string | null) => { setCat(name); setShown(PAGE); };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <DiscoveryHeader
         eyebrow="Most-loved right now"
         title="Best"
@@ -84,7 +84,7 @@ export function BestSellers() {
       {/* Until the first orders land there is nothing to rank on, and pretending
           otherwise would be dishonest — say so instead. */}
       {!loading && !anySalesData && PRODUCTS.length > 0 && (
-        <div style={css('display:flex;gap:10px;align-items:flex-start;background:#FFF8E9;border:1px solid #F3E2BE;border-radius:16px;padding:13px 15px;margin-top:14px;')}>
+        <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid #F3E2BE;border-radius:16px;padding:13px 15px;margin-top:14px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
           <span style={css('font-size:12.5px;color:#7A5C1E;line-height:1.55;')}>
             Not enough orders yet to rank by sales, so this list is ordered by ratings and reviews for now. It will start moving as soon as buyers do.
@@ -104,14 +104,14 @@ export function BestSellers() {
       <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;')}>
         <button
           onClick={() => { setInStockOnly((v) => !v); setShown(PAGE); }}
-          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : '#EFDCE4'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${inStockOnly ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+          style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${inStockOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
           <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
           In stock only
         </button>
         <button
           onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Popularity' }); navigate('/buyer/results'); }}
-          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:#B02454;font-size:12.5px;font-weight:700;font-family:inherit;')}
+          style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Filter by price, colour, size
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>tune</span>
@@ -165,10 +165,10 @@ function Chip({ label, count, on, onClick }: { label: string; count: number; on:
   return (
     <button
       onClick={onClick}
-      style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : '#EFDCE4'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};color:${on ? '#fff' : '#6B4A56'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
+      style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
     >
       {label}
-      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : '#B79AA6'};`)}>{count}</span>
+      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
     </button>
   );
 }

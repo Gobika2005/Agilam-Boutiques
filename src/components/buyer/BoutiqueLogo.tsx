@@ -43,7 +43,7 @@ export function BoutiqueLogo({
           src={src}
           alt={`${name} logo`}
           loading="lazy"
-          style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#fff;')}
+          style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--ag-surface);')}
         />
       ) : (
         <span style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:${Math.round(size * 0.38)}px;color:#fff;letter-spacing:.02em;`)}>

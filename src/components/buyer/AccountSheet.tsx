@@ -39,8 +39,8 @@ export function AccountSheet({
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const code = digits.join('');
-  const inputStyle = css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;box-sizing:border-box;');
-  const labelStyle = css('font-size:12.5px;font-weight:800;color:#7A5C67;display:block;');
+  const inputStyle = css('display:block;width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;');
+  const labelStyle = css('font-size:12.5px;font-weight:800;color:var(--ag-label);display:block;');
 
   const google = async () => {
     setBusy(true);
@@ -129,7 +129,7 @@ export function AccountSheet({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={css('width:100%;max-width:440px;margin:auto;background:#fff;border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
+        style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>{view === 'code' ? 'mark_email_read' : 'account_circle'}</span>
@@ -137,7 +137,7 @@ export function AccountSheet({
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>
           {view === 'code' ? 'Enter the code' : mode === 'create' ? 'Create your account' : title ?? 'Sign in to sync'}
         </div>
-        <div style={css('text-align:center;color:#8A7078;font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>
+        <div style={css('text-align:center;color:var(--ag-muted);font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>
           {view === 'code' ? `We emailed a 6-digit code to ${email}` : subtitle ?? 'Keep your orders & details on any device.'}
         </div>
 
@@ -146,13 +146,13 @@ export function AccountSheet({
             <button
               onClick={google}
               disabled={busy}
-              style={css('width:100%;height:52px;margin-top:22px;border:1.5px solid #E7C6D4;background:#fff;border-radius:14px;font-weight:800;font-size:15px;color:#2A1A20;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}
+              style={css('width:100%;height:52px;margin-top:22px;border:1.5px solid #E7C6D4;background:var(--ag-surface);border-radius:14px;font-weight:800;font-size:15px;color:var(--ag-ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D6336C;")}>g_translate</span>Continue with Google
             </button>
 
-            <div style={css('display:flex;align-items:center;gap:12px;color:#B79AA6;font-size:12.5px;margin:16px 0;')}>
-              <div style={css('flex:1;height:1px;background:#F0D8E2;')} />or<div style={css('flex:1;height:1px;background:#F0D8E2;')} />
+            <div style={css('display:flex;align-items:center;gap:12px;color:var(--ag-muted-soft);font-size:12.5px;margin:16px 0;')}>
+              <div style={css('flex:1;height:1px;background:var(--ag-border);')} />or<div style={css('flex:1;height:1px;background:var(--ag-border);')} />
             </div>
 
             <div style={css('display:flex;flex-direction:column;gap:13px;')}>
@@ -169,7 +169,7 @@ export function AccountSheet({
               </label>
               {mode === 'signin' && (
                 <div style={css('display:flex;justify-content:flex-end;margin-top:-4px;')}>
-                  <a href="#" onClick={(e) => { e.preventDefault(); forgotPassword(); }} style={css('font-size:12.5px;font-weight:800;color:#B02454;')}>Forgot password?</a>
+                  <a href="#" onClick={(e) => { e.preventDefault(); forgotPassword(); }} style={css('font-size:12.5px;font-weight:800;color:var(--ag-crimson);')}>Forgot password?</a>
                 </div>
               )}
             </div>
@@ -180,7 +180,7 @@ export function AccountSheet({
               </div>
             )}
 
-            {notice && <div style={css('color:#7A5C67;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}>{notice}</div>}
+            {notice && <div style={css('color:var(--ag-label);font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}>{notice}</div>}
             {error && <div style={css('color:#C0455E;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;')}>{error}</div>}
 
             <button
@@ -192,9 +192,9 @@ export function AccountSheet({
               {!busy && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{password ? 'arrow_forward' : 'mail'}</span>}
             </button>
 
-            <div style={css('text-align:center;font-size:13.5px;color:#8A7078;margin-top:14px;')}>
+            <div style={css('text-align:center;font-size:13.5px;color:var(--ag-muted);margin-top:14px;')}>
               {mode === 'signin' ? 'New to Agilam? ' : 'Have an account? '}
-              <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === 'signin' ? 'create' : 'signin'); setError(''); }} style={css('font-weight:800;color:#B02454;')}>
+              <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === 'signin' ? 'create' : 'signin'); setError(''); }} style={css('font-weight:800;color:var(--ag-crimson);')}>
                 {mode === 'signin' ? 'Create account' : 'Sign in'}
               </a>
             </div>
@@ -218,7 +218,7 @@ export function AccountSheet({
                   maxLength={1}
                   inputMode="numeric"
                   autoFocus={i === 0}
-                  style={css(`width:46px;height:56px;text-align:center;font-size:23px;font-weight:800;border:1.5px solid ${d ? '#D6336C' : '#F0D8E2'};background:#FBF6F2;border-radius:14px;color:#2A1A20;`)}
+                  style={css(`width:46px;height:56px;text-align:center;font-size:23px;font-weight:800;border:1.5px solid ${d ? '#D6336C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;color:var(--ag-ink);`)}
                 />
               ))}
             </div>
@@ -230,7 +230,7 @@ export function AccountSheet({
             >
               {busy ? 'Verifying…' : 'Verify & sync'}
             </button>
-            <button onClick={() => { setView('form'); setDigits(['', '', '', '', '', '']); setError(''); }} style={css('width:100%;height:44px;margin-top:8px;border:none;background:none;color:#8A7078;font-weight:700;font-size:14px;cursor:pointer;')}>
+            <button onClick={() => { setView('form'); setDigits(['', '', '', '', '', '']); setError(''); }} style={css('width:100%;height:44px;margin-top:8px;border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:14px;cursor:pointer;')}>
               Use a different method
             </button>
           </>

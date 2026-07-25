@@ -5,6 +5,7 @@ import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { WORKING_DAYS } from '@/data/types';
 
 /**
@@ -117,18 +118,22 @@ export function Settings() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 0 14px;display:flex;align-items:center;gap:10px;')}>
         <button
           onClick={() => navigate('/seller/profile')}
-          style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Settings</div>
       </div>
 
       <div style={css('max-width:760px;display:flex;flex-direction:column;gap:16px;')}>
+        <SectionCard title="Appearance" subtitle="Light is the default; switch to dark whenever you like.">
+          <ThemeToggle variant="inline" />
+        </SectionCard>
+
         <SectionCard title="Contact & social" subtitle="How buyers reach you from your boutique page.">
           <Row>
             <Field label="Mobile number" value={form.phone} onChange={(v) => set('phone', v.replace(/\D/g, '').slice(0, 10))} placeholder="9876543210" inputMode="tel" error={errors.phone} />
@@ -179,14 +184,14 @@ export function Settings() {
 
         <button
           onClick={() => navigate('/buyer/home')}
-          style={css('width:100%;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid #F2E4EA;border-radius:16px;background:#fff;color:#B02454;cursor:pointer;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);text-align:left;font-family:inherit;')}
+          style={css('width:100%;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--ag-surface-3);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);text-align:left;font-family:inherit;')}
         >
-          <span style={css('width:40px;height:40px;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;flex:none;')}>
+          <span style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;flex:none;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
           </span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
-            <span style={css('display:block;font-size:12.5px;color:#8A7078;margin-top:2px;')}>Shop on Agilam as a customer</span>
+            <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>Shop on Agilam as a customer</span>
           </span>
           <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
         </button>

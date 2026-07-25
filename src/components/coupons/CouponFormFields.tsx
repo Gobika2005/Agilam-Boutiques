@@ -8,8 +8,8 @@ import type { CouponFieldErrors } from '@/lib/couponForm';
  * a sheet) and the save button; this only renders the labelled fields.
  */
 
-const field = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:0 13px;height:46px;font-size:14px;font-weight:600;color:#2A1A20;box-sizing:border-box;font-family:inherit;';
-const label = 'font-size:12.5px;font-weight:800;color:#7A5C67;display:block;';
+const field = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:0 13px;height:46px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;';
+const label = 'font-size:12.5px;font-weight:800;color:var(--ag-label);display:block;';
 const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
 
 function Err({ msg }: { msg?: string }) {
@@ -129,7 +129,7 @@ export function CouponFormFields({
         <Err msg={errors.expires_at} />
       </label>
 
-      <label style={css('display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:700;color:#4B3840;')}>
+      <label style={css('display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ag-ink-2);')}>
         <input
           type="checkbox"
           checked={input.active ?? true}

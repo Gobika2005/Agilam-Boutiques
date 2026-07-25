@@ -160,7 +160,7 @@ export function StoryViewer({
         <div style={css('display:flex;gap:4px;')}>
           {story.slides.map((_, i) => (
             <span key={i} style={css('flex:1;height:2.5px;border-radius:2px;background:rgba(255,255,255,.3);overflow:hidden;')}>
-              <span style={css(`display:block;height:100%;background:#fff;width:${i < slide ? 100 : i === slide ? progress * 100 : 0}%;`)} />
+              <span style={css(`display:block;height:100%;background:var(--ag-surface);width:${i < slide ? 100 : i === slide ? progress * 100 : 0}%;`)} />
             </span>
           ))}
         </div>
@@ -208,7 +208,7 @@ export function StoryViewer({
               )}
             </span>
           </span>
-          <span style={css('flex:none;display:flex;align-items:center;gap:6px;height:42px;padding:0 16px;border-radius:14px;background:#fff;color:#B02454;font-weight:800;font-size:13.5px;')}>
+          <span style={css('flex:none;display:flex;align-items:center;gap:6px;height:42px;padding:0 16px;border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13.5px;')}>
             View
             <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_forward</span>
           </span>

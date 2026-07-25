@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { ProfileEditSheet } from '@/components/buyer/ProfileEditSheet';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { readOrders } from '@/lib/orderHistory';
@@ -126,16 +127,16 @@ export function Profile() {
 
   const renderRows = (title: string, rows: Row[]) => (
     <>
-      <div className="agx-eyebrow" style={css('font-size:9.5px;color:#8A7078;margin:20px 26px 8px;')}>{title}</div>
-      <div style={css('margin:0 20px;background:#fff;border-radius:20px;padding:6px;box-shadow:0 12px 30px -22px rgba(107,20,54,.55);')}>
+      <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);margin:20px 26px 8px;')}>{title}</div>
+      <div style={css('margin:0 20px;background:var(--ag-surface);border-radius:20px;padding:6px;box-shadow:0 12px 30px -22px rgba(107,20,54,.55);')}>
         {rows.map((r, i) => {
           const inner = (
             <>
-              <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+              <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{r.icon}</span>
               </span>
               <span style={css('flex:1;min-width:0;')}>
-                <span style={css('display:block;font-weight:800;font-size:14.5px;color:#241019;')}>{r.label}</span>
+                <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>{r.label}</span>
                 <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
               </span>
               <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
@@ -143,7 +144,7 @@ export function Profile() {
           );
           const rowCss = css(
             `width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;text-align:left;color:inherit;${
-              i < rows.length - 1 ? 'border-bottom:1px solid #F5E4EC;' : ''
+              i < rows.length - 1 ? 'border-bottom:1px solid var(--ag-border-soft);' : ''
             }`,
           );
           // Contact rows are real mail:/tel: links so the device opens the right
@@ -166,7 +167,7 @@ export function Profile() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <div style={css('max-width:720px;margin:0 auto;')}>
         {/* Identity header */}
         <div style={css('background:linear-gradient(150deg,#8E1C44,#B02454 55%,#D6336C);padding:26px 20px 40px;color:#fff;border-radius:0 0 28px 28px;position:relative;overflow:hidden;box-shadow:0 22px 44px -30px rgba(142,28,68,.9);')}>
@@ -191,16 +192,16 @@ export function Profile() {
         </div>
 
         {/* Live stats */}
-        <div style={css('margin:-24px 20px 0;background:#fff;border-radius:20px;padding:6px;display:flex;box-shadow:0 16px 36px -26px rgba(107,20,54,.6);position:relative;')}>
+        <div style={css('margin:-24px 20px 0;background:var(--ag-surface);border-radius:20px;padding:6px;display:flex;box-shadow:0 16px 36px -26px rgba(107,20,54,.6);position:relative;')}>
           {stats.map((s, i) => (
             <button
               key={s.label}
               onClick={s.go}
-              style={css(`flex:1;background:none;border:none;cursor:pointer;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;${i < stats.length - 1 ? 'border-right:1px solid #F4E6EC;' : ''}`)}
+              style={css(`flex:1;background:none;border:none;cursor:pointer;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;${i < stats.length - 1 ? 'border-right:1px solid var(--ag-border-soft);' : ''}`)}
             >
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>{s.icon}</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:#241019;line-height:1;")}>{s.value}</span>
-              <span style={css('font-size:11.5px;font-weight:700;color:#8A7078;')}>{s.label}</span>
+              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
+              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);')}>{s.label}</span>
             </button>
           ))}
         </div>
@@ -209,33 +210,34 @@ export function Profile() {
             refresh doesn't flash the signed-out prompt. */}
         {authLoading ? null : signedIn ? (
           <div style={css('margin:16px 20px 0;display:flex;align-items:center;gap:13px;padding:14px 15px;background:linear-gradient(135deg,#EAF7F0,#F1FBF5);border:1px solid #CDEBDB;border-radius:18px;')}>
-            <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#D6F0E1;display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;font-size:22px;")}>verified</span>
+            <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-good-bg);display:flex;align-items:center;justify-content:center;')}>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:22px;")}>verified</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14.5px;color:#1E7A4E;')}>Synced across devices</span>
               <span style={css('display:block;font-size:12px;color:#4E8C6E;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{accountEmail || 'Orders & profile backed up'}</span>
             </span>
-            <button onClick={() => void doSync()} disabled={syncing} style={css('flex:none;height:34px;padding:0 13px;border:1px solid #B9E3CD;background:#fff;color:#1E7A4E;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
+            <button onClick={() => void doSync()} disabled={syncing} style={css('flex:none;height:34px;padding:0 13px;border:1px solid #B9E3CD;background:var(--ag-surface);color:#1E7A4E;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{syncing ? 'sync' : 'refresh'}</span>{syncing ? 'Syncing' : 'Refresh'}
             </button>
           </div>
         ) : (
-          <button onClick={() => setAccountOpen(true)} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;background:#fff;border:1.5px dashed #E7B7CB;border-radius:18px;cursor:pointer;text-align:left;box-shadow:0 12px 30px -24px rgba(107,20,54,.55);')}>
-            <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+          <button onClick={() => setAccountOpen(true)} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-surface);border:1.5px dashed #E7B7CB;border-radius:18px;cursor:pointer;text-align:left;box-shadow:0 12px 30px -24px rgba(107,20,54,.55);')}>
+            <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>cloud_sync</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
-              <span style={css('display:block;font-weight:800;font-size:14.5px;color:#241019;')}>Sign in to sync</span>
+              <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>Sign in to sync</span>
               <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;')}>Google or email to back up orders &amp; details</span>
             </span>
-            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;flex:none;")}>chevron_right</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);flex:none;")}>chevron_right</span>
           </button>
         )}
 
         {/* Menu, grouped so the legal pages don't sit in the middle of the
             shopping shortcuts. */}
         {renderRows('Shopping', shoppingRows)}
+        <ThemeToggle />
         {renderRows('Support', supportRows)}
         {renderRows('Policies', legalRows)}
 
@@ -251,19 +253,19 @@ export function Profile() {
           <span style={css("font-family:'Material Symbols Outlined';opacity:.8;")}>chevron_right</span>
         </button>
 
-        <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid #F0D8E2;background:#fff;color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+        <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>
           {signedIn ? 'Log out' : 'Clear my details'}
         </button>
 
-        <button onClick={() => navigate('/admin/login')} style={css('margin:12px 20px 0;width:calc(100% - 40px);height:42px;border:none;background:none;color:#B79AA6;font-size:12.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
+        <button onClick={() => navigate('/admin/login')} style={css('margin:12px 20px 0;width:calc(100% - 40px);height:42px;border:none;background:none;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>shield_person</span>Admin login · internal use
         </button>
 
         {/* Build stamp — the first thing support asks for. Injected from
             package.json at build time, so it can't drift from what's deployed. */}
         <div style={css('margin:18px 20px 0;text-align:center;color:#C0A8B3;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#B79AA6;")}>{COMPANY.brand}</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-muted-soft);")}>{COMPANY.brand}</div>
           <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:5px;letter-spacing:.06em;")}>
             Version {APP_VERSION}
           </div>

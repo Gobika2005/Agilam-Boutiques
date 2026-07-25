@@ -31,22 +31,22 @@ const BANNERS: Record<
   { bg: string; border: string; fg: string; accent: string; icon: string; text: string; action: string; to: string }
 > = {
   draft: {
-    bg: '#FFF6E8', border: '#F0DCB4', fg: '#7A5C2A', accent: '#B9862F', icon: 'edit_note',
+    bg: 'var(--ag-gold-bg)', border: 'var(--ag-gold-border)', fg: 'var(--ag-gold-text)', accent: 'var(--ag-gold-text)', icon: 'edit_note',
     text: 'Your boutique setup is not finished — buyers cannot see you yet.',
     action: 'Finish setup', to: '/seller/onboarding',
   },
   pending: {
-    bg: '#EFF4FB', border: '#CFDDF0', fg: '#2F4C73', accent: '#3A6EA5', icon: 'hourglass_top',
+    bg: 'var(--ag-info-bg)', border: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)', accent: 'var(--ag-info-text)', icon: 'hourglass_top',
     text: 'Your boutique is under review. Products you add now go live as soon as you are approved.',
     action: 'View status', to: '/seller/verification',
   },
   changes_requested: {
-    bg: '#FFF6E8', border: '#F0DCB4', fg: '#7A5C2A', accent: '#B9862F', icon: 'feedback',
+    bg: 'var(--ag-gold-bg)', border: 'var(--ag-gold-border)', fg: 'var(--ag-gold-text)', accent: 'var(--ag-gold-text)', icon: 'feedback',
     text: 'Our team asked for a few corrections before your boutique can go live.',
     action: 'See what to fix', to: '/seller/verification',
   },
   rejected: {
-    bg: '#FFF3F5', border: '#F2C9D3', fg: '#8E2B3C', accent: '#D6455A', icon: 'cancel',
+    bg: 'var(--ag-bad-bg)', border: 'var(--ag-bad-bg)', fg: 'var(--ag-crimson)', accent: '#D6455A', icon: 'cancel',
     text: 'Your boutique was not approved, so it is not visible to buyers.',
     action: 'See the reason', to: '/seller/verification',
   },
@@ -61,9 +61,9 @@ function SellerHeaderActions() {
         onClick={() => navigate('/seller/search')}
         aria-label="Search"
         title="Search"
-        style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
+        style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:#B02454;")}>search</span>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>search</span>
       </button>
       <NotificationBell to="/seller/notifications" />
     </>

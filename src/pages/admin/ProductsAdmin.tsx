@@ -142,7 +142,7 @@ export function ProductsAdmin() {
     { key: 'price', header: 'PRICE', width: '1fr', render: (p) => <span style={css('font-size:13px;font-weight:700;')}>{fmtInr(p.price)}</span> },
     {
       key: 'stock', header: 'STOCK', width: '.9fr',
-      render: (p) => <span style={css(`font-size:13px;font-weight:700;color:${p.stock === 0 ? '#D6455A' : p.stock <= 5 ? '#C99A3F' : '#6B5560'};`)}>{p.stock}</span>,
+      render: (p) => <span style={css(`font-size:13px;font-weight:700;color:${p.stock === 0 ? '#D6455A' : p.stock <= 5 ? '#C99A3F' : 'var(--ag-label)'};`)}>{p.stock}</span>,
     },
     { key: 'status', header: 'STATUS', width: '1fr', render: (p) => <StatusPill status={p.deleted_at ? 'rejected' : p.status} label={p.deleted_at ? 'Deleted' : undefined} /> },
     {
@@ -153,7 +153,7 @@ export function ProductsAdmin() {
             <IconButton icon="restore_from_trash" tone="success" title="Restore" onClick={() => restore(p)} />
           ) : (
             <>
-              <select value={p.status} onChange={(e) => changeStatus(p, e.target.value as ProductStatus)} style={css(`height:34px;border:1.5px solid ${T.field};border-radius:10px;background:#FBF6F2;font-size:12px;font-weight:700;color:#6B5560;padding:0 6px;cursor:pointer;font-family:inherit;`)}>
+              <select value={p.status} onChange={(e) => changeStatus(p, e.target.value as ProductStatus)} style={css(`height:34px;border:1.5px solid ${T.field};border-radius:10px;background:var(--ag-bg);font-size:12px;font-weight:700;color:var(--ag-label);padding:0 6px;cursor:pointer;font-family:inherit;`)}>
                 {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <IconButton icon="edit" title="Edit" onClick={() => openEdit(p)} />
@@ -177,8 +177,8 @@ export function ProductsAdmin() {
       </div>
 
       <BulkBar count={selected.size}>
-        <button onClick={() => bulk('active')} style={bulkBtn('#218456')}>Approve</button>
-        <button onClick={() => bulk('hidden')} style={bulkBtn('#8A7078')}>Hide</button>
+        <button onClick={() => bulk('active')} style={bulkBtn('var(--ag-good-text)')}>Approve</button>
+        <button onClick={() => bulk('hidden')} style={bulkBtn('var(--ag-muted)')}>Hide</button>
         <button onClick={() => setConfirmDelete('bulk')} style={bulkBtn('#D6455A')}>Delete</button>
       </BulkBar>
 
@@ -228,7 +228,7 @@ export function ProductsAdmin() {
             onSubmit={(e) => { e.preventDefault(); void doUpdate(); }}
             style={css('display:flex;flex-direction:column;gap:14px;')}
           >
-            <div style={css(`display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px 14px;`)}>
+            <div style={css(`display:flex;align-items:center;gap:12px;background:var(--ag-surface);border-radius:14px;padding:12px 14px;`)}>
               {editProduct.image_url
                 ? <img src={editProduct.image_url} alt="" style={css('width:48px;height:48px;border-radius:12px;object-fit:cover;flex:none;')} />
                 : <Avatar name={editProduct.title} tone={editProduct.tone} />}
@@ -256,7 +256,7 @@ export function ProductsAdmin() {
                 {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </PField>
-            <div style={css(`font-size:12px;color:${T.muted};background:#FCE0EC;border-left:4px solid #B02454;padding:12px;border-radius:8px;line-height:1.5;`)}>
+            <div style={css(`font-size:12px;color:${T.muted};background:var(--ag-surface-2);border-left:4px solid #B02454;padding:12px;border-radius:8px;line-height:1.5;`)}>
               Photos, sizes and full description are managed by the boutique in the seller studio. Admin edits here cover pricing, stock, category and visibility.
             </div>
           </form>
@@ -266,12 +266,12 @@ export function ProductsAdmin() {
   );
 }
 
-const PROD_FIELD = 'width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
+const PROD_FIELD = 'width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
 
 function PField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>{label}</label>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>{label}</label>
       {children}
     </div>
   );

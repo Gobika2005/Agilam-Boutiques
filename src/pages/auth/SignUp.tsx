@@ -8,8 +8,8 @@ import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { ConsentCheckbox, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import { useToast } from '@/components/ui/Toast';
 
-const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
-const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
+const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
+const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
 
 export function SignUp() {
   const { role: roleParam } = useParams<{ role: string }>();
@@ -97,7 +97,7 @@ export function SignUp() {
         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </button>
 
-      <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
+      <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
         Have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/auth/signin/${role}`); }} style={css('font-weight:700;')}>Sign in</a>
       </div>
     </AuthModal>

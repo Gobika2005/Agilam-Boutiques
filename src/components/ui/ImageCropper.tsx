@@ -256,12 +256,12 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
       aria-label={preset.title}
       style={css('position:fixed;inset:0;z-index:120;background:rgba(24,8,15,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;')}
     >
-      <div style={css('width:100%;max-width:440px;background:#FBF6F2;border-radius:24px;padding:20px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7);max-height:100%;overflow:auto;')}>
+      <div style={css('width:100%;max-width:440px;background:var(--ag-bg);border-radius:24px;padding:20px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7);max-height:100%;overflow:auto;')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{preset.title}</div>
-        <div style={css('color:#8A7078;font-size:12.5px;line-height:1.55;margin-top:4px;')}>{preset.hint}</div>
+        <div style={css('color:var(--ag-muted);font-size:12.5px;line-height:1.55;margin-top:4px;')}>{preset.hint}</div>
 
         {failed ? (
-          <div style={css('margin-top:16px;background:#FBE9EC;border:1px solid #F2C9D2;border-radius:14px;padding:14px;font-size:13px;color:#7A4652;line-height:1.55;')}>
+          <div style={css('margin-top:16px;background:var(--ag-bad-bg);border:1px solid #F2C9D2;border-radius:14px;padding:14px;font-size:13px;color:#7A4652;line-height:1.55;')}>
             We couldn’t open that file. Please choose a JPG or PNG photo.
           </div>
         ) : (
@@ -288,7 +288,7 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
             </div>
 
             <div style={css('display:flex;align-items:center;gap:12px;margin-top:14px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:19px;")}>image</span>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>image</span>
               <input
                 type="range"
                 min={1}
@@ -299,16 +299,16 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
                 onChange={(e) => setZoom(Number(e.target.value))}
                 style={css('flex:1;accent-color:#D6336C;height:24px;')}
               />
-              <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:23px;")}>image</span>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>image</span>
             </div>
-            <div style={css('text-align:center;color:#B79AA6;font-size:11.5px;font-weight:700;margin-top:2px;')}>
+            <div style={css('text-align:center;color:var(--ag-muted-soft);font-size:11.5px;font-weight:700;margin-top:2px;')}>
               Drag to reposition · pinch or slide to zoom
             </div>
           </>
         )}
 
         <div style={css('display:flex;gap:10px;margin-top:16px;')}>
-          <button type="button" onClick={() => onDone(null)} style={css(`${btn}border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;`)}>
+          <button type="button" onClick={() => onDone(null)} style={css(`${btn}border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);`)}>
             Cancel
           </button>
           {!failed && (

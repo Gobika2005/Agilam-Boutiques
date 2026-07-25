@@ -77,11 +77,11 @@ export function Orders() {
   };
 
   return (
-    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</div>
         {all.length > 0 && (
-          <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
+          <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export
           </button>
         )}
@@ -89,17 +89,17 @@ export function Orders() {
 
       {/* Search */}
       <div style={css('padding:2px 20px 10px;')}>
-        <div style={css('display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #F0E2E9;border-radius:14px;padding:0 14px;height:46px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;")}>search</span>
+        <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search order ID, customer or product"
-            style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:#2A1A20;')}
+            style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ag-ink);')}
           />
           {search && (
             <button onClick={() => setSearch('')} aria-label="Clear search" style={css('border:none;background:none;cursor:pointer;display:flex;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:19px;")}>close</span>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>close</span>
             </button>
           )}
         </div>
@@ -108,10 +108,10 @@ export function Orders() {
       {outstanding > 0 && (
         <div
           onClick={() => setTab('To collect')}
-          style={css('margin:2px 20px 10px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
+          style={css('margin:2px 20px 10px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
         >
           <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:21px;")}>payments</span>
-          <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:#7A5C2A;line-height:1.5;')}>
+          <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
             <strong>{fmt(outstanding)}</strong> still to collect in cash across your open COD orders.
           </span>
           <span style={css("font-family:'Material Symbols Outlined';color:#C9AE7F;")}>chevron_right</span>
@@ -123,7 +123,7 @@ export function Orders() {
         {TABS.map((t) => {
           const on = tab === t;
           return (
-            <div key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;background:${on ? '#B02454' : '#fff'};color:${on ? '#fff' : '#6B5560'};cursor:pointer;`)}>
+            <div key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};cursor:pointer;`)}>
               {t}
             </div>
           );
@@ -135,7 +135,7 @@ export function Orders() {
         {PERIODS.map((p) => {
           const on = period === p;
           return (
-            <div key={p} onClick={() => setPeriod(p)} style={css(`flex:none;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid ${on ? '#B02454' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#8A7078'};cursor:pointer;`)}>
+            <div key={p} onClick={() => setPeriod(p)} style={css(`flex:none;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};cursor:pointer;`)}>
               {on && <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>event</span>}
               {p}
             </div>
@@ -145,23 +145,23 @@ export function Orders() {
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
         {!loading && filtered.length === 0 && (
-          <div style={css('color:#8A7078;font-size:14px;padding:8px 2px;')}>
+          <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>
             {q || period !== 'All time' || tab !== 'All' ? 'No orders match these filters.' : 'No orders yet.'}
           </div>
         )}
         {filtered.map(({ view: o }) => {
           const st = statusStyle(o.status);
           return (
-            <div key={o.id} style={css('background:#fff;border-radius:16px;padding:13px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+            <div key={o.id} style={css('background:var(--ag-surface);border-radius:16px;padding:13px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
               <div onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('cursor:pointer;')}>
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
                   <span style={css('display:flex;align-items:center;gap:7px;')}>
-                    <span style={css('font-weight:800;font-size:13px;color:#8A7078;')}>{o.number}</span>
+                    <span style={css('font-weight:800;font-size:13px;color:var(--ag-muted);')}>{o.number}</span>
                     {o.channel === 'offline' && (
-                      <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:#EAE3F5;color:#7B5FB0;')}>Offline</span>
+                      <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-purple-bg);color:#7B5FB0;')}>Offline</span>
                     )}
                     {o.channel === 'online' && o.paymentMethod && (
-                      <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.collectAmount > 0 ? '#FBF0DA' : '#E5F3EC'};color:${o.collectAmount > 0 ? '#B0862B' : '#2FA36B'};`)}>
+                      <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.collectAmount > 0 ? 'var(--ag-warn-bg)' : 'var(--ag-good-bg)'};color:${o.collectAmount > 0 ? '#B0862B' : 'var(--ag-good)'};`)}>
                         {!o.isCod ? 'Paid' : o.collectAmount > 0 ? `COD · collect ${fmt(o.collectAmount)}` : 'COD · collected'}
                       </span>
                     )}
@@ -174,15 +174,15 @@ export function Orders() {
                   </div>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
-                    <div style={css('font-size:12px;color:#8A7078;')}>{o.customer} · Qty {o.qty} · {o.date}</div>
+                    <div style={css('font-size:12px;color:var(--ag-muted);')}>{o.customer} · Qty {o.qty} · {o.date}</div>
                   </div>
-                  <div style={css('font-weight:800;color:#B02454;font-size:15px;')}>{fmt(o.amount)}</div>
+                  <div style={css('font-weight:800;color:var(--ag-crimson);font-size:15px;')}>{fmt(o.amount)}</div>
                 </div>
               </div>
-              <div style={css('display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #F5E4EC;')}>
+              <div style={css('display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);')}>
                 <button
                   onClick={() => printInvoice(o, boutique?.name ?? 'Your boutique')}
-                  style={css('display:flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;')}
+                  style={css('display:flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;')}
                 >
                   <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>print</span>Invoice
                 </button>

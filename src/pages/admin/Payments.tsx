@@ -82,11 +82,11 @@ export function Payments() {
     },
     {
       key: 'cod', header: 'COD OWED', width: '1fr', align: 'right',
-      render: (r) => <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? '#C0392B' : T.muted};`)}>{r.codOwed > 0 ? '−' + fmtInr(r.codOwed) : '—'}</span>,
+      render: (r) => <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? 'var(--ag-bad-text)' : T.muted};`)}>{r.codOwed > 0 ? '−' + fmtInr(r.codOwed) : '—'}</span>,
     },
     {
       key: 'net', header: 'NET PAYABLE', width: '1fr', align: 'right',
-      render: (r) => <span style={css(`font-size:14px;font-weight:800;color:${r.net < 0 ? '#C0392B' : '#218456'};`)}>{money(r.net)}</span>,
+      render: (r) => <span style={css(`font-size:14px;font-weight:800;color:${r.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(r.net)}</span>,
     },
     {
       key: 'action', header: '', width: '120px', align: 'right',
@@ -104,9 +104,9 @@ export function Payments() {
     <div style={css('display:flex;flex-direction:column;gap:20px;')}>
       {/* Summary tiles */}
       <div className="agx-adm-stats" style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:16px;')}>
-        <StatCard label="Awaiting payout" value={fmtInr(totalPayable)} icon="account_balance_wallet" tint="#E5F3EC" ic="#218456" sub={`${rows.filter((r) => r.net > 0).length} sellers`} />
-        <StatCard label="Owed to platform (COD)" value={fmtInr(totalOwedToUs)} icon="south_west" tint="#FBE3E3" ic="#C0392B" sub={`${rows.filter((r) => r.net < 0).length} sellers`} />
-        <StatCard label={`Commission (${RATE_PCT}% incl. gateway + tax)`} value={fmtInr(unsettledCommission)} icon="percent" tint="#FBF0DA" ic="#B8860B" sub="unsettled" />
+        <StatCard label="Awaiting payout" value={fmtInr(totalPayable)} icon="account_balance_wallet" tint="var(--ag-good-bg)" ic="var(--ag-good-text)" sub={`${rows.filter((r) => r.net > 0).length} sellers`} />
+        <StatCard label="Owed to platform (COD)" value={fmtInr(totalOwedToUs)} icon="south_west" tint="var(--ag-bad-bg)" ic="var(--ag-bad-text)" sub={`${rows.filter((r) => r.net < 0).length} sellers`} />
+        <StatCard label={`Commission (${RATE_PCT}% incl. gateway + tax)`} value={fmtInr(unsettledCommission)} icon="percent" tint="var(--ag-warn-bg)" ic="var(--ag-warn-text)" sub="unsettled" />
       </div>
 
       {/* Awaiting settlement */}
@@ -150,7 +150,7 @@ export function Payments() {
                   </div>
                 </div>
                 <StatusPill status={pill.status} label={pill.label} />
-                <div style={css(`font-size:14px;font-weight:800;min-width:90px;text-align:right;color:${h.amount < 0 ? '#C0392B' : '#218456'};`)}>{money(h.amount)}</div>
+                <div style={css(`font-size:14px;font-weight:800;min-width:90px;text-align:right;color:${h.amount < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(h.amount)}</div>
               </div>
             );
           })}
@@ -170,22 +170,22 @@ export function Payments() {
       >
         {selected && (
           <div style={css('display:flex;flex-direction:column;gap:20px;')}>
-            <div style={css(`background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);`)}>
+            <div style={css(`background:var(--ag-surface);border-radius:16px;padding:18px;text-align:center;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);`)}>
               <div style={css(`font-size:12px;font-weight:700;color:${T.muted};`)}>NET PAYABLE</div>
-              <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:34px;margin-top:4px;color:${selected.net < 0 ? '#C0392B' : '#218456'};`)}>{money(selected.net)}</div>
-              {selected.net < 0 && <div style={css('font-size:12px;color:#C0392B;font-weight:600;margin-top:4px;')}>Seller owes the platform</div>}
+              <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:34px;margin-top:4px;color:${selected.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(selected.net)}</div>
+              {selected.net < 0 && <div style={css('font-size:12px;color:var(--ag-bad-text);font-weight:600;margin-top:4px;')}>Seller owes the platform</div>}
             </div>
 
-            <div style={css('background:#fff;border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+            <div style={css('background:var(--ag-surface);border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
               <Field label="Settleable orders" value={selected.orders} />
               <Field label="Online sales" value={fmtInr(selected.prepaidGoods)} />
               <Field label={`Commission (${RATE_PCT}%)`} value={`− ${fmtInr(selected.prepaidCommission)}`} />
-              <Field label="Online payout" value={<span style={css('color:#218456;')}>{fmtInr(selected.prepaidPayout)}</span>} />
+              <Field label="Online payout" value={<span style={css('color:var(--ag-good-text);')}>{fmtInr(selected.prepaidPayout)}</span>} />
               {selected.codGoods > 0 && <>
                 <Field label="COD cash held by seller" value={fmtInr(selected.codGoods)} />
                 <Field label={`Commission owed (${RATE_PCT}%)`} value={`− ${fmtInr(selected.codCommission)}`} />
                 <Field label="Delivery / COD fees owed" value={`− ${fmtInr(selected.codFees)}`} />
-                <Field label="COD adjustment" value={<span style={css('color:#C0392B;')}>− {fmtInr(selected.codOwed)}</span>} />
+                <Field label="COD adjustment" value={<span style={css('color:var(--ag-bad-text);')}>− {fmtInr(selected.codOwed)}</span>} />
               </>}
             </div>
 
@@ -202,7 +202,7 @@ export function Payments() {
                   return <StatusPill status={meta.status} label={meta.label} />;
                 })()}
               </div>
-              <div style={css('background:#fff;border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+              <div style={css('background:var(--ag-surface);border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
                 {!bank && <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>Loading payout details…</div>}
                 {bank && !bank.bank_account_number && !bank.upi_id && (
                   <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>The seller has not added payout details yet.</div>
@@ -220,7 +220,7 @@ export function Payments() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Bank reference / UTR number"
-                style={css(`width:100%;height:44px;border:1.5px solid ${T.field};border-radius:12px;padding:0 14px;font-size:13.5px;font-family:inherit;background:#fff;box-sizing:border-box;`)}
+                style={css(`width:100%;height:44px;border:1.5px solid ${T.field};border-radius:12px;padding:0 14px;font-size:13.5px;font-family:inherit;background:var(--ag-surface);box-sizing:border-box;`)}
               />
             </div>
           </div>

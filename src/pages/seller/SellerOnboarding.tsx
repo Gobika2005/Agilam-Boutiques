@@ -511,7 +511,7 @@ export function SellerOnboarding() {
   const isResubmission = boutique?.status === 'changes_requested';
 
   return (
-    <div ref={topRef} style={css('min-height:100vh;background:#FBF6F2;padding-bottom:40px;')}>
+    <div ref={topRef} style={css('min-height:100vh;background:var(--ag-bg);padding-bottom:40px;')}>
       {cropper}
       {/* Header ------------------------------------------------------------ */}
       <div style={css('background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;position:relative;overflow:hidden;')}>
@@ -559,20 +559,20 @@ export function SellerOnboarding() {
       {/* Step body --------------------------------------------------------- */}
       <div style={css('max-width:900px;margin:0 auto;padding:22px clamp(16px,4vw,32px) 0;')}>
         {isResubmission && step === 1 && (
-          <div style={css('background:#FFF6E8;border:1px solid #F0DCB4;border-radius:16px;padding:14px 16px;margin-bottom:16px;display:flex;gap:11px;')}>
+          <div style={css('background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:14px 16px;margin-bottom:16px;display:flex;gap:11px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#B9862F;")}>edit_note</span>
-            <div style={css('font-size:13px;color:#7A5C2A;font-weight:600;line-height:1.5;')}>
+            <div style={css('font-size:13px;color:var(--ag-gold-text);font-weight:600;line-height:1.5;')}>
               Our team asked for a few changes. Update the details below and submit again — everything you already entered is filled in.
             </div>
           </div>
         )}
 
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:16px;')}>
-          <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:23px;")}>{active.icon}</span>
           </span>
           <div>
-            <div className="agx-eyebrow" style={css('font-size:9.5px;color:#B02454;')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
+            <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
             <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;')}>{active.sub}</div>
           </div>
@@ -595,26 +595,26 @@ export function SellerOnboarding() {
             <ConsentCheckbox checked={accountConsent} onChange={setAccountConsent} />
 
             <div style={css('display:flex;align-items:center;gap:10px;')}>
-              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
               <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>OR</span>
-              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
             </div>
             <button
               type="button"
               onClick={continueWithGoogle}
-              style={css('height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;color:#2A1A20;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;')}
+              style={css('height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;color:var(--ag-ink);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Continue with Google
             </button>
 
             <ConsentNotice />
 
-            <div style={css('text-align:center;font-size:13px;color:#8A7078;font-weight:600;')}>
+            <div style={css('text-align:center;font-size:13px;color:var(--ag-muted);font-weight:600;')}>
               Already have a boutique account?{' '}
               <button
                 type="button"
                 onClick={() => navigate('/auth/signin/seller')}
-                style={css('border:none;background:none;color:#B02454;font-weight:800;font-size:13px;cursor:pointer;padding:0;font-family:inherit;')}
+                style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:pointer;padding:0;font-family:inherit;')}
               >
                 Sign in
               </button>
@@ -625,32 +625,32 @@ export function SellerOnboarding() {
         {step === 1 && (
           <SectionCard>
             <div>
-              <div style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>Boutique logo & cover *</div>
+              <div style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>Boutique logo & cover *</div>
               <div style={css('display:flex;gap:12px;margin-top:8px;align-items:stretch;')}>
                 <div
                   onClick={() => logoInput.current?.click()}
-                  style={css(`width:104px;height:104px;flex:none;border-radius:18px;border:2px dashed ${errors.logoUrl ? '#E7A7B4' : '#E6BCCF'};background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
+                  style={css(`width:104px;height:104px;flex:none;border-radius:18px;border:2px dashed ${errors.logoUrl ? '#E7A7B4' : '#E6BCCF'};background:var(--ag-surface);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
                 >
                   {form.logoUrl ? (
                     <img src={form.logoUrl} alt="Boutique logo" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
                       <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'logo' ? 'progress_activity' : 'add_a_photo'}</span>
-                      <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>Logo *</span>
+                      <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Logo *</span>
                     </>
                   )}
                   <input ref={logoInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('logo', e.target.files?.[0]); e.target.value = ''; }} />
                 </div>
                 <div
                   onClick={() => coverInput.current?.click()}
-                  style={css('flex:1;min-width:0;height:104px;border-radius:18px;border:2px dashed #E6BCCF;background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;')}
+                  style={css('flex:1;min-width:0;height:104px;border-radius:18px;border:2px dashed #E6BCCF;background:var(--ag-surface);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;')}
                 >
                   {form.coverUrl ? (
                     <img src={form.coverUrl} alt="Boutique cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
                       <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'cover' ? 'progress_activity' : 'wallpaper'}</span>
-                      <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>Cover image</span>
+                      <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Cover image</span>
                     </>
                   )}
                   <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('cover', e.target.files?.[0]); e.target.value = ''; }} />
@@ -746,9 +746,9 @@ export function SellerOnboarding() {
           <SectionCard subtitle="Agilam sends your order payouts here. These details stay private — buyers and other sellers can never see them.">
             <Field label="UPI ID" value={form.upiId} onChange={(v) => set('upiId', v)} placeholder="boutique@okaxis" error={errors.upiId} hint="Fastest way to get paid. Add this, or your bank account below." />
             <div style={css('display:flex;align-items:center;gap:10px;')}>
-              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
               <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>AND / OR BANK ACCOUNT</span>
-              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
             </div>
             <Field label="Account holder name" value={form.bankAccountName} onChange={(v) => set('bankAccountName', v)} placeholder="Lakshmi Priya" error={errors.bankAccountName} />
             <Field label="Bank account number" value={form.bankAccountNumber} onChange={(v) => set('bankAccountNumber', v.replace(/\D/g, '').slice(0, 18))} placeholder="123456789012" inputMode="numeric" error={errors.bankAccountNumber} />
@@ -759,7 +759,7 @@ export function SellerOnboarding() {
         {step === 7 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} editMode={editMode} />}
 
         {step === 7 && !editMode && (
-          <div style={css('margin-top:16px;background:#fff;border:1px solid #F2E4EA;border-radius:16px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
+          <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
             <ConsentCheckbox checked={sellerConsent} onChange={setSellerConsent}>
               I have read and agree to the Seller Agreement, <PolicyLinks />, including the {POLICY_TERMS.commissionPct}% platform commission and payout terms.
             </ConsentCheckbox>
@@ -776,7 +776,7 @@ export function SellerOnboarding() {
               // instead leaves the wizard back to the profile hub.
               onClick={() => (step === 0 ? navigate('/buyer/home') : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
               disabled={busy}
-              style={css('height:54px;padding:0 22px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
+              style={css('height:54px;padding:0 22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
             >
               {editMode && step === 1 ? 'Cancel' : 'Back'}
             </button>
@@ -850,7 +850,7 @@ function ReviewStep({
   return (
     <div style={css('display:flex;flex-direction:column;gap:14px;')}>
       {incomplete.length > 0 && (
-        <div style={css('background:#FFF3F5;border:1px solid #F2C9D3;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
+        <div style={css('background:var(--ag-surface-2);border:1px solid #F2C9D3;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#D6455A;")}>error</span>
           <div style={css('font-size:13px;color:#8E2B3C;font-weight:600;line-height:1.5;')}>
             {incomplete.length} step{incomplete.length > 1 ? 's are' : ' is'} still incomplete:{' '}
@@ -860,13 +860,13 @@ function ReviewStep({
       )}
 
       {groups.map((g) => (
-        <div key={g.step} style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
+        <div key={g.step} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;")}>{g.title}</div>
             <button
               type="button"
               onClick={() => onEdit(g.step)}
-              style={css('border:none;background:none;color:#B02454;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
+              style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
             </button>
@@ -875,15 +875,15 @@ function ReviewStep({
             {g.rows.map(([k, v]) => (
               <div key={k} style={css('display:flex;gap:12px;align-items:baseline;')}>
                 <span style={css('flex:none;width:130px;font-size:12px;font-weight:700;color:#A98D99;')}>{k}</span>
-                <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:600;color:#2A1A20;word-break:break-word;')}>{v}</span>
+                <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ag-ink);word-break:break-word;')}>{v}</span>
               </div>
             ))}
           </div>
         </div>
       ))}
 
-      <div style={css('background:#F3F9F5;border:1px solid #CFE6D9;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>verified_user</span>
+      <div style={css('background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
+        <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
         <div style={css('font-size:13px;color:#2C6249;font-weight:600;line-height:1.5;')}>
           {editMode
             ? 'Edit any section above, then Save changes. Your boutique stays live and your listings are unaffected — no re-approval needed.'

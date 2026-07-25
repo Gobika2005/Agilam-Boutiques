@@ -20,7 +20,7 @@ const PRIVACY_HREF = '/buyer/policy/privacy-policy';
 
 /** The two linked policy names, shared by both variants. Exported so callers
  * with bespoke wording (e.g. a seller agreement) reuse the same link targets. */
-export function PolicyLinks({ color = '#B02454' }: { color?: string }) {
+export function PolicyLinks({ color = 'var(--ag-crimson)' }: { color?: string }) {
   const link = css(`font-weight:800;color:${color};text-decoration:underline;`);
   return (
     <>
@@ -42,7 +42,7 @@ export function ConsentCheckbox({
   children?: React.ReactNode;
 }) {
   return (
-    <label style={css('display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12.5px;line-height:1.55;color:#6B5560;font-weight:600;')}>
+    <label style={css('display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12.5px;line-height:1.55;color:var(--ag-label);font-weight:600;')}>
       <input
         type="checkbox"
         checked={checked}
