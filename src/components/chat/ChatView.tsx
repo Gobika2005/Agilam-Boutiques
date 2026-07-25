@@ -156,7 +156,7 @@ export function ChatView({
     <div className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
-        <div style={css('flex:none;background:rgba(255,255,255,.82);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px rgba(107,20,54,.6);')}>
+        <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
           </button>
@@ -277,7 +277,7 @@ export function ChatView({
             ))}
           </div>
         )}
-        <div style={css('display:flex;gap:8px;align-items:flex-end;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
+        <div style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-frost-strong);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 22px 44px -22px var(--ag-shadow);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}
             disabled={!live}

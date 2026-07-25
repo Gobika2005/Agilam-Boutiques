@@ -86,6 +86,21 @@ a:hover { color: #B02454; }
 .agx-scroll { scrollbar-width: none; }
 input, textarea, select, button { font-family: inherit; }
 input:focus, textarea:focus { outline: none; }
+/* Browsers paint autofilled fields with their own light background (Chrome's
+   pale blue), which overrides our inline surface colour and looks broken in
+   dark mode. Force the field back to the theme surface + ink in both themes.
+   The 9999s transition is the standard trick to defer the UA's repaint. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--ag-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--ag-surface) inset;
+  box-shadow: 0 0 0 1000px var(--ag-surface) inset;
+  caret-color: var(--ag-ink);
+  transition: background-color 9999s ease-in-out 0s;
+}
 @keyframes agx-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 @keyframes agx-sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes agx-fade { from { opacity: 0; } to { opacity: 1; } }

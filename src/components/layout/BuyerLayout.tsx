@@ -1,6 +1,7 @@
 import { AppShell, type TabDef } from './AppShell';
 import { LoginPrompt } from '@/components/buyer/LoginPrompt';
 import { FloatingBag } from '@/components/buyer/FloatingBag';
+import { ProfileMenu } from '@/components/buyer/ProfileMenu';
 
 /**
  * Cart is deliberately not a tab. It moved to the floating bag (see
@@ -19,7 +20,13 @@ const tabs: TabDef[] = [
 export function BuyerLayout() {
   return (
     <>
-      <AppShell tabs={tabs} profileTo="/buyer/profile" homeTo="/buyer/home" searchable />
+      <AppShell
+        tabs={tabs}
+        profileTo="/buyer/profile"
+        homeTo="/buyer/home"
+        searchable
+        renderProfileMenu={(close) => <ProfileMenu close={close} />}
+      />
       <FloatingBag />
       <LoginPrompt />
     </>

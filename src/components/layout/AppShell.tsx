@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
@@ -41,22 +41,25 @@ export type TabDef = {
 
 function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: () => void }) {
   const hasBadge = !!tab.badge;
+  // Flat dock item: no pill, no lift — the active tab simply tints its icon and
+  // label in the brand crimson while the rest stay muted.
+  const tint = active ? 'var(--ag-crimson)' : '#9A8189';
   return (
     <button
       onClick={onClick}
       style={css(
-        `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:68px;border:1px solid ${active ? 'rgba(255,255,255,.28)' : 'transparent'};cursor:pointer;padding:10px 16px;border-radius:20px;font-family:inherit;white-space:nowrap;background:${active ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'transparent'};color:${active ? '#fff' : '#9A8189'};box-shadow:${active ? '0 1px 0 rgba(255,255,255,.35) inset,0 12px 24px -10px rgba(176,36,84,.9)' : 'none'};transform:${active ? 'translateY(-2px)' : 'none'};transition:transform .28s cubic-bezier(.2,.7,.2,1),background .28s ease,color .28s ease,box-shadow .28s ease;`,
+        `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:68px;border:none;cursor:pointer;padding:10px 16px;border-radius:20px;font-family:inherit;white-space:nowrap;background:transparent;color:${tint};transition:color .28s ease;`,
       )}
     >
       <span style={css('position:relative;display:inline-flex;')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>{tab.icon}</span>
+        <span style={css(`font-family:'Material Symbols Outlined';font-size:23px;font-variation-settings:'FILL' ${active ? 1 : 0};`)}>{tab.icon}</span>
         {hasBadge && (
           <span style={css('position:absolute;top:-6px;right:-10px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D6336C;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;')}>
             {tab.badge}
           </span>
         )}
       </span>
-      <span style={css('font-size:11px;font-weight:700;')}>{tab.label}</span>
+      <span style={css(`font-size:11px;font-weight:${active ? 800 : 700};`)}>{tab.label}</span>
     </button>
   );
 }
@@ -102,6 +105,10 @@ export function AppShell({
   /** Optional AppBar element (the seller notification bell) shown before the
    *  profile avatar. Kept off the buyer shell. */
   headerAction,
+  /** When provided, tapping the header avatar opens this as a quick-glance
+   *  popup (identity + the most-needed shortcuts) instead of jumping straight to
+   *  the full profile page. `close` dismisses the popup. */
+  renderProfileMenu,
 }: {
   tabs: TabDef[];
   profileTo: string;
@@ -109,14 +116,20 @@ export function AppShell({
   searchable?: boolean;
   banner?: ReactNode;
   headerAction?: ReactNode;
+  renderProfileMenu?: (close: () => void) => ReactNode;
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { toast, sellModal, guest } = useShop();
   const { profile, session } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   // Resolve a display name for the avatar initials from the signed-in account,
   // so a signed-in user always gets initials instead of the fallback icon.
   const initials = initialsFrom(resolveDisplayName(profile, session, guest.name));
+
+  // The avatar opens the quick popup when a menu is supplied; otherwise it is a
+  // plain shortcut to the full profile screen.
+  const onProfileTap = renderProfileMenu ? () => setMenuOpen((o) => !o) : () => navigate(profileTo);
 
   return (
     <div style={css('min-height:100vh;background:var(--ag-bg);')}>
@@ -146,16 +159,33 @@ export function AppShell({
 
             {headerAction}
 
-            <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-desktop" />
+            <ProfileAvatar initials={initials} onClick={onProfileTap} className="agx-only-desktop" />
 
             {/* Below 960px the header is a single row: wordmark, search icon,
                 profile. A permanently-open search field cost a whole second row
                 of chrome on every screen — it opens as a sheet on tap instead. */}
             {searchable && <GlobalSearch className="agx-only-mobile" variant="icon" />}
 
-            <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-mobile" />
+            <ProfileAvatar initials={initials} onClick={onProfileTap} className="agx-only-mobile" />
           </div>
         </header>
+
+        {/* Quick profile popup — anchored under the header on the same (right)
+            side as both the desktop and mobile avatars, so one fixed position
+            serves either breakpoint. The backdrop closes it on an outside tap. */}
+        {menuOpen && renderProfileMenu && (
+          <>
+            <div
+              onClick={() => setMenuOpen(false)}
+              style={css('position:fixed;inset:0;z-index:60;background:transparent;')}
+            />
+            <div
+              style={css('position:fixed;top:70px;right:12px;left:auto;z-index:61;width:min(296px,calc(100vw - 24px));background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:18px;box-shadow:0 26px 60px -22px var(--ag-shadow),0 2px 0 rgba(255,255,255,.15) inset;overflow:hidden;animation:agx-sheet .2s ease;')}
+            >
+              {renderProfileMenu(() => setMenuOpen(false))}
+            </div>
+          </>
+        )}
 
         <main className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
           {banner}

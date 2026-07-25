@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell, type TabDef } from './AppShell';
 import { NotificationBell } from './NotificationBell';
+import { ProfileMenu } from '@/components/seller/ProfileMenu';
 import { css } from '@/lib/css';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import type { BoutiqueStatus } from '@/data/types';
@@ -105,6 +106,7 @@ export function SellerLayout() {
       homeTo="/seller/dashboard"
       banner={<VerificationBanner />}
       headerAction={<SellerHeaderActions />}
+      renderProfileMenu={(close) => <ProfileMenu close={close} />}
     />
   );
 }

@@ -275,15 +275,26 @@ export function FeedPostCard({
           </span>
         </button>
 
-        {/* A shop the buyer already follows needs nothing here — the space stays
-            quiet. One they don't gets the only thing worth offering. */}
-        {boutique && !following && (
-          <button
-            onClick={onFollow}
-            style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:var(--ag-surface);color:var(--ag-crimson);font-size:12.5px;font-weight:800;cursor:pointer;')}
-          >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
-          </button>
+        {/* Follow lives top-right: a shop the buyer follows shows a "Following"
+            tick, one they don't shows the Follow button. Either way it toggles. */}
+        {boutique && (
+          following ? (
+            <button
+              onClick={onFollow}
+              aria-label={`Following ${boutique.name}`}
+              style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 13px;border:1.5px solid var(--ag-border);border-radius:999px;background:var(--ag-surface-2);color:var(--ag-ink-2);font-size:12.5px;font-weight:800;cursor:pointer;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-crimson);font-variation-settings:'FILL' 1;")}>check_circle</span>Following
+            </button>
+          ) : (
+            <button
+              onClick={onFollow}
+              aria-label={`Follow ${boutique.name}`}
+              style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:var(--ag-surface);color:var(--ag-crimson);font-size:12.5px;font-weight:800;cursor:pointer;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
+            </button>
+          )
         )}
       </div>
 
@@ -350,8 +361,14 @@ export function FeedPostCard({
         )}
       </div>
 
-      {/* ── Like + share ── */}
+      {/* ── Views + like + share ── */}
       <div style={css('display:flex;align-items:center;gap:14px;padding:11px 16px 4px;')}>
+        {/* How many have seen this piece — sits first, ahead of the like. */}
+        <span style={css('display:flex;align-items:center;gap:7px;padding:6px 2px;color:var(--ag-ink-2);')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>visibility</span>
+          <span style={css('font-size:13.5px;font-weight:800;')}>{compact(product.views_count ?? 0)}</span>
+        </span>
+
         <button
           onClick={onToggleLike}
           aria-label={liked ? 'Unlike' : 'Like this piece'}
@@ -383,76 +400,83 @@ export function FeedPostCard({
         </button>
       </div>
 
-      {/* ── The piece ── */}
-      <div style={css('padding:4px 16px 0;')}>
-        <button onClick={openProduct} style={css('border:none;background:none;padding:0;cursor:pointer;text-align:left;width:100%;')}>
-          <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.2;color:var(--ag-ink);")}>
-            {product.title}
+      {/* ── The piece ──
+          Title on one line with the price to the right, then the one-line
+          description, then a bottom row pairing the rating — shown as a solid
+          badge rather than a bare star — with the buying action. Views live up
+          in the action row, ahead of the like. */}
+      <div style={css('padding:6px 16px 16px;')}>
+        {/* Title (single line) + price */}
+        <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
+          <button onClick={openProduct} style={css('flex:1;min-width:0;border:none;background:none;padding:0;cursor:pointer;text-align:left;')}>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;line-height:1.25;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>
+              {product.title}
+            </span>
+          </button>
+          <span style={css('flex:none;display:flex;align-items:baseline;gap:6px;')}>
+            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:21px;line-height:1;")}>{fmt(price)}</span>
+            {hasMrp && <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;')}>{fmt(mrp as number)}</span>}
           </span>
-        </button>
-
-        <div style={css('display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:7px;')}>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:24px;")}>{fmt(price)}</span>
-          {hasMrp && <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:14px;font-weight:700;')}>{fmt(mrp as number)}</span>}
-          <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--ag-ink-2);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>
-            {product.rating}
-          </span>
-          {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:#C99A3F;')}>Only {product.stock} left</span>}
         </div>
 
-        {product.description && (
-          <div style={css('font-size:13.5px;line-height:1.55;color:var(--ag-ink-2);margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>
-            {product.description}
-          </div>
-        )}
-      </div>
+        {/* Description (single line) */}
+        <div style={css('font-size:13px;line-height:1.4;color:var(--ag-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:7px;')}>
+          {product.description || ' '}
+        </div>
 
-      {/* ── Buy, without leaving the feed ──
-          One action. Once the piece is in the bag it becomes a stepper, so a
-          second tap adjusts the count instead of silently re-adding. */}
-      <div style={css('padding:14px 16px 16px;')}>
-        {soldOut ? (
-          <button
-            onClick={openProduct}
-            style={css('width:100%;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}
-          >
-            View details
-          </button>
-        ) : bagQty === 0 ? (
-          <button
-            onClick={onAddToBag}
-            style={css('width:100%;height:52px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}
-          >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to bag
-          </button>
-        ) : (
-          <div style={css('height:52px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-            <button
-              onClick={() => cartQty(product.id, -1)}
-              aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
-              style={css('width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
-            </button>
-            <button
-              onClick={() => navigate('/buyer/cart')}
-              style={css('flex:1;min-width:0;height:100%;padding:0;border:none;background:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;')}
-            >
-              <span style={css('font-weight:800;font-size:15px;')}>
-                {bagQty} in bag{bagLine?.size && bagLine.size !== 'Free' ? ` · ${bagLine.size}` : ''}
-              </span>
-              <span className="agx-eyebrow" style={css('font-size:8px;color:rgba(255,255,255,.8);')}>View bag</span>
-            </button>
-            <button
-              onClick={onIncrease}
-              aria-label="Increase quantity"
-              style={css(`width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${bagQty >= product.stock ? '.45' : '1'};`)}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
-            </button>
+        {/* Rating badge + the buying action.
+            The rating reads as a solid badge rather than a bare star. One
+            tap; once the piece is in the bag it becomes a stepper, so a
+            second tap adjusts the count instead of silently re-adding. */}
+        <div style={css('display:flex;align-items:center;gap:12px;margin-top:11px;')}>
+          <div style={css('flex:1;min-width:0;display:flex;align-items:center;gap:9px;')}>
+            <span style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);color:#B8892B;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:9px;')}>
+              {product.rating}
+              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;font-variation-settings:'FILL' 1;")}>star</span>
+            </span>
+            {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:#C99A3F;')}>Only {product.stock} left</span>}
           </div>
-        )}
+
+          {soldOut ? (
+            <button
+              onClick={openProduct}
+              style={css('flex:none;height:44px;padding:0 18px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:14px;font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap;')}
+            >
+              View
+            </button>
+          ) : bagQty === 0 ? (
+            <button
+              onClick={onAddToBag}
+              style={css('flex:none;height:44px;padding:0 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);white-space:nowrap;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>shopping_bag</span>Add to Bag
+            </button>
+          ) : (
+            <div style={css('flex:none;height:44px;display:flex;align-items:center;gap:5px;padding:5px;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 14px 30px -16px rgba(214,51,108,.85);')}>
+              <button
+                onClick={() => cartQty(product.id, -1)}
+                aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
+                style={css('width:34px;height:34px;flex:none;padding:0;border:none;border-radius:10px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
+              </button>
+              <button
+                onClick={() => navigate('/buyer/cart')}
+                aria-label="View bag"
+                style={css('flex:none;min-width:34px;padding:0 4px;height:34px;border:none;background:none;color:#fff;cursor:pointer;font-weight:800;font-size:15px;')}
+              >
+                {bagQty}
+              </button>
+              <button
+                onClick={onIncrease}
+                aria-label="Increase quantity"
+                style={css(`width:34px;height:34px;flex:none;padding:0;border:none;border-radius:10px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${bagQty >= product.stock ? '.45' : '1'};`)}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>add</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {askSize && (
