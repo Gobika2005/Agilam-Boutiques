@@ -17,6 +17,7 @@
  */
 
 import { CATEGORIES, TONES } from '@/data/demo';
+import { colorFromName } from '@/lib/colorName';
 import type { Product } from '@/data/demo';
 import type { TaxonomyKind } from '@/data/taxonomy';
 
@@ -143,7 +144,10 @@ export function buildCollections(products: Product[], vocab: Vocabulary): Collec
     .map((term) => ({
       name: term.name,
       count: colourCounts.get(norm(term.name)) ?? 0,
-      hex: term.hex ?? '#C9A9B6',
+      // The admin's swatch wins; otherwise settle the tile to a hue read from
+      // the colour's own name, so "Olive Brown…" is olive and "Black, vine" is
+      // black rather than every un-swatched colour sharing one mauve.
+      hex: term.hex ?? colorFromName(term.name) ?? '#C9A9B6',
     }))
     .filter((t) => t.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));

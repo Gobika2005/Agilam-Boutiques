@@ -71,7 +71,10 @@ export function ProductForm({
   // because a product can carry several.
   const sizeOptions = sortSizes(taxonomy.names('size'));
   // Colour swatches, for snapping a photo's dominant colour to the vocabulary.
-  const colorSwatches = taxonomy.rows('color').flatMap((r) => (r.hex ? [{ name: r.name, hex: r.hex }] : []));
+  // Every term is a candidate — its admin swatch when set, otherwise the hue
+  // read from its name — so a well-detected dress colour has the whole palette
+  // to match against, not just the handful an admin happened to hand-swatch.
+  const colorSwatches = taxonomy.rows('color').map((r) => ({ name: r.name, hex: taxonomy.hexOf(r.name) }));
   const [form, setForm] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);

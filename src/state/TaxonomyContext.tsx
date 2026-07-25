@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchTaxonomy, type TaxonomyKind, type TaxonomyRow } from '@/data/taxonomy';
 import { COLORS, OCCASIONS, SIZES } from '@/data/demo';
+import { colorFromName } from '@/lib/colorName';
 
 /**
  * The catalogue vocabulary, loaded once for the whole app.
@@ -103,9 +104,13 @@ export function TaxonomyProvider({ children }: { children: ReactNode }) {
     return {
       names,
       rows,
+      // Priority: the admin's own swatch → the seed palette → a hue read from
+      // the colour's name ("Olive Brown…" → olive) → mauve, only when the name
+      // says nothing. This keeps un-swatched colours from all sharing one tone.
       hexOf: (name) =>
         hexByName.get(name.toLowerCase()) ??
         COLORS.find((c) => c.name.toLowerCase() === name.toLowerCase())?.hex ??
+        colorFromName(name) ??
         '#C9A9B6',
       iconOf: (kind, name) => iconByKey.get(key(kind, name)),
       // With no vocabulary loaded for this kind, nothing would be browsable —

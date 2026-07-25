@@ -19,7 +19,7 @@ import { fmt, productSizes } from '@/data/demo';
 export function FilterSheet() {
   const navigate = useNavigate();
   const { filters, toggleFilter, setMaxPrice, resetFilters, query } = useShop();
-  const { names, rows } = useTaxonomy();
+  const { names, rows, hexOf } = useTaxonomy();
   // The count on the confirm button has to come from the live catalogue — it
   // was counting the eight hardcoded demo products, so it never matched the
   // grid the buyer was about to see.
@@ -79,7 +79,7 @@ export function FilterSheet() {
         <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;')}>
           {rows('color').map((c) => (
             <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-              <span style={css(`width:40px;height:40px;border-radius:50%;background:${c.hex ?? '#C9A9B6'};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
+              <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
               <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
             </button>
           ))}

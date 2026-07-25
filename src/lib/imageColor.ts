@@ -41,14 +41,79 @@ const distance = (a: Rgb, b: Rgb): number => {
 
 type Bucket = { r: number; g: number; b: number; w: number };
 
+/** Mean colour of the pixels a mask accepts, or null if it accepts none. */
+function regionMean(
+  data: Uint8ClampedArray,
+  S: number,
+  keep: (x: number, y: number) => boolean,
+): { mean: Rgb; spread: number } | null {
+  let sr = 0;
+  let sg = 0;
+  let sb = 0;
+  let n = 0;
+  const px: Rgb[] = [];
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      if (!keep(x, y)) continue;
+      const i = (y * S + x) * 4;
+      if (data[i + 3] < 125) continue;
+      const p = { r: data[i], g: data[i + 1], b: data[i + 2] };
+      px.push(p);
+      sr += p.r;
+      sg += p.g;
+      sb += p.b;
+      n++;
+    }
+  }
+  if (n === 0) return null;
+  const mean = { r: sr / n, g: sg / n, b: sb / n };
+  const spread = px.reduce((s, p) => s + distance(p, mean), 0) / n;
+  return { mean, spread };
+}
+
+/**
+ * The backdrop colour of a product shot, estimated from its outer frame, or
+ * null when there is no separable backdrop to subtract.
+ *
+ * Studio boutique shots sit the piece against a uniform sweep, so a tight,
+ * uniform border ring looks like a backdrop. But a dress photographed close
+ * enough to fill the frame *also* gives a uniform ring — of the dress itself —
+ * and subtracting that is exactly the bug that made a black dress vanish and
+ * left only its embroidery. So the ring only counts as backdrop when it is both
+ * uniform AND clearly different from the centre of the frame (the garment). If
+ * the border matches the middle, the subject fills the frame: nothing to remove.
+ */
+function estimateBackdrop(data: Uint8ClampedArray, S: number): Rgb | null {
+  const band = Math.max(2, Math.round(S * 0.09)); // outer ~9% ring
+  const inset = Math.round(S * 0.3); // central 40% square = the garment
+  const border = regionMean(data, S, (x, y) => x < band || x >= S - band || y < band || y >= S - band);
+  const centre = regionMean(data, S, (x, y) => x >= inset && x < S - inset && y >= inset && y < S - inset);
+  if (!border) return null;
+  // A loose ring (a busy edge, a patterned prop) is not a clean backdrop.
+  if (border.spread >= 42) return null;
+  // A border that matches the centre means the garment runs edge to edge —
+  // there is no backdrop distinct from the subject, so subtract nothing.
+  if (centre && distance(border.mean, centre.mean) < 45) return null;
+  return border.mean;
+}
+
 /**
  * Weighted colour buckets of a product photo, heaviest first, or [] on failure.
  *
  * Downscales to a small grid, then buckets pixels by a coarse RGB quantisation.
- * Two deliberate biases keep the *garment* — not its backdrop — winning:
- * near-white and near-black pixels are dropped (the white studio backdrop most
- * boutique shots use), and saturated pixels carry more weight than washed-out
- * ones, so a small vivid saree outvotes a large pale background.
+ * Three biases keep the *garment* — not its backdrop — winning, because the old
+ * "drop near-white/near-black" rule let every tinted studio sweep (grey, cream,
+ * pastel) survive and outvote the dress on area alone:
+ *
+ *   1. the backdrop colour is read off the frame and pixels matching it are
+ *      suppressed — so a grey or cream sweep is removed, not just a white one —
+ *      but only when the frame differs from the centre, so a dress filling the
+ *      frame is never mistaken for its own backdrop;
+ *   2. pixels are centre-weighted, since the garment sits in the middle and the
+ *      sweep at the edges;
+ *   3. weighting is area-first: a large neutral garment (black, grey, cream)
+ *      keeps a solid base weight, and saturation only nudges vivid pixels up, so
+ *      a black dress is no longer outvoted by a fleck of bright embroidery.
  */
 async function paletteBuckets(file: File): Promise<Bucket[]> {
   let bitmap: ImageBitmap;
@@ -57,7 +122,7 @@ async function paletteBuckets(file: File): Promise<Bucket[]> {
   } catch {
     return [];
   }
-  const S = 48;
+  const S = 64;
   const canvas = document.createElement('canvas');
   canvas.width = S;
   canvas.height = S;
@@ -76,8 +141,13 @@ async function paletteBuckets(file: File): Promise<Bucket[]> {
     return [];
   }
 
+  const backdrop = estimateBackdrop(data, S);
+  const cx = (S - 1) / 2;
+  const cy = (S - 1) / 2;
+  const maxDist = Math.hypot(cx, cy);
+
   const buckets = new Map<number, Bucket>();
-  for (let i = 0; i < data.length; i += 4) {
+  for (let p = 0, i = 0; i < data.length; i += 4, p++) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
@@ -87,9 +157,27 @@ async function paletteBuckets(file: File): Promise<Bucket[]> {
     const min = Math.min(r, g, b);
     const sat = max === 0 ? 0 : (max - min) / max;
     const lum = (max + min) / 2;
-    if (lum > 238 && sat < 0.12) continue; // white/paper backdrop
-    if (lum < 14) continue; // near-black shadow
-    const w = 0.25 + sat; // neutrals still count, saturated colours count more
+    if (lum > 244 && sat < 0.1) continue; // blown-out white paper only
+    if (lum < 8) continue; // crushed-black shadow only — a black *garment* must survive
+
+    // Central pixels are the garment; edge pixels are the sweep. A smooth
+    // radial falloff (1.0 at centre → ~0.2 at the corners) lets the middle win.
+    const x = p % S;
+    const y = (p / S) | 0;
+    const centreW = 1 - 0.8 * (Math.hypot(x - cx, y - cy) / maxDist);
+
+    // Suppress — don't hard-drop — pixels that match the estimated backdrop, so
+    // a shadow line on the sweep can't be mistaken for the dress, yet a garment
+    // that happens to share the backdrop's family still registers faintly.
+    let bgFactor = 1;
+    if (backdrop && distance({ r, g, b }, backdrop) < 30) bgFactor = 0.05;
+
+    // Area first, colourfulness second. A large black or grey garment must
+    // out-total a fleck of bright embroidery, so neutrals keep a solid base
+    // weight and saturation only nudges the vivid pixels up — the old formula
+    // gave neutrals almost nothing, which is why a black dress lost to its trim.
+    const w = (0.7 + 0.6 * sat) * centreW * bgFactor;
+    if (w <= 0.001) continue;
     const key = (r >> 5) * 64 + (g >> 5) * 8 + (b >> 5); // 8 levels/channel
     const bkt = buckets.get(key) ?? { r: 0, g: 0, b: 0, w: 0 };
     bkt.r += r * w;

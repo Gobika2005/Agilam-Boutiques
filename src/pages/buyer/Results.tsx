@@ -22,7 +22,7 @@ export function Results() {
   const { ads } = useLiveAds();
   // Facets are the admin's approved vocabulary (migration 0024), so a category
   // approved today is filterable today and a seller's typo never becomes a chip.
-  const { names, rows } = useTaxonomy();
+  const { names, rows, hexOf } = useTaxonomy();
 
   const q = query.trim().toLowerCase();
 
@@ -193,7 +193,7 @@ export function Results() {
                 <div style={css('display:flex;flex-wrap:wrap;gap:14px;margin-top:15px;')}>
                   {rows('color').map((c) => (
                     <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${c.hex ?? '#C9A9B6'};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
+                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
                       <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
                     </button>
                   ))}
