@@ -51,6 +51,7 @@ export interface Database {
           email: string | null;
           city: string | null;
           address: string | null;
+          pincode: string | null;
           status: AccountStatus;
           deleted_at: string | null;
           updated_at: string | null;
