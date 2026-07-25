@@ -377,10 +377,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ---------- Inspire feed ---------- */
 /* Double-tap-to-like burst over the photo. */
 @keyframes agx-burst {
-  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
-  35%  { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
-  70%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.1); }
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.3) rotate(-8deg); }
+  22%  { opacity: 1; transform: translate(-50%,-50%) scale(1.25) rotate(4deg); }
+  40%  { transform: translate(-50%,-50%) scale(.92) rotate(-2deg); }
+  55%  { transform: translate(-50%,-50%) scale(1.06) rotate(0deg); }
+  75%  { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.12) rotate(0deg); }
 }
 /* One readable column, the way a feed should read — never full-bleed on desktop. */
 .agx-feed { display: flex; flex-direction: column; gap: 18px; max-width: 620px; margin: 0 auto; }
