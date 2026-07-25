@@ -68,8 +68,8 @@ export function FloatingBag() {
       className={`agx-fab-bag agx-bag-pill${bumped ? ' agx-bag-bump' : ''}`}
       style={css(
         'display:flex;align-items:center;gap:12px;padding:7px 8px 7px 7px;border-radius:999px;cursor:pointer;' +
-          'border:1px solid rgba(176,36,84,.14);background:rgba(255,253,252,.93);' +
-          'box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 24px 46px -24px rgba(107,20,54,.65),0 4px 12px -6px rgba(107,20,54,.22);',
+          'border:1px solid var(--ag-border);background:var(--ag-frost-strong);' +
+          'box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 24px 46px -24px var(--ag-shadow),0 4px 12px -6px rgba(107,20,54,.22);',
       )}
     >
       {/* The garments themselves, overlapped like cards fanned in the hand. */}
@@ -101,7 +101,7 @@ export function FloatingBag() {
       </span>
 
       <span style={css('display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1;padding-right:2px;')}>
-        <span className="agx-eyebrow" style={css('font-size:8.5px;color:#9A7C87;')}>
+        <span className="agx-eyebrow" style={css('font-size:8.5px;color:var(--ag-muted);')}>
           {cartCount} {cartCount === 1 ? 'item' : 'items'}
         </span>
         {/* A ₹0 subtotal means the catalogue hasn't priced these lines yet — show
