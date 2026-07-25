@@ -37,7 +37,7 @@ export function AuthModal({
       <div style={css('position:absolute;inset:0;background:rgba(251,241,245,.5);backdrop-filter:blur(3px);')} />
 
       <div style={css('position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
-      <div style={css('width:100%;max-width:460px;background:var(--ag-surface);border-radius:28px;padding:22px 26px 30px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);border:1px solid #F6E3EC;margin:auto;position:relative;')}>
+      <div style={css('width:100%;max-width:460px;background:var(--ag-surface);border-radius:28px;padding:22px 26px 30px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);border:1px solid var(--ag-border);margin:auto;position:relative;')}>
         {onBack && (
           <button
             onClick={onBack}

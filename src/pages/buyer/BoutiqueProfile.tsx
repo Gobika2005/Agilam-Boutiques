@@ -104,7 +104,7 @@ export function BoutiqueProfile() {
           </>
         ) : (
           <>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#E0C4D0;")}>storefront</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>storefront</span>
             <span style={css('font-size:15px;')}>Boutique not found.</span>
             <button onClick={() => navigate('/buyer/boutiques')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;cursor:pointer;')}>
               Browse boutiques
@@ -227,7 +227,7 @@ export function BoutiqueProfile() {
             <button
               onClick={() => navigate(`/buyer/chat/${ab.id}`)}
               aria-label={`Chat with ${ab.name}`}
-              style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ag-surface);color:var(--ag-crimson);border:1.5px solid #F0D0DE;border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;')}
+              style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ag-surface);color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
               Chat
@@ -330,7 +330,7 @@ export function BoutiqueProfile() {
           </div>
         ) : (
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:54px 24px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:#E0C4D0;")}>checkroom</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>checkroom</span>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-top:12px;")}>Nothing here yet</div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:5px;')}>
               {bqFilter === 'All' ? 'This boutique hasn’t listed any styles yet.' : `No ${bqFilter.toLowerCase()} in this collection.`}

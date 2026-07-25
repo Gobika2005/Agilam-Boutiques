@@ -126,8 +126,8 @@ export function Coupons() {
             <div style={css('padding:30px;text-align:center;color:var(--ag-muted-soft);font-weight:700;font-size:13px;')}>Loading…</div>
           )}
           {!loading && rows.length === 0 && (
-            <div style={css('background:var(--ag-surface);border:1px dashed #E7B7CB;border-radius:18px;padding:28px 18px;text-align:center;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:#E0C4D0;")}>local_offer</span>
+            <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:18px;padding:28px 18px;text-align:center;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>local_offer</span>
               <div style={css('font-weight:800;font-size:14.5px;color:var(--ag-ink-2);margin-top:8px;')}>No coupons yet</div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Create a code to bring buyers back to your boutique.</div>
             </div>
@@ -135,7 +135,7 @@ export function Coupons() {
           {rows.map((c) => {
             const expired = isExpired(c);
             return (
-              <div key={c.id} style={css(`background:var(--ag-surface);border:1.5px solid ${expired ? '#EAD9DF' : c.active ? 'var(--ag-surface-3)' : '#EEE1E7'};border-radius:18px;padding:15px;box-shadow:0 14px 34px -30px rgba(107,20,54,.5);opacity:${expired || !c.active ? 0.72 : 1};`)}>
+              <div key={c.id} style={css(`background:var(--ag-surface);border:1.5px solid ${expired ? 'var(--ag-border)' : c.active ? 'var(--ag-surface-3)' : 'var(--ag-border)'};border-radius:18px;padding:15px;box-shadow:0 14px 34px -30px rgba(107,20,54,.5);opacity:${expired || !c.active ? 0.72 : 1};`)}>
                 <div style={css('display:flex;align-items:center;gap:10px;flex-wrap:wrap;')}>
                   <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--ag-crimson);letter-spacing:.04em;")}>{c.code}</span>
                   <span style={css(`font-size:10px;font-weight:800;border-radius:6px;padding:2px 8px;${expired ? 'color:var(--ag-bad-text);background:var(--ag-bad-bg);' : c.active ? 'color:var(--ag-good-text);background:var(--ag-good-bg);' : 'color:var(--ag-muted);background:var(--ag-surface-2);'}`)}>
@@ -164,7 +164,7 @@ export function Coupons() {
             <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Marketplace offers · run by Agilam</div>
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:10px;')}>
               {platformOffers.map((c) => (
-                <div key={c.id} style={css('display:flex;align-items:center;gap:12px;background:var(--ag-surface-2);border:1px solid #F3DDE8;border-radius:14px;padding:12px 14px;')}>
+                <div key={c.id} style={css('display:flex;align-items:center;gap:12px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
                   <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>redeem</span>
                   <div style={css('flex:1;min-width:0;')}>
                     <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:var(--ag-crimson);")}>{c.code}</span>
@@ -223,7 +223,7 @@ function IconBtn({ icon, onClick, danger }: { icon: string; onClick: () => void;
     <button
       type="button"
       onClick={onClick}
-      style={css(`width:34px;height:34px;border-radius:10px;border:1.5px solid ${danger ? '#E7A7B4' : 'var(--ag-border)'};background:var(--ag-surface);color:${danger ? '#D6455A' : 'var(--ag-crimson)'};cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
+      style={css(`width:34px;height:34px;border-radius:10px;border:1.5px solid ${danger ? 'var(--ag-border)' : 'var(--ag-border)'};background:var(--ag-surface);color:${danger ? '#D6455A' : 'var(--ag-crimson)'};cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
     >
       <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{icon}</span>
     </button>

@@ -137,12 +137,12 @@ export function Promote() {
 
                 <div style={css('display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;')}>
                   {EDITABLE.includes(c.status) && (
-                    <button onClick={() => setWizard({ campaign: c })} style={css('height:36px;border-radius:10px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:var(--ag-crimson);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                    <button onClick={() => setWizard({ campaign: c })} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       {c.status === 'pending_payment' ? 'Finish & pay' : c.status === 'changes_requested' ? 'Edit & resubmit' : 'Edit ad'}
                     </button>
                   )}
                   {c.status === 'pending_payment' && (
-                    <button onClick={() => removeDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                    <button onClick={() => removeDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       Delete draft
                     </button>
                   )}
@@ -499,7 +499,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
       </div>
 
       {/* Footer nav */}
-      <div style={css('padding:14px 18px;border-top:1px solid #F0E0E8;background:var(--ag-surface);display:flex;gap:10px;')}>
+      <div style={css('padding:14px 18px;border-top:1px solid var(--ag-border);background:var(--ag-surface);display:flex;gap:10px;')}>
         {paidEdit ? (
           <>
             <button onClick={onClose} disabled={busy} style={css('flex:none;height:50px;padding:0 20px;border-radius:14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;cursor:pointer;')}>Cancel</button>
@@ -549,7 +549,7 @@ function AdPreview({
   ctaLabel: string;
   heroImage: string;
 }) {
-  const frame = 'background:var(--ag-bg);border:1px solid #F0E0E8;border-radius:16px;padding:16px;display:flex;justify-content:center;';
+  const frame = 'background:var(--ag-bg);border:1px solid var(--ag-border);border-radius:16px;padding:16px;display:flex;justify-content:center;';
 
   // Sponsored product card.
   if (placementCode === 'sponsored_card') {
@@ -619,7 +619,7 @@ function AdPreview({
   return (
     <div style={css(frame)}>
       <div style={css('width:100%;max-width:340px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 30px -26px rgba(107,20,54,.6);')}>
-        <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),#F6D8E4);overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
+        <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface-3));overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
           {boutique.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{initials}</span>}
         </div>
         <div style={css('min-width:0;flex:1;')}>

@@ -114,7 +114,7 @@ export function Select({ value, onChange, options }: { value: string; onChange: 
 export function GhostButton({ icon, children, onClick, tone = 'default', title }: { icon?: string; children?: ReactNode; onClick?: () => void; tone?: 'default' | 'danger' | 'primary'; title?: string }) {
   const styles = {
     default: `border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);`,
-    danger: 'border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;',
+    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;',
     primary: 'border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;',
   }[tone];
   return (
@@ -128,7 +128,7 @@ export function GhostButton({ icon, children, onClick, tone = 'default', title }
 export function IconButton({ icon, onClick, tone = 'default', title }: { icon: string; onClick?: () => void; tone?: 'default' | 'danger' | 'success' | 'warn'; title?: string }) {
   const styles = {
     default: `border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-crimson);`,
-    danger: 'border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;',
+    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;',
     success: 'border:none;background:var(--ag-good-text);color:#fff;',
     warn: 'border:none;background:var(--ag-warn-bg);color:var(--ag-warn-text);',
   }[tone];
@@ -195,7 +195,7 @@ export function DataTable<T>({
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
                 {(selectable ? [null, ...columns] : columns).map((_c, j) => (
-                  <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,#F3E6ED,#FBF3F7,#F3E6ED);width:70%;')} />
+                  <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,var(--ag-shimmer-1),var(--ag-shimmer-2),var(--ag-shimmer-1));width:70%;')} />
                 ))}
               </div>
             ))}
@@ -302,7 +302,7 @@ export function BulkBar({ count, children }: { count: number; children: ReactNod
 }
 
 export function Avatar({ name, tone }: { name: string; tone: number }) {
-  const TONES = ['#F4D6E2', '#F1DCC7', '#E2DAEF', '#D7E7DE', '#F3DFD0', '#E7D9E6', '#DCE4EF', '#F0DAD4'];
+  const TONES = ['#F4D6E2', 'var(--ag-gold-border)', '#E2DAEF', '#D7E7DE', 'var(--ag-gold-border)', '#E7D9E6', '#DCE4EF', 'var(--ag-border)'];
   return (
     <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;background:${TONES[tone % TONES.length]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.55);`)}>
       {(name?.trim()?.[0] ?? '?').toUpperCase()}

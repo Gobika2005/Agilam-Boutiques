@@ -118,7 +118,7 @@ function SizeSheet({
         <button
           disabled={!picked}
           onClick={() => picked && onConfirm(picked)}
-          style={css(`width:100%;height:54px;margin-top:22px;border:none;border-radius:16px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:${picked ? 'pointer' : 'not-allowed'};color:#fff;background:${picked ? 'linear-gradient(135deg,#D6336C,#B02454)' : '#E7D3DC'};box-shadow:${picked ? '0 16px 34px -16px rgba(214,51,108,.85)' : 'none'};transition:background .2s ease;`)}
+          style={css(`width:100%;height:54px;margin-top:22px;border:none;border-radius:16px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:${picked ? 'pointer' : 'not-allowed'};color:#fff;background:${picked ? 'linear-gradient(135deg,#D6336C,#B02454)' : 'var(--ag-border)'};box-shadow:${picked ? '0 16px 34px -16px rgba(214,51,108,.85)' : 'none'};transition:background .2s ease;`)}
         >
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>
           {picked ? `Add ${picked} to bag` : 'Select a size'}

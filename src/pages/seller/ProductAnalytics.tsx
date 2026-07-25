@@ -38,7 +38,7 @@ export function ProductAnalytics() {
   if (!loading && !product) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ag-muted);')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:#E0C2CE;")}>search_off</span>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>search_off</span>
         <div style={css('font-size:15px;')}>Product not found.</div>
         <button onClick={() => navigate('/seller/products')} style={css('height:44px;padding:0 18px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;cursor:pointer;')}>
           Back to products

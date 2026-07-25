@@ -507,7 +507,7 @@ export function ProductDetail() {
 
       {/* STICKY MOBILE ACTION BAR */}
       <div className="agx-pdp-sticky">
-        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid #ECC6D6;background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
         </button>
         {renderBagControl(52)}

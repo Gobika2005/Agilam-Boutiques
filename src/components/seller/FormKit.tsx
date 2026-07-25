@@ -9,7 +9,7 @@ import { css } from '@/lib/css';
  */
 
 const INPUT = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;';
-const INPUT_ERR = INPUT.replace('var(--ag-border)', '#E7A7B4').replace('background:var(--ag-surface)', 'background:var(--ag-surface-2)');
+const INPUT_ERR = INPUT.replace('var(--ag-border)', 'var(--ag-border)').replace('background:var(--ag-surface)', 'background:var(--ag-surface-2)');
 const TEXTAREA = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;resize:vertical;min-height:88px;';
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
 const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
@@ -66,7 +66,7 @@ export function TextArea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        style={css(error ? TEXTAREA.replace('var(--ag-border)', '#E7A7B4') : TEXTAREA)}
+        style={css(error ? TEXTAREA.replace('var(--ag-border)', 'var(--ag-border)') : TEXTAREA)}
       />
       {error ? <span style={css(ERR)}>{error}</span> : hint ? <span style={css(HINT)}>{hint}</span> : null}
     </label>
@@ -137,7 +137,7 @@ export function Toggle({
         <span style={css('display:block;font-weight:700;font-size:14px;color:var(--ag-ink);')}>{label}</span>
         {description && <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;margin-top:2px;')}>{description}</span>}
       </span>
-      <span style={css(`width:46px;height:27px;flex:none;border-radius:999px;background:${on ? '#D6336C' : '#E8D5DE'};position:relative;transition:background .18s;`)}>
+      <span style={css(`width:46px;height:27px;flex:none;border-radius:999px;background:${on ? '#D6336C' : 'var(--ag-border)'};position:relative;transition:background .18s;`)}>
         <span style={css(`position:absolute;top:3px;left:${on ? '22px' : '3px'};width:21px;height:21px;border-radius:50%;background:var(--ag-surface);box-shadow:0 2px 6px rgba(0,0,0,.2);transition:left .18s;`)} />
       </span>
     </button>

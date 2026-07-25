@@ -143,7 +143,7 @@ export function Collections() {
                 key={b.maxPrice}
                 onClick={() => open({ maxPrice: b.maxPrice })}
                 className="agx-lift"
-                style={css('display:flex;align-items:center;gap:12px;width:100%;padding:16px;border:1px solid var(--ag-surface-3);background:linear-gradient(140deg,#fff,#FDF6F9);border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
+                style={css('display:flex;align-items:center;gap:12px;width:100%;padding:16px;border:1px solid var(--ag-surface-3);background:linear-gradient(140deg,var(--ag-surface),var(--ag-surface-2));border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
               >
                 <span style={css('min-width:0;flex:1;')}>
                   <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-crimson);line-height:1.1;")}>{b.label}</span>

@@ -261,7 +261,7 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
         <div style={css('color:var(--ag-muted);font-size:12.5px;line-height:1.55;margin-top:4px;')}>{preset.hint}</div>
 
         {failed ? (
-          <div style={css('margin-top:16px;background:var(--ag-bad-bg);border:1px solid #F2C9D2;border-radius:14px;padding:14px;font-size:13px;color:#7A4652;line-height:1.55;')}>
+          <div style={css('margin-top:16px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:14px;font-size:13px;color:#7A4652;line-height:1.55;')}>
             We couldn’t open that file. Please choose a JPG or PNG photo.
           </div>
         ) : (

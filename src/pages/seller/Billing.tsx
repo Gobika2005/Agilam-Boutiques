@@ -243,7 +243,7 @@ export function Billing() {
             <input value={custom.price} onChange={(e) => setCustom((c) => ({ ...c, price: e.target.value }))} inputMode="numeric" placeholder="Price" style={css(`${inputStyle}flex:1;min-width:80px;`)} />
             <input value={custom.qty} onChange={(e) => setCustom((c) => ({ ...c, qty: e.target.value }))} inputMode="numeric" placeholder="Qty" style={css(`${inputStyle}width:64px;flex:none;`)} />
           </div>
-          <button onClick={addCustom} style={css('margin-top:10px;width:100%;height:42px;border:1.5px dashed #E6BCCF;background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}>+ Add custom item</button>
+          <button onClick={addCustom} style={css('margin-top:10px;width:100%;height:42px;border:1.5px dashed var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}>+ Add custom item</button>
         </div>
 
         {cart.length > 0 && (

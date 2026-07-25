@@ -72,7 +72,7 @@ export function Inspire() {
         )}
 
         {!loading && error && (
-          <div style={css('display:flex;gap:12px;padding:16px;background:var(--ag-gold-bg);border:1px solid #F0D8A2;border-radius:18px;')}>
+          <div style={css('display:flex;gap:12px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>cloud_off</span>
             <div style={css('font-size:13px;color:#7A6450;line-height:1.55;')}>{error}</div>
           </div>

@@ -290,7 +290,7 @@ function ReviewDrawer({
             <div style={css('display:flex;gap:10px;flex-wrap:wrap;')}>
               <button
                 onClick={() => setAsking('rejected')}
-                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:var(--ag-bad-text);border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
+                style={css('flex:1;min-width:130px;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-bad-text);border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;')}
               >
                 Reject
               </button>

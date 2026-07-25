@@ -100,7 +100,7 @@ export function MyOrders() {
       {/* A failed refresh is worth saying out loud — the statuses on screen
           might be behind what the boutique has already done. */}
       {error && (
-        <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:var(--ag-gold-bg);border:1px solid #F0D8A2;border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
+        <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:19px;flex:none;")}>cloud_off</span>
           {error}
         </div>
@@ -234,7 +234,7 @@ export function MyOrders() {
                     <button
                       onClick={(e) => { e.stopPropagation(); void cancel(o); }}
                       disabled={cancelling === o.orderNumber}
-                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
+                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
                     >
                       <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
                       {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}

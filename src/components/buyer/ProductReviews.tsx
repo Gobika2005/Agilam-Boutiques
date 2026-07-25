@@ -11,7 +11,7 @@ import { fetchReviews, submitReview, type ReviewRow } from '@/data/reviews';
  * Replaces the previous hard-coded review list on the product page.
  */
 
-const TONE_BG = ['#F4D6E2', '#E7D9F0', '#D6E4F0', '#F0E4D6', '#D9F0E4', '#F0D9D9'];
+const TONE_BG = ['#F4D6E2', '#E7D9F0', '#D6E4F0', 'var(--ag-gold-border)', '#D9F0E4', '#F0D9D9'];
 const starsFor = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 function timeAgo(iso: string): string {
@@ -175,7 +175,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
       {loading && reviews.length === 0 ? (
         <div style={css('color:var(--ag-muted);font-size:13px;padding:8px 2px;')}>Loading reviews…</div>
       ) : reviews.length === 0 ? (
-        <div style={css('background:var(--ag-surface);border:1px dashed #EAD3DD;border-radius:16px;padding:22px;text-align:center;color:var(--ag-muted);font-size:13.5px;')}>
+        <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:16px;padding:22px;text-align:center;color:var(--ag-muted);font-size:13.5px;')}>
           No reviews yet. Be the first to share your experience.
         </div>
       ) : (

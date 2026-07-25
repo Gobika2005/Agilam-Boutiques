@@ -226,12 +226,12 @@ export function Ads() {
                         </button>
                       )}
                       {(c.status === 'pending_review' || c.status === 'scheduled' || c.status === 'live' || c.status === 'paused') && (
-                        <button disabled={busy} onClick={() => doRework(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid #E7C79A;background:var(--ag-surface);color:#B26B1B;font-weight:700;font-size:12.5px;cursor:pointer;')}>
+                        <button disabled={busy} onClick={() => doRework(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-gold-border);background:var(--ag-surface);color:#B26B1B;font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Rework
                         </button>
                       )}
                       {(c.status === 'pending_review' || c.status === 'changes_requested' || c.status === 'scheduled' || c.status === 'live' || c.status === 'paused') && (
-                        <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;')}>
+                        <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Reject & refund
                         </button>
                       )}
@@ -270,12 +270,12 @@ export function Ads() {
                 </button>
               )}
               {(preview.status === 'pending_review' || preview.status === 'scheduled' || preview.status === 'live' || preview.status === 'paused') && (
-                <button disabled={busyId === preview.id} onClick={() => doRework(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid #E7C79A;background:var(--ag-surface);color:#B26B1B;font-weight:800;font-size:13.5px;cursor:pointer;')}>
+                <button disabled={busyId === preview.id} onClick={() => doRework(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-gold-border);background:var(--ag-surface);color:#B26B1B;font-weight:800;font-size:13.5px;cursor:pointer;')}>
                   Rework
                 </button>
               )}
               {(preview.status === 'pending_review' || preview.status === 'changes_requested' || preview.status === 'scheduled' || preview.status === 'live' || preview.status === 'paused') && (
-                <button disabled={busyId === preview.id} onClick={() => doReject(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;font-weight:800;font-size:13.5px;cursor:pointer;')}>
+                <button disabled={busyId === preview.id} onClick={() => doReject(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:800;font-size:13.5px;cursor:pointer;')}>
                   Reject & refund
                 </button>
               )}
@@ -292,7 +292,7 @@ export function Ads() {
 const A_PILL = 'display:inline-flex;align-items:center;gap:3px;background:rgba(42,26,32,.72);color:#fff;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;';
 
 function CreativePreview({ c }: { c: AdCampaignAdmin }) {
-  const frame = 'background:var(--ag-bg);border:1px solid #F0E0E8;border-radius:16px;padding:16px;display:flex;justify-content:center;';
+  const frame = 'background:var(--ag-bg);border:1px solid var(--ag-border);border-radius:16px;padding:16px;display:flex;justify-content:center;';
 
   if (c.placement_code === 'home_hero') {
     const image = c.image_url || c.product?.image_url || '';
@@ -336,7 +336,7 @@ function CreativePreview({ c }: { c: AdCampaignAdmin }) {
   return (
     <div style={css(frame)}>
       <div style={css('width:100%;max-width:340px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;')}>
-        <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),#F6D8E4);overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
+        <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface-3));overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
           {c.boutique?.logo_url ? <img src={c.boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{(c.boutique?.name ?? 'B').slice(0, 2).toUpperCase()}</span>}
         </div>
         <div style={css('min-width:0;flex:1;')}>

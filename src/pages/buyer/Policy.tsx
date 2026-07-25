@@ -16,7 +16,7 @@ export function Policy() {
   if (!page) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#E0C4D0;")}>description</span>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>description</span>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Page not found</div>
         <div style={css('color:var(--ag-muted);font-size:14px;')}>That policy doesn’t exist (or has moved).</div>
         <button onClick={() => navigate('/buyer/home')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 22px;font-weight:800;cursor:pointer;')}>
@@ -115,7 +115,7 @@ export function Policy() {
 
             {/* The legal set, compactly, so a buyer on a policy page can always
                 see the full list they're inside. */}
-            <div style={css('margin-top:14px;padding:16px 18px;background:var(--ag-surface-2);border:1px solid #F3DDE8;border-radius:20px;')}>
+            <div style={css('margin-top:14px;padding:16px 18px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:20px;')}>
               <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Policies</div>
               <div style={css('display:flex;flex-direction:column;gap:9px;margin-top:12px;')}>
                 {legalPages().map((p) => (

@@ -206,15 +206,15 @@ export function MyProducts() {
             </div>
 
             {confirmDelete ? (
-              <div style={css('margin-top:12px;background:var(--ag-bad-bg);border:1px solid #F0BEC5;border-radius:14px;padding:12px 14px;')}>
+              <div style={css('margin-top:12px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
                 <div style={css('font-size:13px;font-weight:700;color:#8A2A34;')}>Delete “{editing.title}”? This can't be undone.</div>
                 <div style={css('display:flex;gap:10px;margin-top:10px;')}>
-                  <button onClick={() => setConfirmDelete(false)} disabled={busy} style={css('flex:1;height:44px;border:1.5px solid #E0C8CF;background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;')}>Cancel</button>
+                  <button onClick={() => setConfirmDelete(false)} disabled={busy} style={css('flex:1;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;')}>Cancel</button>
                   <button onClick={remove} disabled={busy} style={css(`flex:1;height:44px;border:none;background:#D6455A;color:#fff;border-radius:12px;font-weight:800;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}>{busy ? 'Deleting…' : 'Delete'}</button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} disabled={busy} style={css('width:100%;height:48px;margin-top:10px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
+              <button onClick={() => setConfirmDelete(true)} disabled={busy} style={css('width:100%;height:48px;margin-top:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>delete</span>Delete product
               </button>
             )}

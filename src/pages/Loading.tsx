@@ -23,7 +23,7 @@ export function Loading() {
   return (
     <div
       onClick={skip}
-      style={css('min-height:100vh;background:radial-gradient(120% 95% at 50% 42%,#FBEDE9 0%,#F3D8D8 52%,#E9C4CA 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;')}
+      style={css('min-height:100vh;background:radial-gradient(120% 95% at 50% 42%,var(--ag-surface-2) 0%,var(--ag-surface) 52%,var(--ag-bg) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;')}
     >
       <img
         src="/agilam-logo.jpg"

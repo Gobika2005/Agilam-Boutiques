@@ -165,7 +165,7 @@ export function TrackOrder() {
 
         {/* ---------- Cancelled notice ---------- */}
         {rejected && (
-          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-bad-bg);border:1px solid #F2C9D2;border-radius:18px;')}>
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:18px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C0455E;font-size:22px;flex:none;")}>info</span>
             <div style={css('font-size:13px;color:#7A4652;line-height:1.55;')}>
               {/* Promising a refund on an order that was never paid for would be
@@ -191,10 +191,10 @@ export function TrackOrder() {
           {steps.map((st) => (
             <div key={st.label} style={css('display:flex;gap:14px;')}>
               <div style={css('display:flex;flex-direction:column;align-items:center;')}>
-                <div style={css(`width:38px;height:38px;flex:none;border-radius:50%;background:${st.done ? '#D6336C' : 'var(--ag-surface)'};border:2px solid ${st.done ? '#D6336C' : '#EAD3DD'};display:flex;align-items:center;justify-content:center;${st.current ? 'box-shadow:0 0 0 4px rgba(214,51,108,.16);' : ''}`)}>
+                <div style={css(`width:38px;height:38px;flex:none;border-radius:50%;background:${st.done ? '#D6336C' : 'var(--ag-surface)'};border:2px solid ${st.done ? '#D6336C' : 'var(--ag-border)'};display:flex;align-items:center;justify-content:center;${st.current ? 'box-shadow:0 0 0 4px rgba(214,51,108,.16);' : ''}`)}>
                   <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${st.done ? '#fff' : '#CBB0BC'};`)}>{st.icon}</span>
                 </div>
-                {st.showLine && <span style={css(`width:2.5px;flex:1;min-height:26px;background:${st.done && !st.current ? '#D6336C' : '#EAD3DD'};margin:3px 0;`)} />}
+                {st.showLine && <span style={css(`width:2.5px;flex:1;min-height:26px;background:${st.done && !st.current ? '#D6336C' : 'var(--ag-border)'};margin:3px 0;`)} />}
               </div>
               <div style={css('flex:1;padding-bottom:18px;padding-top:6px;')}>
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>

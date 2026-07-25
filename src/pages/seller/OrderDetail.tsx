@@ -258,7 +258,7 @@ export function OrderDetail() {
         )}
 
         {o.rawStatus === 'cancelled' && (
-          <div style={css('margin-top:12px;border-radius:16px;padding:14px 16px;border:1px solid #E8D5DE;background:var(--ag-surface-2);display:flex;gap:11px;')}>
+          <div style={css('margin-top:12px;border-radius:16px;padding:14px 16px;border:1px solid var(--ag-border);background:var(--ag-surface-2);display:flex;gap:11px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);")}>cancel</span>
             <div style={css('font-size:13px;color:var(--ag-label);font-weight:600;line-height:1.55;')}>
               The customer cancelled this order before dispatch{o.cancelReason ? ` — “${o.cancelReason}”` : ''}. The stock has been returned to your catalogue.
@@ -271,7 +271,7 @@ export function OrderDetail() {
           away rather than offering moves that would resurrect it. */}
       {!closed && (
         <div style={css('position:sticky;bottom:0;background:var(--ag-bg);padding:12px 20px 16px;display:flex;gap:10px;')}>
-          <button onClick={() => setStatus('rejected', 'Order rejected')} style={css('flex:1;height:52px;border:1.5px solid #E7A7B4;background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
+          <button onClick={() => setStatus('rejected', 'Order rejected')} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
           {o.rawStatus === 'pending' ? (
             <button onClick={() => setStatus('accepted', 'Order accepted')} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>Accept order</button>
           ) : (

@@ -49,7 +49,7 @@ export function SellModal() {
           </button>
           <button
             onClick={goCreate}
-            style={css('height:54px;border:1.5px solid #E7C6D4;border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
+            style={css('height:54px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>add_business</span>Create Boutique
           </button>

@@ -30,7 +30,7 @@ export const EMPTY_PRODUCT_FORM: ProductFormValues = {
 };
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
-const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid #E7A7B4;background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
+const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
 const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
 const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
@@ -176,7 +176,7 @@ export function ProductForm({
       <div style={css('display:flex;gap:10px;')}>
         <div
           onClick={() => coverInput.current?.click()}
-          style={css(`width:96px;height:96px;flex:none;border-radius:16px;border:2px dashed ${errors.imageUrl ? '#E7A7B4' : 'var(--ag-border)'};background:var(--ag-surface);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
+          style={css(`width:96px;height:96px;flex:none;border-radius:16px;border:2px dashed ${errors.imageUrl ? 'var(--ag-border)' : 'var(--ag-border)'};background:var(--ag-surface);position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;`)}
         >
           {form.imageUrl ? (
             <img src={form.imageUrl} alt="Cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
@@ -198,7 +198,7 @@ export function ProductForm({
             <div
               key={i}
               onClick={() => (url ? set('images', form.images.filter((x) => x !== url)) : galleryInput.current?.click())}
-              style={css('width:72px;height:96px;flex:none;border-radius:16px;border:2px dashed #E6BCCF;background:var(--ag-surface);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;')}
+              style={css('width:72px;height:96px;flex:none;border-radius:16px;border:2px dashed var(--ag-border);background:var(--ag-surface);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;')}
             >
               {url ? (
                 <>
@@ -251,7 +251,7 @@ export function ProductForm({
                     key={name}
                     type="button"
                     onClick={() => { set('color', name); setColorSuggestions([]); }}
-                    style={css('display:flex;align-items:center;gap:7px;border:1.5px solid #E6BCCF;background:var(--ag-surface-2);border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;')}
+                    style={css('display:flex;align-items:center;gap:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;')}
                   >
                     <span style={css(`flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid rgba(0,0,0,.08);background:${taxonomy.hexOf(name)};`)} />
                     <span style={css('font-size:12px;font-weight:700;color:var(--ag-crimson);')}>{name}</span>

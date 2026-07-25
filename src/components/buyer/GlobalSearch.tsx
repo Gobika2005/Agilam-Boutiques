@@ -325,7 +325,7 @@ export function GlobalSearch({
                   results
                 ) : (
                   <div style={css('padding:38px 24px;text-align:center;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:36px;color:#E7A9C1;")}>search</span>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-border);")}>search</span>
                     <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:10px;line-height:1.55;')}>
                       Search for a saree, a boutique, or an occasion like “bridal”.
                     </div>

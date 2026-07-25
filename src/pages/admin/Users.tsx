@@ -332,7 +332,7 @@ export function Users() {
       </div>
 
       {error && (
-        <div style={css('background:var(--ag-bad-bg);border:1px solid #F3B9C8;color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
+        <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
           <Icon name="error" size={18} color="#B02454" />
           Couldn&apos;t load users: {error}
         </div>

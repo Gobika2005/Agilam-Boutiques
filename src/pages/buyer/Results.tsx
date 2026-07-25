@@ -122,7 +122,7 @@ export function Results() {
                 {SORTS.map((x) => {
                   const on = filters.sort === x;
                   return (
-                    <button key={x} onClick={() => setSort(x)} style={css(`border:1.5px solid ${on ? 'var(--ag-crimson)' : '#E4CDD8'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;`)}>
+                    <button key={x} onClick={() => setSort(x)} style={css(`border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;`)}>
                       {x}
                     </button>
                   );
@@ -135,7 +135,7 @@ export function Results() {
             <div style={css('display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px;')}>
               <span className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);')}>Filtering by</span>
               {activeChips.map((c) => (
-                <button key={c.key} onClick={c.remove} style={css('display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid #F3C6D8;color:var(--ag-crimson);border-radius:999px;padding:7px 10px 7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;')}>
+                <button key={c.key} onClick={c.remove} style={css('display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid var(--ag-border);color:var(--ag-crimson);border-radius:999px;padding:7px 10px 7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;')}>
                   {c.label}<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>close</span>
                 </button>
               ))}
@@ -146,13 +146,13 @@ export function Results() {
 
         <div className="agx-res-body" style={css('display:flex;gap:36px;align-items:flex-start;margin-top:22px;')}>
           <aside className="agx-filters agx-res-aside" style={css('width:266px;flex:none;position:sticky;top:78px;max-height:calc(100vh - 104px);overflow-y:auto;padding:20px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:20px;')}>
-            <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #EFE3E9;padding-bottom:14px;')}>
+            <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ag-border);padding-bottom:14px;')}>
               <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-ink);')}>Filters</div>
               <button onClick={resetCollection} style={css('border:none;background:none;color:#D6336C;font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
             </div>
 
             <div className="agx-res-aside-scroll agx-scroll">
-              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+              <div style={css('padding:18px 0;border-bottom:1px solid var(--ag-border);')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Price</div>
                 <div style={css('display:flex;justify-content:space-between;font-size:12.5px;color:var(--ag-muted);font-weight:700;margin-top:12px;')}>
                   <span>₹0</span><span style={css('color:var(--ag-crimson);')}>{fmt(filters.maxPrice)}{pricePlus}</span>
@@ -160,7 +160,7 @@ export function Results() {
                 <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} style={css('width:100%;accent-color:#D6336C;margin-top:8px;')} />
               </div>
 
-              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+              <div style={css('padding:18px 0;border-bottom:1px solid var(--ag-border);')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Category</div>
                 <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
                   {names('category').map((c) => {
@@ -176,19 +176,19 @@ export function Results() {
                 </div>
               </div>
 
-              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+              <div style={css('padding:18px 0;border-bottom:1px solid var(--ag-border);')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size</div>
                 <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;')}>
                   {names('size').map((s) => {
                     const on = filters.sizes.includes(s);
                     return (
-                      <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:44px;height:40px;padding:0 12px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : '#E4CDD8'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
+                      <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:44px;height:40px;padding:0 12px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
                     );
                   })}
                 </div>
               </div>
 
-              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+              <div style={css('padding:18px 0;border-bottom:1px solid var(--ag-border);')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Colour</div>
                 <div style={css('display:flex;flex-wrap:wrap;gap:14px;margin-top:15px;')}>
                   {rows('color').map((c) => (

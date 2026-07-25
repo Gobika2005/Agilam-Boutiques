@@ -122,7 +122,7 @@ export function Dashboard() {
       <button
         onClick={() => navigate('/seller/boutique')}
         className="agx-lift"
-        style={css('width:100%;text-align:left;background:linear-gradient(135deg,#FDF0F5,#FFFDFC);border:1px solid #F5E1EA;border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:inherit;')}
+        style={css('width:100%;text-align:left;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface));border:1px solid var(--ag-border);border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:inherit;')}
       >
         <span style={css("width:56px;height:56px;flex:none;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#E14A7E,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>
           {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
@@ -138,7 +138,7 @@ export function Dashboard() {
           {facts.length > 0 && (
             <span style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;')}>
               {facts.map((f) => (
-                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--ag-surface-2);border:1px solid #F3DCE7;font-size:10.5px;font-weight:800;color:#8A5A72;')}>
+                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--ag-surface-2);border:1px solid var(--ag-border);font-size:10.5px;font-weight:800;color:#8A5A72;')}>
                   <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? 'var(--ag-info-text)' : f.icon === 'star' ? '#E0B84B' : 'var(--ag-crimson)'};`)}>{f.icon}</span>
                   {f.text}
                 </span>
@@ -272,7 +272,7 @@ export function Dashboard() {
             {ordersLoading && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Loading orders…</div>}
             {!ordersLoading && recentOrders.length === 0 && (
               <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:22px;text-align:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:#E0C2CE;")}>receipt_long</span>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>receipt_long</span>
                 <div style={css('font-weight:700;font-size:14px;margin-top:6px;color:var(--ag-ink);')}>No orders yet</div>
                 <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;margin-top:3px;')}>
                   Orders from buyers and your offline bills both show up here.

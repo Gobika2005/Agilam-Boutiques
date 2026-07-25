@@ -163,7 +163,7 @@ export function Boutiques() {
         >
           <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>how_to_reg</span>
           Following
-          <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? 'var(--ag-surface-2)' : '#E7D3DC'};color:var(--ag-crimson);`)}>{followingCount}</span>
+          <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? 'var(--ag-surface-2)' : 'var(--ag-border)'};color:var(--ag-crimson);`)}>{followingCount}</span>
         </button>
       </div>
 

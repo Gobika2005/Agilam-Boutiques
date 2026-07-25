@@ -124,7 +124,7 @@ export function Payment() {
         </div>
 
         {pending && (
-          <div style={css('margin-top:16px;background:var(--ag-gold-bg);border:1.5px solid #F0D8A2;border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
+          <div style={css('margin-top:16px;background:var(--ag-gold-bg);border:1.5px solid var(--ag-gold-border);border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:24px;")}>error</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:14.5px;')}>We received your {fmt(pending.total)} payment</div>
@@ -193,7 +193,7 @@ export function Payment() {
                 <button onClick={openCoupons} style={css('border:none;background:none;cursor:pointer;color:#4B7A61;font-size:12px;font-weight:800;')}>Change</button>
               </div>
             ) : (
-              <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed #E7B7CB;background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
+              <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
                 <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>Have a coupon?</span>
                 <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>

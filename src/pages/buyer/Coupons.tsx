@@ -140,7 +140,7 @@ export function Coupons() {
           </div>
         )}
 
-        <div style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed #E7B7CB;border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
+        <div style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
           <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
           <input
             value={code}
@@ -157,7 +157,7 @@ export function Coupons() {
 
         {list.length === 0 && (
           <div style={css('margin-top:18px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:26px 18px;text-align:center;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:#E0C4D0;")}>local_offer</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>local_offer</span>
             <div style={css('font-weight:800;font-size:14px;color:var(--ag-ink-2);margin-top:8px;')}>No offers right now</div>
             <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Have a code? Enter it above — it still works.</div>
           </div>
@@ -188,7 +188,7 @@ export function Coupons() {
               <button
                 onClick={() => (c.applied ? drop() : redeem(c))}
                 disabled={c.expired && !c.applied}
-                style={css(`align-self:center;margin-right:14px;flex:none;height:40px;padding:0 18px;border:1.5px solid ${c.expired && !c.applied ? '#E3D6DB' : c.applied ? '#C8E3D3' : '#D6336C'};background:var(--ag-surface);color:${c.expired && !c.applied ? '#B79FA9' : c.applied ? '#4B7A61' : 'var(--ag-crimson)'};border-radius:12px;font-weight:800;font-size:13px;cursor:${c.expired && !c.applied ? 'not-allowed' : 'pointer'};`)}
+                style={css(`align-self:center;margin-right:14px;flex:none;height:40px;padding:0 18px;border:1.5px solid ${c.expired && !c.applied ? 'var(--ag-border)' : c.applied ? '#C8E3D3' : '#D6336C'};background:var(--ag-surface);color:${c.expired && !c.applied ? '#B79FA9' : c.applied ? '#4B7A61' : 'var(--ag-crimson)'};border-radius:12px;font-weight:800;font-size:13px;cursor:${c.expired && !c.applied ? 'not-allowed' : 'pointer'};`)}
               >
                 {c.applied ? 'Remove' : c.expired ? 'Expired' : 'Apply'}
               </button>

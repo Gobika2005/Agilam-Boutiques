@@ -229,7 +229,7 @@ export function CardSkeletons({ count = 10 }: { count?: number }) {
     <div className="agx-rgrid">
       {Array.from({ length: count }, (_, i) => (
         <div key={i}>
-          <div className="agx-prod-media" style={css('background:linear-gradient(90deg,#F3E6EC 25%,#FBF3F6 37%,#F3E6EC 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
+          <div className="agx-prod-media" style={css('background:linear-gradient(90deg,var(--ag-shimmer-1) 25%,var(--ag-shimmer-2) 37%,var(--ag-shimmer-1) 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
           <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:12px;width:80%;')} />
           <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:8px;width:45%;')} />
         </div>

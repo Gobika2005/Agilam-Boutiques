@@ -153,10 +153,10 @@ export function ChatView({
   const canSend = live && !!draft.trim() && !sending;
 
   return (
-    <div className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,#FDF3F7 0%,var(--ag-bg) 42%,#F7EEF1 100%);display:flex;flex-direction:column;')}>
+    <div className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
-        <div style={css('flex:none;background:rgba(255,255,255,.82);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F1DEE7;box-shadow:0 10px 30px -26px rgba(107,20,54,.6);')}>
+        <div style={css('flex:none;background:rgba(255,255,255,.82);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px rgba(107,20,54,.6);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
           </button>
@@ -170,7 +170,7 @@ export function ChatView({
               {statusOn && <span style={css('flex:none;width:6px;height:6px;border-radius:50%;background:var(--ag-good);')} />}{statusLabel}
             </div>
           </div>
-          <div style={css('flex:none;display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid #F3DDE8;border-radius:11px;padding:6px 10px;')}>
+          <div style={css('flex:none;display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:11px;padding:6px 10px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:15px;")}>lock</span>
             <span className="agx-hide-sm" style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>Secure</span>
           </div>
@@ -180,12 +180,12 @@ export function ChatView({
         <div ref={scrollRef} className="agx-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:9px;')}>
           {pending && thread.length === 0 && (
             <div style={css('margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--ag-muted-soft);font-size:13px;font-weight:600;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:#E7A9C1;")}>chat</span>Starting your chat…
+              <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>chat</span>Starting your chat…
             </div>
           )}
           {live && thread.length === 0 && !pending && (
             <div style={css('margin:auto;text-align:center;color:var(--ag-muted-soft);font-size:13px;font-weight:600;max-width:240px;display:flex;flex-direction:column;align-items:center;gap:10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:#E7A9C1;")}>waving_hand</span>No messages yet. Say hello 👋
+              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>waving_hand</span>No messages yet. Say hello 👋
             </div>
           )}
           {thread.length > 0 && (
@@ -200,7 +200,7 @@ export function ChatView({
                 onClick={onOrderClick ? () => onOrderClick(order.orderId) : undefined}
                 style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onOrderClick ? 'pointer' : 'default'};`)}
               >
-                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #F5E6EE;')}>
+                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>receipt_long</span>
                   <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:var(--ag-crimson);')}>Enquiry about this order · {order.orderId}</span>
                 </div>
@@ -229,7 +229,7 @@ export function ChatView({
                 onClick={onProductClick ? () => onProductClick(card.id) : undefined}
                 style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onProductClick ? 'pointer' : 'default'};`)}
               >
-                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #F5E6EE;')}>
+                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>sell</span>
                   <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:var(--ag-crimson);')}>Enquiry about this product</span>
                 </div>
@@ -250,7 +250,7 @@ export function ChatView({
           return (
             <div
               key={c.id ?? i}
-              style={css(`position:relative;max-width:80%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};color:${c.me ? '#fff' : 'var(--ag-ink)'};padding:9px 13px 7px;border-radius:${c.me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};font-size:13.5px;line-height:1.45;border:${c.me ? 'none' : '1px solid #F2E3EA'};box-shadow:${c.me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
+              style={css(`position:relative;max-width:80%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};color:${c.me ? '#fff' : 'var(--ag-ink)'};padding:9px 13px 7px;border-radius:${c.me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};font-size:13.5px;line-height:1.45;border:${c.me ? 'none' : '1px solid var(--ag-border)'};box-shadow:${c.me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
             >
               {c.text}
               <div style={css(`font-size:9.5px;margin-top:3px;text-align:right;color:${c.me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</div>
@@ -277,7 +277,7 @@ export function ChatView({
             ))}
           </div>
         )}
-        <div style={css('display:flex;gap:8px;align-items:flex-end;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(1.3);border:1px solid #F1DEE7;border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
+        <div style={css('display:flex;gap:8px;align-items:flex-end;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}
             disabled={!live}

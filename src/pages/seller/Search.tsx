@@ -97,7 +97,7 @@ export function Search() {
       <div style={css('padding:0 20px;')}>
         {!results && (
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 20px;color:var(--ag-muted);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#E0C2CE;")}>search</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-border);")}>search</span>
             <div style={css('font-size:14px;margin-top:10px;max-width:280px;line-height:1.5;')}>Search across your products, orders, customers and conversations.</div>
           </div>
         )}

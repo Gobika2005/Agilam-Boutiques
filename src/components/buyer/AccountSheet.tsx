@@ -146,7 +146,7 @@ export function AccountSheet({
             <button
               onClick={google}
               disabled={busy}
-              style={css('width:100%;height:52px;margin-top:22px;border:1.5px solid #E7C6D4;background:var(--ag-surface);border-radius:14px;font-weight:800;font-size:15px;color:var(--ag-ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}
+              style={css('width:100%;height:52px;margin-top:22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:800;font-size:15px;color:var(--ag-ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D6336C;")}>g_translate</span>Continue with Google
             </button>

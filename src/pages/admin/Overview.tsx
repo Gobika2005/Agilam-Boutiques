@@ -106,7 +106,7 @@ export function Overview() {
           <PaySplit online={d?.paymentSplit.online ?? 0} cod={d?.paymentSplit.cod ?? 0} />
           <div style={css('margin-top:16px;display:flex;flex-direction:column;gap:10px;')}>
             <Legend color="#D6336C" label="Online (Razorpay)" value={d?.paymentSplit.online ?? 0} />
-            <Legend color="#E7C3D3" label="Cash on delivery" value={d?.paymentSplit.cod ?? 0} />
+            <Legend color="var(--ag-border)" label="Cash on delivery" value={d?.paymentSplit.cod ?? 0} />
           </div>
         </SectionCard>
       </div>
@@ -216,7 +216,7 @@ function PaySplit({ online, cod }: { online: number; cod: number }) {
   return (
     <div style={css('display:flex;flex-direction:column;align-items:center;padding:8px 0;')}>
       <div style={css('position:relative;width:120px;height:120px;border-radius:50%;')}>
-        <div style={css(`position:absolute;inset:0;border-radius:50%;background:conic-gradient(#D6336C ${pct}%, #E7C3D3 0);`)} />
+        <div style={css(`position:absolute;inset:0;border-radius:50%;background:conic-gradient(#D6336C ${pct}%, var(--ag-border) 0);`)} />
         <div style={css('position:absolute;inset:14px;border-radius:50%;background:var(--ag-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>{pct}%</div>
           <div style={css('font-size:10px;color:var(--ag-muted);')}>online</div>

@@ -84,7 +84,7 @@ export function BestSellers() {
       {/* Until the first orders land there is nothing to rank on, and pretending
           otherwise would be dishonest — say so instead. */}
       {!loading && !anySalesData && PRODUCTS.length > 0 && (
-        <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid #F3E2BE;border-radius:16px;padding:13px 15px;margin-top:14px;')}>
+        <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:13px 15px;margin-top:14px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
           <span style={css('font-size:12.5px;color:#7A5C1E;line-height:1.55;')}>
             Not enough orders yet to rank by sales, so this list is ordered by ratings and reviews for now. It will start moving as soon as buyers do.

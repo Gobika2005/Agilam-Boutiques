@@ -209,20 +209,20 @@ export function Profile() {
         {/* Account / cross-device sync — hidden until auth has resolved so a
             refresh doesn't flash the signed-out prompt. */}
         {authLoading ? null : signedIn ? (
-          <div style={css('margin:16px 20px 0;display:flex;align-items:center;gap:13px;padding:14px 15px;background:linear-gradient(135deg,#EAF7F0,#F1FBF5);border:1px solid #CDEBDB;border-radius:18px;')}>
+          <div style={css('margin:16px 20px 0;display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-good-bg);border:1px solid var(--ag-good-bg);border-radius:18px;')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-good-bg);display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:22px;")}>verified</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
-              <span style={css('display:block;font-weight:800;font-size:14.5px;color:#1E7A4E;')}>Synced across devices</span>
-              <span style={css('display:block;font-size:12px;color:#4E8C6E;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{accountEmail || 'Orders & profile backed up'}</span>
+              <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-good-text);')}>Synced across devices</span>
+              <span style={css('display:block;font-size:12px;color:var(--ag-good-text);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{accountEmail || 'Orders & profile backed up'}</span>
             </span>
-            <button onClick={() => void doSync()} disabled={syncing} style={css('flex:none;height:34px;padding:0 13px;border:1px solid #B9E3CD;background:var(--ag-surface);color:#1E7A4E;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
+            <button onClick={() => void doSync()} disabled={syncing} style={css('flex:none;height:34px;padding:0 13px;border:1px solid var(--ag-good-bg);background:var(--ag-surface);color:var(--ag-good-text);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{syncing ? 'sync' : 'refresh'}</span>{syncing ? 'Syncing' : 'Refresh'}
             </button>
           </div>
         ) : (
-          <button onClick={() => setAccountOpen(true)} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-surface);border:1.5px dashed #E7B7CB;border-radius:18px;cursor:pointer;text-align:left;box-shadow:0 12px 30px -24px rgba(107,20,54,.55);')}>
+          <button onClick={() => setAccountOpen(true)} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:18px;cursor:pointer;text-align:left;box-shadow:0 12px 30px -24px rgba(107,20,54,.55);')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>cloud_sync</span>
             </span>

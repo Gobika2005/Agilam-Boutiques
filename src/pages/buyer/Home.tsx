@@ -211,7 +211,7 @@ export function Home() {
         >
           <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
             <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
-              <span style={css('display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:linear-gradient(140deg,#FBEAF1,#F3D3DF);')}>
+              <span style={css('display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:linear-gradient(140deg,var(--ag-surface-2),var(--ag-surface-3));')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-crimson);")}>grid_view</span>
               </span>
             </span>
@@ -337,7 +337,7 @@ export function Home() {
           now have a dedicated, centred track (`.agx-testimonials`) that caps at
           three across, and each card is a proper pull-quote: the mark, the
           words, then the person — equal height whatever the quote length. */}
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,#F8EFF3 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
+      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,var(--ag-surface-2) 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
             <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across Tamil Nadu</div>
@@ -356,7 +356,7 @@ export function Home() {
                 style={css('margin:0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
               >
                 {/* Opening mark — anchors the quote without shouting. */}
-                <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:#F3C6D8;height:26px;")}>“</span>
+                <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:var(--ag-border);height:26px;")}>“</span>
 
                 <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:var(--ag-ink-2);text-wrap:pretty;flex:1;')}>
                   {r.text}

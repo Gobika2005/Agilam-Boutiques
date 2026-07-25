@@ -77,7 +77,7 @@ export function Cart() {
                 </div>
               )}
 
-              <button onClick={() => navigate('/buyer/coupons', { state: { from: '/buyer/cart' } })} style={css('width:100%;margin-top:13px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed #E7B7CB;background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
+              <button onClick={() => navigate('/buyer/coupons', { state: { from: '/buyer/cart' } })} style={css('width:100%;margin-top:13px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
                 <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>{coupon ? 'Change coupon' : 'View coupons & offers'}</span>
                 <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>

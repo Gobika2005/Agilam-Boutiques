@@ -100,7 +100,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
         {/* Preview card — the template a recipient sees */}
         <div style={css('padding:0 22px;')}>
           <div style={css('position:relative;border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;background:var(--ag-surface);box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
-            <div style={css(`height:74px;background:linear-gradient(135deg,${TONES[boutique.tone]},#F7DCE7);`)} />
+            <div style={css(`height:74px;background:linear-gradient(135deg,${TONES[boutique.tone]},var(--ag-surface-2));`)} />
             <div style={css('padding:0 18px 18px;')}>
               <div style={css('display:flex;align-items:flex-end;gap:12px;margin-top:-30px;')}>
                 <div style={css('width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);border:3px solid #fff;box-shadow:0 12px 26px -14px rgba(214,51,108,.9);display:flex;align-items:center;justify-content:center;flex:none;')}>
@@ -171,7 +171,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
         <div style={css('padding:12px 22px 22px;')}>
           <button
             onClick={nativeShare}
-            style={css('width:100%;height:50px;border:1.5px solid #E7C6D4;border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
+            style={css('width:100%;height:50px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>ios_share</span>
             More options
