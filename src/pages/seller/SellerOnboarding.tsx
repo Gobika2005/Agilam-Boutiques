@@ -6,6 +6,7 @@ import { FullscreenLoader } from '@/auth/RequireRole';
 import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
+import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
@@ -232,6 +233,10 @@ export function SellerOnboarding() {
   const [accountConsent, setAccountConsent] = useState(false);
   const [sellerConsent, setSellerConsent] = useState(false);
   const [step, setStep] = useState(1);
+  // A boutique that has already been submitted re-opens the wizard from the
+  // profile hub to edit its details rather than to register — no consent
+  // re-acceptance, no re-submission for review, just save-in-place.
+  const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
@@ -291,10 +296,17 @@ export function SellerOnboarding() {
         }
         if (cancelled) return;
 
-        // Already submitted or live? There is nothing left to fill in here.
+        // A finished boutique can still return here to manage its details.
+        // Approved and under-review sellers open the wizard in edit mode; only a
+        // rejected boutique — which has no editable path forward — is sent to
+        // its status screen for the reason and support contact.
         if (row.onboarding_complete && row.status !== 'changes_requested') {
-          navigate(row.status === 'approved' ? '/seller/dashboard' : '/seller/verification', { replace: true });
-          return;
+          if (row.status === 'approved' || row.status === 'pending') {
+            setEditMode(true);
+          } else {
+            navigate('/seller/verification', { replace: true });
+            return;
+          }
         }
 
         const priv = await fetchBoutiquePrivate(row.id).catch(() => null);
@@ -448,6 +460,28 @@ export function SellerOnboarding() {
     }
   };
 
+  // Edit-mode "Save changes": persist the whole form and return to the profile
+  // hub. It never touches the boutique's status, so an approved shop stays
+  // approved and a pending one stays in the queue.
+  const saveEdits = async () => {
+    if (!boutique) return;
+    if (incomplete.length) {
+      toast(`Finish ${incomplete[0].title} first`);
+      goTo(incomplete[0].n);
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateBoutique(boutique.id, toPatch(form));
+      toast('Business details updated');
+      navigate('/seller/profile');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not save your changes');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!boutique) return;
     if (incomplete.length) {
@@ -484,13 +518,15 @@ export function SellerOnboarding() {
         <div style={css('position:absolute;top:-90px;right:-50px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
         <div style={css('max-width:900px;margin:0 auto;padding:clamp(22px,3.5vw,38px) clamp(18px,4vw,32px);position:relative;')}>
           <div className="agx-eyebrow" style={css('font-size:9.5px;color:#F4D9A6;')}>
-            {isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
+            {editMode ? 'Manage boutique' : isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin-top:6px;line-height:1.15;")}>
-            {isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on Agilam' : 'Set up your boutique'}
+            {editMode ? 'Edit your business details' : isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on Agilam' : 'Set up your boutique'}
           </div>
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
-            Create your login, then eight quick steps to your boutique. Everything after the first step is saved as you go, so you can stop and come back any time.
+            {editMode
+              ? 'Update any section — bank & payout, GST, pickup address, timings and more. Changes save as you go and never need re-approval.'
+              : 'Create your login, then eight quick steps to your boutique. Everything after the first step is saved as you go, so you can stop and come back any time.'}
           </div>
 
           <div style={css('display:flex;align-items:center;gap:6px;margin-top:22px;overflow-x:auto;padding-bottom:4px;')}>
@@ -720,33 +756,34 @@ export function SellerOnboarding() {
           </SectionCard>
         )}
 
-        {step === 7 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} />}
+        {step === 7 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} editMode={editMode} />}
 
-        {step === 7 && (
+        {step === 7 && !editMode && (
           <div style={css('margin-top:16px;background:#fff;border:1px solid #F2E4EA;border-radius:16px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
             <ConsentCheckbox checked={sellerConsent} onChange={setSellerConsent}>
-              I have read and agree to the Seller Agreement, <PolicyLinks />, including the 8% platform commission and payout terms.
+              I have read and agree to the Seller Agreement, <PolicyLinks />, including the {POLICY_TERMS.commissionPct}% platform commission and payout terms.
             </ConsentCheckbox>
           </div>
         )}
 
         {/* Footer nav ------------------------------------------------------ */}
         <div style={css('display:flex;gap:12px;margin-top:20px;')}>
-          {(step === 0 || step > 1) && (
+          {(step === 0 || step > 1 || editMode) && (
             <button
               type="button"
-              // Step 1 has no Back on purpose: the account above it already
-              // exists and cannot be re-entered.
-              onClick={() => (step === 0 ? navigate('/buyer/home') : goTo(step - 1))}
+              // Step 1 has no Back during first-time setup: the account above it
+              // already exists and cannot be re-entered. In edit mode the button
+              // instead leaves the wizard back to the profile hub.
+              onClick={() => (step === 0 ? navigate('/buyer/home') : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
               disabled={busy}
               style={css('height:54px;padding:0 22px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
             >
-              Back
+              {editMode && step === 1 ? 'Cancel' : 'Back'}
             </button>
           )}
           <button
             type="button"
-            onClick={step === 0 ? createAccount : step === 7 ? submit : saveAndNext}
+            onClick={step === 0 ? createAccount : step === 7 ? (editMode ? saveEdits : submit) : saveAndNext}
             disabled={busy || uploading != null}
             style={css(`flex:1;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;`)}
           >
@@ -754,8 +791,8 @@ export function SellerOnboarding() {
               ? 'Uploading image…'
               : busy
                 ? step === 0 ? 'Creating account…' : 'Saving…'
-                : step === 0 ? 'Create account & continue' : step === 7 ? 'Submit for verification' : 'Save & continue'}
-            {!busy && !uploading && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? 'send' : 'arrow_forward'}</span>}
+                : step === 0 ? 'Create account & continue' : step === 7 ? (editMode ? 'Save changes' : 'Submit for verification') : 'Save & continue'}
+            {!busy && !uploading && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? (editMode ? 'check' : 'send') : 'arrow_forward'}</span>}
           </button>
         </div>
       </div>
@@ -765,11 +802,12 @@ export function SellerOnboarding() {
 
 /** Step 7 — a read-only summary with an Edit shortcut per section. */
 function ReviewStep({
-  form, incomplete, onEdit,
+  form, incomplete, onEdit, editMode,
 }: {
   form: Form;
   incomplete: readonly { n: number; title: string }[];
   onEdit: (step: number) => void;
+  editMode: boolean;
 }) {
   // The account number is echoed back masked: the seller only needs to confirm
   // they typed the right one, and a shoulder-surfed review screen shouldn't
@@ -847,7 +885,9 @@ function ReviewStep({
       <div style={css('background:#F3F9F5;border:1px solid #CFE6D9;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
         <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>verified_user</span>
         <div style={css('font-size:13px;color:#2C6249;font-weight:600;line-height:1.5;')}>
-          Our team reviews your boutique — usually within 24 hours. You can keep adding products while you wait; they go live to buyers the moment you are approved.
+          {editMode
+            ? 'Edit any section above, then Save changes. Your boutique stays live and your listings are unaffected — no re-approval needed.'
+            : 'Our team reviews your boutique — usually within 24 hours. You can keep adding products while you wait; they go live to buyers the moment you are approved.'}
         </div>
       </div>
     </div>

@@ -61,5 +61,5 @@ Buyer and seller layouts are responsive: on phones they render full-bleed with a
 
 ## Notes on scope
 
-- Payments/commission figures on the Admin > Payments screen are computed live from `orders` at an 8% commission rate — there's no separate payment-gateway integration.
+- Payments/commission figures on the Admin > Payments screen are computed live from `orders` at a 10% commission rate — there's no separate payment-gateway integration.
 - Product photo upload is stubbed (no Supabase Storage wiring yet) — products without an uploaded photo show a soft color-tinted placeholder, matching the source design's placeholder treatment.

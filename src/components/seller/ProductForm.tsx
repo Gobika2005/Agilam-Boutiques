@@ -3,6 +3,8 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { uploadProductImage } from '@/data/products';
+import { sortSizes } from '@/lib/sizes';
+import { dominantColorsHex, nearestColorName } from '@/lib/imageColor';
 import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 
@@ -64,12 +66,18 @@ export function ProductForm({
   onSubmit: (values: ProductFormValues) => void;
 }) {
   const { showToast } = useShop();
+  const taxonomy = useTaxonomy();
   // Sizes are a fixed, admin-managed ladder — a chip row rather than a select,
   // because a product can carry several.
-  const sizeOptions = useTaxonomy().names('size');
+  const sizeOptions = sortSizes(taxonomy.names('size'));
+  // Colour swatches, for snapping a photo's dominant colour to the vocabulary.
+  const colorSwatches = taxonomy.rows('color').flatMap((r) => (r.hex ? [{ name: r.name, hex: r.hex }] : []));
   const [form, setForm] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);
+  // The colours we read off the cover photo — offered, never forced. Only shown
+  // while Colour is still empty, so a seller's own choice is never second-guessed.
+  const [colorSuggestions, setColorSuggestions] = useState<string[]>([]);
   const coverInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const { cropImage, cropper } = useImageCropper();
@@ -80,36 +88,60 @@ export function ProductForm({
   const toggleSize = (s: string) =>
     setForm((f) => ({ ...f, sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s] }));
 
-  const onCoverPick = async (picked: File | undefined) => {
-    // Cards crop to 3:4, so the seller frames it rather than discovering later
-    // that the buyer's grid cut the hem off.
-    const file = await cropImage(picked, CROP.product);
-    if (!file) return;
-    setUploading('cover');
-    try {
-      const url = await uploadProductImage(boutiqueId, file);
-      set('imageUrl', url);
-      setErrors((e) => ({ ...e, imageUrl: undefined }));
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Photo upload failed');
-    } finally {
-      setUploading(null);
+  // Fill the (up to 3) gallery slots from a list of picked files. Each photo is
+  // framed in the cropper one after another; a cancelled crop is simply skipped.
+  // Appends functionally so several uploads in a row accumulate correctly.
+  const fillGallery = async (files: File[]) => {
+    let slots = 3 - form.images.length;
+    for (const picked of files) {
+      if (slots <= 0) break;
+      const file = await cropImage(picked, CROP.product);
+      if (!file) continue;
+      setUploading('gallery');
+      try {
+        const url = await uploadProductImage(boutiqueId, file);
+        setForm((f) => ({ ...f, images: [...f.images, url] }));
+        slots--;
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Photo upload failed');
+      } finally {
+        setUploading(null);
+      }
     }
   };
 
-  const onGalleryPick = async (picked: File | undefined) => {
-    if (form.images.length >= 3) return;
-    const file = await cropImage(picked, CROP.product);
-    if (!file) return;
-    setUploading('gallery');
-    try {
-      const url = await uploadProductImage(boutiqueId, file);
-      set('images', [...form.images, url]);
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Photo upload failed');
-    } finally {
-      setUploading(null);
+  const onCoverPick = async (picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    // Multi-select: the first photo frames the cover, any extras flow straight
+    // into the gallery slots — one pick fills the whole product in a single shot.
+    const [first, ...rest] = Array.from(picked);
+    // Cards crop to 3:4, so the seller frames it rather than discovering later
+    // that the buyer's grid cut the hem off.
+    const file = await cropImage(first, CROP.product);
+    if (file) {
+      setUploading('cover');
+      try {
+        const url = await uploadProductImage(boutiqueId, file);
+        set('imageUrl', url);
+        setErrors((e) => ({ ...e, imageUrl: undefined }));
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Photo upload failed');
+      } finally {
+        setUploading(null);
+      }
+      // Read the main colours off the local file (untainted, no upload needed)
+      // and snap each to the vocabulary. Best-effort: an empty result just offers
+      // nothing rather than guessing wrong. Distinct names, in the photo's order.
+      const hexes = colorSwatches.length ? await dominantColorsHex(file) : [];
+      const names = hexes.map((h) => nearestColorName(h, colorSwatches)).filter((n): n is string => !!n);
+      setColorSuggestions([...new Set(names)]);
     }
+    if (rest.length) await fillGallery(rest);
+  };
+
+  const onGalleryPick = async (picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    await fillGallery(Array.from(picked));
   };
 
   const validate = (): boolean => {
@@ -157,7 +189,7 @@ export function ProductForm({
             </>
           )}
           {/* Clearing the value lets the same photo be re-picked after a cancelled crop. */}
-          <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void onCoverPick(e.target.files?.[0]); e.target.value = ''; }} />
+          <input ref={coverInput} type="file" accept="image/*" multiple style={css('display:none;')} onChange={(e) => { void onCoverPick(e.target.files); e.target.value = ''; }} />
         </div>
 
         {[0, 1, 2].map((i) => {
@@ -181,7 +213,7 @@ export function ProductForm({
             </div>
           );
         })}
-        <input ref={galleryInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void onGalleryPick(e.target.files?.[0]); e.target.value = ''; }} />
+        <input ref={galleryInput} type="file" accept="image/*" multiple style={css('display:none;')} onChange={(e) => { void onGalleryPick(e.target.files); e.target.value = ''; }} />
       </div>
       {cropper}
       {errors.imageUrl && <span style={css(errStyle)}>{errors.imageUrl}</span>}
@@ -198,16 +230,37 @@ export function ProductForm({
       </label>
 
       {PICKERS.map((p) => (
-        <TaxonomySelect
-          key={p.key}
-          kind={p.kind}
-          label={p.label}
-          value={form[p.key]}
-          onChange={(v) => set(p.key, v)}
-          error={errors[p.key]}
-          boutiqueId={boutiqueId}
-          requestable={'requestable' in p ? p.requestable : true}
-        />
+        <div key={p.key}>
+          <TaxonomySelect
+            kind={p.kind}
+            label={p.label}
+            value={form[p.key]}
+            onChange={(v) => set(p.key, v)}
+            error={errors[p.key]}
+            boutiqueId={boutiqueId}
+            requestable={'requestable' in p ? p.requestable : true}
+          />
+          {p.key === 'color' && !form.color && colorSuggestions.length > 0 && (
+            <div style={css('margin-top:7px;')}>
+              <span style={css('display:block;font-size:11.5px;font-weight:700;color:#A98D99;margin-bottom:6px;')}>
+                {colorSuggestions.length > 1 ? 'Colours we spotted in your photo — tap one' : 'Colour we spotted in your photo — tap to use'}
+              </span>
+              <div style={css('display:flex;gap:7px;flex-wrap:wrap;')}>
+                {colorSuggestions.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => { set('color', name); setColorSuggestions([]); }}
+                    style={css('display:flex;align-items:center;gap:7px;border:1.5px solid #E6BCCF;background:#FFF9FB;border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;')}
+                  >
+                    <span style={css(`flex:none;width:16px;height:16px;border-radius:5px;border:1.5px solid rgba(0,0,0,.08);background:${taxonomy.hexOf(name)};`)} />
+                    <span style={css('font-size:12px;font-weight:700;color:#B02454;')}>{name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ))}
 
       <div style={css('display:flex;gap:12px;')}>

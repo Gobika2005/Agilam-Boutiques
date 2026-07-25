@@ -65,6 +65,8 @@ export type Boutique = {
   city: string;
   area: string;
   insta: string;
+  /** Google Maps share link (`boutiques.map_url`) — the "Shop Location" tap target. */
+  mapUrl?: string;
   phone: string;
   since?: number;
   followers: number;

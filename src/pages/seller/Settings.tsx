@@ -18,7 +18,7 @@ import { WORKING_DAYS } from '@/data/types';
  */
 
 type Form = {
-  instagram: string; phone: string; whatsapp: string; email: string;
+  instagram: string; mapUrl: string; phone: string; whatsapp: string; email: string;
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
   codEnabled: boolean; onlinePaymentEnabled: boolean;
@@ -26,7 +26,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
-  instagram: '', phone: '', whatsapp: '', email: '',
+  instagram: '', mapUrl: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
   deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
   codEnabled: true, onlinePaymentEnabled: true,
@@ -53,6 +53,7 @@ export function Settings() {
     if (!boutique) return;
     setForm({
       instagram: boutique.instagram ?? '',
+      mapUrl: boutique.map_url ?? '',
       phone: boutique.phone ?? '',
       whatsapp: boutique.whatsapp ?? '',
       email: boutique.email ?? '',
@@ -86,6 +87,7 @@ export function Settings() {
 
     const patch: BoutiquePatch = {
       instagram: form.instagram.trim().replace(/^@/, '') || null,
+      map_url: form.mapUrl.trim() || null,
       phone: form.phone.trim() || null,
       whatsapp: form.whatsapp.trim() || form.phone.trim() || null,
       email: form.email.trim() || null,
@@ -133,7 +135,8 @@ export function Settings() {
             <Field label="WhatsApp number" value={form.whatsapp} onChange={(v) => set('whatsapp', v.replace(/\D/g, '').slice(0, 10))} placeholder="9876543210" inputMode="tel" error={errors.whatsapp} hint="Blank reuses your mobile." />
           </Row>
           <Field label="Email address" value={form.email} onChange={(v) => set('email', v)} placeholder="you@boutique.com" inputMode="email" />
-          <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @." />
+          <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @. Opens your profile from the Instagram button on your shop page." />
+          <Field label="Google Maps link" value={form.mapUrl} onChange={(v) => set('mapUrl', v)} placeholder="https://maps.app.goo.gl/…" inputMode="url" hint="Open your shop in Google Maps, tap Share, and paste the link. Powers the Shop Location button on your buyer page." />
         </SectionCard>
 
         <SectionCard title="Store timing" subtitle="Shown to buyers, so they know when you are open.">

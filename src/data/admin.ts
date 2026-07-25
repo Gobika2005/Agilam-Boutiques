@@ -1,8 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import { fmtInr } from '@/lib/tokens';
+import { POLICY_TERMS } from '@/data/company';
 import type { OrderStatus } from '@/types/database';
 
-const COMMISSION_RATE = 0.08;
+const COMMISSION_RATE = POLICY_TERMS.commissionPct / 100;
 
 export interface OverviewMetrics {
   gmv: number;

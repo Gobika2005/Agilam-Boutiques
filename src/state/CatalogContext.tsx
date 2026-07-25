@@ -67,6 +67,7 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     city: b.city,
     area: b.area || b.city,
     insta: b.instagram || instaHandle(b.name),
+    mapUrl: b.map_url ?? '',
     phone: b.phone ?? '',
     since: b.established_year ?? (b.created_at ? new Date(b.created_at).getFullYear() : undefined),
     followers: b.followers_count ?? 0,

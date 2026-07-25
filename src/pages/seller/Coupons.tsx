@@ -19,7 +19,7 @@ import { isExpired } from '@/lib/pricing';
  *
  * A seller coupon discounts only this boutique's items in a buyer's cart, and the
  * seller funds it: at checkout the discount is netted off this boutique's order
- * total, so it comes out of the payout (and the 8% commission is taken on the
+ * total, so it comes out of the payout (and the 10% commission is taken on the
  * discounted amount). Platform-wide coupons the marketplace runs are shown
  * read-only below so the seller knows what buyers already have.
  */

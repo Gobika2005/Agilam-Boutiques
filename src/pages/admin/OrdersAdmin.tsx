@@ -8,6 +8,7 @@ import { useDebounced } from '@/hooks/useDebounced';
 import { logAdminAction } from '@/data/activityLog';
 import { fetchOrdersAdminPaged, updateOrderStatus, setOrderRefunded } from '@/data/orders';
 import type { OrderWithDetails } from '@/data/types';
+import { POLICY_TERMS } from '@/data/company';
 import {
   DataTable, SearchInput, Select, StatusPill, Avatar, Pagination,
   Drawer, Field, EmptyState, Icon, GhostButton, T, type Column,
@@ -15,7 +16,7 @@ import {
 
 const PAGE_SIZE = 12;
 const FLOW: OrderWithDetails['status'][] = ['pending', 'shipped', 'delivered'];
-const COMMISSION = 0.08;
+const COMMISSION = POLICY_TERMS.commissionPct / 100;
 
 export function OrdersAdmin() {
   const { showToast } = useShop();
@@ -205,7 +206,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
         <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery'} />
         {o.payment_id && <Field label="Payment ID" value={<span style={css('font-size:11.5px;')}>{o.payment_id}</span>} />}
         <Field label="Order total" value={fmtInr(o.total)} />
-        <Field label="Commission (8%)" value={<span style={css('color:#C99A3F;')}>{fmtInr(o.total * COMMISSION)}</span>} />
+        <Field label={`Commission (${POLICY_TERMS.commissionPct}%)`} value={<span style={css('color:#C99A3F;')}>{fmtInr(o.total * COMMISSION)}</span>} />
         <Field label="Refund" value={o.refunded ? <StatusPill status="refunded" label="Refunded" /> : 'None'} />
       </div>
     </div>

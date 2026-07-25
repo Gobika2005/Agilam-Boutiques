@@ -1,12 +1,26 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
+import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { resolveDisplayName } from '@/lib/displayName';
+import { BOUTIQUE_STATUS_LABEL } from '@/data/types';
+import type { BoutiqueStatus } from '@/data/types';
+
+// Every status gets a colour + icon so the seller can read their standing at a
+// glance from the header, not only when something is wrong.
+const STATUS_TONE: Record<BoutiqueStatus, { fg: string; icon: string }> = {
+  draft: { fg: '#B9862F', icon: 'edit_note' },
+  pending: { fg: '#3A6EA5', icon: 'hourglass_top' },
+  changes_requested: { fg: '#B9862F', icon: 'feedback' },
+  approved: { fg: '#2FA36B', icon: 'verified' },
+  rejected: { fg: '#D6455A', icon: 'cancel' },
+};
 
 export function ProfileHub() {
   const navigate = useNavigate();
   const { signOut, profile, session } = useAuth();
+  const { showToast } = useShop();
   const { boutique, loading } = useMyBoutique();
 
   // Header identity comes from the signed-in account: the seller's own boutique
@@ -15,6 +29,21 @@ export function ProfileHub() {
   const boutiqueName = boutique?.name || (loading ? '' : ownerName ? `${ownerName}'s Boutique` : 'Your Boutique');
   const initial = (boutiqueName || ownerName || 'B').trim().charAt(0).toUpperCase();
   const subline = [boutique?.city, ownerName && `Owner: ${ownerName}`].filter(Boolean).join(' · ');
+
+  const status = boutique?.status;
+  const tone = status ? STATUS_TONE[status] : null;
+
+  // The public storefront a buyer sees, so the seller can preview or share it.
+  const storefrontPath = boutique ? `/buyer/boutique/${boutique.id}` : null;
+  const shareStorefront = async () => {
+    if (!boutique) return;
+    const url = `${window.location.origin}/buyer/boutique/${boutique.id}`;
+    const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
+    try {
+      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on Agilam`, url });
+      else { await navigator.clipboard.writeText(url); showToast('Shop link copied'); }
+    } catch { /* the seller dismissed the share sheet — nothing to report */ }
+  };
 
   // Grouped so the hub reads as sections rather than one long undifferentiated
   // list. Business & bank / GST / pickup / hours are all captured in the setup
@@ -29,7 +58,7 @@ export function ProfileHub() {
           : []),
         { label: 'Boutique Profile', sub: 'Name, logo, storefront', icon: 'store', to: '/seller/boutique' },
         { label: 'Business details', sub: 'Bank, GST, pickup, hours', icon: 'badge', to: '/seller/onboarding' },
-        { label: 'Customer Orders', sub: 'Buyers & their history', icon: 'group', to: '/seller/customers' },
+        { label: 'Customers', sub: 'Buyers & their order history', icon: 'group', to: '/seller/customers' },
       ],
     },
     {
@@ -60,19 +89,51 @@ export function ProfileHub() {
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:24px 20px 30px;color:#fff;')}>
+        {/* The whole identity card opens the profile editor — one tap to manage
+            "who am I" from the top of the hub — with an explicit Edit chip so the
+            affordance is discoverable, not hidden. */}
         <div style={css('display:flex;align-items:center;gap:14px;')}>
-          <div style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>
-            {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
-          </div>
-          <div>
-            <div style={css('display:flex;align-items:center;gap:5px;')}>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>{boutiqueName || '…'}</span>
-              {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
-            </div>
-            {subline && <div style={css('opacity:.85;font-size:13px;')}>{subline}</div>}
-            {session?.user?.email && <div style={css('opacity:.7;font-size:12px;margin-top:2px;')}>{session.user.email}</div>}
-          </div>
+          <button onClick={() => navigate('/seller/boutique')} aria-label="Edit boutique profile" style={css('flex:1;min-width:0;display:flex;align-items:center;gap:14px;border:none;background:none;color:inherit;cursor:pointer;text-align:left;padding:0;font-family:inherit;')}>
+            <span style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>
+              {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
+            </span>
+            <span style={css('min-width:0;')}>
+              <span style={css('display:flex;align-items:center;gap:5px;')}>
+                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{boutiqueName || '…'}</span>
+                {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
+              </span>
+              {subline && <span style={css('display:block;opacity:.85;font-size:13px;')}>{subline}</span>}
+              {session?.user?.email && <span style={css('display:block;opacity:.7;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{session.user.email}</span>}
+            </span>
+          </button>
+          <span style={css('flex:none;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:7px 12px;border-radius:11px;font-size:12px;font-weight:800;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
+          </span>
         </div>
+
+        {/* Always-visible standing + shortcuts to the public shop, so a seller
+            never has to hunt for "am I live?" or "what do buyers see?". */}
+        {status && tone && (
+          <div style={css('display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:16px;')}>
+            <button
+              onClick={() => status !== 'approved' && navigate('/seller/verification')}
+              style={css(`display:inline-flex;align-items:center;gap:6px;background:#fff;color:${tone.fg};border:none;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{tone.icon}</span>
+              {status === 'approved' ? 'Live on Agilam' : BOUTIQUE_STATUS_LABEL[status]}
+            </button>
+            {storefrontPath && (
+              <>
+                <button onClick={() => navigate(storefrontPath)} style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>View shop
+                </button>
+                <button onClick={shareStorefront} style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>ios_share</span>Share
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {sections.map((sec) => (

@@ -42,6 +42,19 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
   const buyerId = session?.user?.id ?? '';
   const myReview = reviews.find((r) => r.buyer_id === buyerId);
 
+  // Real rating summary — the average, count and per-star spread are all derived
+  // from the reviews actually on file, so an unreviewed product reads 0/0% rather
+  // than a hard-coded distribution.
+  const summary = useMemo(() => {
+    const count = reviews.length;
+    const avg = count ? reviews.reduce((s, r) => s + r.rating, 0) / count : 0;
+    const bars = [5, 4, 3, 2, 1].map((stars) => {
+      const n = reviews.filter((r) => r.rating === stars).length;
+      return { stars, pct: count ? Math.round((n / count) * 100) : 0 };
+    });
+    return { count, avg, bars };
+  }, [reviews]);
+
   const onWriteClick = () => {
     if (!signedIn) {
       navigate('/auth/signin/buyer');
@@ -79,6 +92,35 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
 
   return (
     <div style={css('display:flex;flex-direction:column;gap:12px;')}>
+      {/* Rating summary — real average + spread over the reviews on file. */}
+      <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:18px;')}>
+        <div style={css('display:flex;align-items:center;gap:18px;')}>
+          <div style={css('text-align:center;')}>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:#B02454;")}>
+              {summary.count ? summary.avg.toFixed(1) : '—'}
+            </div>
+            <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>
+              {summary.count ? starsFor(Math.round(summary.avg)) : '☆☆☆☆☆'}
+            </div>
+            <div style={css('color:#8A7078;font-size:12px;margin-top:6px;')}>
+              {summary.count} review{summary.count === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div style={css('flex:1;display:flex;flex-direction:column;gap:7px;')}>
+            {summary.bars.map((r) => (
+              <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
+                <span style={css('font-size:11px;font-weight:700;color:#8A7078;width:10px;')}>{r.stars}</span>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
+                <span style={css('flex:1;height:7px;border-radius:4px;background:#EFDCE4;overflow:hidden;')}>
+                  <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
+                </span>
+                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8A7078;width:30px;text-align:right;")}>{r.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <button
         onClick={onWriteClick}
         style={css('height:44px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}

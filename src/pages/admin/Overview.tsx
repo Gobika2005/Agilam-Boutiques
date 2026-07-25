@@ -5,6 +5,7 @@ import { fmtInr } from '@/lib/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { supabase } from '@/lib/supabase';
 import { fetchDashboard, type WindowStat } from '@/data/admin';
+import { POLICY_TERMS } from '@/data/company';
 import { fetchActivity } from '@/data/activityLog';
 import { StatCard, SectionCard, StatusPill, Avatar, Icon, EmptyState, T } from '@/components/admin/kit';
 
@@ -60,7 +61,7 @@ export function Overview() {
         <StatCard label="Today's sales" value={compactInr(win.today.revenue)} icon="payments" tint="#FCE0EC" ic="#D6336C" sub={delta(win.today.revenue, win.yesterday.revenue)} bars={ordBars} />
         <StatCard label="This month" value={compactInr(win.month.revenue)} icon="calendar_month" tint="#E6F0FA" ic="#3A6EA5" sub={`${win.month.orders} orders`} bars={revBars} />
         <StatCard label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} icon="trending_up" tint="#F3EAF5" ic="#9B7FC7" sub="gross" />
-        <StatCard label="Platform revenue" value={compactInr(d?.platformRevenue ?? 0)} icon="account_balance" tint="#FBF0DA" ic="#C99A3F" sub="8% commission" />
+        <StatCard label="Platform revenue" value={compactInr(d?.platformRevenue ?? 0)} icon="account_balance" tint="#FBF0DA" ic="#C99A3F" sub={`${POLICY_TERMS.commissionPct}% commission`} />
       </div>
 
       {/* Counters row */}

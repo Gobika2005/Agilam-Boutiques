@@ -10,11 +10,8 @@ import { WishButton } from '@/components/buyer/WishButton';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/shareProduct';
 import { recordProductView, recordProductShare } from '@/data/products';
+import { sortSizes } from '@/lib/sizes';
 import { TONES, fmt } from '@/data/demo';
-
-const RATING_BARS = [
-  { stars: 5, pct: 72 }, { stars: 4, pct: 19 }, { stars: 3, pct: 6 }, { stars: 2, pct: 2 }, { stars: 1, pct: 1 },
-];
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
@@ -96,7 +93,7 @@ export function ProductDetail() {
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
   const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : '#2FA36B';
 
-  const sizeOptions = ap.sizes?.length ? ap.sizes : FALLBACK_SIZES;
+  const sizeOptions = sortSizes(ap.sizes?.length ? ap.sizes : FALLBACK_SIZES);
   // What the buyer picked, else the size this piece is already in the bag at,
   // else M when the boutique offers it — never a size that isn't on sale.
   const bagLine = cart[ap.id];
@@ -471,32 +468,7 @@ export function ProductDetail() {
             {/* Ratings and reviews are one thing to the buyer — the score, the
                 spread, then the reviews themselves — so they share one panel. */}
             {renderPanel('ratings', 'star', 'Ratings & reviews', `${ap.rating} ★ · ${reviewsF(ap.reviews)}`, (
-              <>
-                <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:18px;')}>
-                  <div style={css('display:flex;align-items:center;gap:18px;')}>
-                    <div style={css('text-align:center;')}>
-                      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:#B02454;")}>{ap.rating}</div>
-                      <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>★★★★★</div>
-                      <div style={css('color:#8A7078;font-size:12px;margin-top:6px;')}>{reviewsF(ap.reviews)} reviews</div>
-                    </div>
-                    <div style={css('flex:1;display:flex;flex-direction:column;gap:7px;')}>
-                      {RATING_BARS.map((r) => (
-                        <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
-                          <span style={css('font-size:11px;font-weight:700;color:#8A7078;width:10px;')}>{r.stars}</span>
-                          <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
-                          <span style={css('flex:1;height:7px;border-radius:4px;background:#EFDCE4;overflow:hidden;')}>
-                            <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
-                          </span>
-                          <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8A7078;width:30px;text-align:right;")}>{r.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div style={css('margin-top:14px;')}>
-                  <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
-                </div>
-              </>
+              <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
             ))}
           </div>
         </div>

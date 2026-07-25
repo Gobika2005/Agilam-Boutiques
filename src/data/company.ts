@@ -93,7 +93,7 @@ export const POLICY_TERMS = {
   deliveryEstimate: '3–7 working days',
   metroDeliveryEstimate: '2–4 working days',
   cancellationWindowHours: 24,
-  commissionPct: 8,
+  commissionPct: 10,
   /** Cash on delivery — mirrors COD_FEE / COD_MAX_ORDER in src/lib/pricing.ts. */
   codFee: 49,
   codMaxOrder: 10000,
