@@ -25,19 +25,14 @@ const NOTICE_MESSAGES = [
   "🐞 Bug Notice: Bug paatha bayapadadheenga... adha dhaan neenga kandupidikka vandhurukeenga. 😂",
 ];
 
-function pickSessionMessage() {
-  const key = 'agilam-launch-notice-msg';
-  const cached = sessionStorage.getItem(key);
-  if (cached) return cached;
-  const msg = NOTICE_MESSAGES[Math.floor(Math.random() * NOTICE_MESSAGES.length)];
-  sessionStorage.setItem(key, msg);
-  return msg;
+function pickMessage() {
+  return NOTICE_MESSAGES[Math.floor(Math.random() * NOTICE_MESSAGES.length)];
 }
 
 export function LaunchNotice() {
   const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
-  const [message] = useState(pickSessionMessage);
+  const [message] = useState(pickMessage);
 
   // Operator consoles and the bare auth/landing routes don't need the notice.
   const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
