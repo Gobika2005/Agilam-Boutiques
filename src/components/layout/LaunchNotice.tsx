@@ -14,9 +14,30 @@ import { css } from '@/lib/css';
  * operators who already know the site's status, so they never see it.
  */
 
+const NOTICE_MESSAGES = [
+  "🚧 Developer Request: Konjam porumai... innum build pannitu irukom. Bug kanda screenshot anuppunga, developer-a illa. 😂🏗️",
+  "👨‍💻 Dear Tester: Developer ah disturb pannadheenga... code compile aagitu iruku. Konjam wait pannunga! 😅",
+  "😂 Heads Up: Idhu production illa boss... testing ground! Edhavadhu odanja, adhu expected dhaan. 🏗️",
+  "🚀 Welcome Tester! Features innum cooking... bugs taste pannadheenga. 🤣",
+  "⚠️ Tester-ku Oru Request: Button ellathayum ore time-la click pannadheenga... developer heart attack vandhudum. 😂",
+  "🥱 Friendly Reminder: Dummy products dhaan. Order pannadheenga... developer-ku unnecessary tension kudukadheenga. 😆",
+  "👷 Site Under Construction: Developer coffee kudichitu build pannitu irukaru. Konjam support pannunga. ☕🏗️",
+  "🐞 Bug Notice: Bug paatha bayapadadheenga... adha dhaan neenga kandupidikka vandhurukeenga. 😂",
+];
+
+function pickSessionMessage() {
+  const key = 'agilam-launch-notice-msg';
+  const cached = sessionStorage.getItem(key);
+  if (cached) return cached;
+  const msg = NOTICE_MESSAGES[Math.floor(Math.random() * NOTICE_MESSAGES.length)];
+  sessionStorage.setItem(key, msg);
+  return msg;
+}
+
 export function LaunchNotice() {
   const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
+  const [message] = useState(pickSessionMessage);
 
   // Operator consoles and the bare auth/landing routes don't need the notice.
   const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
@@ -44,7 +65,7 @@ export function LaunchNotice() {
       <div style={css('min-width:0;')}>
         <div style={css('font-size:13.5px;font-weight:800;letter-spacing:.2px;')}>Launching soon</div>
         <div style={css('font-size:12.5px;line-height:1.5;color:rgba(255,255,255,.82);margin-top:3px;')}>
-          Agilam is still under development — you're browsing an early preview. The official launch is on its way. Thanks for stopping by!
+          {message}
         </div>
       </div>
       <button
