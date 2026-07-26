@@ -4,6 +4,13 @@ import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { requestTaxonomy, KIND_LABEL, type TaxonomyKind } from '@/data/taxonomy';
 
+// The searchable combobox reuses the native select's look for its trigger, but
+// as a flex button (a real <select> can't hold a colour swatch or a search box).
+const TRIGGER =
+  'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;';
+const SEARCH_INPUT =
+  'width:100%;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:11px;padding:0 12px;height:42px;font-size:14px;font-weight:600;font-family:inherit;color:var(--ag-ink);box-sizing:border-box;';
+
 /**
  * A managed dropdown for one of the catalogue vocabularies, with a way out.
  *
@@ -37,6 +44,7 @@ export function TaxonomySelect({
   error,
   boutiqueId,
   requestable = true,
+  searchable = false,
 }: {
   kind: TaxonomyKind;
   label: string;
@@ -47,12 +55,18 @@ export function TaxonomySelect({
   /** Colours and sizes are admin-managed, so they get the dropdown without the
    *  "add new" escape hatch. */
   requestable?: boolean;
+  /** Render a type-to-filter combobox with swatches instead of a native select.
+   *  Used for colour, where the list is long and a swatch is worth showing. */
+  searchable?: boolean;
 }) {
   const { showToast } = useShop();
-  const { names, myRequests, reload } = useTaxonomy();
+  const { names, myRequests, reload, hexOf } = useTaxonomy();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  // Combobox state (searchable mode only).
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
   const approved = names(kind);
 
@@ -94,6 +108,22 @@ export function TaxonomySelect({
 
   const isPending = pending.some((n) => n.toLowerCase() === value.toLowerCase());
 
+  const kindLabel = KIND_LABEL[kind].toLowerCase();
+  const isColor = kind === 'color';
+
+  // Substring filter for the combobox — "any colour you type", narrowing as you
+  // go, so a long swatch list is a two-key search rather than a long scroll.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? options.filter((o) => o.name.toLowerCase().includes(q)) : options;
+  }, [options, query]);
+
+  const pick = (name: string) => {
+    onChange(name);
+    setOpen(false);
+    setQuery('');
+  };
+
   const submitRequest = async () => {
     const name = draft.trim();
     if (name.length < 2) {
@@ -119,31 +149,119 @@ export function TaxonomySelect({
     }
   };
 
+  const swatch = (name: string) => (
+    <span style={css(`flex:none;width:17px;height:17px;border-radius:5px;border:1.5px solid rgba(0,0,0,.1);background:${hexOf(name)};`)} />
+  );
+
   return (
     <div>
-      <label style={css(LABEL)}>
-        {label}
-        <select
-          value={value}
-          onChange={(e) => {
-            if (e.target.value === ADD_NEW) {
-              setAdding(true);
-              setDraft('');
-              return;
-            }
-            onChange(e.target.value);
-          }}
-          style={css(error ? SELECT_ERR : SELECT)}
-        >
-          <option value="">Select {KIND_LABEL[kind].toLowerCase()}…</option>
-          {options.map((o) => (
-            <option key={o.name} value={o.name}>
-              {o.note ? `${o.name} · ${o.note}` : o.name}
-            </option>
-          ))}
-          {requestable && <option value={ADD_NEW}>＋ Add a new {KIND_LABEL[kind].toLowerCase()}…</option>}
-        </select>
-      </label>
+      {searchable ? (
+        <div style={css('position:relative;')}>
+          <label style={css(LABEL)}>{label}</label>
+          <button
+            type="button"
+            onClick={() => { setOpen((o) => !o); setQuery(''); }}
+            style={css(`${TRIGGER}${error ? 'border-color:#E7A7B4;' : ''}`)}
+          >
+            <span style={css('display:flex;align-items:center;gap:9px;min-width:0;')}>
+              {value ? (
+                <>
+                  {isColor && swatch(value)}
+                  <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{value}</span>
+                </>
+              ) : (
+                <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>Select {kindLabel}…</span>
+              )}
+            </span>
+            <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;transition:transform .15s;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+          </button>
+
+          {open && (
+            <>
+              {/* A transparent backdrop closes the popover on any outside tap —
+                  simpler and more reliable than a document listener. */}
+              <div onClick={() => setOpen(false)} style={css('position:fixed;inset:0;z-index:40;')} />
+              <div style={css('position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:41;background:var(--ag-surface);border:1.5px solid var(--ag-border);border-radius:14px;box-shadow:0 22px 48px -22px rgba(107,20,54,.55);overflow:hidden;')}>
+                <div style={css('padding:8px;border-bottom:1px solid var(--ag-border-soft);')}>
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setOpen(false);
+                      if (e.key === 'Enter' && filtered[0]) { e.preventDefault(); pick(filtered[0].name); }
+                    }}
+                    placeholder={`Search ${kindLabel}…`}
+                    style={css(SEARCH_INPUT)}
+                  />
+                </div>
+                <div style={css('max-height:236px;overflow-y:auto;padding:5px;')}>
+                  {filtered.length === 0 ? (
+                    <div style={css('padding:16px 12px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ag-muted);line-height:1.5;')}>
+                      No {kindLabel} matches “{query.trim()}”.
+                    </div>
+                  ) : (
+                    filtered.map((o) => (
+                      <button
+                        key={o.name}
+                        type="button"
+                        onClick={() => pick(o.name)}
+                        style={css(`width:100%;display:flex;align-items:center;gap:10px;padding:10px 11px;border:none;border-radius:9px;background:${o.name === value ? 'var(--ag-surface-2)' : 'none'};cursor:pointer;font-family:inherit;text-align:left;`)}
+                      >
+                        {isColor && swatch(o.name)}
+                        <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ag-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                          {o.name}{o.note ? ` · ${o.note}` : ''}
+                        </span>
+                        {o.name === value && <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#D6336C;")}>check</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
+                {/* Requestable vocabularies (category / occasion / fabric) can
+                    ask for a missing entry straight from the search — so "search
+                    for it, and if it's not there, request it" is one flow. It
+                    opens the inline request row with whatever was typed. */}
+                {requestable && (
+                  <button
+                    type="button"
+                    onClick={() => { setAdding(true); setDraft(query.trim()); setOpen(false); setQuery(''); }}
+                    style={css('width:100%;display:flex;align-items:center;gap:9px;padding:12px;border:none;border-top:1px solid var(--ag-border-soft);background:none;cursor:pointer;font-family:inherit;text-align:left;')}
+                  >
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>add_circle</span>
+                    <span style={css('font-size:13px;font-weight:800;color:var(--ag-crimson);')}>
+                      {query.trim() ? `Request “${query.trim()}”` : `Add a new ${kindLabel}`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <label style={css(LABEL)}>
+          {label}
+          <select
+            value={value}
+            onChange={(e) => {
+              if (e.target.value === ADD_NEW) {
+                setAdding(true);
+                setDraft('');
+                return;
+              }
+              onChange(e.target.value);
+            }}
+            style={css(error ? SELECT_ERR : SELECT)}
+          >
+            <option value="">Select {KIND_LABEL[kind].toLowerCase()}…</option>
+            {options.map((o) => (
+              <option key={o.name} value={o.name}>
+                {o.note ? `${o.name} · ${o.note}` : o.name}
+              </option>
+            ))}
+            {requestable && <option value={ADD_NEW}>＋ Add a new {KIND_LABEL[kind].toLowerCase()}…</option>}
+          </select>
+        </label>
+      )}
 
       {error && <span style={css(ERR)}>{error}</span>}
 

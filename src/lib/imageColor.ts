@@ -41,6 +41,35 @@ const distance = (a: Rgb, b: Rgb): number => {
 
 type Bucket = { r: number; g: number; b: number; w: number };
 
+/**
+ * Rough skin-tone test.
+ *
+ * Product shots are taken on models, so bare arms, neck and face put a large
+ * warm-beige region right in the centre of the frame — the exact place the
+ * centre-weighting expects the garment to be. Left to vote it surfaces as a
+ * "Peach"/"Beige" suggestion: the purple maxi that suggested Peach was reading
+ * the model's skin, not the dress. We can't segment the person out, but skin
+ * occupies a narrow, well-known slice of colour space, so pixels that land in it
+ * are suppressed rather than counted.
+ *
+ * The bounds are deliberately tight so a genuinely warm *garment* is spared: a
+ * vivid red/orange (a wide R→B gap or high saturation) and any cool colour
+ * (purple, teal, blue — where blue is not the smallest channel) both fall
+ * outside the skin slice and vote normally.
+ */
+function isSkin(r: number, g: number, b: number): boolean {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const sat = max === 0 ? 0 : (max - min) / max;
+  return (
+    r > 60 && g > 40 && b > 20 &&
+    r >= g && g >= b &&            // warm ordering: red highest, blue lowest
+    r - b > 12 && r - b < 150 &&   // a warm gap, but not a saturated red garment
+    max - min > 10 &&              // not a flat grey
+    sat < 0.55                     // not a vivid, colourful garment
+  );
+}
+
 /** Mean colour of the pixels a mask accepts, or null if it accepts none. */
 function regionMean(
   data: Uint8ClampedArray,
@@ -168,9 +197,12 @@ async function paletteBuckets(file: File): Promise<Bucket[]> {
 
     // Suppress — don't hard-drop — pixels that match the estimated backdrop, so
     // a shadow line on the sweep can't be mistaken for the dress, yet a garment
-    // that happens to share the backdrop's family still registers faintly.
+    // that happens to share the backdrop's family still registers faintly. Skin
+    // is suppressed the same way: the model's bare arms and face must not outvote
+    // the garment, but a warm-toned garment large enough to dwarf them survives.
     let bgFactor = 1;
     if (backdrop && distance({ r, g, b }, backdrop) < 30) bgFactor = 0.05;
+    if (isSkin(r, g, b)) bgFactor = Math.min(bgFactor, 0.12);
 
     // Area first, colourfulness second. A large black or grey garment must
     // out-total a fleck of bright embroidery, so neutrals keep a solid base
@@ -199,14 +231,19 @@ async function paletteBuckets(file: File): Promise<Bucket[]> {
  * genuinely cream/white piece may yield []; that is fine — no suggestion is
  * better than a wrong one.
  */
-export async function dominantColorsHex(file: File, maxColors = 4): Promise<string[]> {
+export async function dominantColorsHex(file: File, maxColors = 2): Promise<string[]> {
   const buckets = await paletteBuckets(file);
   if (buckets.length === 0) return [];
   const totalW = buckets.reduce((s, b) => s + b.w, 0);
 
   const picked: Rgb[] = [];
   for (const b of buckets) {
-    if (b.w < totalW * 0.04) break; // heaviest-first, so once we're under 4% we're done
+    // Heaviest-first: once a bucket holds under a tenth of the (skin- and
+    // backdrop-suppressed) weight it is noise — a fleck of trim or a sliver of
+    // background — not a colour worth offering. A higher bar means the odd photo
+    // yields nothing, which the caller treats as "no suggestion", and that is the
+    // point: a wrong colour is worse than none.
+    if (b.w < totalW * 0.1) break;
     const rgb = { r: Math.round(b.r / b.w), g: Math.round(b.g / b.w), b: Math.round(b.b / b.w) };
     if (picked.some((p) => distance(p, rgb) < 40)) continue; // a shade of one we already have
     picked.push(rgb);
@@ -215,8 +252,23 @@ export async function dominantColorsHex(file: File, maxColors = 4): Promise<stri
   return picked.map(rgbToHex);
 }
 
-/** Name of the taxonomy colour nearest to `hex`, or null if none have swatches. */
-export function nearestColorName(hex: string, colors: { name: string; hex: string }[]): string | null {
+/**
+ * Name of the taxonomy colour nearest to `hex`, or null when nothing is close
+ * enough.
+ *
+ * The nearest swatch is only offered when the detected colour actually sits near
+ * it (`maxDistance`, in the same redmean units as `distance`). Without that gate
+ * every stray colour snaps to *something* — a warm background cast lands on
+ * "Red", a shadow on "Maroon" — which is how a purple dress ended up suggesting
+ * Red. The bar is loose enough that a photographed shade still snaps to its own
+ * hue (a dim maroon → Maroon), but a colour that matches no dropdown entry is
+ * dropped rather than forced onto the closest wrong one.
+ */
+export function nearestColorName(
+  hex: string,
+  colors: { name: string; hex: string }[],
+  maxDistance = 160,
+): string | null {
   const target = hexToRgb(hex);
   if (!target) return null;
   let best: string | null = null;
@@ -230,5 +282,5 @@ export function nearestColorName(hex: string, colors: { name: string; hex: strin
       best = opt.name;
     }
   }
-  return best;
+  return bestD <= maxDistance ? best : null;
 }

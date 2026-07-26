@@ -46,10 +46,13 @@ const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;
  * is the admin's to choose.
  */
 const PICKERS = [
-  { key: 'category', kind: 'category', label: 'Category *' },
-  { key: 'color', kind: 'color', label: 'Colour *', requestable: false },
-  { key: 'occasion', kind: 'occasion', label: 'Occasion *' },
-  { key: 'fabric', kind: 'fabric', label: 'Fabric *' },
+  // All four are type-to-search comboboxes: the vocabularies are long and
+  // managed, so filtering beats scrolling. Colour also shows swatches; the other
+  // three carry the "request a new one" action inside the search popover.
+  { key: 'category', kind: 'category', label: 'Category *', searchable: true },
+  { key: 'color', kind: 'color', label: 'Colour *', requestable: false, searchable: true },
+  { key: 'occasion', kind: 'occasion', label: 'Occasion *', searchable: true },
+  { key: 'fabric', kind: 'fabric', label: 'Fabric *', searchable: true },
 ] as const;
 
 export function ProductForm({
@@ -242,6 +245,7 @@ export function ProductForm({
             error={errors[p.key]}
             boutiqueId={boutiqueId}
             requestable={'requestable' in p ? p.requestable : true}
+            searchable={'searchable' in p ? p.searchable : false}
           />
           {p.key === 'color' && !form.color && colorSuggestions.length > 0 && (
             <div style={css('margin-top:7px;')}>
