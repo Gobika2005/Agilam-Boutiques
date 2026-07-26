@@ -197,6 +197,36 @@ export async function trackAdClick(id: string) {
   }
 }
 
+/**
+ * The status a campaign should be *shown* as, accounting for its real time
+ * window.
+ *
+ * The stored `status` column only flips `scheduled → live → expired` when the
+ * daily lifecycle cron runs (`vercel.json` → `expire_and_activate_ads`). Between
+ * an ad's `end_at` and the next run the row still reads `live`, which is why the
+ * admin and seller consoles kept showing "Live" for ads that had already ended.
+ * The buyer feed never trusts the raw status — it serves off the window (see
+ * `fetchLiveAds`) — so the management views read it the same way here: an ad past
+ * its `end_at` is "Ended" the moment it ends, and one past its `start_at` is
+ * already "Live", without waiting for the overnight job.
+ */
+export function effectiveAdStatus(
+  c: Pick<AdCampaign, 'status' | 'start_at' | 'end_at'>,
+): AdStatus {
+  const now = Date.now();
+  const started = c.start_at ? new Date(c.start_at).getTime() : null;
+  const ended = c.end_at ? new Date(c.end_at).getTime() : null;
+  // A window that has closed ends the ad, whether it was live or still scheduled.
+  if ((c.status === 'live' || c.status === 'scheduled') && ended !== null && ended <= now) {
+    return 'expired';
+  }
+  // A scheduled ad whose start has arrived (and end has not) is really live.
+  if (c.status === 'scheduled' && started !== null && started <= now) {
+    return 'live';
+  }
+  return c.status;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin — review console
 // ─────────────────────────────────────────────────────────────────────────────

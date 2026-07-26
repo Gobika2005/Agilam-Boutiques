@@ -10,6 +10,7 @@ import {
   requestChanges,
   rejectAndRefund,
   updatePlacement,
+  effectiveAdStatus,
   type AdCampaignAdmin,
   type AdPlacement,
 } from '@/data/ads';
@@ -50,16 +51,17 @@ export function Ads() {
   const [tab, setTab] = useState<'campaigns' | 'rates'>('campaigns');
   const [statusFilter, setStatusFilter] = useState<AdStatus | 'all'>('all');
 
-  const { data: campaigns, loading, reload } = useAsync(
-    () => fetchAllCampaigns({ status: statusFilter }),
-    [statusFilter],
-  );
+  // Fetch every campaign and filter client-side on the *effective* status, so a
+  // live-but-expired ad falls under "Ended" (not "Live") the moment its window
+  // closes — the DB's own status only catches up at the nightly lifecycle run.
+  const { data: campaigns, loading, reload } = useAsync(() => fetchAllCampaigns(), []);
   const { data: placements, reload: reloadPlacements } = useAsync(() => fetchPlacements(), []);
 
-  const rows = useMemo(
-    () => [...(campaigns ?? [])].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]),
-    [campaigns],
-  );
+  const rows = useMemo(() => {
+    const withEff = (campaigns ?? []).map((c) => ({ c, status: effectiveAdStatus(c) }));
+    const shown = statusFilter === 'all' ? withEff : withEff.filter((r) => r.status === statusFilter);
+    return shown.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
+  }, [campaigns, statusFilter]);
 
   // Revenue = every campaign that has actually been paid and not refunded.
   const summary = useMemo(() => {
@@ -175,8 +177,8 @@ export function Ads() {
           )}
 
           <div style={css('display:flex;flex-direction:column;gap:12px;')}>
-            {rows.map((c) => {
-              const st = STATUS_META[c.status];
+            {rows.map(({ c, status }) => {
+              const st = STATUS_META[status];
               const subject = c.subject_type === 'boutique' ? c.boutique?.name : ((c.product?.title ?? c.headline) || '—');
               const thumb = c.subject_type === 'boutique' ? c.boutique?.logo_url : (c.product?.image_url || c.image_url);
               const busy = busyId === c.id;
@@ -215,22 +217,22 @@ export function Ads() {
                       <button onClick={() => setPreview(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;')}>
                         <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>Preview
                       </button>
-                      {(c.status === 'pending_review' || c.status === 'paused') && (
+                      {(status === 'pending_review' || status === 'paused') && (
                         <button disabled={busy} onClick={() => doApprove(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ag-good),var(--ag-good-text));color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;')}>
-                          {c.status === 'paused' ? 'Resume' : 'Approve'}
+                          {status === 'paused' ? 'Resume' : 'Approve'}
                         </button>
                       )}
-                      {(c.status === 'live' || c.status === 'scheduled') && (
+                      {(status === 'live' || status === 'scheduled') && (
                         <button disabled={busy} onClick={() => doPause(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Pause
                         </button>
                       )}
-                      {(c.status === 'pending_review' || c.status === 'scheduled' || c.status === 'live' || c.status === 'paused') && (
+                      {(status === 'pending_review' || status === 'scheduled' || status === 'live' || status === 'paused') && (
                         <button disabled={busy} onClick={() => doRework(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-gold-border);background:var(--ag-surface);color:#B26B1B;font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Rework
                         </button>
                       )}
-                      {(c.status === 'pending_review' || c.status === 'changes_requested' || c.status === 'scheduled' || c.status === 'live' || c.status === 'paused') && (
+                      {(status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
                         <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Reject & refund
                         </button>
@@ -264,17 +266,17 @@ export function Ads() {
             <CreativePreview c={preview} />
 
             <div style={css('display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;')}>
-              {(preview.status === 'pending_review' || preview.status === 'paused') && (
+              {(effectiveAdStatus(preview) === 'pending_review' || effectiveAdStatus(preview) === 'paused') && (
                 <button disabled={busyId === preview.id} onClick={() => doApprove(preview)} style={css('flex:1;height:44px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--ag-good),var(--ag-good-text));color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;')}>
-                  {preview.status === 'paused' ? 'Resume' : 'Approve'}
+                  {effectiveAdStatus(preview) === 'paused' ? 'Resume' : 'Approve'}
                 </button>
               )}
-              {(preview.status === 'pending_review' || preview.status === 'scheduled' || preview.status === 'live' || preview.status === 'paused') && (
+              {(effectiveAdStatus(preview) === 'pending_review' || effectiveAdStatus(preview) === 'scheduled' || effectiveAdStatus(preview) === 'live' || effectiveAdStatus(preview) === 'paused') && (
                 <button disabled={busyId === preview.id} onClick={() => doRework(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-gold-border);background:var(--ag-surface);color:#B26B1B;font-weight:800;font-size:13.5px;cursor:pointer;')}>
                   Rework
                 </button>
               )}
-              {(preview.status === 'pending_review' || preview.status === 'changes_requested' || preview.status === 'scheduled' || preview.status === 'live' || preview.status === 'paused') && (
+              {(effectiveAdStatus(preview) === 'pending_review' || effectiveAdStatus(preview) === 'changes_requested' || effectiveAdStatus(preview) === 'scheduled' || effectiveAdStatus(preview) === 'live' || effectiveAdStatus(preview) === 'paused') && (
                 <button disabled={busyId === preview.id} onClick={() => doReject(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:800;font-size:13.5px;cursor:pointer;')}>
                   Reject & refund
                 </button>

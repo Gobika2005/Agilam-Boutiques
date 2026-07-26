@@ -12,6 +12,7 @@ import {
   sellerEditCreative,
   deleteDraft,
   payForCampaign,
+  effectiveAdStatus,
   type AdCampaign,
   type AdPlacement,
   type CreativeInput,
@@ -105,7 +106,10 @@ export function Promote() {
 
         <div style={css('display:flex;flex-direction:column;gap:12px;')}>
           {rows.map((c) => {
-            const st = STATUS_META[c.status];
+            // Show where the ad really stands: its window may have ended (or
+            // started) before the nightly lifecycle job updates the stored status.
+            const status = effectiveAdStatus(c);
+            const st = STATUS_META[status];
             const rate = rateByCode.get(c.placement_code);
             return (
               <div key={c.id} style={css('background:var(--ag-surface);border-radius:16px;padding:15px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
@@ -114,13 +118,13 @@ export function Promote() {
                     <div style={css('font-weight:800;font-size:14.5px;')}>{rate?.name ?? c.placement_code}</div>
                     <div style={css('font-size:12px;color:#A98D99;margin-top:2px;')}>
                       {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
-                      {c.status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
+                      {status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : status === 'expired' && c.end_at ? ` · ended ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
                   </div>
                   <span style={css(`font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;flex:none;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
                 </div>
 
-                {(c.status === 'live' || c.status === 'expired' || c.status === 'paused') && (
+                {(status === 'live' || status === 'expired' || status === 'paused') && (
                   <div style={css('display:flex;gap:22px;margin-top:12px;')}>
                     <Stat label="impressions" value={compact(c.impressions)} />
                     <Stat label="clicks" value={compact(c.clicks)} />
@@ -136,12 +140,12 @@ export function Promote() {
                 )}
 
                 <div style={css('display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;')}>
-                  {EDITABLE.includes(c.status) && (
+                  {EDITABLE.includes(status) && (
                     <button onClick={() => setWizard({ campaign: c })} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
-                      {c.status === 'pending_payment' ? 'Finish & pay' : c.status === 'changes_requested' ? 'Edit & resubmit' : 'Edit ad'}
+                      {status === 'pending_payment' ? 'Finish & pay' : status === 'changes_requested' ? 'Edit & resubmit' : 'Edit ad'}
                     </button>
                   )}
-                  {c.status === 'pending_payment' && (
+                  {status === 'pending_payment' && (
                     <button onClick={() => removeDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       Delete draft
                     </button>

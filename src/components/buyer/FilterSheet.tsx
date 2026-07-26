@@ -1,18 +1,8 @@
 import { Icon } from '@/components/ui/Icon';
 import { fmtInr } from '@/lib/tokens';
+import { useTaxonomy } from '@/state/TaxonomyContext';
 import type { ProductFilters } from '@/data/products';
 
-const CAT_OPTS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
-const COLOR_OPTS = [
-  { name: 'Pink', hex: '#E7719F' },
-  { name: 'Red', hex: '#D6455A' },
-  { name: 'Green', hex: '#5FA37E' },
-  { name: 'Purple', hex: '#9B7FC7' },
-  { name: 'Yellow', hex: '#E0B84B' },
-  { name: 'Teal', hex: '#4F9CA3' },
-  { name: 'Peach', hex: '#E8A583' },
-];
-const OCCASION_OPTS = ['Bridal', 'Wedding', 'Reception', 'Festive', 'Party', 'Casual'];
 const SORTS: NonNullable<ProductFilters['sort']>[] = ['Latest', 'Price: Low to High', 'Price: High to Low', 'Popularity'];
 
 type Props = {
@@ -28,6 +18,13 @@ function toggleIn(arr: string[] = [], v: string) {
 
 export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props) {
   const f = filters;
+  // Every filter facet comes from the managed vocabulary, so the buyer can
+  // filter by exactly what sellers can tag — no hardcoded list that drifts out
+  // of step with the catalogue.
+  const taxonomy = useTaxonomy();
+  const catOpts = taxonomy.names('category');
+  const occasionOpts = taxonomy.names('occasion');
+  const colorOpts = taxonomy.rows('color').map((r) => ({ name: r.name, hex: taxonomy.hexOf(r.name) }));
 
   return (
     <div className="absolute inset-0 z-30">
@@ -63,7 +60,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
 
         <div className="mt-3 text-sm font-extrabold">Category</div>
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {CAT_OPTS.map((c) => {
+          {catOpts.map((c) => {
             const on = f.categories?.includes(c);
             return (
               <button
@@ -80,7 +77,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
 
         <div className="mt-4.5 text-sm font-extrabold">Colour</div>
         <div className="mt-3 flex flex-wrap gap-3">
-          {COLOR_OPTS.map((c) => {
+          {colorOpts.map((c) => {
             const on = f.colors?.includes(c.name);
             return (
               <button key={c.name} onClick={() => onChange({ ...f, colors: toggleIn(f.colors, c.name) })} className="flex flex-col items-center gap-1.5 border-none bg-transparent">
@@ -93,7 +90,7 @@ export function FilterSheet({ filters, onChange, onClose, resultsCount }: Props)
 
         <div className="mt-4.5 text-sm font-extrabold">Occasion</div>
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {OCCASION_OPTS.map((o) => {
+          {occasionOpts.map((o) => {
             const on = f.occasions?.includes(o);
             return (
               <button
