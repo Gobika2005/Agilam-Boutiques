@@ -41,6 +41,11 @@ export type PlacedOrder = {
   codFee?: number;
   /** Delivery fee on this order, already included in `total`. */
   shippingFee?: number;
+  /** When the boutique moved this order into each stage (migration 0042). Absent
+   *  on a guest's locally-mirrored order until it's read back from the server. */
+  acceptedAt?: string | null;
+  shippedAt?: string | null;
+  deliveredAt?: string | null;
 };
 
 let orderState: PlacedOrder[] = [];
@@ -104,6 +109,9 @@ export type BuyerDbOrder = {
   status: OrderStatus;
   total: number;
   created_at: string;
+  accepted_at?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
   payment_method?: string | null;
   payment_status?: PaymentStatus;
   cod_fee?: number;
@@ -131,6 +139,9 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     paymentStatus: o.payment_status ?? 'paid',
     codFee,
     shippingFee,
+    acceptedAt: o.accepted_at ?? null,
+    shippedAt: o.shipped_at ?? null,
+    deliveredAt: o.delivered_at ?? null,
     // `pid` is what the order screens look the product photo up by, so it has to
     // survive the round-trip through the server copy — without it every line
     // falls back to the empty placeholder tile.
@@ -173,4 +184,14 @@ export function formatOrderDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** "19 Jul, 4:32 pm" — date and time together, for a tracking milestone. */
+export function formatOrderDateTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  return `${date}, ${time}`;
 }

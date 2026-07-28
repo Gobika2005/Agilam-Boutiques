@@ -2,19 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop } from '@/state/ShopContext';
 import {
   fetchMessages,
   fetchPeerLastSeen,
+  fetchPeerReadAt,
+  markConversationRead,
   parseOrderCard,
   parseProductCard,
   sendMessage,
   subscribeToMessages,
   subscribeToPresence,
+  subscribeToReadReceipt,
 } from '@/data/chat';
 import { TONES, fmt } from '@/data/demo';
 
-type Bubble = { id?: string; me: boolean; text: string; time: string };
+type Bubble = { id?: string; me: boolean; text: string; time: string; createdAt: string };
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -44,18 +48,28 @@ function lastSeenLabel(iso: string | null): string {
  */
 export function ChatView({
   name,
+  avatar,
   backTo,
   conversationId,
   senderId,
+  viewerRole,
   pending,
   onProductClick,
   onOrderClick,
   quickReplies,
 }: {
   name: string;
+  /** The other participant's photo — the boutique's shop logo on the buyer
+   *  side. Falls back to a monogram (via `BoutiqueLogo`) when there isn't one,
+   *  same as everywhere else a boutique is shown. */
+  avatar?: string | null;
   backTo: string;
   conversationId?: string;
   senderId?: string;
+  /** Which side of the conversation this view is — decides which of the two
+   *  read-receipt columns is "mine" to stamp and which is the peer's to watch
+   *  for the double-tick (migration 0043). */
+  viewerRole: 'buyer' | 'seller';
   pending?: boolean;
   onProductClick?: (productId: string) => void;
   onOrderClick?: (orderId: string) => void;
@@ -73,6 +87,9 @@ export function ChatView({
   // and when we last heard from them. Both drive the header status line.
   const [peerOnline, setPeerOnline] = useState(false);
   const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
+  // The peer's last-read time — a bubble I sent is "read" (blue double-tick)
+  // once its created_at is at or before this, "sent" (grey) until then.
+  const [peerReadAt, setPeerReadAt] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -82,11 +99,11 @@ export function ChatView({
     setThread([]);
     fetchMessages(conversationId)
       .then((rows) => {
-        if (active) setThread(rows.map((m) => ({ id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at) })));
+        if (active) setThread(rows.map((m) => ({ id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at })));
       })
       .catch(() => {});
     const unsub = subscribeToMessages(conversationId, (m) => {
-      setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at) }]));
+      setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at }]));
     });
     return () => {
       active = false;
@@ -104,6 +121,23 @@ export function ChatView({
     fetchPeerLastSeen(conversationId, senderId).then(setPeerLastSeen).catch(() => {});
     return subscribeToPresence(conversationId, senderId, setPeerOnline);
   }, [conversationId, senderId]);
+
+  // Read receipts: watch the peer's last-read time for the double-tick, and
+  // stamp my own the moment the thread is open (and again whenever a new
+  // message arrives while I'm still looking at it).
+  useEffect(() => {
+    if (!conversationId) {
+      setPeerReadAt(null);
+      return;
+    }
+    fetchPeerReadAt(conversationId, viewerRole).then(setPeerReadAt).catch(() => {});
+    return subscribeToReadReceipt(conversationId, viewerRole, setPeerReadAt);
+  }, [conversationId, viewerRole]);
+
+  useEffect(() => {
+    if (!conversationId || thread.length === 0) return;
+    void markConversationRead(conversationId, viewerRole);
+  }, [conversationId, viewerRole, thread.length]);
 
   // A message arriving from the other side is itself proof of recent activity.
   useEffect(() => {
@@ -141,7 +175,6 @@ export function ChatView({
     }
   };
 
-  const monogram = (name.trim()[0] ?? '·').toUpperCase();
   const statusLabel = pending
     ? 'Connecting…'
     : !live
@@ -161,7 +194,7 @@ export function ChatView({
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
           </button>
           <div style={css('position:relative;flex:none;')}>
-            <div style={css("width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 26px -14px rgba(176,36,84,.9);")}>{monogram}</div>
+            <BoutiqueLogo name={name} src={avatar} size={44} radius={14} />
             {statusOn && <span className="agx-online-dot" style={css('position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;background:var(--ag-good);border:2.5px solid #fff;')} />}
           </div>
           <div style={css('flex:1;min-width:0;')}>
@@ -253,7 +286,17 @@ export function ChatView({
               style={css(`position:relative;max-width:80%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};color:${c.me ? '#fff' : 'var(--ag-ink)'};padding:9px 13px 7px;border-radius:${c.me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};font-size:13.5px;line-height:1.45;border:${c.me ? 'none' : '1px solid var(--ag-border)'};box-shadow:${c.me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
             >
               {c.text}
-              <div style={css(`font-size:9.5px;margin-top:3px;text-align:right;color:${c.me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</div>
+              <div style={css('display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:3px;')}>
+                <span style={css(`font-size:9.5px;color:${c.me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</span>
+                {c.me && (
+                  <span
+                    aria-label={peerReadAt && c.createdAt <= peerReadAt ? 'Read' : 'Sent'}
+                    style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${peerReadAt && c.createdAt <= peerReadAt ? '#7FE0FF' : 'rgba(255,255,255,.75)'};`)}
+                  >
+                    done_all
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}

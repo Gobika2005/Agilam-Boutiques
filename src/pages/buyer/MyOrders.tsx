@@ -7,7 +7,7 @@ import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { useShop } from '@/state/ShopContext';
 import { cancelCodOrder } from '@/data/orders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDate, patchLocalOrder, STATUS_STAGE, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDate, formatOrderDateTime, patchLocalOrder, STATUS_STAGE, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
 
 /** Order-list tabs. "Active" is everything the buyer is still waiting on. */
 const TABS = [
@@ -188,7 +188,10 @@ export function MyOrders() {
                     {badge}
                   </span>
                 </div>
-                <div style={css('display:flex;gap:14px;margin-top:12px;')}>
+                <div
+                  onClick={item?.pid ? (e) => { e.stopPropagation(); navigate(`/buyer/product/${item.pid}`); } : undefined}
+                  style={css(`display:flex;gap:14px;margin-top:12px;${item?.pid ? 'cursor:pointer;' : ''}`)}
+                >
                   <div className="agx-thumb-media" style={css(`width:72px;background:${TONES[item?.tone ?? 0]};`)}>
                     <ImageSlot src={item ? productById(item.pid)?.image : undefined} placeholder={item?.title} className="agx-prod-fill" />
                   </div>
@@ -204,7 +207,7 @@ export function MyOrders() {
                         {delivered ? 'check_circle' : rejected ? 'cancel' : 'schedule'}
                       </span>
                       {delivered
-                        ? `Delivered · ${formatOrderDate(o.placedAt)}`
+                        ? `Delivered · ${formatOrderDateTime(o.deliveredAt) || formatOrderDate(o.placedAt)}`
                         : o.status === 'cancelled'
                           ? 'Cancelled by you'
                           : o.status === 'rejected'

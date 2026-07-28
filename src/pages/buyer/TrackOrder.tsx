@@ -6,7 +6,7 @@ import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDate, STATUS_STAGE } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDateTime, STATUS_STAGE } from '@/lib/orderHistory';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /**
@@ -88,14 +88,22 @@ export function TrackOrder() {
     });
   };
 
+  // A real timestamp per stage, from migration 0042 — "Packed" and "Out for
+  // delivery" are cosmetic hand-offs between the real events (accepted →
+  // shipped) rather than status values of their own, so they carry no
+  // timestamp of their own.
+  const stageTimes: Record<number, string | null | undefined> = {
+    0: order.placedAt,
+    1: order.acceptedAt,
+    3: order.shippedAt,
+    5: order.deliveredAt,
+  };
   const steps = TRACK_STAGES.map((st, i) => ({
     ...st,
     done: !rejected && i <= stage,
     current: !rejected && i === stage,
     showLine: i < TRACK_STAGES.length - 1,
-    // Only the placed step carries a real timestamp; later steps fill in as the
-    // boutique updates the order.
-    time: i === 0 ? formatOrderDate(order.placedAt) : '',
+    time: i <= stage ? formatOrderDateTime(stageTimes[i]) : '',
   }));
 
   const card = 'background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);';

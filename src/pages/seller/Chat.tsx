@@ -22,6 +22,7 @@ export function Chat() {
   return (
     <ChatView
       name={name ?? 'Customer'}
+      viewerRole="seller"
       backTo="/seller/messages"
       conversationId={id}
       senderId={profile?.id}

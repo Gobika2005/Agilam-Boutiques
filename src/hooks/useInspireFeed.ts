@@ -34,7 +34,7 @@ export type FeedItem = FeedProduct & { phase: FeedPhase };
  * Likes are local-first (buyers browse anonymously) and reconciled with the
  * account when there is one.
  */
-export function useInspireFeed() {
+export function useInspireFeed(category?: string) {
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
@@ -83,6 +83,7 @@ export function useInspireFeed() {
         boutiqueIds: followedIds,
         exclude: startPhase === 'discover',
         limit: PAGE,
+        category,
       });
       if (!active) return;
       setItems(first.map((p) => ({ ...p, phase: startPhase })));
@@ -91,7 +92,7 @@ export function useInspireFeed() {
       // roll straight into discover rather than making the buyer scroll to find
       // out there's nothing more.
       if (startPhase === 'following' && first.length < PAGE) {
-        const rest = await fetchFeed({ boutiqueIds: followedIds, exclude: true, limit: PAGE });
+        const rest = await fetchFeed({ boutiqueIds: followedIds, exclude: true, limit: PAGE, category });
         if (!active) return;
         const seen = new Set(first.map((p) => p.id));
         setItems([
@@ -114,7 +115,7 @@ export function useInspireFeed() {
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey, catalogLoading]);
+  }, [idsKey, catalogLoading, category]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || exhausted || loading || items.length === 0) return;
@@ -129,6 +130,7 @@ export function useInspireFeed() {
         exclude: phase === 'discover',
         limit: PAGE,
         before: lastOfPhase?.created_at,
+        category,
       });
 
       const seen = new Set(items.map((p) => p.id));
@@ -137,7 +139,7 @@ export function useInspireFeed() {
       if (rows.length < PAGE && phase === 'following') {
         // The followed shops are done. Hand over to discover in the same tick so
         // the scroll never stalls.
-        const rest = await fetchFeed({ boutiqueIds: followed, exclude: true, limit: PAGE });
+        const rest = await fetchFeed({ boutiqueIds: followed, exclude: true, limit: PAGE, category });
         const seenNow = new Set([...seen, ...fresh.map((p) => p.id)]);
         setItems((prev) => [
           ...prev,
@@ -155,7 +157,7 @@ export function useInspireFeed() {
     } finally {
       setLoadingMore(false);
     }
-  }, [items, phase, loadingMore, exhausted, loading]);
+  }, [items, phase, loadingMore, exhausted, loading, category]);
 
   // Pull the account's likes once signed in.
   useEffect(() => {

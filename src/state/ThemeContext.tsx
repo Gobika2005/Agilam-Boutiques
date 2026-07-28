@@ -1,20 +1,31 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 /**
  * App-wide light/dark theme.
  *
- * The theme always follows the device's OS `prefers-color-scheme`, tracked
- * live. A user can override it for the current visit (not persisted — a
- * refresh goes back to following the device). The theme is applied by
- * stamping `data-theme` on <html>, which drives the CSS token layer in
- * index.css; a matching inline script in index.html applies the same
- * resolution before first paint so there is never a wrong-theme flash on load.
+ * The buyer picks a *preference* — Light, Dark, or System — which is saved
+ * (`localStorage`, see `PREF_KEY`) and wins on every future visit. "System"
+ * isn't just the unset default: it's a real, persisted choice that keeps
+ * tracking the OS live (e.g. sunset auto-dark), same as picking Light or Dark
+ * explicitly opts out of that tracking. `theme` is always the *resolved*
+ * light/dark value the screens render with; `preference` is what's actually
+ * stored, for the three-way switch on the Profile page to show the right one
+ * selected. Applied by stamping `data-theme` on <html>, which drives the CSS
+ * token layer in index.css; a matching inline script in index.html resolves
+ * the same preference before first paint so there is never a wrong-theme
+ * flash on load — keep that script in step with the logic here.
  */
 export type Theme = 'light' | 'dark';
+export type ThemePreference = Theme | 'system';
+
+const PREF_KEY = 'ag-theme-pref';
 
 type ThemeCtx = {
+  /** The resolved value to render with. */
   theme: Theme;
-  setTheme: (t: Theme) => void;
+  /** The buyer's actual stored choice — drives which segment shows selected. */
+  preference: ThemePreference;
+  setTheme: (t: ThemePreference) => void;
   toggleTheme: () => void;
 };
 
@@ -29,11 +40,23 @@ function deviceTheme(): Theme {
   }
 }
 
+function readStoredPreference(): ThemePreference {
+  try {
+    const v = localStorage.getItem(PREF_KEY);
+    if (v === 'light' || v === 'dark' || v === 'system') return v;
+  } catch {
+    /* storage unavailable (private mode, SSR) — fall through to system */
+  }
+  return 'system';
+}
+
+function resolve(pref: ThemePreference): Theme {
+  return pref === 'system' ? deviceTheme() : pref;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(deviceTheme);
-  // Tracks whether the user has made an explicit choice for this visit. While
-  // false the theme follows the device live.
-  const explicitRef = useRef<boolean>(false);
+  const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference);
+  const [theme, setThemeState] = useState<Theme>(() => resolve(readStoredPreference()));
 
   useEffect(() => {
     const root = document.documentElement;
@@ -43,29 +66,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (meta) meta.setAttribute('content', theme === 'dark' ? '#120A0E' : '#FBF6F2');
   }, [theme]);
 
-  // Until the user chooses, mirror the OS as it changes (e.g. sunset auto-dark).
+  // While the preference is "system" (the default, or chosen explicitly),
+  // mirror the OS as it changes live.
   useEffect(() => {
+    if (preference !== 'system') return;
     let mql: MediaQueryList;
     try {
       mql = window.matchMedia('(prefers-color-scheme: dark)');
     } catch {
       return;
     }
-    const onChange = (e: MediaQueryListEvent) => {
-      if (!explicitRef.current) setThemeState(e.matches ? 'dark' : 'light');
-    };
+    const onChange = (e: MediaQueryListEvent) => setThemeState(e.matches ? 'dark' : 'light');
     mql.addEventListener('change', onChange);
     return () => mql.removeEventListener('change', onChange);
-  }, []);
+  }, [preference]);
 
-  const setTheme = useCallback((t: Theme) => {
-    explicitRef.current = true;
-    setThemeState(t);
+  const setTheme = useCallback((pref: ThemePreference) => {
+    setPreferenceState(pref);
+    setThemeState(resolve(pref));
+    try {
+      localStorage.setItem(PREF_KEY, pref);
+    } catch {
+      /* storage unavailable — the choice still applies for this visit */
+    }
   }, []);
 
   const toggleTheme = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [setTheme, theme]);
 
-  return <Ctx.Provider value={{ theme, setTheme, toggleTheme }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ theme, preference, setTheme, toggleTheme }}>{children}</Ctx.Provider>;
 }
 
 export function useTheme(): ThemeCtx {

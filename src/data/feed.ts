@@ -53,8 +53,10 @@ export async function fetchFeed(opts: {
   exclude?: boolean;
   limit?: number;
   before?: string;
+  /** Narrow the feed to one catalogue category — the Inspire filter row. */
+  category?: string;
 }): Promise<FeedProduct[]> {
-  const { boutiqueIds, exclude = false, limit = 6, before } = opts;
+  const { boutiqueIds, exclude = false, limit = 6, before, category } = opts;
   // An include-query with nothing to include returns nothing, rather than
   // silently widening to every boutique. An exclude-query with nothing to
   // exclude is simply "everything", which is correct.
@@ -74,6 +76,7 @@ export async function fetchFeed(opts: {
     q = q.in('boutique_id', boutiqueIds);
   }
 
+  if (category) q = q.eq('category', category);
   if (before) q = q.lt('created_at', before);
 
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);

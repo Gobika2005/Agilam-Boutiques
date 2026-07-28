@@ -130,7 +130,7 @@ export function Settings() {
       </div>
 
       <div style={css('max-width:760px;display:flex;flex-direction:column;gap:16px;')}>
-        <SectionCard title="Appearance" subtitle="Light is the default; switch to dark whenever you like.">
+        <SectionCard title="Appearance" subtitle="Follows your device by default; switch to Light or Dark whenever you like.">
           <ThemeToggle variant="inline" />
         </SectionCard>
 

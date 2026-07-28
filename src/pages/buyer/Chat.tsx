@@ -102,12 +102,15 @@ export function Chat() {
     })();
   }, [live, pendingOrder]);
 
-  const name = boutiqueById(boutiqueId)?.name ?? 'Boutique';
+  const boutique = boutiqueById(boutiqueId);
+  const name = boutique?.name ?? 'Boutique';
 
   return (
     <>
       <ChatView
         name={name}
+        avatar={boutique?.logo}
+        viewerRole="buyer"
         backTo="/buyer/messages"
         conversationId={live?.conversationId}
         senderId={live?.senderId}

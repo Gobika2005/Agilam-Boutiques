@@ -246,6 +246,46 @@ export async function fetchPeerLastSeen(conversationId: string, selfId: string):
   return data?.[0]?.created_at ?? null;
 }
 
+/** Stamp "I've seen this conversation up to now" for the signed-in side (migration 0043). */
+export async function markConversationRead(conversationId: string, role: 'buyer' | 'seller'): Promise<void> {
+  const { error } = await supabase.rpc('mark_conversation_read', { p_conversation_id: conversationId, p_role: role });
+  if (error) console.error('markConversationRead failed:', error.message);
+}
+
+/** The peer's last-read time, for double-tick — read once on open. */
+export async function fetchPeerReadAt(conversationId: string, role: 'buyer' | 'seller'): Promise<string | null> {
+  const { data } = await supabase
+    .from('conversations')
+    .select('buyer_last_read_at, boutique_last_read_at')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as { buyer_last_read_at: string | null; boutique_last_read_at: string | null };
+  return role === 'buyer' ? row.boutique_last_read_at : row.buyer_last_read_at;
+}
+
+/** Live updates to the peer's last-read time, so a tick turns blue while the chat is open. */
+export function subscribeToReadReceipt(
+  conversationId: string,
+  role: 'buyer' | 'seller',
+  onChange: (peerReadAt: string | null) => void,
+) {
+  const channel = supabase
+    .channel(`read:${conversationId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
+      (payload) => {
+        const row = payload.new as { buyer_last_read_at?: string | null; boutique_last_read_at?: string | null };
+        onChange((role === 'buyer' ? row.boutique_last_read_at : row.buyer_last_read_at) ?? null);
+      },
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 export function subscribeToMessages(conversationId: string, onInsert: (msg: MessageRow) => void) {
   const channel = supabase
     .channel(`messages:${conversationId}`)

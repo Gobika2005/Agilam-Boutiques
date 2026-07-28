@@ -1,17 +1,18 @@
 import { css } from '@/lib/css';
-import { useTheme, type Theme } from '@/state/ThemeContext';
+import { useTheme, type ThemePreference } from '@/state/ThemeContext';
 
 /**
- * Appearance switch — a two-segment Light / Dark control wired to ThemeContext.
- * Styled entirely with the `--ag-*` token layer so it looks right in either
- * theme. Used on the buyer, seller and admin account/settings screens.
+ * Appearance switch — a three-segment Light / Dark / System control wired to
+ * ThemeContext. Styled entirely with the `--ag-*` token layer so it looks
+ * right in either theme. Used on the buyer, seller and admin account/settings
+ * screens.
  *
  * `variant="card"` renders a titled panel (buyer Profile); `variant="inline"`
  * renders just the segmented control for embedding in an existing settings row.
  */
-function Segment({ value, label, icon }: { value: Theme; label: string; icon: string }) {
-  const { theme, setTheme } = useTheme();
-  const active = theme === value;
+function Segment({ value, label, icon }: { value: ThemePreference; label: string; icon: string }) {
+  const { preference, setTheme } = useTheme();
+  const active = preference === value;
   return (
     <button
       onClick={() => setTheme(value)}
@@ -35,6 +36,7 @@ function Control() {
     <div style={css('display:flex;gap:4px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:15px;padding:4px;')}>
       <Segment value="light" label="Light" icon="light_mode" />
       <Segment value="dark" label="Dark" icon="dark_mode" />
+      <Segment value="system" label="System" icon="contrast" />
     </div>
   );
 }

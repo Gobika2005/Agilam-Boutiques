@@ -140,6 +140,10 @@ export interface OrderWithDetails {
   status: OrderStatus;
   total: number;
   created_at: string;
+  /** When the boutique moved this order into each stage (migration 0042). */
+  accepted_at?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
   guest_name: string | null;
   guest_phone: string | null;
   guest_city: string | null;

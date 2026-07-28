@@ -1,0 +1,32 @@
+
+> mangaimart@0.1.0 dev
+> vite --host 127.0.0.1
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m739[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
+[2m10:46:30 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:46:39 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:46:45 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:46:53 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:46:59 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Chat.tsx, /src/index.css[22m
+[2m10:48:11 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/buyer/Chat.tsx, /src/pages/buyer/Messages.tsx, /src/components/chat/ChatView.tsx[22m
+[2m10:48:17 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:48:27 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:48:35 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:48:47 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:48:55 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:49:02 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:49:19 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/chat/ChatView.tsx, /src/index.css[22m
+[2m10:49:27 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Chat.tsx, /src/index.css[22m
+[2m10:52:30 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ThemeContext.tsx, /src/index.css[22m
+[2m10:52:31 pm[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/state/ThemeContext.tsx[22m Could not Fast Refresh ("useTheme" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m10:52:31 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/main.tsx, /src/index.css, /src/components/ThemeToggle.tsx[22m
+[2m10:52:31 pm[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/main.tsx[22m Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m10:52:31 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m10:52:41 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m10:52:50 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ThemeToggle.tsx, /src/index.css[22m
+[2m10:52:57 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ThemeToggle.tsx, /src/index.css[22m
+[2m10:54:08 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Profile.tsx, /src/index.css[22m
+[2m10:54:19 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Profile.tsx, /src/index.css[22m

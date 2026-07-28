@@ -8,7 +8,7 @@ import { ProfileEditSheet } from '@/components/buyer/ProfileEditSheet';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { readOrders } from '@/lib/orderHistory';
 import { syncAccount } from '@/lib/accountSync';
-import { APP_VERSION, COMPANY, CONTACT_LINKS } from '@/data/company';
+import { APP_VERSION, COMPANY } from '@/data/company';
 
 /** "selva.kumar" / "selva_kumar" -> "Selva Kumar" for an email-derived name. */
 function prettifyName(local: string): string {
@@ -109,12 +109,15 @@ export function Profile() {
     { label: 'Delivery Address', sub: guest.address || 'Add where we ship', icon: 'location_on', go: () => setEditing(true) },
   ];
 
-  /** Support — reaches a real inbox and a real phone, from `@/data/company`. */
+  /**
+   * Support — one door in, not four. Help & Support, Contact Us, Call Support
+   * and About Us used to be four separate rows all leading to the same place
+   * (the Help policy page already ends with Email/Call buttons, and links on
+   * to About from its sidebar) — collapsed to the single row a buyer actually
+   * needs to tap.
+   */
   const supportRows: Row[] = [
-    { label: 'Help & Support', sub: 'FAQs and how to reach us', icon: 'support_agent', go: () => navigate('/buyer/policy/help') },
-    { label: 'Contact Us', sub: COMPANY.supportEmail, icon: 'mail', href: CONTACT_LINKS.support },
-    { label: 'Call Support', sub: `${COMPANY.phone} · ${COMPANY.supportHours}`, icon: 'call', href: CONTACT_LINKS.call },
-    { label: 'About Us', sub: 'Why MangaiMart exists', icon: 'info', go: () => navigate('/buyer/policy/about') },
+    { label: 'Support Center', sub: `FAQs, ${COMPANY.supportEmail}, ${COMPANY.phone}`, icon: 'support_agent', go: () => navigate('/buyer/policy/help') },
   ];
 
   /** Legal — the policy pages, reachable from the account as required. */
