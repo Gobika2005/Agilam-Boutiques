@@ -143,6 +143,7 @@ export function AppShell({
               onClick={() => navigate(homeTo)}
               aria-label="MangaiMart — go to home"
               title="Go to home"
+              className="agx-brand-mark-btn"
               style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:84px;flex:none;')}
             >
               <img

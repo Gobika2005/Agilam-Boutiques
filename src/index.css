@@ -351,8 +351,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    on screen instead of ~130px of chrome. */
 .agx-search-desktop { width: 280px; flex: none; }
 @media (max-width: 959px) {
-  .agx-app-header { gap: 10px !important; padding-top: 10px !important; padding-bottom: 10px !important; }
-  .agx-brand-mark { width: 108px !important; height: 42px !important; }
+  .agx-app-header { gap: 10px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
+  .agx-brand-mark, .agx-brand-mark-btn { height: 46px !important; }
+  .agx-brand-mark { width: 150px !important; }
 }
 
 /* Dark mode: the wordmark art is dark lettering on transparency, which
