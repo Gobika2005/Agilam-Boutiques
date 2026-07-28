@@ -161,7 +161,7 @@ export function Coupons() {
         {/* Marketplace coupons, read-only — so the seller knows what buyers have. */}
         {platformOffers.length > 0 && (
           <div style={css('margin-top:26px;')}>
-            <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Marketplace offers · run by Agilam</div>
+            <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Marketplace offers · run by MangaiMart</div>
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:10px;')}>
               {platformOffers.map((c) => (
                 <div key={c.id} style={css('display:flex;align-items:center;gap:12px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
@@ -175,7 +175,7 @@ export function Coupons() {
               ))}
             </div>
             <div style={css('font-size:11.5px;color:#A98D99;margin-top:8px;line-height:1.5;')}>
-              These are funded by Agilam, not you — your payout is unaffected when a buyer uses one.
+              These are funded by MangaiMart, not you — your payout is unaffected when a buyer uses one.
             </div>
           </div>
         )}

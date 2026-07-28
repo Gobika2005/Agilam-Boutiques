@@ -58,7 +58,7 @@ export function Payment() {
         items: orderItems,
         couponCode: appliedCoupon,
         amountPaise: Math.round(total * 100),
-        name: 'Agilam Boutiques',
+        name: 'MangaiMart',
         description: 'Order payment',
         prefill: { name: guest.name, contact: guest.phone },
       });

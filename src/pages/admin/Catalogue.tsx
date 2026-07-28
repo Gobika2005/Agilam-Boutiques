@@ -288,7 +288,7 @@ export function Catalogue() {
       width: '1.2fr',
       render: (r) => (
         <span style={css(`color:${T.muted};font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
-          {r.boutique?.name ?? (r.requested_by ? 'A seller' : 'Agilam')}
+          {r.boutique?.name ?? (r.requested_by ? 'A seller' : 'MangaiMart')}
         </span>
       ),
     },

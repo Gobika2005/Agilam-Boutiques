@@ -40,7 +40,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
     const url = `${window.location.origin}/buyer/boutique/${boutique.id}`;
     const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
     try {
-      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on Agilam`, url });
+      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on MangaiMart`, url });
       else { await navigator.clipboard.writeText(url); showToast('Shop link copied'); }
     } catch { /* dismissed */ }
   };
@@ -82,7 +82,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
         <div style={css('display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 11px;border-bottom:1px solid var(--ag-border-soft);')}>
           <button onClick={() => status !== 'approved' && go('/seller/verification')} style={css(`display:inline-flex;align-items:center;gap:4px;background:var(--ag-surface-2);color:${tone.fg};border:none;border-radius:999px;padding:5px 9px;font-size:10.5px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>{tone.icon}</span>
-            {status === 'approved' ? 'Live on Agilam' : BOUTIQUE_STATUS_LABEL[status]}
+            {status === 'approved' ? 'Live on MangaiMart' : BOUTIQUE_STATUS_LABEL[status]}
           </button>
           {boutique && (
             <>

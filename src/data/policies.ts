@@ -240,7 +240,7 @@ export const POLICIES: PolicyPage[] = [
     summary: 'Every listing is by a verified boutique, priced inclusive of taxes, with honest photography.',
     sections: [
       {
-        heading: 'Who lists on Agilam',
+        heading: 'Who lists on MangaiMart',
         blocks: [
           `${COMPANY.brand} is a marketplace. Products are listed, owned, priced and dispatched by independent boutiques. We verify a boutique before approving it, but the boutique — not ${COMPANY.short} — is the seller of record for your purchase.`,
           'Verified boutiques carry a blue tick on their profile. Verification means we have confirmed the business identity and contact details; it is not a guarantee of any individual product.',
@@ -368,7 +368,7 @@ export const POLICIES: PolicyPage[] = [
     title: 'Terms & Conditions',
     eyebrow: 'The agreement between us',
     icon: 'gavel',
-    summary: 'The rules for using Agilam, for buyers and for boutiques.',
+    summary: 'The rules for using MangaiMart, for buyers and for boutiques.',
     sections: [
       {
         heading: 'Accepting these terms',
@@ -425,7 +425,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'For boutiques',
         blocks: [
-          `Boutiques selling through Agilam warrant that they own or are authorised to sell what they list, that listings are accurate, and that they hold the registrations their business requires. Agilam charges a ${T.commissionPct}% commission on the value of orders fulfilled through the platform, deducted before settlement.`,
+          `Boutiques selling through MangaiMart warrant that they own or are authorised to sell what they list, that listings are accurate, and that they hold the registrations their business requires. MangaiMart charges a ${T.commissionPct}% commission on the value of orders fulfilled through the platform, deducted before settlement.`,
           'Boutiques are responsible for fulfilling confirmed orders within the stated timelines, for honouring the return and cancellation policies, and for the tax treatment of their own sales.',
         ],
       },
@@ -462,7 +462,7 @@ export const POLICIES: PolicyPage[] = [
   {
     slug: 'about',
     title: 'About Us',
-    eyebrow: 'Why Agilam exists',
+    eyebrow: 'Why MangaiMart exists',
     icon: 'favorite',
     summary: 'A marketplace built so Tamil Nadu’s boutiques can be found — and talked to — online.',
     sections: [
@@ -483,9 +483,9 @@ export const POLICIES: PolicyPage[] = [
         ],
       },
       {
-        heading: 'Sell on Agilam',
+        heading: 'Sell on MangaiMart',
         blocks: [
-          `Own a boutique? Opening a shop takes a few minutes and there is no subscription — we earn a ${T.commissionPct}% commission only when you make a sale. Tap "Sell on Agilam" on your profile to get started.`,
+          `Own a boutique? Opening a shop takes a few minutes and there is no subscription — we earn a ${T.commissionPct}% commission only when you make a sale. Tap "Sell on MangaiMart" on your profile to get started.`,
         ],
       },
       CONTACT_SECTION,

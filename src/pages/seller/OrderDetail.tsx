@@ -77,7 +77,7 @@ export function OrderDetail() {
     setSharing(true);
     try {
       const caption = buildBillShareCaption({
-        boutiqueName: boutique?.name ?? 'Agilam Boutique',
+        boutiqueName: boutique?.name ?? 'MangaiMart Boutique',
         boutiqueSlug: boutique?.slug,
         buyerName: o.customer,
         billNumber: o.number,
@@ -167,7 +167,7 @@ export function OrderDetail() {
         <div style={css('position:absolute;top:0;left:0;opacity:0;pointer-events:none;z-index:-1;')} aria-hidden="true">
           <BillReceipt
             ref={receiptRef}
-            boutiqueName={boutique?.name ?? 'Agilam Boutique'}
+            boutiqueName={boutique?.name ?? 'MangaiMart Boutique'}
             boutiquePhone={boutique?.phone}
             billNumber={o.number}
             date={o.date}
@@ -243,7 +243,7 @@ export function OrderDetail() {
             {!settled && (
               <>
                 <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.55;margin-top:10px;')}>
-                  Take the full amount in cash when you hand the order over, then tap below. Agilam’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
+                  Take the full amount in cash when you hand the order over, then tap below. MangaiMart’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
                 </div>
                 <button
                   onClick={collectCash}

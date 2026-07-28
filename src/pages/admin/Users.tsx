@@ -177,7 +177,7 @@ export function Users() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `agilam-users-page-${page + 1}.csv`;
+    a.download = `mangaimart-users-page-${page + 1}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exported current page to CSV');

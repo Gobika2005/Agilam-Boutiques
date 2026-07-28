@@ -1,5 +1,5 @@
 /**
- * Demo content ported verbatim from the `Agilam Boutiques v2.dc.html` design.
+ * Demo content ported verbatim from the `MangaiMart v2.dc.html` design.
  * Values must stay in sync with the design file so the screens render the
  * same copy, pricing and imagery tones it was composed against.
  */
@@ -145,7 +145,7 @@ export type HomeReview = { name: string; city: string; rating: number; tone: num
 
 export const HOME_REVIEWS: HomeReview[] = [
   { name: 'Anitha R', city: 'Chennai', rating: 5, tone: 0, text: 'The zari work is even more stunning in person. The drape fell beautifully at my sister’s wedding — so many compliments!' },
-  { name: 'Meena K', city: 'Coimbatore', rating: 5, tone: 2, text: 'Rich colour and premium silk. The boutique answered every question on chat before I ordered. Highly recommend Agilam.' },
+  { name: 'Meena K', city: 'Coimbatore', rating: 5, tone: 2, text: 'Rich colour and premium silk. The boutique answered every question on chat before I ordered. Highly recommend MangaiMart.' },
   { name: 'Divya S', city: 'Madurai', rating: 4, tone: 4, text: 'Lovely saree and true to the photos. Delivery took a little longer than expected but the quality more than made up for it.' },
 ];
 

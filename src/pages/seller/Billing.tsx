@@ -135,7 +135,7 @@ export function Billing() {
     setSharing(true);
     try {
       const caption = buildBillShareCaption({
-        boutiqueName: boutique?.name ?? 'Agilam Boutique',
+        boutiqueName: boutique?.name ?? 'MangaiMart Boutique',
         boutiqueSlug: boutique?.slug,
         buyerName,
         billNumber: receipt.order_number,
@@ -180,7 +180,7 @@ export function Billing() {
           <div style={css('width:100%;max-width:420px;border-radius:18px;overflow:hidden;box-shadow:0 20px 46px -26px rgba(107,20,54,.6);')}>
             <BillReceipt
               ref={receiptRef}
-              boutiqueName={boutique?.name ?? 'Agilam Boutique'}
+              boutiqueName={boutique?.name ?? 'MangaiMart Boutique'}
               boutiquePhone={boutique?.phone}
               billNumber={receipt.order_number}
               date={billDate}

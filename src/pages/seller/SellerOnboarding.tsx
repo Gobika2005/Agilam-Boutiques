@@ -53,7 +53,7 @@ const STEPS = [
 ] as const;
 
 /**
- * Step 0 — the Agilam login itself. It is numbered 0 so the DB's
+ * Step 0 — the MangaiMart login itself. It is numbered 0 so the DB's
  * `onboarding_step` (1–7, the boutique steps) keeps its existing meaning; only
  * the labels count from one.
  */
@@ -521,7 +521,7 @@ export function SellerOnboarding() {
             {editMode ? 'Manage boutique' : isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin-top:6px;line-height:1.15;")}>
-            {editMode ? 'Edit your business details' : isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on Agilam' : 'Set up your boutique'}
+            {editMode ? 'Edit your business details' : isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on MangaiMart' : 'Set up your boutique'}
           </div>
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
             {editMode
@@ -743,7 +743,7 @@ export function SellerOnboarding() {
         )}
 
         {step === 6 && (
-          <SectionCard subtitle="Agilam sends your order payouts here. These details stay private — buyers and other sellers can never see them.">
+          <SectionCard subtitle="MangaiMart sends your order payouts here. These details stay private — buyers and other sellers can never see them.">
             <Field label="UPI ID" value={form.upiId} onChange={(v) => set('upiId', v)} placeholder="boutique@okaxis" error={errors.upiId} hint="Fastest way to get paid. Add this, or your bank account below." />
             <div style={css('display:flex;align-items:center;gap:10px;')}>
               <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />

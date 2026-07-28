@@ -71,7 +71,7 @@ export function TopBoutiques() {
 
       <RankingNote
         lines={[
-          { term: 'Sales pace', weight: '40%', why: 'units sold per month since the shop opened on Agilam. A rate, so an established shop cannot coast on its back catalogue.' },
+          { term: 'Sales pace', weight: '40%', why: 'units sold per month since the shop opened on MangaiMart. A rate, so an established shop cannot coast on its back catalogue.' },
           { term: 'Rating', weight: '20%', why: `weighed by confidence — a shop's rating settles after roughly ${RATING_CONFIDENCE_BOUTIQUE} reviews, not after its first happy customer.` },
           { term: 'Orders fulfilled', weight: '15%', why: 'counted separately from units: sixty orders of one piece is a broader business than one order of sixty.' },
           { term: 'Followers', weight: '15%', why: 'the buyers who came back. The clearest signal a shop is worth returning to.' },

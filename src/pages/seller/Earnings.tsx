@@ -13,11 +13,11 @@ import type { OrderWithDetails } from '@/data/types';
  * Seller earnings, computed from the boutique's own orders.
  *
  * Three money streams are kept apart, because conflating them would misstate
- * what Agilam actually owes the seller — or what the seller owes Agilam:
+ * what MangaiMart actually owes the seller — or what the seller owes MangaiMart:
  *
- *   • Prepaid online orders are collected by Agilam, so commission comes off
+ *   • Prepaid online orders are collected by MangaiMart, so commission comes off
  *     the top and the remainder is settled to the seller's payout account.
- *   • Cash on delivery is collected by the SELLER at the door. Agilam never
+ *   • Cash on delivery is collected by the SELLER at the door. MangaiMart never
  *     touches that money, so its commission on those orders becomes a debt the
  *     seller carries, netted off their next online payout rather than invoiced.
  *   • Offline / walk-in bills (the POS flow) are the seller's own trade — no
@@ -99,7 +99,7 @@ export function Earnings() {
   const prepaid = online.filter((o) => !isCod(o));
   const cod = online.filter(isCod);
 
-  // Agilam holds this money and settles it to the seller, less commission.
+  // MangaiMart holds this money and settles it to the seller, less commission.
   const prepaidGross = prepaid.reduce((s, o) => s + Number(o.total), 0);
   const prepaidCommission = Math.round(prepaidGross * COMMISSION);
   const prepaidNet = prepaidGross - prepaidCommission;
@@ -108,7 +108,7 @@ export function Earnings() {
   // arrived — an uncollected COD order is a promise, not revenue.
   const codCollected = cod.filter(collected);
   const codCash = codCollected.reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
-  // Commission is charged on the goods value, not on Agilam's own handling fee.
+  // Commission is charged on the goods value, not on MangaiMart's own handling fee.
   const codCommissionOwed = Math.round(codCollected.reduce((s, o) => s + Number(o.total), 0) * COMMISSION);
   const codOutstanding = cod.filter((o) => !collected(o)).reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
 
@@ -119,10 +119,10 @@ export function Earnings() {
   const netEarnings = prepaidNet + codCash - codCommissionOwed;
 
   // Settled once the buyer has the goods; anything still in flight is money
-  // Agilam is holding, which is what the seller wants to see as "pending".
+  // MangaiMart is holding, which is what the seller wants to see as "pending".
   const settledGross = prepaid.filter((o) => o.status === 'delivered').reduce((s, o) => s + Number(o.total), 0);
   const pendingPayout = Math.round((prepaidGross - settledGross) * (1 - COMMISSION));
-  // The COD debt comes out of the payout Agilam is about to make, which is why
+  // The COD debt comes out of the payout MangaiMart is about to make, which is why
   // it is netted here rather than billed separately.
   const settledPayout = prepaidNet - pendingPayout - codCommissionOwed;
 
@@ -164,7 +164,7 @@ export function Earnings() {
             {loading ? '—' : fmt(netEarnings)}
           </div>
           <div style={css('font-size:12.5px;opacity:.82;margin-top:6px;')}>
-            {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {POLICY_TERMS.commissionPct}% Agilam commission
+            {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {POLICY_TERMS.commissionPct}% MangaiMart commission
           </div>
           {deltaPct != null && (
             <div style={css('display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px;font-weight:700;')}>
@@ -184,7 +184,7 @@ export function Earnings() {
         ))}
       </div>
 
-      {/* Cash on delivery — the seller holds the money, so Agilam's cut on it
+      {/* Cash on delivery — the seller holds the money, so MangaiMart's cut on it
           is a debt rather than a deduction. Stated plainly, with the figure. */}
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
@@ -209,7 +209,7 @@ export function Earnings() {
           </div>
 
           <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.6;margin-top:12px;')}>
-            You keep the cash your customers hand over. Agilam’s {POLICY_TERMS.commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
+            You keep the cash your customers hand over. MangaiMart’s {POLICY_TERMS.commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
             {codOutstanding > 0 && ' Cash you have not collected yet is not counted as earnings.'}
           </div>
 
@@ -224,12 +224,12 @@ export function Earnings() {
         </div>
       )}
 
-      {/* Offline takings — collected by the seller, not settled by Agilam --- */}
+      {/* Offline takings — collected by the seller, not settled by MangaiMart --- */}
       {offline.length > 0 && (
         <div style={css('margin-top:14px;background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
           <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>storefront</span>
           <span style={css('flex:1;min-width:200px;font-size:13px;font-weight:600;color:#2C6249;line-height:1.5;')}>
-            You also collected <strong>{fmt(offlineCollected)}</strong> from {offline.length} walk-in bill{offline.length > 1 ? 's' : ''} this month. Agilam charges no commission on offline sales, so this is yours in full and is not part of the payout above.
+            You also collected <strong>{fmt(offlineCollected)}</strong> from {offline.length} walk-in bill{offline.length > 1 ? 's' : ''} this month. MangaiMart charges no commission on offline sales, so this is yours in full and is not part of the payout above.
           </span>
         </div>
       )}
@@ -282,7 +282,7 @@ export function Earnings() {
           <div style={css('display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;")}>account_balance</span>
             <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
-              No payout account on file — Agilam cannot settle your online orders until you add one.
+              No payout account on file — MangaiMart cannot settle your online orders until you add one.
             </span>
             <button
               onClick={() => navigate('/seller/onboarding')}

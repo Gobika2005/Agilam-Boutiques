@@ -208,7 +208,7 @@ export function Dashboard() {
               : todaysOrders.length > 0
                 ? `${todaysOrders.length} order${todaysOrders.length > 1 ? 's' : ''} came in today — everything is up to date.`
                 : products.length === 0
-                  ? 'Add your first product to start selling on Agilam.'
+                  ? 'Add your first product to start selling on MangaiMart.'
                   : 'No new orders right now. Your storefront is live and listening.'}
           </div>
         </div>

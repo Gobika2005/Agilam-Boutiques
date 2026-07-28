@@ -1,5 +1,5 @@
 /**
- * How Agilam decides what is "new", what "sells best", and which boutiques lead.
+ * How MangaiMart decides what is "new", what "sells best", and which boutiques lead.
  *
  * These rails are the shop window. Whatever they show is what most buyers will
  * ever see of the catalogue, and what every seller will compare themselves

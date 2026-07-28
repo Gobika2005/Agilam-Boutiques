@@ -12,7 +12,7 @@ import { compactCount } from '@/lib/ranking';
  *
  * They are siblings of each other rather than of the Results grid: Results
  * answers "show me what matches these filters", these answer "show me what
- * Agilam thinks is worth seeing". Keeping their header, their ranking note and
+ * MangaiMart thinks is worth seeing". Keeping their header, their ranking note and
  * their card in one place is what stops the four drifting into four slightly
  * different-looking pages.
  */

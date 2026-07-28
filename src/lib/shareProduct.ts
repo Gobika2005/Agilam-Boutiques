@@ -25,7 +25,7 @@ export type ShareProductInput = {
 /** WhatsApp-friendly caption: what it is, what it costs, where to get it. */
 function caption({ title, price, boutique, url }: ShareProductInput): string {
   const from = boutique ? ` from ${boutique}` : '';
-  return `${title}${from}\n${price} on Agilam Boutiques\n${url}`;
+  return `${title}${from}\n${price} on MangaiMart\n${url}`;
 }
 
 /**

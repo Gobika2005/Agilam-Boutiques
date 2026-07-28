@@ -1,22 +1,22 @@
--- Agilam Boutiques — sample data seed
+-- MangaiMart — sample data seed
 -- ---------------------------------------------------------------------------
 -- Run AFTER schema.sql, in the Supabase SQL editor (New query -> paste -> Run).
 -- Safe to run more than once: it deletes its own seed rows first, then reinserts.
 --
 -- It creates real auth accounts so the whole app works end-to-end. Log in with:
 --
---   Sellers  (password: Agilam@123)
---     elegance@agilam.test   -> Elegance Boutique   (Coimbatore)
---     trendz@agilam.test     -> Trendz Wardrobe     (Chennai)
---     pinkys@agilam.test     -> Pinky's Boutique    (Madurai)
---     style@agilam.test      -> Style Studio        (Salem)
---     silk@agilam.test       -> Silk Symphony       (Coimbatore)
+--   Sellers  (password: MangaiMart@123)
+--     elegance@mangaimart.test   -> Elegance Boutique   (Coimbatore)
+--     trendz@mangaimart.test     -> Trendz Wardrobe     (Chennai)
+--     pinkys@mangaimart.test     -> Pinky's Boutique    (Madurai)
+--     style@mangaimart.test      -> Style Studio        (Salem)
+--     silk@mangaimart.test       -> Silk Symphony       (Coimbatore)
 --
---   Buyers   (password: Agilam@123)
---     priya@agilam.test, anitha@agilam.test, neha@agilam.test, divya@agilam.test
+--   Buyers   (password: MangaiMart@123)
+--     priya@mangaimart.test, anitha@mangaimart.test, neha@mangaimart.test, divya@mangaimart.test
 --
---   Admin    (password: Agilam@123)
---     admin@agilam.test
+--   Admin    (password: MangaiMart@123)
+--     admin@mangaimart.test
 -- ---------------------------------------------------------------------------
 
 create extension if not exists "pgcrypto";
@@ -77,16 +77,16 @@ begin
   for r in
     select * from (values
       -- id, email, full_name, role, city
-      ('11111111-1111-1111-1111-111111111111','elegance@agilam.test','Elegance Boutique','seller','Coimbatore'),
-      ('22222222-2222-2222-2222-222222222222','trendz@agilam.test','Trendz Wardrobe','seller','Chennai'),
-      ('33333333-3333-3333-3333-333333333333','pinkys@agilam.test','Pinky''s Boutique','seller','Madurai'),
-      ('44444444-4444-4444-4444-444444444444','style@agilam.test','Style Studio','seller','Salem'),
-      ('55555555-5555-5555-5555-555555555555','silk@agilam.test','Silk Symphony','seller','Coimbatore'),
-      ('a1111111-1111-1111-1111-1111111111a1','priya@agilam.test','Priya Sharma','buyer','Coimbatore'),
-      ('b2222222-2222-2222-2222-2222222222b2','anitha@agilam.test','Anitha R','buyer','Chennai'),
-      ('c3333333-3333-3333-3333-3333333333c3','neha@agilam.test','Neha Verma','buyer','Madurai'),
-      ('d4444444-4444-4444-4444-4444444444d4','divya@agilam.test','Divya K','buyer','Salem'),
-      ('99999999-9999-9999-9999-999999999999','admin@agilam.test','Agilam Admin','admin','Coimbatore')
+      ('11111111-1111-1111-1111-111111111111','elegance@mangaimart.test','Elegance Boutique','seller','Coimbatore'),
+      ('22222222-2222-2222-2222-222222222222','trendz@mangaimart.test','Trendz Wardrobe','seller','Chennai'),
+      ('33333333-3333-3333-3333-333333333333','pinkys@mangaimart.test','Pinky''s Boutique','seller','Madurai'),
+      ('44444444-4444-4444-4444-444444444444','style@mangaimart.test','Style Studio','seller','Salem'),
+      ('55555555-5555-5555-5555-555555555555','silk@mangaimart.test','Silk Symphony','seller','Coimbatore'),
+      ('a1111111-1111-1111-1111-1111111111a1','priya@mangaimart.test','Priya Sharma','buyer','Coimbatore'),
+      ('b2222222-2222-2222-2222-2222222222b2','anitha@mangaimart.test','Anitha R','buyer','Chennai'),
+      ('c3333333-3333-3333-3333-3333333333c3','neha@mangaimart.test','Neha Verma','buyer','Madurai'),
+      ('d4444444-4444-4444-4444-4444444444d4','divya@mangaimart.test','Divya K','buyer','Salem'),
+      ('99999999-9999-9999-9999-999999999999','admin@mangaimart.test','MangaiMart Admin','admin','Coimbatore')
     ) as t(id, email, full_name, role, city)
   loop
     -- auth.users
@@ -97,7 +97,7 @@ begin
       confirmation_token, recovery_token, email_change_token_new, email_change
     ) values (
       '00000000-0000-0000-0000-000000000000', r.id::uuid, 'authenticated', 'authenticated', r.email,
-      crypt('Agilam@123', gen_salt('bf')),
+      crypt('MangaiMart@123', gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}',
       jsonb_build_object('full_name', r.full_name, 'role', r.role, 'city', r.city),

@@ -209,7 +209,7 @@ export async function createPayout({ fundAccountId, amountPaise, method, referen
       // it releases automatically once the account is topped up.
       queue_if_low_balance: true,
       reference_id: referenceId,
-      narration: (narration || 'Agilam seller payout').slice(0, 30),
+      narration: (narration || 'MangaiMart seller payout').slice(0, 30),
     },
   });
 }

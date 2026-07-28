@@ -64,12 +64,12 @@ export function AdminLogin() {
     <AuthModal
       icon="shield_person"
       heading="Admin sign in"
-      sub="Restricted access to the Agilam marketplace console."
+      sub="Restricted access to the MangaiMart marketplace console."
       onBack={() => navigate('/')}
     >
       <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
         Email
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@agilam.in" style={css(fieldStyle)} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@mangaimart.com" style={css(fieldStyle)} />
       </label>
 
       <PasswordField value={password} onChange={setPassword} />

@@ -63,7 +63,7 @@ export function Results() {
           : filterCount > 0
             ? 'Filtered edit'
             : 'All collections';
-  const eyebrow = query.trim() ? 'Search results' : isBaseCollection ? 'Every piece on Agilam' : 'The edit';
+  const eyebrow = query.trim() ? 'Search results' : isBaseCollection ? 'Every piece on MangaiMart' : 'The edit';
 
   /** Back to the unfiltered grid — the "Collections" breadcrumb and empty state. */
   const resetCollection = () => {

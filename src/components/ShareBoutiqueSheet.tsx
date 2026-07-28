@@ -29,7 +29,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
   const { showToast } = useShop();
   const [copied, setCopied] = useState(false);
   const prettyLink = link.replace(/^https?:\/\//, '');
-  const message = `Check out ${boutique.name} on Agilam ✨ ${boutique.desc}`;
+  const message = `Check out ${boutique.name} on MangaiMart ✨ ${boutique.desc}`;
 
   const copy = (silent = false) => {
     const done = () => {
@@ -177,7 +177,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
             More options
           </button>
           <div style={css('text-align:center;margin-top:14px;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.08em;font-weight:700;')}>
-            POWERED BY <span style={css('color:var(--ag-crimson);')}>AGILAM</span>
+            POWERED BY <span style={css('color:var(--ag-crimson);')}>MANGAIMART</span>
           </div>
         </div>
       </div>

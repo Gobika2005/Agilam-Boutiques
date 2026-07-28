@@ -1,5 +1,5 @@
 /**
- * Single source of truth for Agilam's real-world company details.
+ * Single source of truth for MangaiMart's real-world company details.
  *
  * The footer, policy pages, profile "Contact us" and every support link read
  * from here, so the business only ever has to be corrected in one file.
@@ -13,21 +13,21 @@
 
 export const COMPANY = {
   /** Trading name shown across the app. */
-  brand: 'Agilam Boutiques',
-  short: 'Agilam',
+  brand: 'MangaiMart',
+  short: 'MangaiMart',
   /** TODO: registered legal entity as it appears on the incorporation certificate. */
-  legalName: 'Agilam Boutiques Private Limited',
-  tagline: "Tamil Nadu's home for local boutiques",
+  legalName: 'MangaiMart Private Limited',
+  tagline: 'All Boutiques • One Place',
   description:
-    'Agilam brings Tamil Nadu’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
+    'MangaiMart brings Tamil Nadu’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
 
   /** TODO: confirm the live support inbox. */
-  email: 'hello@agilam.in',
-  supportEmail: 'support@agilam.in',
+  email: 'hello@mangaimart.com',
+  supportEmail: 'support@mangaimart.com',
   /** Required by the IT Rules 2021 — a named grievance officer contact. */
-  grievanceEmail: 'grievance@agilam.in',
+  grievanceEmail: 'grievance@mangaimart.com',
   /** TODO: the person actually accountable for grievances. */
-  grievanceOfficer: 'Grievance Officer, Agilam Boutiques',
+  grievanceOfficer: 'Grievance Officer, MangaiMart',
 
   /** Live support number. `phoneDigits` must be E.164 without "+". */
   phone: '+91 63790 07829',
@@ -50,8 +50,8 @@ export const COMPANY = {
 
   /** TODO: the live handles. A blank value hides that icon in the footer. */
   social: {
-    instagram: 'agilamboutiques',
-    facebook: 'agilamboutiques',
+    instagram: 'mangaimart',
+    facebook: 'mangaimart',
     youtube: '',
   },
 

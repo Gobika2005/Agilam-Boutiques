@@ -90,7 +90,7 @@ export function SignIn() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="hello@agilam.in"
+          placeholder="hello@mangaimart.com"
           style={css('width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);')}
         />
       </label>
@@ -126,7 +126,7 @@ export function SignIn() {
       <ConsentNotice />
 
       <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
-        New to Agilam?{' '}
+        New to MangaiMart?{' '}
         <a
           href="#"
           onClick={(e) => { e.preventDefault(); navigate(role === 'seller' ? '/seller/register' : '/auth/signup/buyer'); }}

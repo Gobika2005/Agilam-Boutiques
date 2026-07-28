@@ -66,7 +66,7 @@ export function SignUp() {
     <AuthModal
       icon={roleIcon}
       heading="Create account"
-      sub={`Join Agilam as a ${roleWord}.`}
+      sub={`Join MangaiMart as a ${roleWord}.`}
       onBack={() => navigate(`/auth/signin/${role}`)}
     >
       <label style={css(labelStyle)}>

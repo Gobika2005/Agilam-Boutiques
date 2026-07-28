@@ -180,7 +180,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
         </div>
       ) : (
         reviews.map((rv) => {
-          const name = rv.author_name?.trim() || 'Agilam buyer';
+          const name = rv.author_name?.trim() || 'MangaiMart buyer';
           const tone = TONE_BG[Math.abs(name.charCodeAt(0)) % TONE_BG.length];
           return (
             <div key={rv.id} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}>

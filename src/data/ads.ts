@@ -139,7 +139,7 @@ export async function payForCampaign(campaignId: string, boutiqueName: string): 
   const res = await payForAd({
     campaignId,
     accessToken: token,
-    name: boutiqueName || 'Agilam Boutique',
+    name: boutiqueName || 'MangaiMart Boutique',
     description: 'Ad campaign',
   });
   return res.campaign as AdCampaign;

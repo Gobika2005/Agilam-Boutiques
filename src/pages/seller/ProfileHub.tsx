@@ -40,7 +40,7 @@ export function ProfileHub() {
     const url = `${window.location.origin}/buyer/boutique/${boutique.id}`;
     const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
     try {
-      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on Agilam`, url });
+      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on MangaiMart`, url });
       else { await navigator.clipboard.writeText(url); showToast('Shop link copied'); }
     } catch { /* the seller dismissed the share sheet — nothing to report */ }
   };
@@ -120,7 +120,7 @@ export function ProfileHub() {
               style={css(`display:inline-flex;align-items:center;gap:6px;background:var(--ag-surface);color:${tone.fg};border:none;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{tone.icon}</span>
-              {status === 'approved' ? 'Live on Agilam' : BOUTIQUE_STATUS_LABEL[status]}
+              {status === 'approved' ? 'Live on MangaiMart' : BOUTIQUE_STATUS_LABEL[status]}
             </button>
             {storefrontPath && (
               <>

@@ -193,7 +193,7 @@ export function AccountSheet({
             </button>
 
             <div style={css('text-align:center;font-size:13.5px;color:var(--ag-muted);margin-top:14px;')}>
-              {mode === 'signin' ? 'New to Agilam? ' : 'Have an account? '}
+              {mode === 'signin' ? 'New to MangaiMart? ' : 'Have an account? '}
               <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === 'signin' ? 'create' : 'signin'); setError(''); }} style={css('font-weight:800;color:var(--ag-crimson);')}>
                 {mode === 'signin' ? 'Create account' : 'Sign in'}
               </a>

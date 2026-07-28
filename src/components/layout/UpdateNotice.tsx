@@ -90,7 +90,7 @@ export function UpdateNotice() {
       )}
     >
       <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#F7B7CF;")}>auto_awesome</span>
-      <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>A new version of Agilam is ready</span>
+      <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>A new version of MangaiMart is ready</span>
       <button
         type="button"
         onClick={() => window.location.reload()}

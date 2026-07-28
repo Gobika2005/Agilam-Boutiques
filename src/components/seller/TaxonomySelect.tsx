@@ -139,7 +139,7 @@ export function TaxonomySelect({
       showToast(
         duplicate
           ? `“${name}” already exists — selected it for you`
-          : `“${name}” sent to Agilam for approval`,
+          : `“${name}” sent to MangaiMart for approval`,
       );
       reload();
     } catch (e) {

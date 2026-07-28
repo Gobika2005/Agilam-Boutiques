@@ -1,4 +1,4 @@
-// ESLint configuration for the Agilam marketplace (React + TypeScript + Vite).
+// ESLint configuration for the MangaiMart marketplace (React + TypeScript + Vite).
 //
 // Flat config (ESLint 9). Replaces the classic `.eslintrc.cjs` — which pulled in
 // the unmaintained ESLint 8 dependency tree (rimraf@3, glob@7, inflight,

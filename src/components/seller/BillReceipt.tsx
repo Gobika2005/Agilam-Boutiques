@@ -118,7 +118,7 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
 
       <div style={css('padding:20px 30px 26px;text-align:center;')}>
         <div style={css("font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:var(--ag-ink-2);")}>Thank you for shopping with {boutiqueName}!</div>
-        <div style={css('margin-top:10px;font-size:9.5px;letter-spacing:.1em;color:#CBB0BC;text-transform:uppercase;')}>Powered by Agilam</div>
+        <div style={css('margin-top:10px;font-size:9.5px;letter-spacing:.1em;color:#CBB0BC;text-transform:uppercase;')}>Powered by MangaiMart</div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
--- Agilam Boutiques schema
+-- MangaiMart schema
 -- Run this once against a fresh Supabase project (SQL editor -> New query -> paste -> Run).
 
 create extension if not exists "pgcrypto";

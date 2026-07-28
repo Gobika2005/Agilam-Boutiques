@@ -114,7 +114,7 @@ export function Profile() {
     { label: 'Help & Support', sub: 'FAQs and how to reach us', icon: 'support_agent', go: () => navigate('/buyer/policy/help') },
     { label: 'Contact Us', sub: COMPANY.supportEmail, icon: 'mail', href: CONTACT_LINKS.support },
     { label: 'Call Support', sub: `${COMPANY.phone} · ${COMPANY.supportHours}`, icon: 'call', href: CONTACT_LINKS.call },
-    { label: 'About Us', sub: 'Why Agilam exists', icon: 'info', go: () => navigate('/buyer/policy/about') },
+    { label: 'About Us', sub: 'Why MangaiMart exists', icon: 'info', go: () => navigate('/buyer/policy/about') },
   ];
 
   /** Legal — the policy pages, reachable from the account as required. */
@@ -248,7 +248,7 @@ export function Profile() {
             <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>storefront</span>
           </span>
           <span style={css('flex:1;')}>
-            <span style={css('display:block;font-weight:800;font-size:15px;')}>Sell on Agilam</span>
+            <span style={css('display:block;font-weight:800;font-size:15px;')}>Sell on MangaiMart</span>
             <span style={css('display:block;font-size:12.5px;opacity:.85;margin-top:2px;')}>Open your boutique &amp; start selling</span>
           </span>
           <span style={css("font-family:'Material Symbols Outlined';opacity:.8;")}>chevron_right</span>

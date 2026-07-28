@@ -152,7 +152,7 @@ async function attemptTransfer(supabase, payout, account, boutique, result) {
       amountPaise,
       method: account.method,
       referenceId: `payout_${payout.id}`,
-      narration: `Agilam ${boutique.name || 'payout'}`,
+      narration: `MangaiMart ${boutique.name || 'payout'}`,
       idempotencyKey: payout.id,
     });
 

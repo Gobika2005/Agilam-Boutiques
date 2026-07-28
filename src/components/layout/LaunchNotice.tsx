@@ -5,7 +5,7 @@ import { css } from '@/lib/css';
 /**
  * A gentle "we're still building" notice for the public storefront.
  *
- * Agilam is live but not officially launched, so first-time visitors get a small
+ * MangaiMart is live but not officially launched, so first-time visitors get a small
  * slide-in card telling them the site is a preview and the real launch is coming.
  * It's deliberately low-key: bottom-left (the floating cart bag owns bottom-right),
  * dismissible for this visit — not persisted, so it shows again on refresh.

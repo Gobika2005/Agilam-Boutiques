@@ -3,7 +3,7 @@ import { serviceClient } from './_supabase.js';
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@agilam.in';
+const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@mangaimart.com';
 const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 // Built lazily (null when env is missing) so a misconfigured deploy returns a
@@ -50,7 +50,7 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
 
   return {
     to: email,
-    subject: `Welcome to Agilam - ${roleLabel} Account Created`,
+    subject: `Welcome to MangaiMart - ${roleLabel} Account Created`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -67,7 +67,7 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
           <div style="max-width:640px;margin:0 auto;">
             <div style="text-align:center;margin-bottom:14px;">
               <div style="display:inline-block;padding:8px 14px;border:1px solid rgba(176,36,84,0.18);border-radius:999px;background:rgba(255,255,255,0.72);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#9b4762;">
-                Agilam Welcome Suite
+                MangaiMart Welcome Suite
               </div>
             </div>
             <div style="background:#fff;border:1px solid rgba(176,36,84,0.10);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px -40px rgba(83,24,43,0.55);">
@@ -75,12 +75,12 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
                 radial-gradient(circle at 20% 20%, rgba(255,255,255,0.30), transparent 26%),
                 linear-gradient(135deg,#7f173d 0%,#b02454 42%,#d85b83 100%);
                 color:#fff;">
-                <div style="font-size:34px;line-height:1;font-weight:700;letter-spacing:0.04em;">Agilam</div>
+                <div style="font-size:34px;line-height:1;font-weight:700;letter-spacing:0.04em;">MangaiMart</div>
                 <div style="width:72px;height:1px;background:rgba(255,255,255,0.6);margin:18px 0;"></div>
                 <div style="font-size:13px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.86;margin-bottom:14px;">Your account is ready</div>
                 <div style="font-size:32px;line-height:1.2;font-weight:700;max-width:430px;">Welcome, ${fullName}</div>
                 <p style="margin:16px 0 0;font-size:15px;line-height:1.8;max-width:470px;color:rgba(255,255,255,0.9);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                  Your ${roleLabel} has been prepared by the Agilam team with access tailored for a premium boutique experience.
+                  Your ${roleLabel} has been prepared by the MangaiMart team with access tailored for a premium boutique experience.
                 </p>
               </div>
 
@@ -119,7 +119,7 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
                 <div style="padding:24px;border-radius:24px;background:linear-gradient(180deg,#fff 0%,#fbf5f1 100%);border:1px solid #efe3da;margin-bottom:28px;">
                   <div style="font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#9b6f57;margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Next Steps</div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">1</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Open your Agilam account using the secure button below.</td></tr>
+                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">1</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Open your MangaiMart account using the secure button below.</td></tr>
                     <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">2</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Sign in with your email and temporary password.</td></tr>
                     <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">3</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Choose a new password and complete your profile details.</td></tr>
                   </table>
@@ -133,13 +133,13 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
 
                 <div style="padding:18px 20px;border-radius:18px;background:#faf4ef;border:1px solid #efe0d4;font-size:13px;line-height:1.8;color:#6b5b55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
                   If you did not expect this invitation, please contact
-                  <a href="mailto:support@agilam.in" style="color:#8d2348;text-decoration:none;font-weight:600;">support@agilam.in</a>
+                  <a href="mailto:support@mangaimart.com" style="color:#8d2348;text-decoration:none;font-weight:600;">support@mangaimart.com</a>
                   before signing in.
                 </div>
               </div>
 
               <div style="padding:20px 24px;background:#f8f1ec;border-top:1px solid #eee2d8;text-align:center;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#987567;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                Agilam Boutiques • Curated Marketplace Experience
+                MangaiMart • Curated Marketplace Experience
               </div>
             </div>
           </div>
@@ -148,7 +148,7 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
       </html>
     `,
     text: [
-      `Welcome to Agilam, ${fullName}!`,
+      `Welcome to MangaiMart, ${fullName}!`,
       '',
       `Your ${roleLabel} has been created.`,
       roleDetail,
@@ -189,7 +189,7 @@ async function sendEmail({ to, subject, html, text }) {
         subject,
         html,
         text,
-        reply_to: 'support@agilam.in',
+        reply_to: 'support@mangaimart.com',
       }),
     });
 

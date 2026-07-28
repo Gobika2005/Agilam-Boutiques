@@ -97,7 +97,7 @@ export function Policy() {
           {/* Other pages */}
           <aside className="agx-policy-aside">
             <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:8px;box-shadow:0 18px 40px -34px rgba(107,20,54,.55);')}>
-              <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);padding:12px 12px 8px;')}>More from Agilam</div>
+              <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);padding:12px 12px 8px;')}>More from MangaiMart</div>
               {others.map((o, i) => (
                 <button
                   key={o.slug}

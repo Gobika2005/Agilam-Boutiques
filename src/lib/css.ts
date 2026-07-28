@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 /**
  * Converts a raw CSS declaration string into a React style object.
  *
- * The screens are ported from the `Agilam Boutiques v2.dc.html` design, which
+ * The screens are ported from the `MangaiMart v2.dc.html` design, which
  * styles everything with inline `style="..."` strings. Keeping those strings
  * verbatim — rather than hand-translating each one into a camelCased object —
  * is what keeps the UI pixel-identical to the design and makes future diffs

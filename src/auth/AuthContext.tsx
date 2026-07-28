@@ -25,7 +25,7 @@ function isDisabled(p: Pick<Profile, 'status' | 'deleted_at'> | null): boolean {
 
 /** Shown when a blocked/deleted account tries to sign in. */
 const DISABLED_MESSAGE =
-  'Your Agilam account has been disabled. Please contact Agilam support at support@agilam.in for assistance.';
+  'Your MangaiMart account has been disabled. Please contact MangaiMart support at support@mangaimart.com for assistance.';
 
 export type PendingSignup = {
   full_name: string;

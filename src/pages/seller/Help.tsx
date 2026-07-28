@@ -10,7 +10,7 @@ import { COMPANY, CONTACT_LINKS, POLICY_TERMS } from '@/data/company';
  * question in a toast), and the contact buttons open real channels — WhatsApp,
  * a phone dialler and email — from the single company-details source, so
  * support routing never drifts from the rest of the app. The old copy also
- * mentioned a "₹299 plan" that no longer exists: Agilam earns from commission
+ * mentioned a "₹299 plan" that no longer exists: MangaiMart earns from commission
  * and optional ads only.
  */
 
@@ -21,11 +21,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'When do I receive my payouts?',
-    a: `Payouts are released to your registered bank account after each order is delivered and past its return window. Agilam keeps an ${POLICY_TERMS.commissionPct}% commission; the rest is yours. Track every payout under Profile → Earnings & payouts.`,
+    a: `Payouts are released to your registered bank account after each order is delivered and past its return window. MangaiMart keeps an ${POLICY_TERMS.commissionPct}% commission; the rest is yours. Track every payout under Profile → Earnings & payouts.`,
   },
   {
-    q: 'What does it cost to sell on Agilam?',
-    a: `There is no monthly fee. Agilam takes a flat ${POLICY_TERMS.commissionPct}% commission on each delivered order. Advertising your boutique on the marketplace is optional and priced per day — set it up under Profile → Promote & Ads.`,
+    q: 'What does it cost to sell on MangaiMart?',
+    a: `There is no monthly fee. MangaiMart takes a flat ${POLICY_TERMS.commissionPct}% commission on each delivered order. Advertising your boutique on the marketplace is optional and priced per day — set it up under Profile → Promote & Ads.`,
   },
   {
     q: 'How do I get the Verified badge?',

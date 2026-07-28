@@ -342,7 +342,7 @@ export function Home() {
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
             <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across Tamil Nadu</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
-              What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>Agilam</span>
+              What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>MangaiMart</span>
             </div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;line-height:1.6;')}>
               Real reviews from buyers who found their piece through a local boutique.

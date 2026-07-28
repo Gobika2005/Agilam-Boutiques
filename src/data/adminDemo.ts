@@ -1,7 +1,7 @@
 /**
  * Admin console demo content.
  *
- * The design file `Agilam Boutiques v2.dc.html` is only retrievable up to a
+ * The design file `MangaiMart v2.dc.html` is only retrievable up to a
  * 256 KiB cap, which truncates it partway through the admin `subscriptions`
  * array. Everything above that point is ported verbatim; the values below
  * marked RECONSTRUCTED were rebuilt from the surviving markup's shape and the

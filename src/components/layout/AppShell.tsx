@@ -141,14 +141,14 @@ export function AppShell({
             {/* The wordmark is the way home from anywhere in the app. */}
             <button
               onClick={() => navigate(homeTo)}
-              aria-label="Agilam Boutiques — go to home"
+              aria-label="MangaiMart — go to home"
               title="Go to home"
               style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:48px;flex:none;')}
             >
               <img
                 className="agx-brand-mark"
-                src="/agilam-wordmark.png"
-                alt="Agilam Boutiques"
+                src="/mangaimart-wordmark.png"
+                alt="MangaiMart"
                 style={css('width:128px;height:50px;border-radius:13px;object-fit:contain;')}
               />
             </button>

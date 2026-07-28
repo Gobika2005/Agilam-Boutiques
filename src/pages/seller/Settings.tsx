@@ -171,7 +171,7 @@ export function Settings() {
         <SectionCard title="Notifications" subtitle="What lands in your notifications inbox.">
           <Toggle label="New orders" description="Every time a buyer places an order" icon="shopping_bag" on={form.notifyOrders} onChange={(v) => set('notifyOrders', v)} />
           <Toggle label="Customer messages" description="When a buyer starts or replies to a chat" icon="chat_bubble" on={form.notifyMessages} onChange={(v) => set('notifyMessages', v)} />
-          <Toggle label="Offers & platform updates" description="Agilam news, promotions and feature announcements" icon="campaign" on={form.notifyPromotions} onChange={(v) => set('notifyPromotions', v)} />
+          <Toggle label="Offers & platform updates" description="MangaiMart news, promotions and feature announcements" icon="campaign" on={form.notifyPromotions} onChange={(v) => set('notifyPromotions', v)} />
         </SectionCard>
 
         <button
@@ -191,7 +191,7 @@ export function Settings() {
           </span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
-            <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>Shop on Agilam as a customer</span>
+            <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>Shop on MangaiMart as a customer</span>
           </span>
           <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
         </button>
