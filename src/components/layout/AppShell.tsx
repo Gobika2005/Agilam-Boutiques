@@ -137,19 +137,19 @@ export function AppShell({
 
       <div style={css('min-height:100vh;display:flex;flex-direction:column;background:var(--ag-bg);')}>
         <header style={css('position:sticky;top:0;z-index:30;background:var(--ag-frost);backdrop-filter:blur(14px);border-bottom:1px solid var(--ag-border-soft);')}>
-          <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:14px 16px;')}>
+          <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:8px 16px;')}>
             {/* The wordmark is the way home from anywhere in the app. */}
             <button
               onClick={() => navigate(homeTo)}
               aria-label="MangaiMart — go to home"
               title="Go to home"
-              style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:64px;flex:none;')}
+              style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:84px;flex:none;')}
             >
               <img
                 className="agx-brand-mark"
                 src="/mangaimart-wordmark.png"
                 alt="MangaiMart"
-                style={css('width:180px;height:64px;object-fit:contain;object-position:left center;')}
+                style={css('width:240px;height:84px;object-fit:contain;object-position:left center;')}
               />
             </button>
 
