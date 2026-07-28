@@ -41,9 +41,16 @@ export function AdminLayout() {
       <div style={css('min-height:100vh;width:100%;background:var(--ag-surface);display:flex;')}>
         {/* admin sidebar — desktop only (hidden ≤900px, replaced by bottom tab bar) */}
         <div className="agx-scroll agx-admin-sidebar" style={css('width:238px;flex:none;background:var(--ag-surface-2);border-right:1px solid var(--ag-border);padding:20px 14px;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;')}>
-          <div style={css('display:flex;align-items:center;gap:10px;padding:0 8px 16px;')}>
-            <div style={css("width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>A</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;")}>MangaiMart Admin</div>
+          <div style={css('display:flex;align-items:center;gap:11px;padding:0 8px 18px;')}>
+            <img
+              src="/mangaimart-logo.png"
+              alt="MangaiMart"
+              style={css('width:44px;height:44px;border-radius:12px;object-fit:contain;flex:none;')}
+            />
+            <div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>
+              <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>Admin</div>
+            </div>
           </div>
 
           {NAV.map((a) => {
