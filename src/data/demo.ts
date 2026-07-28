@@ -94,6 +94,15 @@ export type Boutique = {
   /** Units and fulfilled orders across the shop (migration 0023). */
   unitsSold?: number;
   ordersCount?: number;
+  /**
+   * The boutique's own delivery setting (`boutiques.delivery_available` etc,
+   * migration 0021) — replaces the generic "Standard delivery" copy on the
+   * product page and checkout with what this seller actually offers.
+   * Undefined on the demo records, which are treated as delivering free.
+   */
+  deliveryAvailable?: boolean;
+  deliveryAreas?: string;
+  deliveryCharge?: number;
 };
 
 export const BOUTIQUES: Boutique[] = [
@@ -107,8 +116,8 @@ export const BOUTIQUES: Boutique[] = [
 export const CATEGORIES = [
   { name: 'Sarees', icon: 'checkroom', slotId: 'cat-sarees', toneHex: '#F3D3DF', image: img('1616756141603-6d37d5cde2a2') },
   { name: 'Lehengas', icon: 'apparel', slotId: 'cat-lehengas', toneHex: '#EAD6E8', image: img('1619715613791-89d35b51ff81') },
-  { name: 'Gowns', icon: 'woman', slotId: 'cat-gowns', toneHex: '#E6D8EC', image: img('1609748340041-f5d61e061ebc') },
-  { name: 'Kurtis', icon: 'styler', slotId: 'cat-kurtis', toneHex: '#F1DAD0', image: img('1610030469668-8e9f641aaf27') },
+  { name: 'Gowns', icon: 'woman', slotId: 'cat-gowns', toneHex: '#E6D8EC', image: img('1756483509254-3cc48a5a15b2') },
+  { name: 'Kurtis', icon: 'styler', slotId: 'cat-kurtis', toneHex: '#F1DAD0', image: img('1745313452052-0e4e341f326c') },
   { name: 'Bridal', icon: 'diamond', slotId: 'cat-bridal', toneHex: '#F0CBD6', image: img('1649930055986-ca57250a7fd4') },
   { name: 'More', icon: 'grid_view', slotId: 'cat-more', toneHex: '#E3DCEC', image: img('1610189025857-f42fe6e8dd91') },
 ];
@@ -139,15 +148,6 @@ export function productSizes(p: Pick<Product, 'id' | 'stock'>): string[] {
   const sizes = SIZES.filter((_, i) => (seed + i) % 4 !== 0);
   return sizes.length ? sizes : SIZES;
 }
-
-/** Home page customer reviews (v2 design "What shoppers say" section). */
-export type HomeReview = { name: string; city: string; rating: number; tone: number; text: string };
-
-export const HOME_REVIEWS: HomeReview[] = [
-  { name: 'Anitha R', city: 'Chennai', rating: 5, tone: 0, text: 'The zari work is even more stunning in person. The drape fell beautifully at my sister’s wedding — so many compliments!' },
-  { name: 'Meena K', city: 'Coimbatore', rating: 5, tone: 2, text: 'Rich colour and premium silk. The boutique answered every question on chat before I ordered. Highly recommend MangaiMart.' },
-  { name: 'Divya S', city: 'Madurai', rating: 4, tone: 4, text: 'Lovely saree and true to the photos. Delivery took a little longer than expected but the quality more than made up for it.' },
-];
 
 export type Thread = {
   id: string;

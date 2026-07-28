@@ -85,6 +85,9 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     createdAt: b.created_at,
     unitsSold: b.units_sold ?? 0,
     ordersCount: b.orders_count ?? 0,
+    deliveryAvailable: b.delivery_available ?? true,
+    deliveryAreas: b.delivery_areas ?? '',
+    deliveryCharge: b.delivery_charge ?? 0,
   };
 }
 

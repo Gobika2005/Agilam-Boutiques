@@ -35,7 +35,7 @@ export function Wishlist() {
                   onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                   className="agx-card-wish"
                 />
-                <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:var(--ag-ink);box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+                <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>star</span>{p.rating}
                 </div>
               </div>

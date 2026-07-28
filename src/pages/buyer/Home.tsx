@@ -7,13 +7,15 @@ import { WishButton } from '@/components/buyer/WishButton';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
+import { TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 import { buildCollections } from '@/lib/collections';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
 import { trackAdClick, trackAdImpression } from '@/data/ads';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchTopReviews } from '@/data/reviews';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
@@ -22,6 +24,8 @@ export function Home() {
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
   const { ads } = useLiveAds();
+  const { data: topReviews } = useAsync(() => fetchTopReviews(3), []);
+  const REVIEWS = topReviews ?? [];
 
   // The hero carousel is now purely paid placements: only live `home_hero`
   // campaigns become slides, so there are no fabricated editorial banners. When
@@ -277,7 +281,7 @@ export function Home() {
                 onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                 className="agx-card-wish"
               />
-              <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:var(--ag-ink);box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+              <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>star</span>{p.rating}
                 <span style={css('width:1px;height:10px;background:var(--ag-surface-2);')} />
                 <span style={css('color:var(--ag-muted);')}>{reviewsF(p.reviews)}</span>
@@ -332,11 +336,12 @@ export function Home() {
       </div>
 
       {/* CUSTOMER REVIEWS (full-bleed)
-          Three testimonials used to run through the 5-column product grid, so
-          they sat squeezed on the left with two empty cells beside them. They
-          now have a dedicated, centred track (`.agx-testimonials`) that caps at
-          three across, and each card is a proper pull-quote: the mark, the
-          words, then the person — equal height whatever the quote length. */}
+          Real reviews pulled from the `reviews` table (highest-rated, with
+          written feedback), not invented testimonials — so the section quietly
+          disappears rather than lying when the catalogue has none yet. Each
+          card is a proper pull-quote: the mark, the words, then the person —
+          equal height whatever the quote length. */}
+      {REVIEWS.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,var(--ag-surface-2) 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
@@ -350,50 +355,59 @@ export function Home() {
           </div>
 
           <div className="agx-testimonials" style={css('margin-top:clamp(24px,3vw,38px);')}>
-            {HOME_REVIEWS.map((r) => (
-              <figure
-                key={r.name}
-                style={css('margin:0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
-              >
-                {/* Opening mark — anchors the quote without shouting. */}
-                <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:var(--ag-border);height:26px;")}>“</span>
+            {REVIEWS.map((r) => {
+              const name = r.author_name?.trim() || 'MangaiMart buyer';
+              const tone = TONES[Math.abs(name.charCodeAt(0)) % TONES.length];
+              return (
+                <figure
+                  key={r.id}
+                  style={css('margin:0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
+                >
+                  {/* Opening mark — anchors the quote without shouting. */}
+                  <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:var(--ag-border);height:26px;")}>“</span>
 
-                <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:var(--ag-ink-2);text-wrap:pretty;flex:1;')}>
-                  {r.text}
-                </blockquote>
+                  <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:var(--ag-ink-2);text-wrap:pretty;flex:1;')}>
+                    {r.body}
+                  </blockquote>
 
-                {/* Stars as glyphs rather than characters, so the row lines up. */}
-                <div style={css('display:flex;align-items:center;gap:2px;margin-top:18px;')} aria-label={`${r.rating} out of 5 stars`}>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <span
-                      key={i}
-                      className={i <= r.rating ? 'agx-heart agx-heart-on' : 'agx-heart'}
-                      style={css(`font-size:17px;color:${i <= r.rating ? '#E0B84B' : '#E8D7DF'};`)}
-                    >
-                      star
+                  {/* Stars as glyphs rather than characters, so the row lines up. */}
+                  <div style={css('display:flex;align-items:center;gap:2px;margin-top:18px;')} aria-label={`${r.rating} out of 5 stars`}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <span
+                        key={i}
+                        className={i <= r.rating ? 'agx-heart agx-heart-on' : 'agx-heart'}
+                        style={css(`font-size:17px;color:${i <= r.rating ? '#E0B84B' : '#E8D7DF'};`)}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+
+                  <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--ag-surface-2);')}>
+                    <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#5C1E38;`)}>
+                      {name[0].toUpperCase()}
                     </span>
-                  ))}
-                </div>
-
-                <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--ag-surface-2);')}>
-                  <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${TONES[r.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#5C1E38;`)}>
-                    {r.name[0]}
-                  </span>
-                  <span style={css('min-width:0;')}>
-                    <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{r.name}</span>
-                    <span style={css('display:flex;align-items:center;gap:3px;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{r.city}
+                    <span style={css('min-width:0;')}>
+                      <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{name}</span>
+                      {(r.product_title || r.boutique_name) && (
+                        <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                          {r.product_title}{r.product_title && r.boutique_name ? ' · ' : ''}{r.boutique_name}
+                        </span>
+                      )}
                     </span>
-                  </span>
-                  <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
+                    {r.verified_purchase && (
+                      <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
+                        <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
+                      </span>
+                    )}
+                  </figcaption>
+                </figure>
+              );
+            })}
           </div>
         </div>
       </div>
+      )}
 
       <SiteFooter />
     </div>

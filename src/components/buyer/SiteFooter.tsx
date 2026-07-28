@@ -20,7 +20,7 @@ const SHOP_LINKS: { label: string; to: string; sort?: string }[] = [
 ];
 
 const COMPANY_LINKS = [
-  { label: 'About MangaiMart', to: '/buyer/policy/about' },
+  { label: `About ${COMPANY.short}`, to: '/buyer/policy/about' },
   { label: 'Help & support', to: '/buyer/policy/help' },
   { label: 'Track your order', to: '/buyer/orders' },
   { label: 'Wishlist', to: '/buyer/wishlist' },
@@ -125,7 +125,7 @@ export function SiteFooter() {
 
           {col('For boutiques', (
             <>
-              <a href="/buyer/policy/about" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/about'); }} style={linkStyle}>Sell on MangaiMart</a>
+              <a href="/buyer/policy/about" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/about'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
               <a href="/seller/register" onClick={(e) => { e.preventDefault(); navigate('/seller/register'); }} style={linkStyle}>Open your boutique</a>
               <a href="/auth/signin/seller" onClick={(e) => { e.preventDefault(); navigate('/auth/signin/seller'); }} style={linkStyle}>Boutique sign in</a>
               <a href={CONTACT_LINKS.whatsapp} target="_blank" rel="noreferrer noopener" style={linkStyle}>Partner support</a>

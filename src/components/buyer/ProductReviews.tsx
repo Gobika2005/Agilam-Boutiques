@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchReviews, submitReview, type ReviewRow } from '@/data/reviews';
+import { fetchReviews, submitReview, uploadReviewImage, type ReviewRow } from '@/data/reviews';
 
 /**
  * Customer reviews for a product. Reads the real `reviews` table (public via
@@ -37,6 +37,10 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_REVIEW_IMAGES = 4;
 
   const signedIn = !!session;
   const buyerId = session?.user?.id ?? '';
@@ -64,9 +68,27 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
     if (myReview) {
       setRating(myReview.rating);
       setBody(myReview.body);
+      setImages(myReview.images ?? []);
     }
     setError(null);
     setFormOpen((v) => !v);
+  };
+
+  const onPickImages = async (files: FileList | null) => {
+    if (!files || !files.length || !buyerId) return;
+    const room = MAX_REVIEW_IMAGES - images.length;
+    const picked = [...files].slice(0, room);
+    setUploadingCount(picked.length);
+    setError(null);
+    try {
+      const urls = await Promise.all(picked.map((f) => uploadReviewImage(buyerId, f)));
+      setImages((prev) => [...prev, ...urls]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not upload photo');
+    } finally {
+      setUploadingCount(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const onSubmit = async () => {
@@ -79,6 +101,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
       rating,
       body,
       authorName: profile?.full_name ?? null,
+      images,
     });
     setSubmitting(false);
     if (!result.ok) {
@@ -87,6 +110,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
     }
     setFormOpen(false);
     setBody('');
+    setImages([]);
     reload();
   };
 
@@ -153,6 +177,40 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             rows={3}
             style={css("width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--ag-border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;color:#3A2A30;background:var(--ag-surface);")}
           />
+          <div>
+            <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
+              {images.map((src, i) => (
+                <div key={src} style={css('position:relative;width:56px;height:56px;border-radius:10px;overflow:hidden;flex:none;')}>
+                  <img src={src} alt="" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
+                  <button
+                    onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label="Remove photo"
+                    style={css('position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(36,16,25,.72);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;')}
+                  >
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>close</span>
+                  </button>
+                </div>
+              ))}
+              {images.length < MAX_REVIEW_IMAGES && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingCount > 0}
+                  style={css(`width:56px;height:56px;flex:none;border:1.5px dashed var(--ag-border);border-radius:10px;background:var(--ag-surface);color:var(--ag-muted);cursor:${uploadingCount > 0 ? 'wait' : 'pointer'};display:flex;align-items:center;justify-content:center;`)}
+                >
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>{uploadingCount > 0 ? 'hourglass_top' : 'add_a_photo'}</span>
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => onPickImages(e.target.files)}
+            />
+            <div style={css('color:var(--ag-muted);font-size:11px;margin-top:6px;')}>Add up to {MAX_REVIEW_IMAGES} photos of the piece as delivered.</div>
+          </div>
           {error && <div style={css('color:#C0344A;font-size:12.5px;font-weight:700;')}>{error}</div>}
           <div style={css('display:flex;gap:9px;')}>
             <button
@@ -163,7 +221,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
               {submitting ? 'Saving…' : myReview ? 'Update review' : 'Post review'}
             </button>
             <button
-              onClick={() => setFormOpen(false)}
+              onClick={() => { setFormOpen(false); setImages(myReview?.images ?? []); setError(null); }}
               style={css('height:42px;padding:0 16px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}
             >
               Cancel
@@ -203,6 +261,15 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                 <span style={css('color:#E0B84B;font-size:13px;letter-spacing:1px;')}>{starsFor(rv.rating)}</span>
               </div>
               {rv.body && <div style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.body}</div>}
+              {rv.images?.length > 0 && (
+                <div style={css('display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;')}>
+                  {rv.images.map((src) => (
+                    <a key={src} href={src} target="_blank" rel="noreferrer noopener" style={css('display:block;width:64px;height:64px;border-radius:11px;overflow:hidden;flex:none;')}>
+                      <img src={src} alt="Photo from a buyer's review" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })

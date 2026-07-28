@@ -232,10 +232,10 @@ export function Results() {
                       onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                       className="agx-card-wish"
                     />
-                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:var(--ag-ink);box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
+                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-good);")}>star</span>{p.rating}
-                      <span style={css('width:1px;height:11px;background:var(--ag-surface-2);')} />
-                      <span style={css('color:var(--ag-muted);font-weight:700;')}>{reviewsF(p.reviews)}</span>
+                      <span style={css('width:1px;height:11px;background:#E8D7DF;')} />
+                      <span style={css('color:#8A7078;font-weight:700;')}>{reviewsF(p.reviews)}</span>
                     </div>
                   </div>
                   <div style={css('padding:11px 2px 0;')}>

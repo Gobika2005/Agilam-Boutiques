@@ -12,17 +12,27 @@ import { shareProduct } from '@/lib/shareProduct';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { TONES, fmt } from '@/data/demo';
+import { POLICY_TERMS } from '@/data/company';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 const FALLBACK_SIZES = ['S', 'M', 'L', 'XL'];
 
-// Blouse measurements in inches (unstitched saree blouse piece can be tailored to these)
-const SIZE_CHART = [
+// Reference body measurements in inches. Sarees ship with an unstitched
+// blouse piece tailored to these; every other category is a finished
+// garment, so the chart shows how the buyer's own body compares instead of
+// claiming a "blouse" fit no non-saree piece has.
+const BLOUSE_SIZE_CHART = [
   { size: 'S', bust: '32', waist: '28', shoulder: '13.5', length: '15' },
   { size: 'M', bust: '34', waist: '30', shoulder: '14', length: '15' },
   { size: 'L', bust: '36', waist: '32', shoulder: '14.5', length: '15.5' },
   { size: 'XL', bust: '38', waist: '34', shoulder: '15', length: '15.5' },
+];
+const BODY_SIZE_CHART = [
+  { size: 'S', bust: '32', waist: '26', hip: '35' },
+  { size: 'M', bust: '34', waist: '28', hip: '37' },
+  { size: 'L', bust: '36', waist: '30', hip: '39' },
+  { size: 'XL', bust: '38', waist: '32', hip: '41' },
 ];
 
 export function ProductDetail() {
@@ -42,6 +52,14 @@ export function ProductDetail() {
   // swiped on touch; thumbnails and the arrows scroll it to the picked slide.
   const galleryRef = useRef<HTMLDivElement>(null);
   const [activeImg, setActiveImg] = useState(0);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+
+  // "1 Review" in the summary opens the Ratings & reviews panel and scrolls it
+  // into view, rather than leaving the buyer to hunt for it further down.
+  const jumpToReviews = () => {
+    setOpenPanels((p) => ({ ...p, ratings: true }));
+    requestAnimationFrame(() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   // Navigating straight from one product to another reuses this component, so
   // reset the gallery and the size choice instead of carrying the previous
@@ -94,23 +112,31 @@ export function ProductDetail() {
   const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : 'var(--ag-good)';
 
   const sizeOptions = sortSizes(ap.sizes?.length ? ap.sizes : FALLBACK_SIZES);
+  const isSaree = ap.cat.trim().toLowerCase() === 'sarees';
+  const sizeChart = isSaree ? BLOUSE_SIZE_CHART : BODY_SIZE_CHART;
+  const sizeChartCols = isSaree
+    ? (['bust', 'waist', 'shoulder', 'length'] as const)
+    : (['bust', 'waist', 'hip'] as const);
+  const sizeChartHeaders = isSaree ? ['Bust', 'Waist', 'Shoulder', 'Length'] : ['Bust', 'Waist', 'Hip'];
   // What the buyer picked, else the size this piece is already in the bag at,
   // else M when the boutique offers it — never a size that isn't on sale.
   const bagLine = cart[ap.id];
+  // No default size — a buyer must pick one before the piece can be added to
+  // the bag, rather than silently shipping in whatever the code guessed.
   const selectedSize =
     (pickedSize && sizeOptions.includes(pickedSize) ? pickedSize : null) ??
-    (bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null) ??
-    (sizeOptions.includes('M') ? 'M' : sizeOptions[0]);
+    (bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null);
   const hasMrp = !!ap.mrp && ap.mrp > ap.price;
   const discountPct = hasMrp ? Math.round((1 - ap.price / (ap.mrp as number)) * 100) : null;
   const gallery = [...new Set([ap.image, ...(ap.images ?? [])].filter(Boolean))];
   if (!gallery.length) gallery.push(ap.image);
   const imgIndex = Math.min(activeImg, gallery.length - 1);
 
+  // Only chips backed by what the seller actually entered — no invented
+  // "Handcrafted" claim, and no fallback text standing in for a blank field.
   const highlights = [
-    { icon: 'diamond', label: ap.fabric || 'Premium fabric' },
-    { icon: 'event_available', label: ap.occasion + ' wear' },
-    { icon: 'content_cut', label: 'Handcrafted' },
+    ...(ap.fabric ? [{ icon: 'diamond', label: ap.fabric }] : []),
+    ...(ap.occasion ? [{ icon: 'event_available', label: `${ap.occasion} wear` }] : []),
   ];
 
   const specs = [
@@ -173,6 +199,10 @@ export function ProductDetail() {
   const onAddToBag = () => {
     if (ap.stock === 0) {
       showToast('This piece is out of stock');
+      return;
+    }
+    if (!selectedSize) {
+      showToast('Please select a size');
       return;
     }
     addToCart(ap.id, selectedSize);
@@ -372,9 +402,12 @@ export function ProductDetail() {
                 <span style={css('background:var(--ag-good-bg);color:var(--ag-good);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
               </>
             )}
-            <span style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} reviews</span>
-            </span>
+            <button
+              onClick={jumpToReviews}
+              style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;cursor:pointer;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
+            </button>
             <span style={css(`font-size:12.5px;font-weight:800;color:${stockFg};`)}>{stockLabel}</span>
           </div>
 
@@ -401,7 +434,7 @@ export function ProductDetail() {
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
-                <span className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size · {selectedSize}</span>
+                <span className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size{selectedSize ? ` · ${selectedSize}` : ' · Select a size'}</span>
                 <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(true); }} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ag-crimson);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
                 </a>
@@ -449,27 +482,48 @@ export function ProductDetail() {
             ))}
 
             {renderPanel('delivery', 'local_shipping', 'Delivery & returns', '', (
-              <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
-                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>Free delivery over ₹2,000</div>
+              <>
+                <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
+                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
+                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
+                      {boutique?.deliveryAvailable === false
+                        ? 'Store pickup only'
+                        : boutique?.deliveryCharge
+                          ? `Delivery ₹${boutique.deliveryCharge}`
+                          : 'Free delivery'}
+                    </div>
+                  </div>
+                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
+                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{boutique?.verified ? 'Verified boutique' : 'Independent boutique'}</div>
+                  </div>
+                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
+                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{POLICY_TERMS.returnWindowDays}-day easy returns</div>
+                  </div>
                 </div>
-                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>Verified boutique</div>
-                </div>
-                <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
-                  <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>7-day easy returns</div>
-                </div>
-              </div>
+                {/* The seller's own coverage area, in their words — not every
+                    boutique delivers everywhere, and this is the only place
+                    that says so before checkout. */}
+                {boutique?.deliveryAvailable !== false && boutique?.deliveryAreas && (
+                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>near_me</span>
+                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
+                      <span style={css('font-weight:700;')}>Delivers to:</span> {boutique.deliveryAreas}
+                    </div>
+                  </div>
+                )}
+              </>
             ))}
 
             {/* Ratings and reviews are one thing to the buyer — the score, the
                 spread, then the reviews themselves — so they share one panel. */}
-            {renderPanel('ratings', 'star', 'Ratings & reviews', `${ap.rating} ★ · ${reviewsF(ap.reviews)}`, (
-              <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
-            ))}
+            <div ref={reviewsRef}>
+              {renderPanel('ratings', 'star', 'Ratings & reviews', `${ap.rating} ★ · ${reviewsF(ap.reviews)}`, (
+                <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -532,7 +586,7 @@ export function ProductDetail() {
               <div>
                 <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fit guide</div>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:4px;")}>Size chart</div>
-                <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Blouse measurements in inches</div>
+                <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>{isSaree ? 'Blouse measurements in inches' : 'Body measurements in inches'}</div>
               </div>
               <button onClick={() => setShowSizeChart(false)} style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
@@ -543,21 +597,20 @@ export function ProductDetail() {
               <table style={css('width:100%;border-collapse:collapse;font-size:13px;')}>
                 <thead>
                   <tr style={css('background:var(--ag-bg);')}>
-                    {['Size', 'Bust', 'Waist', 'Shoulder', 'Length'].map((h) => (
+                    {['Size', ...sizeChartHeaders].map((h) => (
                       <th key={h} style={css('text-align:left;padding:11px 12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ag-muted);')}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {SIZE_CHART.map((r) => {
+                  {sizeChart.map((r) => {
                     const on = r.size === selectedSize;
                     return (
                       <tr key={r.size} onClick={() => { pickSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid var(--ag-surface-3);background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};`)}>
                         <td style={css(`padding:12px;font-weight:800;color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink)'};`)}>{r.size}</td>
-                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.bust}"</td>
-                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.waist}"</td>
-                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.shoulder}"</td>
-                        <td style={css('padding:12px;color:var(--ag-ink-2);')}>{r.length}"</td>
+                        {sizeChartCols.map((c) => (
+                          <td key={c} style={css('padding:12px;color:var(--ag-ink-2);')}>{r[c]}"</td>
+                        ))}
                       </tr>
                     );
                   })}
@@ -573,7 +626,7 @@ export function ProductDetail() {
             </div>
 
             <button onClick={() => setShowSizeChart(false)} style={css('width:100%;margin-top:16px;height:50px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>
-              Done · {selectedSize}
+              {selectedSize ? `Done · ${selectedSize}` : 'Close'}
             </button>
           </div>
         </div>

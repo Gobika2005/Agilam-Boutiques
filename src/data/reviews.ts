@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { uploadImage } from '@/lib/uploadImage';
 
 /**
  * Product reviews — reads and writes the `reviews` table added in migration
@@ -21,7 +22,14 @@ export type ReviewRow = {
   author_name: string | null;
   verified_purchase: boolean;
   created_at: string;
+  /** Buyer-uploaded photos of the piece as delivered (migration 0041). */
+  images: string[];
 };
+
+/** Uploads one review photo to the buyer's own folder and returns its public URL. */
+export function uploadReviewImage(buyerId: string, file: File): Promise<string> {
+  return uploadImage('review-images', buyerId, file, '0041');
+}
 
 // Postgres/PostgREST codes that mean "the reviews table isn't there yet".
 function isMissingTable(error: { code?: string; message?: string } | null): boolean {
@@ -40,7 +48,43 @@ export async function fetchReviews(productId: string): Promise<ReviewRow[]> {
     if (!isMissingTable(error)) console.error('fetchReviews failed:', error.message);
     return [];
   }
-  return (data ?? []) as ReviewRow[];
+  // `images` defaults to [] when migration 0041 hasn't run yet, so an older
+  // deployment degrades to text-only reviews instead of breaking the list.
+  return (data ?? []).map((r) => ({ ...r, images: r.images ?? [] })) as ReviewRow[];
+}
+
+export type TopReviewRow = ReviewRow & {
+  product_title: string | null;
+  boutique_name: string | null;
+};
+
+/**
+ * The best real reviews across the whole catalogue, for the Home page
+ * testimonials — highest rated first, ties broken by newest, and only ones
+ * with actual written feedback (a bare star rating reads as filler there).
+ * Empty list on any read failure, so Home just hides the section rather than
+ * falling back to invented quotes.
+ */
+export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, products(title), boutiques(name)')
+    .neq('body', '')
+    .gte('rating', 4)
+    .order('rating', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    if (!isMissingTable(error)) console.error('fetchTopReviews failed:', error.message);
+    return [];
+  }
+  return (data ?? []).map((row) => {
+    const { products, boutiques, ...rest } = row as ReviewRow & {
+      products: { title: string } | null;
+      boutiques: { name: string } | null;
+    };
+    return { ...rest, images: rest.images ?? [], product_title: products?.title ?? null, boutique_name: boutiques?.name ?? null };
+  });
 }
 
 export type SubmitReviewInput = {
@@ -50,6 +94,7 @@ export type SubmitReviewInput = {
   rating: number;
   body: string;
   authorName?: string | null;
+  images?: string[];
 };
 
 export type SubmitReviewResult = { ok: true; review: ReviewRow } | { ok: false; error: string };
@@ -74,6 +119,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
         rating,
         body,
         author_name: input.authorName ?? null,
+        images: input.images ?? [],
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'product_id,buyer_id' },
@@ -88,5 +134,5 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
     console.error('submitReview failed:', error.message);
     return { ok: false, error: 'Could not save your review. Please try again.' };
   }
-  return { ok: true, review: data as ReviewRow };
+  return { ok: true, review: { ...data, images: data.images ?? [] } as ReviewRow };
 }

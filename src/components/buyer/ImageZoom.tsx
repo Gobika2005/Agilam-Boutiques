@@ -36,7 +36,22 @@ export function ImageZoom({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const zoomed = scale > 1;
+
+  // Keeps a pan from dragging the photo past the point where it's still
+  // visible — without this a big drag at high zoom could push the image
+  // entirely off the stage with no way back short of the 100% button.
+  const clampOffset = useCallback((off: { x: number; y: number }, s: number) => {
+    const el = stageRef.current;
+    if (!el || s <= 1) return { x: 0, y: 0 };
+    const maxX = (el.clientWidth * (s - 1)) / 2;
+    const maxY = (el.clientHeight * (s - 1)) / 2;
+    return {
+      x: Math.min(maxX, Math.max(-maxX, off.x)),
+      y: Math.min(maxY, Math.max(-maxY, off.y)),
+    };
+  }, []);
 
   const reset = useCallback(() => {
     setScale(1);
@@ -57,8 +72,11 @@ export function ImageZoom({
   const zoomTo = useCallback((next: number) => {
     const clamped = Math.min(MAX, Math.max(MIN, Math.round(next * 10) / 10));
     setScale(clamped);
-    if (clamped === 1) setOffset({ x: 0, y: 0 });
-  }, []);
+    // Re-clamp rather than only resetting at 1×: zooming *out* while panned
+    // shrinks the valid pan range too, so the old offset can now be out of
+    // bounds even though it wasn't a moment ago.
+    setOffset((o) => clampOffset(o, clamped));
+  }, [clampOffset]);
 
   // Lock the page behind the viewer so scrolling zooms/pans here, not there.
   useEffect(() => {
@@ -105,7 +123,7 @@ export function ImageZoom({
     if (p && (Math.abs(e.clientX - p.x) > 6 || Math.abs(e.clientY - p.y) > 6)) movedRef.current = true;
     const d = dragRef.current;
     if (!d) return;
-    setOffset({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) });
+    setOffset(clampOffset({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) }, scale));
   };
 
   const onPointerUp = () => {
@@ -156,6 +174,7 @@ export function ImageZoom({
 
       {/* Stage */}
       <div
+        ref={stageRef}
         onClick={(e) => { e.stopPropagation(); onStageClick(); }}
         onWheel={onWheel}
         onPointerDown={onPointerDown}

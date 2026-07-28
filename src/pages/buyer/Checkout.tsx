@@ -1,14 +1,34 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { useCatalog } from '@/state/CatalogContext';
 import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
+import { POLICY_TERMS } from '@/data/company';
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
+  const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
+  const { productById, boutiques } = useCatalog();
   const [touched, setTouched] = useState(false);
+
+  // The boutiques actually in the bag — checkout becomes one order per
+  // boutique, so each one's own delivery setting (not a single generic
+  // line) is what the buyer needs to see before paying.
+  const cartBoutiques = useMemo(() => {
+    const ids = new Set<string>();
+    const list: typeof boutiques = [];
+    for (const id of Object.keys(cart)) {
+      const p = productById(id);
+      if (!p) continue;
+      const b = p.boutiqueId ? boutiques.find((x) => x.id === p.boutiqueId) : boutiques.find((x) => x.name === p.boutique);
+      if (!b || ids.has(b.id)) continue;
+      ids.add(b.id);
+      list.push(b);
+    }
+    return list;
+  }, [cart, productById, boutiques]);
 
   const errors = {
     name: !nameOk(guest.name),
@@ -66,13 +86,22 @@ export function Checkout() {
               </label>
             </div>
             <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Delivery</div>
-              <div style={css('display:flex;align-items:center;gap:12px;margin-top:9px;border:1.5px solid #D6336C;background:var(--ag-surface-2);border-radius:15px;padding:13px 15px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
-                <div style={css('flex:1;min-width:0;')}>
-                  <div style={css('font-weight:800;font-size:14px;color:var(--ag-crimson);')}>Standard delivery</div>
-                  <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>4–6 days · FREE over ₹2,000</div>
-                </div>
+              <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Delivery{cartBoutiques.length > 1 ? ` · ${cartBoutiques.length} boutiques` : ''}</div>
+              <div style={css('display:flex;flex-direction:column;gap:8px;margin-top:9px;')}>
+                {cartBoutiques.map((b) => (
+                  <div key={b.id} style={css('display:flex;align-items:center;gap:12px;border:1.5px solid #D6336C;background:var(--ag-surface-2);border-radius:15px;padding:13px 15px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
+                    <div style={css('flex:1;min-width:0;')}>
+                      <div style={css('font-weight:800;font-size:14px;color:var(--ag-crimson);')}>
+                        {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + (b.deliveryAvailable === false ? 'Store pickup only' : b.deliveryCharge ? `₹${b.deliveryCharge} delivery` : 'Free delivery')}
+                      </div>
+                      <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>
+                        {cartBoutiques.length > 1 && (b.deliveryAvailable === false ? 'Store pickup only · ' : b.deliveryCharge ? `₹${b.deliveryCharge} delivery · ` : 'Free delivery · ')}
+                        {POLICY_TERMS.deliveryEstimate} from dispatch{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
