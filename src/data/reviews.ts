@@ -79,7 +79,7 @@ export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
     return [];
   }
   return (data ?? []).map((row) => {
-    const { products, boutiques, ...rest } = row as ReviewRow & {
+    const { products, boutiques, ...rest } = row as unknown as ReviewRow & {
       products: { title: string } | null;
       boutiques: { name: string } | null;
     };

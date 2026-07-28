@@ -22,17 +22,21 @@ const FALLBACK_SIZES = ['S', 'M', 'L', 'XL'];
 // blouse piece tailored to these; every other category is a finished
 // garment, so the chart shows how the buyer's own body compares instead of
 // claiming a "blouse" fit no non-saree piece has.
-const BLOUSE_SIZE_CHART = [
-  { size: 'S', bust: '32', waist: '28', shoulder: '13.5', length: '15' },
-  { size: 'M', bust: '34', waist: '30', shoulder: '14', length: '15' },
-  { size: 'L', bust: '36', waist: '32', shoulder: '14.5', length: '15.5' },
-  { size: 'XL', bust: '38', waist: '34', shoulder: '15', length: '15.5' },
+// `measurements` is a plain Record rather than fixed fields so the blouse and
+// body charts — which don't share every column — can be rendered by the same
+// generic table without TypeScript narrowing the row to whichever shape has
+// fewer keys.
+const BLOUSE_SIZE_CHART: { size: string; measurements: Record<string, string> }[] = [
+  { size: 'S', measurements: { bust: '32', waist: '28', shoulder: '13.5', length: '15' } },
+  { size: 'M', measurements: { bust: '34', waist: '30', shoulder: '14', length: '15' } },
+  { size: 'L', measurements: { bust: '36', waist: '32', shoulder: '14.5', length: '15.5' } },
+  { size: 'XL', measurements: { bust: '38', waist: '34', shoulder: '15', length: '15.5' } },
 ];
-const BODY_SIZE_CHART = [
-  { size: 'S', bust: '32', waist: '26', hip: '35' },
-  { size: 'M', bust: '34', waist: '28', hip: '37' },
-  { size: 'L', bust: '36', waist: '30', hip: '39' },
-  { size: 'XL', bust: '38', waist: '32', hip: '41' },
+const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] = [
+  { size: 'S', measurements: { bust: '32', waist: '26', hip: '35' } },
+  { size: 'M', measurements: { bust: '34', waist: '28', hip: '37' } },
+  { size: 'L', measurements: { bust: '36', waist: '30', hip: '39' } },
+  { size: 'XL', measurements: { bust: '38', waist: '32', hip: '41' } },
 ];
 
 export function ProductDetail() {
@@ -609,7 +613,7 @@ export function ProductDetail() {
                       <tr key={r.size} onClick={() => { pickSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid var(--ag-surface-3);background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};`)}>
                         <td style={css(`padding:12px;font-weight:800;color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink)'};`)}>{r.size}</td>
                         {sizeChartCols.map((c) => (
-                          <td key={c} style={css('padding:12px;color:var(--ag-ink-2);')}>{r[c]}"</td>
+                          <td key={c} style={css('padding:12px;color:var(--ag-ink-2);')}>{r.measurements[c]}"</td>
                         ))}
                       </tr>
                     );

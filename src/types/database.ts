@@ -236,6 +236,8 @@ export interface Database {
           verified_purchase: boolean;
           created_at: string;
           updated_at: string;
+          /** Buyer-uploaded photos of the piece as delivered (migration 0041). */
+          images: string[];
         };
         Insert: Partial<Database['public']['Tables']['reviews']['Row']> & {
           product_id: string;
@@ -257,6 +259,10 @@ export interface Database {
           refunded: boolean;
           refunded_at: string | null;
           created_at: string;
+          // ── Per-milestone timestamps (migration 0042) ────────────────────
+          accepted_at: string | null;
+          shipped_at: string | null;
+          delivered_at: string | null;
           // ── Cash on Delivery (migration 0022) ────────────────────────────
           payment_status: PaymentStatus;
           paid_at: string | null;
@@ -318,9 +324,17 @@ export interface Database {
         Relationships: [];
       };
       conversations: {
-        Row: { id: string; buyer_id: string; boutique_id: string; created_at: string };
+        Row: {
+          id: string;
+          buyer_id: string;
+          boutique_id: string;
+          created_at: string;
+          /** Read-receipt timestamps, one per side (migration 0043). */
+          buyer_last_read_at: string | null;
+          boutique_last_read_at: string | null;
+        };
         Insert: { buyer_id: string; boutique_id: string };
-        Update: Partial<{ buyer_id: string; boutique_id: string }>;
+        Update: Partial<{ buyer_id: string; boutique_id: string; buyer_last_read_at: string; boutique_last_read_at: string }>;
         Relationships: [];
       };
       messages: {
@@ -420,6 +434,11 @@ export interface Database {
       toggle_product_like: {
         Args: { pid: string; do_like: boolean };
         Returns: number;
+      };
+      /** Stamp a participant's read-receipt on a conversation (migration 0043). */
+      mark_conversation_read: {
+        Args: { p_conversation_id: string; p_role: string };
+        Returns: undefined;
       };
       /** Record a buyer view / share of a product (migration 0031). */
       record_product_view: {
