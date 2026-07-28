@@ -137,7 +137,7 @@ export function AppShell({
 
       <div style={css('min-height:100vh;display:flex;flex-direction:column;background:var(--ag-bg);')}>
         <header style={css('position:sticky;top:0;z-index:30;background:var(--ag-frost);backdrop-filter:blur(14px);border-bottom:1px solid var(--ag-border-soft);')}>
-          <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:20px 16px;')}>
+          <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:6px 16px;')}>
             {/* The wordmark is the way home from anywhere in the app. */}
             <button
               onClick={() => navigate(homeTo)}
