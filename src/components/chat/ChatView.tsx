@@ -5,6 +5,7 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop } from '@/state/ShopContext';
 import {
+  fetchConversationBuyerId,
   fetchMessages,
   fetchPeerLastSeen,
   fetchPeerReadAt,
@@ -18,7 +19,7 @@ import {
 } from '@/data/chat';
 import { TONES, fmt } from '@/data/demo';
 
-type Bubble = { id?: string; me: boolean; text: string; time: string; createdAt: string };
+type Bubble = { id?: string; sender: string; text: string; time: string; createdAt: string };
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -90,6 +91,10 @@ export function ChatView({
   // The peer's last-read time — a bubble I sent is "read" (blue double-tick)
   // once its created_at is at or before this, "sent" (grey) until then.
   const [peerReadAt, setPeerReadAt] = useState<string | null>(null);
+  // The conversation's buyer id (seller view only). A boutique reply can come
+  // from any staff/owner account, so on the seller side "mine" is every bubble
+  // that isn't the buyer's — not just ones matching this logged-in seller.
+  const [buyerId, setBuyerId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -99,17 +104,29 @@ export function ChatView({
     setThread([]);
     fetchMessages(conversationId)
       .then((rows) => {
-        if (active) setThread(rows.map((m) => ({ id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at })));
+        if (active) setThread(rows.map((m) => ({ id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at })));
       })
       .catch(() => {});
     const unsub = subscribeToMessages(conversationId, (m) => {
-      setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at }]));
+      setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at }]));
     });
     return () => {
       active = false;
       unsub();
     };
   }, [conversationId, senderId]);
+
+  // The seller side needs the buyer's id to tell the shop's bubbles apart from
+  // the buyer's; the buyer side just compares against its own id, so skip it.
+  useEffect(() => {
+    if (viewerRole !== 'seller' || !conversationId) {
+      setBuyerId(null);
+      return;
+    }
+    let active = true;
+    fetchConversationBuyerId(conversationId).then((id) => { if (active) setBuyerId(id); }).catch(() => {});
+    return () => { active = false; };
+  }, [viewerRole, conversationId]);
 
   // Presence + last-seen, so the header reports the peer rather than the reader.
   useEffect(() => {
@@ -139,11 +156,23 @@ export function ChatView({
     void markConversationRead(conversationId, viewerRole);
   }, [conversationId, viewerRole, thread.length]);
 
+  // Is this bubble the viewer's own? The buyer matches on their own id. The
+  // seller can't — a boutique reply may come from any staff/owner account, so
+  // once the buyer id is known, "mine" is anything that isn't the buyer's
+  // (matching the inbox). Until it loads, fall back to an exact-id match.
+  const isMine = (sender: string) =>
+    viewerRole === 'seller'
+      ? buyerId != null
+        ? sender !== buyerId
+        : sender === senderId
+      : sender === senderId;
+
   // A message arriving from the other side is itself proof of recent activity.
   useEffect(() => {
     const last = thread[thread.length - 1];
-    if (last && !last.me) setPeerLastSeen(new Date().toISOString());
-  }, [thread]);
+    if (last && !isMine(last.sender)) setPeerLastSeen(new Date().toISOString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread, buyerId]);
 
   // Keep the newest message in view as the thread grows.
   useEffect(() => {
@@ -225,13 +254,14 @@ export function ChatView({
             <div style={css('align-self:center;background:rgba(180,64,116,.1);color:#9A5B76;font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:4px 13px;border-radius:999px;margin-bottom:4px;')}>Today</div>
           )}
           {thread.map((c, i) => {
+          const me = isMine(c.sender);
           const order = parseOrderCard(c.text);
           if (order) {
             return (
               <div
                 key={c.id ?? i}
                 onClick={onOrderClick ? () => onOrderClick(order.orderId) : undefined}
-                style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onOrderClick ? 'pointer' : 'default'};`)}
+                style={css(`max-width:78%;width:250px;align-self:${me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onOrderClick ? 'pointer' : 'default'};`)}
               >
                 <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>receipt_long</span>
@@ -260,7 +290,7 @@ export function ChatView({
               <div
                 key={c.id ?? i}
                 onClick={onProductClick ? () => onProductClick(card.id) : undefined}
-                style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onProductClick ? 'pointer' : 'default'};`)}
+                style={css(`max-width:78%;width:250px;align-self:${me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onProductClick ? 'pointer' : 'default'};`)}
               >
                 <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>sell</span>
@@ -283,12 +313,12 @@ export function ChatView({
           return (
             <div
               key={c.id ?? i}
-              style={css(`position:relative;max-width:80%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};color:${c.me ? '#fff' : 'var(--ag-ink)'};padding:9px 13px 7px;border-radius:${c.me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};font-size:13.5px;line-height:1.45;border:${c.me ? 'none' : '1px solid var(--ag-border)'};box-shadow:${c.me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
+              style={css(`position:relative;max-width:80%;align-self:${me ? 'flex-end' : 'flex-start'};background:${me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};color:${me ? '#fff' : 'var(--ag-ink)'};padding:9px 13px 7px;border-radius:${me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};font-size:13.5px;line-height:1.45;border:${me ? 'none' : '1px solid var(--ag-border)'};box-shadow:${me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
             >
               {c.text}
               <div style={css('display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:3px;')}>
-                <span style={css(`font-size:9.5px;color:${c.me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</span>
-                {c.me && (
+                <span style={css(`font-size:9.5px;color:${me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</span>
+                {me && (
                   <span
                     aria-label={peerReadAt && c.createdAt <= peerReadAt ? 'Read' : 'Sent'}
                     style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${peerReadAt && c.createdAt <= peerReadAt ? '#7FE0FF' : 'rgba(255,255,255,.75)'};`)}

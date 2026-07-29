@@ -149,6 +149,17 @@ export async function getOrCreateConversation(buyerId: string, boutiqueId: strin
   return data.id;
 }
 
+/**
+ * The buyer's id for a conversation. The seller's chat view needs it to decide
+ * which bubbles are the shop's: a boutique reply can come from any staff/owner
+ * account, so "mine" is "anything not from the buyer" (same rule the inbox uses)
+ * rather than an exact match on the current seller's id.
+ */
+export async function fetchConversationBuyerId(conversationId: string): Promise<string | null> {
+  const { data } = await supabase.from('conversations').select('buyer_id').eq('id', conversationId).maybeSingle();
+  return (data as { buyer_id: string } | null)?.buyer_id ?? null;
+}
+
 export async function fetchMessages(conversationId: string): Promise<MessageRow[]> {
   const { data, error } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
   if (error) throw error;
