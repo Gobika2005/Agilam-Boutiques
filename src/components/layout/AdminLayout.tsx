@@ -13,12 +13,18 @@ const NAV = [
   { label: 'Catalogue', icon: 'sell', to: '/admin/catalogue', title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
   { label: 'Boutiques', icon: 'storefront', to: '/admin/boutiques', title: 'Boutiques', sub: 'All boutiques on the platform' },
   { label: 'Users', icon: 'group', to: '/admin/users', title: 'Users', sub: 'Buyers and sellers management' },
+  { label: 'Customers', icon: 'person_search', to: '/admin/customers', title: 'Customer 360°', sub: 'Search a buyer and see their full history' },
   { label: 'Products', icon: 'shopping_bag', to: '/admin/products', title: 'Products', sub: 'Moderation and inventory' },
+  { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
   { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
+  { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
   { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
   { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
   { label: 'Advertisements', icon: 'campaign', to: '/admin/ads', title: 'Advertisements', sub: 'Campaigns and promotions' },
   { label: 'Coupons', icon: 'local_offer', to: '/admin/coupons', title: 'Coupons', sub: 'Platform & seller discount codes' },
+  { label: 'Broadcast', icon: 'send', to: '/admin/broadcast', title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
+  { label: 'Audit', icon: 'history', to: '/admin/audit', title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
+  { label: 'Settings', icon: 'settings', to: '/admin/settings', title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
 ];
 
 export function AdminLayout() {

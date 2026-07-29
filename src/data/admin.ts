@@ -101,8 +101,17 @@ export interface DashboardData {
   week: WindowStat;
   month: WindowStat;
   year: WindowStat;
+  /** Previous comparable window, for period-over-period deltas. */
+  prevWeek: WindowStat;
+  prevMonth: WindowStat;
+  prevYear: WindowStat;
   gmv: number;
   platformRevenue: number;
+  /** Earned (non-refunded, non-rejected) order count across all time — AOV denominator. */
+  earnedOrders: number;
+  /** Fulfilled = shipped or delivered; drives the fulfillment-rate health tile. */
+  fulfilledOrders: number;
+  refunds: { count: number; amount: number };
   counts: {
     buyers: number;
     sellers: number;
@@ -152,14 +161,24 @@ export async function fetchDashboard(): Promise<DashboardData> {
   const todayStart = startOfDay(now);
   const yStart = todayStart - 86400000;
   const weekStart = todayStart - 6 * 86400000;
+  const prevWeekStart = weekStart - 7 * 86400000;
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
   const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
+  const prevYearStart = new Date(now.getFullYear() - 1, 0, 1).getTime();
 
   const blank = (): WindowStat => ({ revenue: 0, orders: 0 });
-  const acc = { today: blank(), yesterday: blank(), week: blank(), month: blank(), year: blank() };
+  const acc = {
+    today: blank(), yesterday: blank(), week: blank(), month: blank(), year: blank(),
+    prevWeek: blank(), prevMonth: blank(), prevYear: blank(),
+  };
   let gmv = 0;
   let online = 0;
   let cod = 0;
+  let earnedOrders = 0;
+  let fulfilledOrders = 0;
+  let refundCount = 0;
+  let refundAmount = 0;
   const byBoutique = new Map<string, TopBoutique>();
 
   // 14-day series buckets
@@ -171,14 +190,20 @@ export async function fetchDashboard(): Promise<DashboardData> {
     const t = new Date(o.created_at).getTime();
     const earned = isEarned(o);
     const amt = Number(o.total);
+    if (o.refunded) { refundCount += 1; refundAmount += amt; }
     if (earned) {
       gmv += amt;
+      earnedOrders += 1;
+      if (o.status === 'shipped' || o.status === 'delivered') fulfilledOrders += 1;
       if (o.payment_id) online += 1; else cod += 1;
       if (t >= todayStart) { acc.today.revenue += amt; acc.today.orders += 1; }
       if (t >= yStart && t < todayStart) { acc.yesterday.revenue += amt; acc.yesterday.orders += 1; }
       if (t >= weekStart) { acc.week.revenue += amt; acc.week.orders += 1; }
+      if (t >= prevWeekStart && t < weekStart) { acc.prevWeek.revenue += amt; acc.prevWeek.orders += 1; }
       if (t >= monthStart) { acc.month.revenue += amt; acc.month.orders += 1; }
+      if (t >= prevMonthStart && t < monthStart) { acc.prevMonth.revenue += amt; acc.prevMonth.orders += 1; }
       if (t >= yearStart) { acc.year.revenue += amt; acc.year.orders += 1; }
+      if (t >= prevYearStart && t < yearStart) { acc.prevYear.revenue += amt; acc.prevYear.orders += 1; }
 
       const b = byBoutique.get(o.boutique_id) ?? { id: o.boutique_id, name: o.boutique?.name ?? 'Boutique', tone: o.boutique?.tone ?? 0, revenue: 0, orders: 0 };
       b.revenue += amt; b.orders += 1;
@@ -209,6 +234,9 @@ export async function fetchDashboard(): Promise<DashboardData> {
     ...acc,
     gmv,
     platformRevenue: gmv * COMMISSION_RATE,
+    earnedOrders,
+    fulfilledOrders,
+    refunds: { count: refundCount, amount: refundAmount },
     counts: {
       buyers: buyers.count ?? 0,
       sellers: sellers.count ?? 0,
@@ -229,6 +257,65 @@ export async function fetchDashboard(): Promise<DashboardData> {
       boutique: o.boutique?.name ?? '—', total: Number(o.total), status: o.status, created_at: o.created_at,
     })),
   };
+}
+
+// ── Refunds ─────────────────────────────────────────────────────────────────
+
+export interface RefundRow {
+  id: string;
+  order_number: string;
+  name: string;
+  boutique: string;
+  total: number;
+  status: OrderStatus;
+  payment_id: string | null;
+  refunded: boolean;
+  refunded_at: string | null;
+  created_at: string;
+}
+
+/**
+ * The refund workbench feed — recent orders with their refund flag, so the admin
+ * can see the refund history and mark refund-worthy orders (rejected/cancelled)
+ * as refunded. Money movement through Razorpay is a server step; this records
+ * the platform's refund decision (the `refunded` flag from migration 0006).
+ */
+export async function fetchRefunds(): Promise<RefundRow[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, order_number, total, status, payment_id, refunded, refunded_at, created_at, guest_name, boutique:boutiques(name), buyer:profiles!orders_buyer_id_fkey(full_name)')
+    .order('created_at', { ascending: false })
+    .limit(150);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as (Omit<RefundRow, 'name' | 'boutique'> & {
+    guest_name: string | null;
+    boutique: { name: string } | null;
+    buyer: { full_name: string } | null;
+  })[];
+  return rows.map((r) => ({
+    id: r.id,
+    order_number: r.order_number,
+    name: r.buyer?.full_name ?? r.guest_name ?? 'Guest',
+    boutique: r.boutique?.name ?? '—',
+    total: Number(r.total),
+    status: r.status,
+    payment_id: r.payment_id,
+    refunded: r.refunded,
+    refunded_at: r.refunded_at,
+    created_at: r.created_at,
+  }));
+}
+
+export async function setOrderRefunded(id: string, refunded: boolean): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('orders')
+    .update({ refunded, refunded_at: refunded ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) {
+    console.error('setOrderRefunded failed:', error.message);
+    return { ok: false, error: 'Could not update the refund. Please try again.' };
+  }
+  return { ok: true };
 }
 
 export async function fetchPayments(): Promise<PaymentRow[]> {

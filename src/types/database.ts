@@ -241,6 +241,8 @@ export interface Database {
           /** The boutique's public reply and when it was posted (migration 0045). */
           seller_reply: string | null;
           seller_reply_at: string | null;
+          /** Admin moderation flag — buyer/seller reads skip it (migration 0048). */
+          hidden: boolean;
         };
         Insert: Partial<Database['public']['Tables']['reviews']['Row']> & {
           product_id: string;
@@ -427,11 +429,37 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['ad_campaigns']['Row']>;
         Relationships: [];
       };
+      /** Singleton (id is forced to 1) store of admin-editable commercial knobs
+       *  — commission, fees, hold window, maintenance mode (migration 0048). */
+      platform_settings: {
+        Row: {
+          id: number;
+          commission_pct: number;
+          cod_fee: number;
+          cod_max_order: number;
+          free_delivery_over: number;
+          standard_shipping: number;
+          return_window_days: number;
+          payout_hold_days: number;
+          maintenance_mode: boolean;
+          support_email: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['platform_settings']['Row']>;
+        Update: Partial<Database['public']['Tables']['platform_settings']['Row']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       toggle_boutique_follow: {
         Args: { bid: string; do_follow: boolean };
+        Returns: number;
+      };
+      /** Admin fans a single notification out to a whole audience (migration 0048). */
+      broadcast_notification: {
+        Args: { p_audience: string; p_title: string; p_body: string };
         Returns: number;
       };
       toggle_product_like: {

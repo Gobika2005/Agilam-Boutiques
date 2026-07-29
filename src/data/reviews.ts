@@ -53,8 +53,9 @@ export async function fetchReviews(productId: string): Promise<ReviewRow[]> {
   }
   // `images` defaults to [] when migration 0041 hasn't run yet, and the reply
   // columns to null before 0045, so an older deployment degrades gracefully
-  // instead of breaking the list.
-  return (data ?? []).map(normalizeReview) as ReviewRow[];
+  // instead of breaking the list. Admin-hidden reviews (0048) are dropped;
+  // `hidden` reads as undefined before that migration, so nothing is lost.
+  return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map(normalizeReview) as ReviewRow[];
 }
 
 /** Fill in columns added by later migrations so an un-migrated DB still parses. */
@@ -92,7 +93,7 @@ export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
     if (!isMissingTable(error)) console.error('fetchTopReviews failed:', error.message);
     return [];
   }
-  return (data ?? []).map((row) => {
+  return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map((row) => {
     const { products, boutiques, ...rest } = row as unknown as ReviewRow & {
       products: { title: string } | null;
       boutiques: { name: string } | null;

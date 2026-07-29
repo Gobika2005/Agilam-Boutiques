@@ -93,6 +93,12 @@ const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
 const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 const AdminCoupons = lazyNamed(() => import('@/pages/admin/Coupons'), 'Coupons');
 const AdminNotifications = lazyNamed(() => import('@/pages/admin/Notifications'), 'Notifications');
+const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
+const Refunds = lazyNamed(() => import('@/pages/admin/Refunds'), 'Refunds');
+const ReviewsAdmin = lazyNamed(() => import('@/pages/admin/ReviewsAdmin'), 'ReviewsAdmin');
+const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast');
+const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
+const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
 
 export default function App() {
   return (
@@ -239,6 +245,13 @@ export default function App() {
         <Route path="ads" element={<Ads />} />
         <Route path="coupons" element={<AdminCoupons />} />
         <Route path="notifications" element={<AdminNotifications />} />
+        {/* New admin operations surfaces (backend: migration 0048 + admin_activity_log). */}
+        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="refunds" element={<Refunds />} />
+        <Route path="reviews" element={<ReviewsAdmin />} />
+        <Route path="broadcast" element={<Broadcast />} />
+        <Route path="audit" element={<Audit />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
