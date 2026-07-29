@@ -55,7 +55,12 @@ export function Chat() {
     })().catch((e) => {
       if (!active) return;
       setFailed(true);
-      showToast(e instanceof Error ? e.message : 'Could not start chat');
+      // Surface the real reason. Supabase errors are plain objects (not Error
+      // instances), so read `.message` off whatever shape we got before falling
+      // back to the generic line — otherwise every failure looked identical.
+      const msg =
+        e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : '';
+      showToast(msg || 'Could not start chat');
     });
     return () => {
       active = false;

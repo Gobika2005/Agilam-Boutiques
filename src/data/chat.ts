@@ -34,10 +34,14 @@ export async function ensureBuyerIdentity(): Promise<string> {
   // Ensure a profile row exists so conversations.buyer_id / messages.sender_id
   // resolve, and the seller sees a real name/number instead of a bare id.
   // upsert/ignoreDuplicates: AuthContext's onAuthStateChange also creates the
-  // profile when the anonymous session lands, so tolerate the race.
-  await supabase
+  // profile when the anonymous session lands, so tolerate the race. This must
+  // succeed before we create the conversation — otherwise the conversation's
+  // buyer_id foreign key has nothing to point at and the whole chat fails to
+  // start ("Could not start chat"). A swallowed error here was invisible.
+  const { error: profileErr } = await supabase
     .from('profiles')
     .upsert({ id: uid, role: 'buyer', full_name: name, phone }, { onConflict: 'id', ignoreDuplicates: true });
+  if (profileErr) throw new Error(profileErr.message);
   return uid;
 }
 
@@ -142,11 +146,36 @@ export async function fetchConversationPeerName(conversationId: string, viewerRo
 }
 
 export async function getOrCreateConversation(buyerId: string, boutiqueId: string): Promise<string> {
-  const { data: existing } = await supabase.from('conversations').select('id').eq('buyer_id', buyerId).eq('boutique_id', boutiqueId).maybeSingle();
+  const { data: existing, error: selErr } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('buyer_id', buyerId)
+    .eq('boutique_id', boutiqueId)
+    .maybeSingle();
+  if (selErr) throw new Error(selErr.message);
   if (existing) return existing.id;
-  const { data, error } = await supabase.from('conversations').insert({ buyer_id: buyerId, boutique_id: boutiqueId }).select('id').single();
-  if (error) throw error;
-  return data.id;
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({ buyer_id: buyerId, boutique_id: boutiqueId })
+    .select('id')
+    .single();
+  if (!error) return data.id;
+
+  // A concurrent open (or a row the first select couldn't see) means the row
+  // already exists — the unique (buyer_id, boutique_id) constraint fired. Fall
+  // back to reading it rather than surfacing a scary "duplicate key" as
+  // "Could not start chat".
+  if (error.code === '23505') {
+    const { data: again } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('buyer_id', buyerId)
+      .eq('boutique_id', boutiqueId)
+      .maybeSingle();
+    if (again) return again.id;
+  }
+  throw new Error(error.message);
 }
 
 /**
@@ -168,7 +197,7 @@ export async function fetchMessages(conversationId: string): Promise<MessageRow[
 
 export async function sendMessage(conversationId: string, senderId: string, body: string) {
   const { error } = await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: senderId, body });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 /**

@@ -106,7 +106,12 @@ export function ProductDetail() {
   // More from the same boutique/shop
   const sameBoutique = PRODUCTS.filter((p) => p.boutique === ap.boutique && p.id !== ap.id).slice(0, 12);
   const boutique = BOUTIQUES.find((x) => x.name === ap.boutique);
-  const boutiqueId = boutique?.id ?? '';
+  // Always prefer the product's own foreign key. Matching a boutique by *name*
+  // fails whenever two shops share a name or the name isn't in the loaded list,
+  // and the old 'b1' fallback was a demo id that doesn't exist in the database —
+  // opening a chat with it made conversation creation fail ("Could not start
+  // chat"). The real boutique_id the product carries can't miss.
+  const boutiqueId = ap.boutiqueId || boutique?.id || '';
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -160,12 +165,12 @@ export function ProductDetail() {
   }));
 
   const openBoutique = () => {
-    const b = BOUTIQUES.find((x) => x.name === ap.boutique);
-    navigate(`/buyer/boutique/${b ? b.id : 'b1'}`);
+    if (!boutiqueId) return showToast('This boutique is unavailable right now');
+    navigate(`/buyer/boutique/${boutiqueId}`);
   };
   const openChat = () => {
-    const b = BOUTIQUES.find((x) => x.name === ap.boutique);
-    navigate(`/buyer/chat/${b ? b.id : 'b1'}`, {
+    if (!boutiqueId) return showToast('This boutique is unavailable right now');
+    navigate(`/buyer/chat/${boutiqueId}`, {
       state: {
         product: { id: ap.id, title: ap.title, price: ap.price, image: ap.image, tone: ap.tone, cat: ap.cat },
       },
