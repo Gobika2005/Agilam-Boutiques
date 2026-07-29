@@ -2,6 +2,11 @@ node_modules
 dist
 .env
 .env.local
+.env.staging
+.env.production
+!.env.example
+!.env.staging.example
 *.local
 .DS_Store
 *.tsbuildinfo
+supabase/_bundle.sql

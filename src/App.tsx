@@ -6,6 +6,7 @@ import { ScrollManager } from '@/components/layout/ScrollManager';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 import { PresenceTracker } from '@/components/layout/PresenceTracker';
 import { LaunchNotice } from '@/components/layout/LaunchNotice';
+import { EnvBadge } from '@/components/layout/EnvBadge';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -111,6 +112,9 @@ export default function App() {
       <PresenceTracker />
       {/* "Launching soon" preview notice for public visitors (hidden in the consoles). */}
       <LaunchNotice />
+      {/* Corner ribbon that marks non-production (TEST/staging) builds. Renders
+          nothing in production. See ENVIRONMENTS.md. */}
+      <EnvBadge />
       <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
