@@ -246,13 +246,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     box-shadow:0 -14px 36px -22px var(--ag-shadow);
   }
 }
-/* Chat: a focused full-screen conversation surface. The composer is the last
-   flex child and the root reserves bottom space for the floating nav dock, so
-   the input panel floats just ABOVE the dock instead of being hidden by it.
-   The reserve is the dock's own height plus a clear gap, so the composer never
-   sits flush against the dock. */
-.agx-chat-root { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
-@media (max-width:640px){ .agx-chat-root { padding-bottom: calc(100px + env(safe-area-inset-bottom)); } }
+/* Chat: a focused full-screen conversation surface (buyer AND seller share it).
+   It has its own back button, so the floating nav dock is redundant here and,
+   worse, when the mobile keyboard opens the dock floats up and sits wedged
+   between the thread and the composer. Hide the dock whenever a chat is open —
+   this is keyboard-independent, so it can't be defeated by focus/viewport
+   quirks — and drop the bottom reserve (which only existed to clear that dock)
+   so the composer meets the bottom edge, just above the keyboard.
+   The inline `display:flex` on the dock is a non-important inline style, so a
+   `!important` rule here overrides it. */
+body:has(.agx-chat-root) .agx-dock,
+body.agx-chatting .agx-dock { display: none !important; }
+.agx-chat-root { padding-bottom: env(safe-area-inset-bottom); }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */

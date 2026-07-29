@@ -98,6 +98,17 @@ export function ChatView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Flag the whole app as "in a chat" while this full-screen surface is mounted,
+  // so the floating bottom nav dock can be hidden (it has no place over a chat,
+  // and on mobile it floats up over the composer when the keyboard opens). A
+  // body class is used rather than relying only on the CSS `:has()` selector so
+  // it works even where `:has()` isn't supported. Both the buyer and seller
+  // chats render this component, so this covers both.
+  useEffect(() => {
+    document.body.classList.add('agx-chatting');
+    return () => document.body.classList.remove('agx-chatting');
+  }, []);
+
   useEffect(() => {
     if (!conversationId || !senderId) return;
     let active = true;
