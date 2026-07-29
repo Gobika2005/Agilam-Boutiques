@@ -38,3 +38,23 @@ export async function createNotification(input: { profile_id: string; type: stri
   const { error } = await supabase.from('notifications').insert(input);
   if (error) throw error;
 }
+
+export async function markAllNotificationsRead(profileId: string) {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('profile_id', profileId).eq('read', false);
+  if (error) throw error;
+}
+
+/** Live-pushes newly inserted notifications for one profile — the header bell's badge and dropdown update without a reload or re-navigation. */
+export function subscribeToNotifications(profileId: string, onInsert: (row: NotificationRow) => void) {
+  const channel = supabase
+    .channel(`notifications:${profileId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications', filter: `profile_id=eq.${profileId}` },
+      (payload) => onInsert(payload.new as NotificationRow),
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

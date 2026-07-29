@@ -1,23 +1,25 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell, type TabDef } from './AppShell';
-import { NotificationBell } from './NotificationBell';
+import { NotificationBellMenu, useUnreadMessageCount } from '@/components/notifications/NotificationBellMenu';
 import { ProfileMenu } from '@/components/seller/ProfileMenu';
 import { css } from '@/lib/css';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import type { BoutiqueStatus } from '@/data/types';
 
-const tabs: TabDef[] = [
+function sellerTabs(unreadMessages: number): TabDef[] {
+  return [
   { label: 'Home', icon: 'home', to: '/seller/dashboard', match: ['/seller/dashboard'] },
   { label: 'Products', icon: 'inventory_2', to: '/seller/products', match: ['/seller/products', '/seller/add-product'] },
   { label: 'Orders', icon: 'receipt_long', to: '/seller/orders', match: ['/seller/orders'] },
-  { label: 'Messages', icon: 'chat', to: '/seller/messages', match: ['/seller/messages', '/seller/chat'] },
+  { label: 'Messages', icon: 'chat', to: '/seller/messages', match: ['/seller/messages', '/seller/chat'], badge: unreadMessages },
   {
     label: 'Profile',
     icon: 'person',
     to: '/seller/profile',
     match: ['/seller/profile', '/seller/earnings', '/seller/analytics', '/seller/boutique', '/seller/settings', '/seller/help', '/seller/customers', '/seller/notifications', '/seller/verification'],
   },
-];
+  ];
+}
 
 /**
  * The console-wide verification notice.
@@ -66,7 +68,7 @@ function SellerHeaderActions() {
       >
         <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>search</span>
       </button>
-      <NotificationBell to="/seller/notifications" />
+      <NotificationBellMenu viewAllTo="/seller/notifications" orderBasePath="/seller" />
     </>
   );
 }
@@ -99,9 +101,10 @@ function VerificationBanner() {
 }
 
 export function SellerLayout() {
+  const unreadMessages = useUnreadMessageCount();
   return (
     <AppShell
-      tabs={tabs}
+      tabs={sellerTabs(unreadMessages)}
       profileTo="/seller/profile"
       homeTo="/seller/dashboard"
       banner={<VerificationBanner />}

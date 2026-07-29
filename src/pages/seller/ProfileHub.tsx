@@ -57,6 +57,7 @@ export function ProfileHub() {
           ? [{ label: 'Verification status', sub: 'Track your approval', icon: 'verified_user', to: '/seller/verification' }]
           : []),
         { label: 'Boutique Profile', sub: 'Name, logo, storefront', icon: 'store', to: '/seller/boutique' },
+        { label: 'Storefront preview', sub: 'How you appear on Inspire', icon: 'auto_awesome', to: '/seller/storefront' },
         { label: 'Business details', sub: 'Bank, GST, pickup, hours', icon: 'badge', to: '/seller/onboarding' },
         { label: 'Customers', sub: 'Buyers & their order history', icon: 'group', to: '/seller/customers' },
       ],
@@ -65,7 +66,9 @@ export function ProfileHub() {
       title: 'Money & insights',
       rows: [
         { label: 'Promote & Ads', sub: 'Advertise on the marketplace', icon: 'campaign', to: '/seller/promote' },
+        { label: 'Offers & sales', sub: 'Mark pieces down from MRP', icon: 'sell', to: '/seller/offers' },
         { label: 'Coupons', sub: 'Discount codes for your boutique', icon: 'local_offer', to: '/seller/coupons' },
+        { label: 'Reviews', sub: 'Buyer ratings — reply in public', icon: 'reviews', to: '/seller/reviews' },
         { label: 'Earnings & payouts', sub: 'What you have earned', icon: 'payments', to: '/seller/earnings' },
         { label: 'Analytics', sub: 'Trends & performance', icon: 'insights', to: '/seller/analytics' },
         { label: 'Billing (Offline Sales)', sub: 'Walk-in invoices', icon: 'receipt_long', to: '/seller/billing' },

@@ -60,7 +60,7 @@ export async function syncBuyerProfile(): Promise<void> {
 export async function fetchConversationsForBuyer(buyerId: string): Promise<ConversationWithPeer[]> {
   const { data, error } = await supabase
     .from('conversations')
-    .select('id, buyer_id, boutique_id, created_at, boutique:boutiques(name, tone), messages(body, created_at, sender_id)')
+    .select('id, buyer_id, boutique_id, created_at, buyer_last_read_at, boutique_last_read_at, boutique:boutiques(name, tone), messages(body, created_at, sender_id)')
     .eq('buyer_id', buyerId);
   if (error) throw error;
   return shapeConversations(data ?? [], buyerId, 'buyer');
@@ -69,7 +69,7 @@ export async function fetchConversationsForBuyer(buyerId: string): Promise<Conve
 export async function fetchConversationsForBoutique(boutiqueId: string): Promise<ConversationWithPeer[]> {
   const { data, error } = await supabase
     .from('conversations')
-    .select('id, buyer_id, boutique_id, created_at, buyer:profiles!conversations_buyer_id_fkey(full_name), messages(body, created_at, sender_id)')
+    .select('id, buyer_id, boutique_id, created_at, buyer_last_read_at, boutique_last_read_at, buyer:profiles!conversations_buyer_id_fkey(full_name), messages(body, created_at, sender_id)')
     .eq('boutique_id', boutiqueId);
   if (error) throw error;
   return shapeConversations(data ?? [], boutiqueId, 'seller');
@@ -97,9 +97,24 @@ function shapeConversations(rows: any[], viewerId: string, mode: 'buyer' | 'sell
       // the badge never cleared. Anything not from the buyer is the shop's.
       const mine = (senderId: string) => (mode === 'seller' ? senderId !== r.buyer_id : senderId === viewerId);
 
-      // Messages waiting on the viewer: everything since they last spoke.
+      // Messages waiting on the viewer. "Seen up to" is the later of two points:
+      // the read stamp written when they last opened the thread (migration 0043),
+      // and their own last reply (answering implies having read). Counting only
+      // incoming messages past that point means simply *reading* a chat clears the
+      // badge — previously it stayed until the shop actually replied, so a seller
+      // who read a message still saw the unread number.
+      const readAt: string = (mode === 'seller' ? r.boutique_last_read_at : r.buyer_last_read_at) ?? '';
+      let seenUpTo = readAt;
+      for (let i = ordered.length - 1; i >= 0; i--) {
+        if (mine(ordered[i].sender_id)) {
+          if (ordered[i].created_at > seenUpTo) seenUpTo = ordered[i].created_at;
+          break;
+        }
+      }
       let unread = 0;
-      for (let i = ordered.length - 1; i >= 0 && !mine(ordered[i].sender_id); i--) unread++;
+      for (const msg of ordered) {
+        if (!mine(msg.sender_id) && msg.created_at > seenUpTo) unread++;
+      }
 
       return {
         id: r.id,

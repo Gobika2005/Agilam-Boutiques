@@ -270,6 +270,16 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                   ))}
                 </div>
               )}
+              {rv.seller_reply && (
+                <div style={css('margin-top:12px;margin-left:14px;padding:12px 14px;background:var(--ag-surface-2);border-left:3px solid #D6336C;border-radius:0 12px 12px 0;')}>
+                  <div style={css('display:flex;align-items:center;gap:6px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>storefront</span>
+                    <span style={css('font-weight:800;font-size:12px;color:var(--ag-crimson);')}>Reply from the boutique</span>
+                    {rv.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:11px;')}>· {timeAgo(rv.seller_reply_at)}</span>}
+                  </div>
+                  <div style={css('color:var(--ag-ink-2);font-size:13px;line-height:1.6;margin-top:6px;')}>{rv.seller_reply}</div>
+                </div>
+              )}
             </div>
           );
         })

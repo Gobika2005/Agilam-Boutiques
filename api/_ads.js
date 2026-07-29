@@ -113,16 +113,41 @@ export async function createAdOrder(req, res) {
       });
     }
 
+    // Count only campaigns still occupying the slot. A row's stored status only
+    // flips to 'expired' when the nightly `expire_and_activate_ads` cron runs, so
+    // between an ad's `end_at` and that next run it still reads 'live' — without
+    // this window filter those already-ended ads keep the slot falsely "full" and
+    // block new bookings even though nothing is serving. Mirror the buyer feed and
+    // `effectiveAdStatus`, which both trust `end_at` over the raw status. A null
+    // `end_at` (e.g. a fresh pending_review with no window yet) still counts.
+    const nowIso = new Date().toISOString();
     const { count: occupied, error: capErr } = await supabase
       .from('ad_campaigns')
       .select('id', { count: 'exact', head: true })
       .eq('placement_code', campaign.placement_code)
-      .in('status', OCCUPYING);
+      .in('status', OCCUPYING)
+      .or(`end_at.is.null,end_at.gt.${nowIso}`);
     if (capErr) throw capErr;
     if ((occupied ?? 0) >= priced.placement.max_active) {
+      // Tell the seller when the slot next frees up — the soonest end_at among the
+      // ads currently holding it — so "fully booked" comes with a wait, not a wall.
+      const { data: nextFree } = await supabase
+        .from('ad_campaigns')
+        .select('end_at')
+        .eq('placement_code', campaign.placement_code)
+        .in('status', OCCUPYING)
+        .gt('end_at', nowIso)
+        .order('end_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const freesAt = nextFree?.end_at ? new Date(nextFree.end_at) : null;
+      const when = freesAt
+        ? ` A slot should open around ${freesAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.`
+        : '';
       return res.status(409).json({
-        error: `The “${priced.placement.name}” slot is fully booked right now. Please try again in a few days, or pick another placement.`,
+        error: `The “${priced.placement.name}” slot is fully booked right now.${when} Please try again then, or pick another placement.`,
         code: 'SLOT_FULL',
+        freesAt: freesAt ? freesAt.toISOString() : null,
       });
     }
 

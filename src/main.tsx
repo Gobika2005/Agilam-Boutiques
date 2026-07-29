@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/state/ThemeContext';
 import { CatalogProvider } from '@/state/CatalogContext';
 import { TaxonomyProvider } from '@/state/TaxonomyContext';
 import { ShopProvider } from '@/state/ShopContext';
+import { NotificationProvider } from '@/state/NotificationContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { UpdateNotice } from '@/components/layout/UpdateNotice';
 import { supabaseConfigError } from '@/lib/supabase';
@@ -44,11 +45,13 @@ createRoot(document.getElementById('root')!).render(
             <CatalogProvider>
               <TaxonomyProvider>
                 <ShopProvider>
-                  <ToastProvider>
-                    <App />
-                    {/* Offers the new build; never takes the page away mid-task. */}
-                    <UpdateNotice />
-                  </ToastProvider>
+                  <NotificationProvider>
+                    <ToastProvider>
+                      <App />
+                      {/* Offers the new build; never takes the page away mid-task. */}
+                      <UpdateNotice />
+                    </ToastProvider>
+                  </NotificationProvider>
                 </ShopProvider>
               </TaxonomyProvider>
             </CatalogProvider>

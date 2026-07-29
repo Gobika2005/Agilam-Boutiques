@@ -19,9 +19,19 @@ import { useCatalog } from '@/state/CatalogContext';
  * The screen has no title of its own: the tab bar already says Inspire, and the
  * story rail is a better use of the first 90px than a heading.
  */
+/** The two feed lenses, in the order they appear. */
+const TABS = [
+  { key: 'foryou', label: 'For You', icon: 'auto_awesome' },
+  { key: 'following', label: 'Following', icon: 'favorite' },
+] as const;
+type TabKey = (typeof TABS)[number]['key'];
+
 export function Inspire() {
   const navigate = useNavigate();
   const { products } = useCatalog();
+  // A social-feed lens (For You / Following) as the primary filter, with the
+  // category as an optional refinement on top of it.
+  const [tab, setTab] = useState<TabKey>('foryou');
   const [category, setCategory] = useState<string | null>(null);
 
   // Categories worth offering as a filter — only ones the catalogue actually
@@ -34,7 +44,7 @@ export function Inspire() {
   }, [products]);
 
   const { items, followsAnyone, loading, loadingMore, exhausted, error, loadMore, likes, toggleLike } =
-    useInspireFeed(category ?? undefined);
+    useInspireFeed({ category: category ?? undefined, followingOnly: tab === 'following' });
 
   // Infinite scroll. An IntersectionObserver on a sentinel below the last card
   // beats a scroll listener: no per-frame work, and it keeps firing correctly
@@ -62,7 +72,32 @@ export function Inspire() {
         {/* ── Stories ── */}
         <StoryRail />
 
-        {/* ── Filters ── */}
+        {/* ── Feed lens: For You / Following ── the primary, social-feed-style
+            filter. A segmented control (not loose pills) so it reads as "which
+            feed am I in", distinct from the category refinement below it. */}
+        <div style={css('display:flex;gap:4px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:15px;padding:4px;margin:2px 0 10px;')}>
+          {TABS.map((t) => {
+            const on = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={css(
+                  `flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;border:none;cursor:pointer;border-radius:11px;font-family:inherit;font-weight:800;font-size:13.5px;transition:background .25s ease,color .25s ease,box-shadow .25s ease;background:${
+                    on ? 'linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44)' : 'transparent'
+                  };color:${on ? '#fff' : 'var(--ag-muted)'};box-shadow:${
+                    on ? '0 1px 0 rgba(255,255,255,.3) inset,0 10px 22px -12px rgba(176,36,84,.9)' : 'none'
+                  };`,
+                )}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Category refinement ── narrows whichever feed lens is active. */}
         {categories.length > 1 && (
           <div className="agx-scroll" style={css('display:flex;gap:8px;overflow-x:auto;padding:2px 2px 14px;')}>
             {[null, ...categories].map((c) => {
@@ -109,23 +144,37 @@ export function Inspire() {
           </div>
         )}
 
-        {!loading && !error && items.length === 0 && (
-          <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
-            <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>auto_awesome</span>
+        {!loading && !error && items.length === 0 && (() => {
+          // The empty state speaks to *why* it's empty: an un-followed Following
+          // tab, a followed one with no new pieces, or a category with nothing
+          // under it — each with the one action that actually helps.
+          const followingEmpty = tab === 'following';
+          const notFollowing = followingEmpty && !followsAnyone;
+          const empty = notFollowing
+            ? { icon: 'favorite', title: 'Follow your favourite boutiques', sub: 'Pieces from the shops you follow show up here first. Find a few you love to fill this feed.', cta: 'Discover boutiques', act: () => navigate('/buyer/boutiques') }
+            : followingEmpty
+              ? { icon: 'auto_awesome', title: category ? `Nothing in ${category} from your shops` : 'You’re all caught up', sub: category ? 'Try another category, or see everyone in For You.' : 'No new pieces from the shops you follow right now — see what else is new in For You.', cta: category ? 'Clear category' : 'Switch to For You', act: () => (category ? setCategory(null) : setTab('foryou')) }
+              : category
+                ? { icon: 'auto_awesome', title: `Nothing in ${category} yet`, sub: 'Try a different category, or check back soon.', cta: 'Clear filter', act: () => setCategory(null) }
+                : { icon: 'auto_awesome', title: 'Nothing new yet', sub: 'Boutiques are just getting started. Check back soon for new arrivals.', cta: 'Browse boutiques', act: () => navigate('/buyer/boutiques') };
+          return (
+            <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
+              <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>{empty.icon}</span>
+              </div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:18px;")}>{empty.title}</div>
+              <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:330px;line-height:1.55;')}>
+                {empty.sub}
+              </div>
+              <button
+                onClick={empty.act}
+                style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}
+              >
+                {empty.cta}
+              </button>
             </div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:18px;")}>{category ? `Nothing in ${category} yet` : 'Nothing new yet'}</div>
-            <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:330px;line-height:1.55;')}>
-              {category ? 'Try a different category, or check back soon.' : 'Boutiques are just getting started. Check back soon for new arrivals.'}
-            </div>
-            <button
-              onClick={() => (category ? setCategory(null) : navigate('/buyer/boutiques'))}
-              style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}
-            >
-              {category ? 'Clear filter' : 'Browse boutiques'}
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {items.map((p, i) => (
           <div key={p.id}>

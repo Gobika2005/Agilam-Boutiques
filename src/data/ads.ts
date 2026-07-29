@@ -253,6 +253,26 @@ export async function approveCampaign(id: string) {
   if (error) throw error;
 }
 
+/**
+ * Admin edit of a campaign's creative (headline, subtext, banner image, tag,
+ * CTA, linked product/subject). Unlike the seller path this does NOT change the
+ * lifecycle status — the admin is the reviewer, so their edit to a live ad keeps
+ * it live. Price, schedule and counters stay untouched. (RPC: migration 0046.)
+ */
+export async function adminEditCreative(id: string, c: CreativeInput) {
+  const { error } = await supabase.rpc('admin_edit_ad_creative', {
+    p_id: id,
+    p_subject_type: c.subject_type,
+    p_product_id: c.product_id ?? null,
+    p_headline: c.headline ?? '',
+    p_subtext: c.subtext ?? '',
+    p_image_url: c.image_url ?? '',
+    p_tag: c.tag ?? '',
+    p_cta_label: c.cta_label ?? '',
+  });
+  if (error) throw error;
+}
+
 export async function pauseCampaign(id: string) {
   const { error } = await supabase.rpc('admin_pause_ad', { p_id: id });
   if (error) throw error;

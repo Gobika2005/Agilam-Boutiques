@@ -16,8 +16,8 @@ import { TONES, fmt } from '@/data/demo';
  * Full-bleed cover, an overlapping monogram avatar and a centred identity block
  * (name · rating · location), followed by tag pills, a description, a
  * three-up stats row (followers · products · positive rating), Follow / Chat
- * actions, a quick-action bar (live location · instagram · call · share) and
- * the boutique's collection grid.
+ * actions, a quick-action bar (shop location · share) and the boutique's
+ * collection grid.
  *
  * It reads live data from `useCatalog()` (approved boutiques + their products
  * are public, so this works for anonymous buyers) and wires every control to a
@@ -25,17 +25,6 @@ import { TONES, fmt } from '@/data/demo';
  * when signed in, or local storage as a guest — via the shop context), chat,
  * call, share and product nav.
  */
-
-/** The Instagram brand mark — Material Symbols has no brand glyph, so we draw it. */
-function InstagramGlyph() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B02454" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-    </svg>
-  );
-}
 
 /** Compact count: 1240 → "1.2K", 999 → "999". */
 function compact(n: number): string {
@@ -118,13 +107,9 @@ export function BoutiqueProfile() {
   const followerLabel = compact(liveFollowers);
   const shareLink = `${window.location.origin}/b/${ab.slug}`;
 
-  // Quick-action destinations. Instagram opens the shop's real profile; the
-  // location opens the seller's Google Maps link, or a maps search on the shop's
-  // address when they haven't added one yet.
+  // Quick-action destinations. The location opens the seller's Google Maps
+  // link, or a maps search on the shop's address when they haven't added one.
   const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
-  const instaUrl = ab.insta
-    ? (/^https?:\/\//.test(ab.insta) ? ab.insta : `https://instagram.com/${ab.insta.replace(/^@/, '')}`)
-    : '';
   const mapUrl =
     ab.mapUrl?.trim() ||
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([ab.name, ab.area, ab.city].filter(Boolean).join(', '))}`;
@@ -238,12 +223,6 @@ export function BoutiqueProfile() {
           <div style={css('display:flex;margin-top:18px;padding-top:18px;border-top:1px solid var(--ag-border-soft);')}>
             {[
               { icon: 'location_on', label: 'Shop Location', onClick: () => openExternal(mapUrl) },
-              {
-                icon: 'instagram',
-                label: 'Instagram',
-                onClick: () =>
-                  instaUrl ? openExternal(instaUrl) : showToast('This boutique hasn’t added Instagram yet'),
-              },
               { icon: 'share', label: 'Share', onClick: () => setShareOpen(true) },
             ].map((a) => (
               <button
@@ -252,11 +231,7 @@ export function BoutiqueProfile() {
                 aria-label={a.label}
                 style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:none;cursor:pointer;padding:4px;')}
               >
-                {a.icon === 'instagram' ? (
-                  <InstagramGlyph />
-                ) : (
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>{a.icon}</span>
-                )}
+                <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>{a.icon}</span>
                 <span style={css('font-size:11.5px;color:var(--ag-label);font-weight:700;')}>{a.label}</span>
               </button>
             ))}

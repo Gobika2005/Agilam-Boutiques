@@ -7,6 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { fetchProductsByBoutique } from '@/data/products';
 import { countUnreadNotifications } from '@/data/notifications';
+import { fetchReviewsForBoutique } from '@/data/reviews';
 import { toOrderView } from '@/lib/orderView';
 import { resolveDisplayName } from '@/lib/displayName';
 
@@ -48,6 +49,10 @@ export function Dashboard() {
     () => (profile ? countUnreadNotifications(profile.id) : Promise.resolve(0)),
     [profile?.id],
   );
+  const { data: reviewRows } = useAsync(
+    () => (boutique ? fetchReviewsForBoutique(boutique.id) : Promise.resolve([])),
+    [boutique?.id],
+  );
 
   const rows = orderRows ?? [];
   const products = productRows ?? [];
@@ -74,6 +79,10 @@ export function Dashboard() {
   const customerCount = new Set(rows.map((o) => o.buyer_id ?? o.guest_phone ?? o.id)).size;
   const lowStock = products.filter((p) => p.stock <= LOW_STOCK_AT).sort((a, b) => a.stock - b.stock);
   const recentOrders = orders.slice(0, 5);
+  // Discovery/engagement surfaces the buyer app has that the seller reaches from
+  // here: their Inspire storefront, live offers, and reviews awaiting a reply.
+  const offersCount = products.filter((p) => p.mrp && p.mrp > p.price).length;
+  const reviewsNeedingReply = (reviewRows ?? []).filter((r) => !r.seller_reply).length;
 
   const ownerName = boutique?.owner_name || resolveDisplayName(profile, session);
   const boutiqueName = boutique?.name ?? 'Your boutique';
@@ -192,6 +201,38 @@ export function Dashboard() {
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Grow your shop — the buyer-facing discovery & engagement surfaces. */}
+      <div style={css('margin-top:16px;')}>
+        <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 2px 10px;')}>Grow your shop</div>
+        <div style={css('display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;')}>
+          {[
+            { label: 'Storefront', sub: 'Your Inspire feed', icon: 'auto_awesome', ic: '#D6336C', tint: 'var(--ag-surface-2)', to: '/seller/storefront', badge: 0 },
+            { label: 'Offers', sub: offersCount ? `${offersCount} on offer` : 'Mark down', icon: 'sell', ic: 'var(--ag-bad-text)', tint: 'var(--ag-bad-bg)', to: '/seller/offers', badge: 0 },
+            { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: '#C99A3F', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
+          ].map((g) => (
+            <button
+              key={g.label}
+              onClick={() => navigate(g.to)}
+              className="agx-lift"
+              style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:13px 11px;display:flex;flex-direction:column;align-items:flex-start;gap:9px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
+            >
+              <span style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${g.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
+                <span style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${g.ic};`)}>{g.icon}</span>
+                {g.badge > 0 && (
+                  <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
+                    {g.badge > 99 ? '99+' : g.badge}
+                  </span>
+                )}
+              </span>
+              <span style={css('min-width:0;')}>
+                <span style={css('display:block;font-weight:800;font-size:13px;color:var(--ag-ink);')}>{g.label}</span>
+                <span style={css('display:block;font-size:11px;color:#A98D99;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{g.sub}</span>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Welcome banner ---------------------------------------------------- */}

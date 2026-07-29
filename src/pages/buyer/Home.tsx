@@ -281,15 +281,20 @@ export function Home() {
                 onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                 className="agx-card-wish"
               />
-              <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>star</span>{p.rating}
-                <span style={css('width:1px;height:10px;background:var(--ag-surface-2);')} />
-                <span style={css('color:var(--ag-muted);')}>{reviewsF(p.reviews)}</span>
-              </div>
             </div>
+            {/* Same footer shape as New arrivals: price on the left, rating
+                opposite it on the right — so the two rails read as one style.
+                The review count stays, since popularity is what makes it a
+                best seller. */}
             <div style={css('padding:12px 2px 0;')}>
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:3px;")}>{fmt(p.price)}</div>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
+                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>{p.rating}
+                  <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {reviewsF(p.reviews)}</span>
+                </span>
+              </div>
             </div>
           </div>
         ))}

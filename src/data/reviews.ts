@@ -24,6 +24,9 @@ export type ReviewRow = {
   created_at: string;
   /** Buyer-uploaded photos of the piece as delivered (migration 0041). */
   images: string[];
+  /** The boutique's public reply, and when it was posted (migration 0045). */
+  seller_reply: string | null;
+  seller_reply_at: string | null;
 };
 
 /** Uploads one review photo to the buyer's own folder and returns its public URL. */
@@ -48,9 +51,20 @@ export async function fetchReviews(productId: string): Promise<ReviewRow[]> {
     if (!isMissingTable(error)) console.error('fetchReviews failed:', error.message);
     return [];
   }
-  // `images` defaults to [] when migration 0041 hasn't run yet, so an older
-  // deployment degrades to text-only reviews instead of breaking the list.
-  return (data ?? []).map((r) => ({ ...r, images: r.images ?? [] })) as ReviewRow[];
+  // `images` defaults to [] when migration 0041 hasn't run yet, and the reply
+  // columns to null before 0045, so an older deployment degrades gracefully
+  // instead of breaking the list.
+  return (data ?? []).map(normalizeReview) as ReviewRow[];
+}
+
+/** Fill in columns added by later migrations so an un-migrated DB still parses. */
+function normalizeReview<T extends Record<string, unknown>>(r: T): T & Pick<ReviewRow, 'images' | 'seller_reply' | 'seller_reply_at'> {
+  return {
+    ...r,
+    images: (r.images as string[] | null) ?? [],
+    seller_reply: (r.seller_reply as string | null) ?? null,
+    seller_reply_at: (r.seller_reply_at as string | null) ?? null,
+  };
 }
 
 export type TopReviewRow = ReviewRow & {
@@ -83,8 +97,54 @@ export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
       products: { title: string } | null;
       boutiques: { name: string } | null;
     };
-    return { ...rest, images: rest.images ?? [], product_title: products?.title ?? null, boutique_name: boutiques?.name ?? null };
+    return { ...normalizeReview(rest), product_title: products?.title ?? null, boutique_name: boutiques?.name ?? null };
   });
+}
+
+export type BoutiqueReviewRow = ReviewRow & {
+  product_title: string | null;
+  product_image: string | null;
+};
+
+/**
+ * Every review across a boutique's catalogue, newest first — the seller's
+ * reviews inbox. Joins the product title + cover so each review is legible
+ * without a second lookup. Empty list on any read failure (RLS lets the owning
+ * seller read these via the "reviews: public read" owner branch).
+ */
+export async function fetchReviewsForBoutique(boutiqueId: string): Promise<BoutiqueReviewRow[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, products(title, image_url)')
+    .eq('boutique_id', boutiqueId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    if (!isMissingTable(error)) console.error('fetchReviewsForBoutique failed:', error.message);
+    return [];
+  }
+  return (data ?? []).map((row) => {
+    const { products, ...rest } = row as unknown as ReviewRow & { products: { title: string; image_url: string | null } | null };
+    return { ...normalizeReview(rest), product_title: products?.title ?? null, product_image: products?.image_url ?? null };
+  });
+}
+
+export type ReplyResult = { ok: true; review: ReviewRow } | { ok: false; error: string };
+
+/**
+ * Post, edit or clear the boutique's public reply to one of its reviews. A blank
+ * reply clears it. Goes through the `reply_to_review` RPC (migration 0045) which
+ * checks boutique ownership and only ever writes the reply columns.
+ */
+export async function replyToReview(reviewId: string, reply: string): Promise<ReplyResult> {
+  const { data, error } = await supabase.rpc('reply_to_review', { p_review_id: reviewId, p_reply: reply });
+  if (error) {
+    if (/function .*reply_to_review.* does not exist/i.test(error.message)) {
+      return { ok: false, error: 'Replies are not enabled yet. Please try again later.' };
+    }
+    console.error('replyToReview failed:', error.message);
+    return { ok: false, error: 'Could not save your reply. Please try again.' };
+  }
+  return { ok: true, review: normalizeReview(data as Record<string, unknown>) as ReviewRow };
 }
 
 export type SubmitReviewInput = {
@@ -134,5 +194,5 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
     console.error('submitReview failed:', error.message);
     return { ok: false, error: 'Could not save your review. Please try again.' };
   }
-  return { ok: true, review: { ...data, images: data.images ?? [] } as ReviewRow };
+  return { ok: true, review: normalizeReview(data as Record<string, unknown>) as ReviewRow };
 }

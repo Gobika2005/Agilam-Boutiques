@@ -238,6 +238,9 @@ export interface Database {
           updated_at: string;
           /** Buyer-uploaded photos of the piece as delivered (migration 0041). */
           images: string[];
+          /** The boutique's public reply and when it was posted (migration 0045). */
+          seller_reply: string | null;
+          seller_reply_at: string | null;
         };
         Insert: Partial<Database['public']['Tables']['reviews']['Row']> & {
           product_id: string;
@@ -435,6 +438,11 @@ export interface Database {
         Args: { pid: string; do_like: boolean };
         Returns: number;
       };
+      /** Post/edit/clear the boutique's public reply to a review (migration 0045). */
+      reply_to_review: {
+        Args: { p_review_id: string; p_reply: string };
+        Returns: Database['public']['Tables']['reviews']['Row'];
+      };
       /** Stamp a participant's read-receipt on a conversation (migration 0043). */
       mark_conversation_read: {
         Args: { p_conversation_id: string; p_role: string };
@@ -470,6 +478,20 @@ export interface Database {
       /** Admin sends a paid ad back for rework with a note (migration 0033). */
       admin_request_ad_changes: {
         Args: { p_id: string; p_reason?: string | null };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
+      /** Admin edits an ad's creative in place, status unchanged (migration 0046). */
+      admin_edit_ad_creative: {
+        Args: {
+          p_id: string;
+          p_subject_type: string;
+          p_product_id: string | null;
+          p_headline: string;
+          p_subtext: string;
+          p_image_url: string;
+          p_tag: string;
+          p_cta_label: string;
+        };
         Returns: Database['public']['Tables']['ad_campaigns']['Row'];
       };
       /** Seller edits a paid ad's creative → back to review (migration 0033). */

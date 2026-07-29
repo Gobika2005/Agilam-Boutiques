@@ -22,6 +22,7 @@ export function OrderDetail() {
   const orderId = decodeURIComponent(id ?? '');
   const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
   const [sharing, setSharing] = useState(false);
+  const [confirmReject, setConfirmReject] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   if (!row) {
@@ -267,21 +268,51 @@ export function OrderDetail() {
         )}
       </div>
 
-      {/* A rejected or cancelled order has no next step, so the action bar goes
-          away rather than offering moves that would resurrect it. */}
-      {!closed && (
-        <div style={css('position:sticky;bottom:0;background:var(--ag-bg);padding:12px 20px 16px;display:flex;gap:10px;')}>
-          <button onClick={() => setStatus('rejected', 'Order rejected')} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
-          {o.rawStatus === 'pending' ? (
-            <button onClick={() => setStatus('accepted', 'Order accepted')} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>Accept order</button>
-          ) : (
-            <>
-              <button onClick={() => setStatus('delivered', 'Marked delivered')} style={css('flex:1;height:52px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Delivered</button>
-              <button onClick={() => setStatus('shipped', 'Marked as shipped')} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>Mark Shipped</button>
-            </>
-          )}
-        </div>
-      )}
+      {/* Fulfilment moves one step at a time: pending → accepted → shipped →
+          delivered. The bar only ever offers the next real step, so a seller
+          can't mark an order delivered before it shipped, and Reject disappears
+          the moment the parcel is on its way — you can't reject after dispatch,
+          let alone after delivery. Terminal states (delivered / rejected /
+          cancelled) have no further move, so the bar goes away entirely. */}
+      {(() => {
+        // Reject is only honest while the order is still in the seller's hands.
+        const canReject = o.rawStatus === 'pending' || o.rawStatus === 'accepted';
+        const forward =
+          o.rawStatus === 'pending'
+            ? { status: 'accepted' as const, label: 'Accept order', msg: 'Order accepted' }
+            : o.rawStatus === 'accepted'
+              ? { status: 'shipped' as const, label: 'Mark shipped', msg: 'Marked as shipped' }
+              : o.rawStatus === 'shipped'
+                ? { status: 'delivered' as const, label: 'Mark delivered', msg: 'Marked delivered' }
+                : null;
+
+        if (!forward && !canReject) return null;
+
+        return (
+          <div style={css('position:sticky;bottom:0;background:var(--ag-bg);padding:12px 20px 16px;')}>
+            {confirmReject ? (
+              <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
+                <div style={css('font-size:13px;font-weight:700;color:#8A2A34;line-height:1.5;')}>
+                  Reject this order? This can’t be undone{o.isCod ? '' : ' and any online payment is refunded'}. The stock returns to your catalogue.
+                </div>
+                <div style={css('display:flex;gap:10px;margin-top:11px;')}>
+                  <button onClick={() => setConfirmReject(false)} style={css('flex:1;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Keep order</button>
+                  <button onClick={() => { setConfirmReject(false); setStatus('rejected', 'Order rejected'); }} style={css('flex:1;height:48px;border:none;background:#D6455A;color:#fff;border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject order</button>
+                </div>
+              </div>
+            ) : (
+              <div style={css('display:flex;gap:10px;')}>
+                {canReject && (
+                  <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
+                )}
+                {forward && (
+                  <button onClick={() => setStatus(forward.status, forward.msg)} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>{forward.label}</button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

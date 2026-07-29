@@ -1,5 +1,5 @@
 import { NotificationsInbox } from '@/components/notifications/NotificationsInbox';
 
 export function Notifications() {
-  return <NotificationsInbox backTo="/seller/profile" orderBasePath="/seller" />;
+  return <NotificationsInbox backTo="/buyer/profile" orderBasePath="/buyer" />;
 }

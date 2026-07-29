@@ -5,6 +5,7 @@ import { useShop } from '@/state/ShopContext';
 import { useTheme } from '@/state/ThemeContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
+import { NotificationBellMenu } from '@/components/notifications/NotificationBellMenu';
 
 const NAV = [
   { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health at a glance' },
@@ -93,10 +94,7 @@ export function AdminLayout() {
               >
                 <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
               </button>
-              <div style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;position:relative;flex:none;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>notifications</span>
-                <span style={css('position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:#D6455A;')} />
-              </div>
+              <NotificationBellMenu viewAllTo="/admin/notifications" />
               <button onClick={logout} title="Log out" style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}>
                 {initial(profile?.full_name ?? 'Admin K')}
               </button>

@@ -32,6 +32,7 @@ import { OrderConfirmation } from '@/pages/buyer/OrderConfirmation';
 import { MyOrders } from '@/pages/buyer/MyOrders';
 import { TrackOrder } from '@/pages/buyer/TrackOrder';
 import { Coupons } from '@/pages/buyer/Coupons';
+import { Notifications as BuyerNotifications } from '@/pages/buyer/Notifications';
 import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
 import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
@@ -74,6 +75,9 @@ const ProfileHub = lazyNamed(() => import('@/pages/seller/ProfileHub'), 'Profile
 const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
 const Help = lazyNamed(() => import('@/pages/seller/Help'), 'Help');
 const Verification = lazyNamed(() => import('@/pages/seller/Verification'), 'Verification');
+const SellerReviews = lazyNamed(() => import('@/pages/seller/Reviews'), 'Reviews');
+const Offers = lazyNamed(() => import('@/pages/seller/Offers'), 'Offers');
+const Storefront = lazyNamed(() => import('@/pages/seller/Storefront'), 'Storefront');
 // Split like the rest of the seller console: the 7-step setup wizard is only
 // ever opened by a seller, and buyers should not carry it in the main bundle.
 const SellerOnboarding = lazyNamed(() => import('@/pages/seller/SellerOnboarding'), 'SellerOnboarding');
@@ -90,6 +94,7 @@ const Reports = lazyNamed(() => import('@/pages/admin/Reports'), 'Reports');
 const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
 const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 const AdminCoupons = lazyNamed(() => import('@/pages/admin/Coupons'), 'Coupons');
+const AdminNotifications = lazyNamed(() => import('@/pages/admin/Notifications'), 'Notifications');
 
 export default function App() {
   return (
@@ -165,6 +170,7 @@ export default function App() {
         <Route path="orders/:id" element={<TrackOrder />} />
         <Route path="orders/:id/track" element={<TrackOrder />} />
         <Route path="coupons" element={<Coupons />} />
+        <Route path="notifications" element={<BuyerNotifications />} />
         <Route path="messages" element={<BuyerMessages />} />
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
@@ -189,6 +195,9 @@ export default function App() {
             followers, so there is no separate composer route. */}
         <Route path="products" element={<MyProducts />} />
         <Route path="products/:id" element={<ProductAnalytics />} />
+        <Route path="offers" element={<Offers />} />
+        <Route path="storefront" element={<Storefront />} />
+        <Route path="reviews" element={<SellerReviews />} />
         <Route path="search" element={<SellerSearch />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
@@ -233,6 +242,7 @@ export default function App() {
         <Route path="payments" element={<Payments />} />
         <Route path="ads" element={<Ads />} />
         <Route path="coupons" element={<AdminCoupons />} />
+        <Route path="notifications" element={<AdminNotifications />} />
       </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

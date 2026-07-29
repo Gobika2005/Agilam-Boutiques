@@ -34,7 +34,8 @@ export type FeedItem = FeedProduct & { phase: FeedPhase };
  * Likes are local-first (buyers browse anonymously) and reconciled with the
  * account when there is one.
  */
-export function useInspireFeed(category?: string) {
+export function useInspireFeed(opts: { category?: string; followingOnly?: boolean } = {}) {
+  const { category, followingOnly = false } = opts;
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
@@ -74,9 +75,10 @@ export function useInspireFeed(category?: string) {
     setError(null);
     setExhausted(false);
 
-    // Someone following nobody starts straight in discover — there is no first
-    // phase to run out of.
-    const startPhase: FeedPhase = followsAnyone ? 'following' : 'discover';
+    // "Following" tab: only ever shops you follow — never hand over to discover.
+    // Otherwise someone following nobody starts straight in discover, since
+    // there is no first phase to run out of.
+    const startPhase: FeedPhase = followingOnly || followsAnyone ? 'following' : 'discover';
 
     (async () => {
       const first = await fetchFeed({
@@ -90,8 +92,9 @@ export function useInspireFeed(category?: string) {
 
       // A followed set that returns a short first page has already run dry, so
       // roll straight into discover rather than making the buyer scroll to find
-      // out there's nothing more.
-      if (startPhase === 'following' && first.length < PAGE) {
+      // out there's nothing more — but not on the "Following" tab, where that
+      // hand-over is exactly what the buyer asked us not to do.
+      if (!followingOnly && startPhase === 'following' && first.length < PAGE) {
         const rest = await fetchFeed({ boutiqueIds: followedIds, exclude: true, limit: PAGE, category });
         if (!active) return;
         const seen = new Set(first.map((p) => p.id));
@@ -103,7 +106,7 @@ export function useInspireFeed(category?: string) {
         setExhausted(rest.length < PAGE);
       } else {
         setPhase(startPhase);
-        setExhausted(startPhase === 'discover' && first.length < PAGE);
+        setExhausted(followingOnly ? first.length < PAGE : startPhase === 'discover' && first.length < PAGE);
       }
     })()
       .catch((e: unknown) => {
@@ -115,7 +118,7 @@ export function useInspireFeed(category?: string) {
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey, catalogLoading, category]);
+  }, [idsKey, catalogLoading, category, followingOnly]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || exhausted || loading || items.length === 0) return;
@@ -136,9 +139,10 @@ export function useInspireFeed(category?: string) {
       const seen = new Set(items.map((p) => p.id));
       const fresh = rows.filter((r) => !seen.has(r.id)).map((p) => ({ ...p, phase }));
 
-      if (rows.length < PAGE && phase === 'following') {
+      if (!followingOnly && rows.length < PAGE && phase === 'following') {
         // The followed shops are done. Hand over to discover in the same tick so
-        // the scroll never stalls.
+        // the scroll never stalls — except on the "Following" tab, which stays
+        // strictly the shops you follow.
         const rest = await fetchFeed({ boutiqueIds: followed, exclude: true, limit: PAGE, category });
         const seenNow = new Set([...seen, ...fresh.map((p) => p.id)]);
         setItems((prev) => [
@@ -157,7 +161,7 @@ export function useInspireFeed(category?: string) {
     } finally {
       setLoadingMore(false);
     }
-  }, [items, phase, loadingMore, exhausted, loading, category]);
+  }, [items, phase, loadingMore, exhausted, loading, category, followingOnly]);
 
   // Pull the account's likes once signed in.
   useEffect(() => {
