@@ -80,8 +80,7 @@ export function Dashboard() {
   const lowStock = products.filter((p) => p.stock <= LOW_STOCK_AT).sort((a, b) => a.stock - b.stock);
   const recentOrders = orders.slice(0, 5);
   // Discovery/engagement surfaces the buyer app has that the seller reaches from
-  // here: their Inspire storefront, live offers, and reviews awaiting a reply.
-  const offersCount = products.filter((p) => p.mrp && p.mrp > p.price).length;
+  // here: reviews awaiting a reply.
   const reviewsNeedingReply = (reviewRows ?? []).filter((r) => !r.seller_reply).length;
 
   const ownerName = boutique?.owner_name || resolveDisplayName(profile, session);
@@ -208,8 +207,6 @@ export function Dashboard() {
         <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 2px 10px;')}>Grow your shop</div>
         <div style={css('display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;')}>
           {[
-            { label: 'Storefront', sub: 'Your Inspire feed', icon: 'auto_awesome', ic: '#D6336C', tint: 'var(--ag-surface-2)', to: '/seller/storefront', badge: 0 },
-            { label: 'Offers', sub: offersCount ? `${offersCount} on offer` : 'Mark down', icon: 'sell', ic: 'var(--ag-bad-text)', tint: 'var(--ag-bad-bg)', to: '/seller/offers', badge: 0 },
             { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: '#C99A3F', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
           ].map((g) => (
             <button

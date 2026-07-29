@@ -76,8 +76,6 @@ const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
 const Help = lazyNamed(() => import('@/pages/seller/Help'), 'Help');
 const Verification = lazyNamed(() => import('@/pages/seller/Verification'), 'Verification');
 const SellerReviews = lazyNamed(() => import('@/pages/seller/Reviews'), 'Reviews');
-const Offers = lazyNamed(() => import('@/pages/seller/Offers'), 'Offers');
-const Storefront = lazyNamed(() => import('@/pages/seller/Storefront'), 'Storefront');
 // Split like the rest of the seller console: the 7-step setup wizard is only
 // ever opened by a seller, and buyers should not carry it in the main bundle.
 const SellerOnboarding = lazyNamed(() => import('@/pages/seller/SellerOnboarding'), 'SellerOnboarding');
@@ -195,8 +193,6 @@ export default function App() {
             followers, so there is no separate composer route. */}
         <Route path="products" element={<MyProducts />} />
         <Route path="products/:id" element={<ProductAnalytics />} />
-        <Route path="offers" element={<Offers />} />
-        <Route path="storefront" element={<Storefront />} />
         <Route path="reviews" element={<SellerReviews />} />
         <Route path="search" element={<SellerSearch />} />
         <Route path="orders" element={<Orders />} />

@@ -500,6 +500,39 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-
 .agx-zoomview.agx-zoomed { cursor: zoom-out; overflow: auto; }
 .agx-zoomview.agx-zoomed img { cursor: grab; }
 
+/* ------------------------------------------------------------------
+   Content protection.
+   Deter casual copy/save of catalogue text and imagery: no text
+   selection, no image drag, no long-press save. This is a deterrent
+   only (DevTools / screenshots still work), but it stops right-click-
+   save and select-copy across the app.
+
+   Form fields are explicitly re-enabled so shoppers and sellers can
+   still type, select, and paste in inputs/textareas. `contenteditable`
+   is covered for any rich fields. */
+body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;   /* iOS long-press "Save Image" menu */
+}
+input, textarea, select, [contenteditable="true"], [contenteditable=""] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* Images can't be dragged out to the desktop / another tab. */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}
+
 /* Material Symbols helper — the design sets font-family inline per <span>. */
 .msymbol {
   font-family: 'Material Symbols Outlined';

@@ -11,6 +11,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { UpdateNotice } from '@/components/layout/UpdateNotice';
 import { supabaseConfigError } from '@/lib/supabase';
 import { installStaleChunkRecovery } from '@/lib/appUpdate';
+import { installContentProtection } from '@/lib/contentProtection';
 import App from './App';
 import './index.css';
 
@@ -18,6 +19,9 @@ import './index.css';
 // next lazy route it opens would fail with a blank screen. Recover before the
 // user ever sees one.
 installStaleChunkRecovery();
+
+// Deter casual copy/save of catalogue text and imagery (see the module).
+installContentProtection();
 
 function ConfigErrorScreen({ message }: { message: string }) {
   return (
