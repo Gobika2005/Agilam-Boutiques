@@ -3,6 +3,7 @@ import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { signInWithGoogle, sendEmailOtp, verifyEmailOtp, friendlyAuthError } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, CONSENT_REQUIRED } from '@/components/legal/Consent';
+import { GoogleIcon } from '@/components/ui/GoogleIcon';
 
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
@@ -148,7 +149,7 @@ export function AccountSheet({
               disabled={busy}
               style={css('width:100%;height:52px;margin-top:22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:800;font-size:15px;color:var(--ag-ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D6336C;")}>g_translate</span>Continue with Google
+              <GoogleIcon size={20} />Continue with Google
             </button>
 
             <div style={css('display:flex;align-items:center;gap:12px;color:var(--ag-muted-soft);font-size:12.5px;margin:16px 0;')}>

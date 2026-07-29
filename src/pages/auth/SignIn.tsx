@@ -9,6 +9,7 @@ import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
 import { ConsentNotice } from '@/components/legal/Consent';
 import { useToast } from '@/components/ui/Toast';
 import { signInWithGoogle } from '@/lib/authMethods';
+import { GoogleIcon } from '@/components/ui/GoogleIcon';
 
 export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
@@ -118,7 +119,7 @@ export function SignIn() {
       </div>
       <div style={css('display:flex;gap:12px;')}>
         <button onClick={handleGoogle} style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;cursor:pointer;color:var(--ag-ink);display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Google
+          <GoogleIcon size={19} />Google
         </button>
         <button onClick={() => toast('Apple sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;cursor:pointer;color:var(--ag-ink);')}>Apple</button>
       </div>

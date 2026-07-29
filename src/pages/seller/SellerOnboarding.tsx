@@ -10,6 +10,7 @@ import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
+import { GoogleIcon } from '@/components/ui/GoogleIcon';
 import {
   fetchMyBoutique,
   fetchBoutiquePrivate,
@@ -604,7 +605,7 @@ export function SellerOnboarding() {
               onClick={continueWithGoogle}
               style={css('height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;color:var(--ag-ink);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Continue with Google
+              <GoogleIcon size={19} />Continue with Google
             </button>
 
             <ConsentNotice />
