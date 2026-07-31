@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
+import { CardLink } from '@/components/buyer/CardLink';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
@@ -16,6 +18,7 @@ const searchable = (p: { title: string; cat: string; occasion: string; fabric: s
   [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique];
 
 export function Results() {
+  usePageMeta({ title: 'All collections', description: 'Every piece listed by verified Tamil Nadu boutiques on MangaiMart.' });
   const navigate = useNavigate();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS } = useCatalog();
@@ -223,7 +226,7 @@ export function Results() {
             <SponsoredStrip ads={ads.sponsored_card} title="Sponsored" />
             <div className="agx-rgrid">
               {results.map((p) => (
-                <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
+                <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift">
                   <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
                     <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
                     <WishButton
@@ -232,11 +235,13 @@ export function Results() {
                       onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                       className="agx-card-wish"
                     />
-                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-good);")}>star</span>{p.rating}
-                      <span style={css('width:1px;height:11px;background:#E8D7DF;')} />
-                      <span style={css('color:#8A7078;font-weight:700;')}>{reviewsF(p.reviews)}</span>
-                    </div>
+                    {p.reviews > 0 && (
+                      <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>{p.rating}
+                        <span style={css('width:1px;height:11px;background:#E8D7DF;')} />
+                        <span style={css('color:#8A7078;font-weight:700;')}>{reviewsF(p.reviews)}</span>
+                      </div>
+                    )}
                   </div>
                   <div style={css('padding:11px 2px 0;')}>
                     <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
@@ -246,7 +251,7 @@ export function Results() {
                       <span style={css(`font-size:11px;font-weight:800;color:${stockFg(p.stock)};`)}>{stockLabel(p.stock)}</span>
                     </div>
                   </div>
-                </div>
+                </CardLink>
               ))}
             </div>
 

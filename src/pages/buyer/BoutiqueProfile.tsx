@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { WishButton } from '@/components/buyer/WishButton';
+import { CardLink } from '@/components/buyer/CardLink';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { subscribeToBoutiqueFollowers } from '@/data/boutiques';
@@ -45,6 +47,13 @@ export function BoutiqueProfile() {
   // Resolved from either the in-app route (/buyer/boutique/:id) or the clean,
   // shareable public link (/b/:slug).
   const ab = BOUTIQUES.find((b) => (id ? b.id === id : b.slug === slug));
+  // A boutique link shared to WhatsApp or an Instagram bio should preview the
+  // shop, not the app's name.
+  usePageMeta({
+    title: ab ? `${ab.name} — ${ab.city}` : null,
+    description: ab ? (ab.desc?.trim() || `Shop ${ab.name}, a verified boutique in ${ab.city}, on MangaiMart.`) : null,
+    image: ab?.logo ?? ab?.image ?? null,
+  });
 
   // Follow state comes straight from the shared context (account- or
   // device-backed), so it stays in sync with the boutique directory.
@@ -118,7 +127,7 @@ export function BoutiqueProfile() {
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);padding-bottom:40px;')}>
       {/* ---------- Cover ---------- */}
       <div className="agx-zoom" style={css(`position:relative;height:clamp(210px,36vw,360px);background:${TONES[ab.tone]};overflow:hidden;`)}>
-        <ImageSlot src={ab.image} placeholder={`${ab.name} — cover`} style={css('position:absolute;inset:0;')} />
+        <ImageSlot src={ab.image} placeholder={ab.name} fallback="brand" style={css('position:absolute;inset:0;')} />
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,.3) 0%,rgba(30,8,18,0) 30%,rgba(30,8,18,0) 62%,var(--ag-cover-fade) 100%);pointer-events:none;')} />
 
         <button
@@ -145,7 +154,7 @@ export function BoutiqueProfile() {
 
           {/* Name + verified */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em;")}>{ab.name}</span>
+            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em;margin:0;")}>{ab.name}</h1>
             {ab.verified && (
               <span title="Verified boutique" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#3A9BE0;")}>verified</span>
             )}
@@ -275,7 +284,7 @@ export function BoutiqueProfile() {
         {boutiqueProducts.length > 0 ? (
           <div className="agx-rgrid" style={css('margin-top:18px;')}>
             {boutiqueProducts.map((p) => (
-              <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift agx-reveal" style={css('cursor:pointer;')}>
+              <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift agx-reveal">
                 <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
                   <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
                   <WishButton
@@ -284,10 +293,12 @@ export function BoutiqueProfile() {
                     onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                     className="agx-card-wish"
                   />
-                  <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
-                    {p.rating}
-                  </div>
+                  {p.reviews > 0 && (
+                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
+                      {p.rating}
+                    </div>
+                  )}
                   {p.stock === 0 && (
                     <div style={css('position:absolute;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;')}>
                       <span style={css('background:#241019;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:999px;')}>Sold out</span>
@@ -300,7 +311,7 @@ export function BoutiqueProfile() {
                     {fmt(p.price)}
                   </div>
                 </div>
-              </div>
+              </CardLink>
             ))}
           </div>
         ) : (

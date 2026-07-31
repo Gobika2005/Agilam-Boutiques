@@ -3,6 +3,7 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
+import { sortSizes } from '@/lib/sizes';
 import { fmt, productSizes } from '@/data/demo';
 
 /**
@@ -39,6 +40,29 @@ export function FilterSheet() {
   const close = () => navigate('/buyer/results');
   const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 
+  /**
+   * Only offer facets that something in the catalogue actually has.
+   *
+   * The vocabulary is the full approved list, so the sheet was showing chips for
+   * Lehengas, Bridal, Gowns and Maternity Wear when no boutique had listed one —
+   * every tap led to an empty grid. An already-selected value is always kept, or
+   * the buyer could not un-tick a filter that had emptied the results.
+   */
+  const inCatalogue = <T,>(options: T[], has: (o: T) => boolean, selected: (o: T) => boolean) =>
+    options.filter((o) => has(o) || selected(o));
+
+  const catsPresent = new Set(PRODUCTS.map((p) => p.cat));
+  const occasionsPresent = new Set(PRODUCTS.map((p) => p.occasion));
+  const colorsPresent = new Set(PRODUCTS.map((p) => p.color));
+  const sizesPresent = new Set(PRODUCTS.flatMap((p) => productSizes(p)));
+
+  // Canonical ladder (XS · S · M · L · XL · XXL … · Free Size). The vocabulary
+  // returns whatever order the rows were approved in, which put XS and XXL after
+  // 6XL on the sheet.
+  const sizeOptions = sortSizes(
+    inCatalogue(names('size'), (s) => sizesPresent.has(s), (s) => filters.sizes.includes(s)),
+  );
+
   return (
     <div style={css('position:fixed;inset:0;z-index:120;')}>
       <div onClick={close} style={css('position:absolute;inset:0;background:rgba(42,10,24,.45);backdrop-filter:blur(4px);animation:agx-fade .2s ease;')} />
@@ -57,7 +81,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:12px;')}>Category</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {names('category').map((c) => {
+          {inCatalogue(names('category'), (c) => catsPresent.has(c), (c) => filters.cats.includes(c)).map((c) => {
             const on = filters.cats.includes(c);
             return (
               <button key={c} onClick={() => toggleFilter('cats', c)} style={css(`border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{c}</button>
@@ -67,7 +91,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Size</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {names('size').map((s) => {
+          {sizeOptions.map((s) => {
             const on = filters.sizes.includes(s);
             return (
               <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:46px;height:44px;padding:0 14px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:12px;font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
@@ -77,7 +101,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Colour</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;')}>
-          {rows('color').map((c) => (
+          {inCatalogue(rows('color'), (c) => colorsPresent.has(c.name), (c) => filters.colors.includes(c.name)).map((c) => (
             <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
               <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
               <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
@@ -87,7 +111,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Occasion</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {names('occasion').map((o) => {
+          {inCatalogue(names('occasion'), (o) => occasionsPresent.has(o), (o) => filters.occasions.includes(o)).map((o) => {
             const on = filters.occasions.includes(o);
             return (
               <button key={o} onClick={() => toggleFilter('occasions', o)} style={css(`border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{o}</button>

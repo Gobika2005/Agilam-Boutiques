@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { couponSavings, isEligible, isExpired } from '@/lib/pricing';
@@ -33,6 +34,7 @@ const prettyDate = (iso: string) => {
 };
 
 export function Coupons() {
+  usePageMeta({ title: 'Coupons & offers', description: 'Discount codes you can use on your MangaiMart bag right now.' });
   const navigate = useNavigate();
   const { state } = useLocation() as { state: { from?: string } | null };
   const {
@@ -73,20 +75,20 @@ export function Coupons() {
   // Apply, say what it saved, and hand the buyer back to where they were.
   const redeem = (c: CouponRow) => {
     if (isExpired(c)) {
-      showToast(`${c.code} has expired`);
+      showToast(`${c.code} has expired`, 'error');
       return;
     }
     if (emptyBag) {
-      showToast('Add something to your bag first');
+      showToast('Add something to your bag first', 'error');
       return;
     }
     if (!isEligible(c, subtotal, boutiqueSubtotals)) {
       const base = c.boutique_id ? (boutiqueSubtotals[c.boutique_id] ?? 0) : subtotal;
       if (c.boutique_id && base <= 0) {
-        showToast(`${c.code} only applies to items from ${boutiqueName(c.boutique_id)}`);
+        showToast(`${c.code} only applies to items from ${boutiqueName(c.boutique_id)}`, 'error');
         return;
       }
-      showToast(`Add ${fmt(Math.max(0, c.min_subtotal - base))} more to use ${c.code}`);
+      showToast(`Add ${fmt(Math.max(0, c.min_subtotal - base))} more to use ${c.code}`, 'error');
       return;
     }
     applyCoupon(c.code);
@@ -97,10 +99,10 @@ export function Coupons() {
 
   const applyTyped = () => {
     const typed = code.trim().toUpperCase();
-    if (!typed) return showToast('Enter a coupon code');
+    if (!typed) return showToast('Enter a coupon code', 'error');
     // Typed codes match against ALL active coupons, not just the ones on screen.
     const match = coupons.find((c) => c.code.toUpperCase() === typed);
-    if (!match) return showToast(`${typed} isn’t a valid coupon`);
+    if (!match) return showToast(`${typed} isn’t a valid coupon`, 'error');
     redeem(match);
   };
 
@@ -119,7 +121,7 @@ export function Coupons() {
 
         <div style={css('padding:2px 0 6px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Save more</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Coupons &amp; offers</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Coupons &amp; offers</h1>
           <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>
             {emptyBag
               ? 'Your bag is empty — add a piece to use a coupon.'

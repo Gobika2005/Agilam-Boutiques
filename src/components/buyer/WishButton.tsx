@@ -38,7 +38,10 @@ export function WishButton({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      // The heart sits inside the card's link (see `CardLink`), so it has to
+      // stop the click reaching the anchor as well as the parent — otherwise
+      // saving a piece also opened it.
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(e); }}
       aria-label={label}
       aria-pressed={wished}
       title={label}

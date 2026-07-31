@@ -1,6 +1,7 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
@@ -27,6 +28,7 @@ const PAGE = 12;
  * that takes commission has to be able to show its leaderboard is not for sale.
  */
 export function TopBoutiques() {
+  usePageMeta({ title: 'Best-selling boutiques', description: 'The Tamil Nadu boutiques moving the most pieces, weighed against how well they are rated.' });
   const navigate = useNavigate();
   const { follows, toggleFollow, showToast } = useShop();
   const { boutiques: BOUTIQUES, loading } = useCatalog();

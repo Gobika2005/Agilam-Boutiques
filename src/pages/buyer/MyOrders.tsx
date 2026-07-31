@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useCatalog } from '@/state/CatalogContext';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
@@ -20,6 +21,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 export function MyOrders() {
+  usePageMeta({ title: 'My orders', description: 'Track every MangaiMart order from checkout to your doorstep.' });
   const navigate = useNavigate();
   const { productById } = useCatalog();
   const { orders: allOrders, refresh, refreshing, error } = useBuyerOrders();
@@ -55,7 +57,7 @@ export function MyOrders() {
       showToast('Order cancelled');
       await refresh();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not cancel this order');
+      showToast(e instanceof Error ? e.message : 'Could not cancel this order', 'error');
     } finally {
       setCancelling(null);
     }
@@ -85,7 +87,7 @@ export function MyOrders() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0 6px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Purchases</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>My orders</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>My orders</h1>
         </div>
         <button
           onClick={() => void refresh()}

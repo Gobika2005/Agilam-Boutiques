@@ -230,12 +230,12 @@ export function FeedPostCard({
       boutique: boutique?.name,
     });
     if (result === 'copied') showToast('Product details copied — paste to share');
-    else if (result === 'failed') showToast("Couldn't share this piece");
+    else if (result === 'failed') showToast("Couldn't share this piece", 'error');
   };
 
   const onAddToBag = () => {
     if (soldOut) {
-      showToast('This piece is out of stock');
+      showToast('This piece is out of stock', 'error');
       return;
     }
     // Ask for the size only now, on the way into the bag.
@@ -248,7 +248,7 @@ export function FeedPostCard({
 
   const onIncrease = () => {
     if (bagQty >= product.stock) {
-      showToast(`Only ${product.stock} left in stock`);
+      showToast(`Only ${product.stock} left in stock`, 'error');
       return;
     }
     cartQty(product.id, 1);

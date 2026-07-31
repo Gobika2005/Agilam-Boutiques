@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
@@ -25,6 +26,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 export function Boutiques() {
+  usePageMeta({ title: 'Boutiques', description: 'Browse every verified boutique on MangaiMart by city, rating and speciality.' });
   const navigate = useNavigate();
   // Follows are shared through the shop context: persisted to the buyer's
   // account when signed in, or to local storage as a guest — always in sync
@@ -116,7 +118,7 @@ export function Boutiques() {
       {/* Screen header */}
       <div style={css('padding:2px 0 4px;')}>
         <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>The directory</div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin-top:6px;letter-spacing:-.01em;")}>Boutiques</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin:6px 0 0;letter-spacing:-.01em;")}>Boutiques</h1>
       </div>
 
       {/* Search bar with a filter action on the right, per the design */}

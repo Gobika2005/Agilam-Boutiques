@@ -14,15 +14,19 @@ import { initialsFrom, resolveDisplayName } from '@/lib/displayName';
  */
 function ProfileAvatar({ initials, onClick, className }: { initials: string; onClick: () => void; className?: string }) {
   return (
+    // Icon-only, so it needs a name of its own — without one a screen reader
+    // announced it as the ligature text, i.e. the button called "person".
     <button
       onClick={onClick}
       className={className}
+      aria-label="Your account"
+      title="Your account"
       style={css('width:44px;height:44px;flex:none;border-radius:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 26px -12px rgba(176,36,84,.9);')}
     >
       {initials ? (
-        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;letter-spacing:.02em;")}>{initials}</span>
+        <span aria-hidden="true" style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;letter-spacing:.02em;")}>{initials}</span>
       ) : (
-        <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>person</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>person</span>
       )}
     </button>
   );
@@ -193,7 +197,10 @@ export function AppShell({
           <Outlet />
         </main>
 
-        <div
+        {/* A real navigation landmark: screen readers can jump straight to the
+            app's primary nav instead of hunting for a row of unlabelled buttons. */}
+        <nav
+          aria-label="Primary"
           className="agx-dock"
           style={css('position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;display:flex;gap:5px;background:var(--ag-frost-strong);backdrop-filter:blur(22px) saturate(1.3);border:1px solid var(--ag-frost-border);border-radius:28px;padding:8px;box-shadow:0 2px 0 rgba(255,255,255,.15) inset,0 1px 3px rgba(107,20,54,.1),0 26px 60px -20px var(--ag-shadow);animation:agx-sheet .35s ease;')}
         >
@@ -208,13 +215,25 @@ export function AppShell({
               />
             );
           })}
-        </div>
+        </nav>
       </div>
 
+      {/* Toasts sit ABOVE the bottom furniture, not on it. At `bottom:28px` this
+          landed in the same band as the floating dock and the product page's
+          sticky action bar, so "Please select a size" covered the very button
+          the buyer had just pressed. `.agx-toast` carries the offset so the
+          per-screen bottom reserve lives with the rest of the layout rules. */}
       {toast && (
-        <div style={css('position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#F7B7CF;font-size:20px;")}>check_circle</span>
-          {toast}
+        <div
+          className="agx-toast"
+          role="status"
+          aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
+          style={css('position:fixed;left:50%;transform:translateX(-50%);max-width:min(420px,calc(100vw - 32px));background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1400;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;')}
+        >
+          <span style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
+            {toast.tone === 'error' ? 'error' : 'check_circle'}
+          </span>
+          {toast.msg}
         </div>
       )}
     </div>

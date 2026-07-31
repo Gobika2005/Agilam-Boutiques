@@ -19,6 +19,18 @@ export const FREE_SHIP_MIN = 2000;
 export const SHIP_FEE = 99;
 
 /**
+ * Delivery is a PLATFORM charge, not a per-boutique one.
+ *
+ * `boutiques.delivery_charge` is a seller-side logistics setting; the buyer is
+ * charged the flat platform fee published in the delivery policy
+ * (src/data/policies.ts): free over `FREE_SHIP_MIN`, otherwise `SHIP_FEE`, once
+ * for the whole cart however many boutiques it spans. The product page and
+ * checkout used to *print* the seller's private rate ("lilium · ₹150 delivery")
+ * next to a summary that said FREE — the fix is that those screens now show the
+ * fee this file actually charges. See `deliveryNote` in Checkout.tsx.
+ */
+
+/**
  * Cash on Delivery.
  *
  * The fee is charged per delivery, not per cart: a bag spanning two boutiques
@@ -54,7 +66,8 @@ export function isExpired(coupon: CouponRow): boolean {
   return coupon.expires_at < todayUTC();
 }
 
-/** Delivery before any coupon — free over the threshold, and on an empty bag. */
+/** Delivery before any coupon — free over the threshold, and on an empty bag.
+ *  Flat and once per cart, exactly as the published delivery policy says. */
 export function baseShipFee(subtotal: number): number {
   return subtotal === 0 || subtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
 }

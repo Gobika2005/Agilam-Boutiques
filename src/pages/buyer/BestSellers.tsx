@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import {
   DiscoveryHeader,
@@ -28,6 +29,7 @@ const PAGE = 20;
  *    marketplace, an unexplained top slot reads as a paid one.
  */
 export function BestSellers() {
+  usePageMeta({ title: 'Best sellers', description: 'The pieces MangaiMart buyers are actually taking home, ranked by sales and rating.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();

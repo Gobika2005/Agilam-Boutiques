@@ -1,12 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton, WishHeart } from '@/components/buyer/WishButton';
+import { CardLink } from '@/components/buyer/CardLink';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
 
 export function Wishlist() {
+  usePageMeta({ title: 'Wishlist', description: 'The pieces you have saved on MangaiMart.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish } = useShop();
   const { products: PRODUCTS } = useCatalog();
@@ -18,15 +21,22 @@ export function Wishlist() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:4px 0 6px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Saved by you</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin-top:6px;letter-spacing:-.01em;")}>Wishlist</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin:6px 0 0;letter-spacing:-.01em;")}>Wishlist</h1>
         </div>
-        {items.length > 0 && <span style={css('color:var(--ag-muted);font-size:13.5px;font-weight:600;')}>{Object.keys(wishlist).length} pieces saved</span>}
+        {/* Counts what is actually on screen (a saved piece the boutique has
+            since removed is no longer in `items`), and says "1 piece", not
+            "1 pieces". */}
+        {items.length > 0 && (
+          <span style={css('color:var(--ag-muted);font-size:13.5px;font-weight:600;')}>
+            {items.length} {items.length === 1 ? 'piece' : 'pieces'} saved
+          </span>
+        )}
       </div>
 
       {items.length > 0 ? (
         <div className="agx-rgrid" style={css('margin-top:20px;')}>
           {items.map((p) => (
-            <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
+            <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift">
               <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
                 <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
                 <WishButton
@@ -35,15 +45,17 @@ export function Wishlist() {
                   onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                   className="agx-card-wish"
                 />
-                <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>star</span>{p.rating}
-                </div>
+                {p.reviews > 0 && (
+                  <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>{p.rating}
+                  </div>
+                )}
               </div>
               <div style={css('padding:11px 2px 0;')}>
                 <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:2px;")}>{fmt(p.price)}</div>
               </div>
-            </div>
+            </CardLink>
           ))}
         </div>
       ) : (

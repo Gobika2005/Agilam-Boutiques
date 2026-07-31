@@ -54,6 +54,16 @@ export type Filters = {
 export type CartLine = { qty: number; size: string };
 export type Cart = Record<string, CartLine>;
 
+/**
+ * A flash message and what it is telling the buyer.
+ *
+ * Every toast used to render the same green `check_circle`, so "Please select a
+ * size" and "NOTACODE isn't a valid coupon" both arrived looking like a
+ * confirmation of something that had in fact been refused.
+ */
+export type ToastTone = 'success' | 'error';
+export type Toast = { msg: string; tone: ToastTone };
+
 export type Guest = { name: string; phone: string; city: string; address: string; pincode: string };
 export type PaymentInfo = {
   razorpay_order_id: string;
@@ -139,8 +149,14 @@ type ShopValue = {
    */
   retryPendingPayment: () => Promise<string>;
 
-  toast: string | null;
-  showToast: (msg: string) => void;
+  toast: Toast | null;
+  /**
+   * Flash a message. `tone` defaults to 'success' so every existing caller is
+   * unchanged; pass 'error' for anything that reports a refusal or a failure,
+   * which is what stops "isn't a valid coupon" being announced under a green
+   * tick. See `Toast`.
+   */
+  showToast: (msg: string, tone?: ToastTone) => void;
 
   sellModal: boolean;
   openSellModal: () => void;
@@ -186,16 +202,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // Empty until this session actually places an order — the confirmation screen
   // uses it to tell a real completion apart from someone landing on the URL.
   const [lastOrderId, setLastOrderId] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [sellModal, setSellModal] = useState(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
+  const showToast = useCallback((msg: string, tone: ToastTone = 'success') => {
+    setToast({ msg, tone });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2200);
+    // An error is usually something the buyer has to act on, so it stays put
+    // long enough to actually be read.
+    toastTimer.current = setTimeout(() => setToast(null), tone === 'error' ? 3600 : 2200);
   }, []);
 
   // The signed-in buyer's id, or null for a guest. Held in a ref so the
@@ -211,8 +229,29 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // locally and re-synced on the next sign-in), so the UI never blocks on the DB.
   const pushToAccount = useCallback((op: () => Promise<unknown>) => {
     if (!buyerIdRef.current) return;
-    op().catch(() => showToast("Couldn't sync — will retry when you're back online"));
+    op().catch(() => showToast("Couldn't sync — will retry when you're back online", 'error'));
   }, [showToast]);
+
+  /**
+   * How many of a piece the bag is allowed to hold.
+   *
+   * The catalogue publishes "Low · 2 left" but the quantity stepper used to be
+   * unbounded, so a bag could be walked up to nine of a two-in-stock piece and
+   * taken all the way through checkout — the boutique only found out when it
+   * came to pack it. Every path that raises a quantity clamps through here.
+   *
+   * A product the catalogue hasn't loaded yet returns `Infinity` rather than 0:
+   * refusing to add something we simply don't know about would be a worse bug
+   * than the one being fixed, and the server re-checks stock when the order is
+   * written.
+   */
+  const catalogRef = useRef(productById);
+  useEffect(() => { catalogRef.current = productById; }, [productById]);
+  const stockLimit = useCallback((id: string): number => {
+    const p = catalogRef.current(id);
+    if (!p || typeof p.stock !== 'number' || !Number.isFinite(p.stock)) return Infinity;
+    return Math.max(0, p.stock);
+  }, []);
 
   const toggleWish = useCallback((id: string) => {
     setWishlist((w) => {
@@ -229,16 +268,29 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // `size` comes from screens that let the buyer pick one (the product page);
   // grid cards omit it and keep whatever the line already had.
   const addToCart = useCallback((id: string, size?: string) => {
+    const limit = stockLimit(id);
+    if (limit === 0) {
+      showToast('That piece is out of stock', 'error');
+      return;
+    }
+    let capped = false;
     setCart((c) => {
-      const line = { qty: (c[id]?.qty ?? 0) + 1, size: size ?? c[id]?.size ?? 'M' };
+      const wanted = (c[id]?.qty ?? 0) + 1;
+      const qty = Math.min(wanted, limit);
+      capped = qty < wanted;
+      const line = { qty, size: size ?? c[id]?.size ?? 'M' };
       const uid = buyerIdRef.current;
       if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
       return { ...c, [id]: line };
     });
-    showToast('Added to cart');
-  }, [showToast, pushToAccount]);
+    showToast(capped ? `Only ${limit} left — that's all we can add` : 'Added to cart');
+  }, [showToast, pushToAccount, stockLimit]);
 
   const buyNow = useCallback((id: string) => {
+    if (stockLimit(id) === 0) {
+      showToast('That piece is out of stock', 'error');
+      return;
+    }
     setCart((c) => {
       if (c[id]) return c;
       const line = { qty: 1, size: 'M' };
@@ -246,13 +298,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
       return { ...c, [id]: line };
     });
-  }, [pushToAccount]);
+  }, [pushToAccount, showToast, stockLimit]);
 
   const cartQty = useCallback((id: string, delta: number) => {
+    const limit = stockLimit(id);
+    let capped = false;
     setCart((c) => {
       const line = c[id];
       if (!line) return c;
-      const qty = line.qty + delta;
+      const wanted = line.qty + delta;
+      const qty = Math.min(wanted, limit);
+      capped = qty < wanted;
+      if (qty === line.qty) return c;
       const next = { ...c };
       const uid = buyerIdRef.current;
       if (qty <= 0) {
@@ -264,7 +321,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
-  }, [pushToAccount]);
+    if (capped) showToast(`Only ${limit} left in stock`, 'error');
+  }, [pushToAccount, showToast, stockLimit]);
 
   const setCartSize = useCallback((id: string, size: string) => {
     setCart((c) => {

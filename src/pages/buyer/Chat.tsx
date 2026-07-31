@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
+import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useShop } from '@/state/ShopContext';
@@ -29,7 +30,7 @@ export function Chat() {
   const { id: boutiqueId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { boutiqueById } = useCatalog();
+  const { boutiqueById, loading: catalogLoading } = useCatalog();
   const { showToast } = useShop();
   const { session, loading: authLoading } = useAuth();
   const signedIn = !!session;
@@ -60,7 +61,7 @@ export function Chat() {
       // back to the generic line — otherwise every failure looked identical.
       const msg =
         e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : '';
-      showToast(msg || 'Could not start chat');
+      showToast(msg || 'Could not start chat', 'error');
     });
     return () => {
       active = false;
@@ -108,6 +109,39 @@ export function Chat() {
   }, [live, pendingOrder]);
 
   const boutique = boutiqueById(boutiqueId);
+
+  /**
+   * Dismissing the sign-in sheet returns the buyer where they came from — the
+   * product they were asking about — instead of dropping them on an empty
+   * Messages list, which read as "your chat vanished". Home is the fallback for
+   * a cold deep link with nothing behind it.
+   */
+  const leave = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/buyer/messages');
+  };
+
+  // An id that resolves to no boutique used to render a conversation header for
+  // an invented shop called "Boutique", complete with an online status. Say
+  // plainly that it isn't there.
+  if (!catalogLoading && boutiqueId && !boutique) {
+    return (
+      <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
+        <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>storefront</span>
+        </div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>Boutique not found</h1>
+        <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
+          This shop is no longer on MangaiMart, so there is nobody to chat to here.
+        </p>
+        <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
+          <button onClick={() => navigate('/buyer/messages')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My messages</button>
+          <button onClick={() => navigate('/buyer/boutiques')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse boutiques</button>
+        </div>
+      </div>
+    );
+  }
+
   const name = boutique?.name ?? 'Boutique';
 
   return (
@@ -119,7 +153,7 @@ export function Chat() {
         backTo="/buyer/messages"
         conversationId={live?.conversationId}
         senderId={live?.senderId}
-        pending={(authLoading || (signedIn && !live)) && !failed}
+        pending={(authLoading || catalogLoading || (signedIn && !live)) && !failed}
         onProductClick={(pid) => navigate(`/buyer/product/${pid}`)}
         onOrderClick={(oid) => navigate(`/buyer/orders/${encodeURIComponent(oid)}/track`)}
       />
@@ -128,7 +162,7 @@ export function Chat() {
           title={`Sign in to chat with ${name}`}
           subtitle="Sign in or create an account to start chatting — the boutique sees your name straight from your profile."
           onDone={() => showToast('Signed in')}
-          onClose={() => navigate('/buyer/messages')}
+          onClose={leave}
         />
       )}
     </>

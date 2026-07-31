@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -16,6 +17,7 @@ function prettifyName(local: string): string {
 }
 
 export function Profile() {
+  usePageMeta({ title: 'My account', description: 'Your MangaiMart profile, orders, saved pieces and delivery details.' });
   const navigate = useNavigate();
   const { openSellModal, showToast, guest, setGuest, clearGuest, hasBuyerDetails, wishlist, cartCount } = useShop();
   const { session, signOut, loading: authLoading } = useAuth();
@@ -52,7 +54,7 @@ export function Profile() {
       setOrderCount(readOrders().length);
       if (msg) showToast(msg);
     } catch (e) {
-      if (msg) showToast(e instanceof Error ? e.message : 'Sync failed');
+      if (msg) showToast(e instanceof Error ? e.message : 'Sync failed', 'error');
     } finally {
       setSyncing(false);
     }
@@ -177,17 +179,22 @@ export function Profile() {
         <div style={css('background:linear-gradient(150deg,#8E1C44,#B02454 55%,#D6336C);padding:26px 20px 40px;color:#fff;border-radius:0 0 28px 28px;position:relative;overflow:hidden;box-shadow:0 22px 44px -30px rgba(142,28,68,.9);')}>
           <div style={css('position:absolute;top:-70px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);')} />
           <div className="agx-eyebrow" style={css('font-size:10px;color:#F4D9A6;position:relative;')}>My account</div>
-          <div style={css('display:flex;align-items:center;gap:15px;margin-top:12px;position:relative;')}>
+          {/* Name, subline and the action button used to share one nowrap row, so
+              on a phone "Guest shopper" arrived as "Guest sh…" and a real
+              buyer's name was clipped to a few characters. The button now wraps
+              onto its own line when the row runs out of width, and the name is
+              allowed two lines before it truncates. */}
+          <div className="agx-profile-id" style={css('display:flex;align-items:center;gap:15px;margin-top:12px;position:relative;flex-wrap:wrap;')}>
             <div style={css("width:66px;height:66px;flex:none;border-radius:20px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:30px;backdrop-filter:blur(4px);")}>
               {initial || <span style={css("font-family:'Material Symbols Outlined';font-size:34px;opacity:.9;")}>person</span>}
             </div>
-            <div style={css('flex:1;min-width:0;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{name}</div>
-              <div style={css('opacity:.88;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{subline}</div>
+            <div style={css('flex:1 1 150px;min-width:0;')}>
+              <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,5.5vw,24px);line-height:1.12;margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>{name}</h1>
+              <div style={css('opacity:.88;font-size:13px;margin-top:4px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>{subline}</div>
             </div>
             <button
               onClick={() => (guestNoAccount ? setAccountOpen(true) : setEditing(true))}
-              style={css('flex:none;height:38px;padding:0 15px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;')}
+              style={css('flex:none;height:38px;padding:0 15px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;')}
             >
               <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{guestNoAccount ? 'login' : 'edit'}</span>
               {guestNoAccount ? 'Sign in' : 'Edit'}

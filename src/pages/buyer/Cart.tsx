@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
 
 export function Cart() {
+  usePageMeta({ title: 'Your bag', description: 'Review the pieces in your MangaiMart bag before checkout.' });
   const navigate = useNavigate();
   const {
     cart, cartQty, removeCart,
@@ -17,7 +19,16 @@ export function Cart() {
   const items = Object.entries(cart)
     .map(([id, line]) => {
       const p = productById(id);
-      return p ? { ...p, qtyN: line.qty, size: line.size, lineTotal: p.price * line.qty } : null;
+      if (!p) return null;
+      // `atStock` drives the disabled "+" so the cap is visible before it is
+      // hit, rather than only reported by a toast after the tap.
+      return {
+        ...p,
+        qtyN: line.qty,
+        size: line.size,
+        lineTotal: p.price * line.qty,
+        atStock: typeof p.stock === 'number' && line.qty >= p.stock,
+      };
     })
     .filter((x): x is NonNullable<typeof x> => x != null);
 
@@ -28,7 +39,7 @@ export function Cart() {
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 1 of 3 · Bag</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Your shopping bag</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Your shopping bag</h1>
         </div>
 
         {hasCart ? (
@@ -44,17 +55,27 @@ export function Cart() {
                       <div style={css('min-width:0;')}>
                         <div style={css('font-weight:800;font-size:15.5px;line-height:1.2;')}>{c.title}</div>
                         <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:3px;')}>{c.boutique} · Size {c.size}</div>
+                        {c.atStock && (
+                          <div style={css('color:var(--ag-warn,#B7791F);font-size:12px;font-weight:700;margin-top:4px;')}>
+                            {c.stock === 0 ? 'Out of stock' : `Only ${c.stock} left — that's all this boutique has`}
+                          </div>
+                        )}
                       </div>
-                      <button onClick={() => removeCart(c.id)} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted-soft);padding:0;height:fit-content;')}>
+                      <button onClick={() => removeCart(c.id)} aria-label={`Remove ${c.title} from bag`} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted-soft);padding:0;height:fit-content;')}>
                         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>delete</span>
                       </button>
                     </div>
                     <div style={css('flex:1;min-height:12px;')} />
                     <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
                       <div style={css('display:flex;align-items:center;border:1.5px solid var(--ag-border);border-radius:12px;overflow:hidden;')}>
-                        <button onClick={() => cartQty(c.id, -1)} style={css('width:34px;height:34px;border:none;background:var(--ag-surface);cursor:pointer;color:var(--ag-crimson);font-size:19px;font-weight:700;')}>−</button>
+                        <button onClick={() => cartQty(c.id, -1)} aria-label={`Reduce quantity of ${c.title}`} style={css('width:34px;height:34px;border:none;background:var(--ag-surface);cursor:pointer;color:var(--ag-crimson);font-size:19px;font-weight:700;')}>−</button>
                         <span style={css('min-width:28px;text-align:center;font-weight:800;font-size:14px;')}>{c.qtyN}</span>
-                        <button onClick={() => cartQty(c.id, 1)} style={css('width:34px;height:34px;border:none;background:var(--ag-surface);cursor:pointer;color:var(--ag-crimson);font-size:18px;font-weight:700;')}>+</button>
+                        <button
+                          onClick={() => cartQty(c.id, 1)}
+                          disabled={c.atStock}
+                          aria-label={`Increase quantity of ${c.title}`}
+                          style={css(`width:34px;height:34px;border:none;background:var(--ag-surface);cursor:${c.atStock ? 'not-allowed' : 'pointer'};color:${c.atStock ? 'var(--ag-muted-soft)' : 'var(--ag-crimson)'};font-size:18px;font-weight:700;`)}
+                        >+</button>
                       </div>
                       <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:20px;")}>{fmt(c.lineTotal)}</div>
                     </div>

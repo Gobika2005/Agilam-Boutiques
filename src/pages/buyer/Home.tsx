@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { WishButton } from '@/components/buyer/WishButton';
@@ -20,6 +21,7 @@ import { fetchTopReviews } from '@/data/reviews';
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 export function Home() {
+  usePageMeta({ title: 'Boutique ethnic wear from Tamil Nadu', description: 'Discover verified Tamil Nadu boutiques — sarees, kurta sets, kurtis and more, in one place.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
@@ -121,13 +123,24 @@ export function Home() {
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')}>
+      {/* The hero headline is the page's <h1>. With no paid hero live there is no
+          hero at all, so the page would have no heading — this stands in for it
+          for anything reading the page rather than looking at it. */}
+      {SLIDES.length === 0 && <h1 className="agx-sr-only">MangaiMart — boutique ethnic wear from across Tamil Nadu</h1>}
       {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
       {SLIDES.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
         <div className="agx-zoom" style={css('position:relative;height:clamp(340px,42vw,560px);overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
-            {SLIDES.map((h) => (
-              <div key={h.slotId} style={css('flex:0 0 100%;position:relative;height:100%;')}>
+            {SLIDES.map((h, i) => (
+              // Off-screen slides are hidden from assistive tech: without this the
+              // carousel would announce every slide at once, and the page would
+              // report one <h1> per slide instead of the one heading it has.
+              <div
+                key={h.slotId}
+                aria-hidden={i !== heroIndex}
+                style={css('flex:0 0 100%;position:relative;height:100%;')}
+              >
                 <div style={css('position:absolute;inset:0;')}>
                   <ImageSlot src={h.image} placeholder="Drop a collection photo" style={css('position:absolute;inset:0;')} />
                 </div>
@@ -142,9 +155,14 @@ export function Home() {
                           <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
                         </div>
                       )}
-                      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin-top:16px;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
-                        {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
-                      </div>
+                      {(() => {
+                        const Heading = i === heroIndex ? 'h1' : 'div';
+                        return (
+                          <Heading style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin:16px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                            {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
+                          </Heading>
+                        );
+                      })()}
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
                       <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
                         {h.cta}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
@@ -179,7 +197,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Shop by collection</div>
+          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
         <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
       </div>
@@ -228,7 +246,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:38px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fresh off the loom</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>New arrivals</div>
+          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>New arrivals</h2>
         </div>
         <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
       </div>
@@ -266,7 +284,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 18px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Most-loved right now</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best sellers</div>
+          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best sellers</h2>
         </div>
         <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
       </div>
@@ -304,7 +322,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best-selling boutiques</div>
+          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
         <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
       </div>

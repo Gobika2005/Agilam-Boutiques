@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import {
   DiscoveryHeader,
@@ -48,6 +49,7 @@ const bucketOf = (p: Product) => {
  * See `newArrivals` in @/lib/ranking.
  */
 export function NewArrivals() {
+  usePageMeta({ title: 'New arrivals', description: 'Everything our boutiques have listed in the last 30 days, newest first.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();

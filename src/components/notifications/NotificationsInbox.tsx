@@ -46,7 +46,7 @@ export function NotificationsInbox({ backTo, orderBasePath }: { backTo: string; 
         <button onClick={() => navigate(backTo)} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
           <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;")}>Notifications</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
         {unreadCount > 0 && (
           <button onClick={() => markAllRead()} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;')}>
             Mark all read

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
@@ -7,11 +7,14 @@ import { useCatalog } from '@/state/CatalogContext';
 import { ProductReviews } from '@/components/buyer/ProductReviews';
 import { ImageZoom } from '@/components/buyer/ImageZoom';
 import { WishButton } from '@/components/buyer/WishButton';
+import { CardLink } from '@/components/buyer/CardLink';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/shareProduct';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
+import { usePageMeta } from '@/lib/pageMeta';
 import { TONES, fmt } from '@/data/demo';
+import { FREE_SHIP_MIN, SHIP_FEE } from '@/lib/pricing';
 import { POLICY_TERMS } from '@/data/company';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -26,17 +29,31 @@ const FALLBACK_SIZES = ['S', 'M', 'L', 'XL'];
 // body charts — which don't share every column — can be rendered by the same
 // generic table without TypeScript narrowing the row to whichever shape has
 // fewer keys.
+// The chart has to reach every size a boutique can actually list, or a buyer
+// choosing XXL is sent to a "fit guide" that stops at XL and tells them nothing.
 const BLOUSE_SIZE_CHART: { size: string; measurements: Record<string, string> }[] = [
+  { size: 'XS', measurements: { bust: '30', waist: '26', shoulder: '13', length: '14.5' } },
   { size: 'S', measurements: { bust: '32', waist: '28', shoulder: '13.5', length: '15' } },
   { size: 'M', measurements: { bust: '34', waist: '30', shoulder: '14', length: '15' } },
   { size: 'L', measurements: { bust: '36', waist: '32', shoulder: '14.5', length: '15.5' } },
   { size: 'XL', measurements: { bust: '38', waist: '34', shoulder: '15', length: '15.5' } },
+  { size: 'XXL', measurements: { bust: '40', waist: '36', shoulder: '15.5', length: '16' } },
+  { size: '3XL', measurements: { bust: '42', waist: '38', shoulder: '16', length: '16' } },
+  { size: '4XL', measurements: { bust: '44', waist: '40', shoulder: '16.5', length: '16.5' } },
+  { size: '5XL', measurements: { bust: '46', waist: '42', shoulder: '17', length: '16.5' } },
+  { size: '6XL', measurements: { bust: '48', waist: '44', shoulder: '17.5', length: '17' } },
 ];
 const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] = [
+  { size: 'XS', measurements: { bust: '30', waist: '24', hip: '33' } },
   { size: 'S', measurements: { bust: '32', waist: '26', hip: '35' } },
   { size: 'M', measurements: { bust: '34', waist: '28', hip: '37' } },
   { size: 'L', measurements: { bust: '36', waist: '30', hip: '39' } },
   { size: 'XL', measurements: { bust: '38', waist: '32', hip: '41' } },
+  { size: 'XXL', measurements: { bust: '40', waist: '34', hip: '43' } },
+  { size: '3XL', measurements: { bust: '42', waist: '36', hip: '45' } },
+  { size: '4XL', measurements: { bust: '44', waist: '38', hip: '47' } },
+  { size: '5XL', measurements: { bust: '46', waist: '40', hip: '49' } },
+  { size: '6XL', measurements: { bust: '48', waist: '42', hip: '51' } },
 ];
 
 export function ProductDetail() {
@@ -81,6 +98,27 @@ export function ProductDetail() {
     if (id) void recordProductView(id);
   }, [id]);
 
+  // Escape closes the size chart, like every other overlay in the app (the
+  // photo viewer already handles its own).
+  useEffect(() => {
+    if (!showSizeChart) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowSizeChart(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showSizeChart]);
+
+  /**
+   * The photo viewer is a full-screen surface, but the floating nav dock and
+   * the PDP's own sticky action bar are fixed siblings that kept drawing over
+   * the photo — the viewer's zoom controls ended up sitting on top of "Add to
+   * Bag". Mark the body while it is open and let CSS retire both, the same way
+   * an open chat already does.
+   */
+  useEffect(() => {
+    document.body.classList.toggle('agx-photo-open', zoomOpen);
+    return () => document.body.classList.remove('agx-photo-open');
+  }, [zoomOpen]);
+
   const goToImage = (i: number) => {
     const el = galleryRef.current;
     if (!el) return;
@@ -96,10 +134,42 @@ export function ProductDetail() {
   };
 
   const ap = PRODUCTS.find((p) => p.id === id);
+
+  // A shared product link used to preview as "MangaiMart" with no description;
+  // now it carries the piece, its boutique and its photo.
+  usePageMeta({
+    title: ap ? `${ap.title} — ${ap.boutique}` : null,
+    description: ap
+      ? `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}. Shop verified Tamil Nadu boutiques on MangaiMart.`
+      : null,
+    image: ap?.image ?? null,
+  });
+
   if (!ap) {
+    // A bare "Product not found." line was the only thing on screen here, with
+    // no way onward. Match the empty state the policy and order screens use: say
+    // what happened, and give the buyer somewhere to go.
     return (
-      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:var(--ag-muted);font-size:15px;')}>
-        {loading ? 'Loading product…' : 'Product not found.'}
+      <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
+        <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>
+            {loading ? 'hourglass_top' : 'search_off'}
+          </span>
+        </div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>
+          {loading ? 'Loading this piece…' : 'This piece isn’t available'}
+        </h1>
+        {!loading && (
+          <>
+            <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
+              It may have sold out or been taken down by the boutique. There is plenty more to see.
+            </p>
+            <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
+              <button onClick={() => navigate('/buyer/results')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
+              <button onClick={() => navigate('/buyer/home')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -165,11 +235,11 @@ export function ProductDetail() {
   }));
 
   const openBoutique = () => {
-    if (!boutiqueId) return showToast('This boutique is unavailable right now');
+    if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/buyer/boutique/${boutiqueId}`);
   };
   const openChat = () => {
-    if (!boutiqueId) return showToast('This boutique is unavailable right now');
+    if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/buyer/chat/${boutiqueId}`, {
       state: {
         product: { id: ap.id, title: ap.title, price: ap.price, image: ap.image, tone: ap.tone, cat: ap.cat },
@@ -187,7 +257,7 @@ export function ProductDetail() {
       boutique: ap.boutique,
     });
     if (result === 'copied') showToast('Product details copied — paste to share');
-    else if (result === 'failed') showToast("Couldn't share this product");
+    else if (result === 'failed') showToast("Couldn't share this product", 'error');
     // Count everything except an outright failure — a native share or a copy
     // both mean the buyer sent the piece on. Best-effort.
     if (result !== 'failed') void recordProductShare(ap.id);
@@ -197,6 +267,7 @@ export function ProductDetail() {
   // stepper, so a second tap adjusts the count instead of silently re-adding.
   const bagQty = bagLine?.qty ?? 0;
   const atStockCap = bagQty >= ap.stock;
+  const soldOut = ap.stock === 0;
 
   // Changing the size while the piece is already in the bag has to follow it
   // through, or the bag would keep whichever size was picked at add time.
@@ -205,13 +276,21 @@ export function ProductDetail() {
     if (bagQty > 0) setCartSize(ap.id, s);
   };
 
+  // `idx > 0` means this entry has somewhere to go back to inside the app; a
+  // cold deep link (a shared WhatsApp URL, a bookmark) starts at 0 and would
+  // otherwise navigate out of the site entirely.
+  const goBack = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/buyer/home');
+  };
+
   const onAddToBag = () => {
-    if (ap.stock === 0) {
-      showToast('This piece is out of stock');
+    if (soldOut) {
+      showToast('This piece is out of stock', 'error');
       return;
     }
     if (!selectedSize) {
-      showToast('Please select a size');
+      showToast('Please select a size', 'error');
       return;
     }
     addToCart(ap.id, selectedSize);
@@ -219,13 +298,27 @@ export function ProductDetail() {
 
   const onIncrease = () => {
     if (atStockCap) {
-      showToast(`Only ${ap.stock} left in stock`);
+      showToast(`Only ${ap.stock} left in stock`, 'error');
       return;
     }
     cartQty(ap.id, 1);
   };
 
   const renderBagControl = (height: number) => {
+    // A sold-out piece used to keep a live crimson "Add to Bag" that silently
+    // did nothing when tapped. Say so on the button itself instead — the buyer
+    // can still chat to the boutique about a restock.
+    if (soldOut) {
+      return (
+        <button
+          disabled
+          aria-disabled="true"
+          style={css(`flex:1;min-width:160px;height:${height}px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface-2);color:var(--ag-muted);font-weight:800;font-size:15px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;`)}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>remove_shopping_cart</span>Out of stock
+        </button>
+      );
+    }
     if (bagQty === 0) {
       return (
         <button onClick={onAddToBag} style={css(`flex:1;min-width:160px;height:${height}px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
@@ -278,7 +371,7 @@ export function ProductDetail() {
 
   const renderCard = (p: (typeof PRODUCTS)[number]) => {
     return (
-      <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
+      <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift">
         <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
           <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
           {p.featured && (
@@ -304,18 +397,18 @@ export function ProductDetail() {
             </span>
           </div>
         </div>
-      </div>
+      </CardLink>
     );
   };
 
   return (
     <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
       <div style={css('max-width:1300px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 0;')}>
-        <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);')}>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:var(--ag-muted);')}>Home</a><span>/</span>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/results'); }} style={css('color:var(--ag-muted);')}>{ap.cat}</a><span>/</span>
-          <span style={css('color:var(--ag-ink);font-weight:700;')}>{ap.title}</span>
-        </div>
+        <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);')}>
+          <Link to="/buyer/home" style={css('color:var(--ag-muted);')}>Home</Link><span aria-hidden="true">/</span>
+          <Link to="/buyer/results" style={css('color:var(--ag-muted);')}>{ap.cat}</Link><span aria-hidden="true">/</span>
+          <span aria-current="page" style={css('color:var(--ag-ink);font-weight:700;')}>{ap.title}</span>
+        </nav>
       </div>
 
       <div className="agx-pdp" style={css('max-width:1300px;margin:0 auto;')}>
@@ -337,7 +430,11 @@ export function ProductDetail() {
                 </div>
               ))}
             </div>
-            <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
+            {/* Goes back where the buyer came from — a search, a boutique, a
+                "See all" grid — instead of always dropping them on Home and
+                losing their place. Home is only the fallback for a cold deep
+                link with no history behind it. */}
+            <button onClick={goBack} aria-label="Go back" title="Back" style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
               <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
             </button>
             {/* No zoom button: the photo itself opens the viewer on tap, and
@@ -402,7 +499,7 @@ export function ProductDetail() {
 
         <div style={css('padding:clamp(20px,3vw,40px) clamp(16px,4vw,44px);display:flex;flex-direction:column;')}>
           <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>{ap.cat} · {ap.occasion}</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin-top:10px;padding-bottom:2px;")}>{ap.title}</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin:10px 0 0;padding-bottom:2px;")}>{ap.title}</h1>
           <div style={css('display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
             {hasMrp && (
@@ -443,16 +540,28 @@ export function ProductDetail() {
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
-                <span className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size{selectedSize ? ` · ${selectedSize}` : ' · Select a size'}</span>
-                <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(true); }} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ag-crimson);')}>
+                <span id="agx-size-label" className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size{selectedSize ? ` · ${selectedSize}` : ' · Select a size'}</span>
+                <button type="button" onClick={() => setShowSizeChart(true)} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ag-crimson);border:none;background:none;padding:0;cursor:pointer;')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
-                </a>
+                </button>
               </div>
-              <div style={css('display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;')}>
+              {/* Real buttons in a radiogroup, not styled spans: the chips were
+                  unreachable by keyboard and announced as plain text, so a
+                  buyer who can't use a pointer could never choose a size — and
+                  a size is required before the piece can be bagged. */}
+              <div role="radiogroup" aria-labelledby="agx-size-label" style={css('display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;')}>
                 {sizeOptions.map((s) => {
                   const on = selectedSize === s;
                   return (
-                    <span key={s} onClick={() => pickSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
+                    <button
+                      key={s}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={`Size ${s}`}
+                      onClick={() => pickSize(s)}
+                      style={css(`width:44px;height:44px;padding:0;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;font-family:inherit;`)}
+                    >{s}</button>
                   );
                 })}
               </div>
@@ -496,11 +605,13 @@ export function ProductDetail() {
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
                     <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
+                      {/* The platform's delivery rule, which is what the buyer
+                          is charged. This used to print the seller's private
+                          `delivery_charge` — a figure the checkout total never
+                          used, so the two contradicted each other. */}
                       {boutique?.deliveryAvailable === false
                         ? 'Store pickup only'
-                        : boutique?.deliveryCharge
-                          ? `Delivery ₹${boutique.deliveryCharge}`
-                          : 'Free delivery'}
+                        : `${fmt(SHIP_FEE)} delivery · free over ${fmt(FREE_SHIP_MIN)}`}
                     </div>
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
@@ -561,7 +672,9 @@ export function ProductDetail() {
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Complete the look</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1.06;margin-top:6px;")}>You may also like</div>
-          <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>{youMayLike.length} handpicked pieces you can explore right here — tap the heart to save any for later.</div>
+          <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>
+            {youMayLike.length} more {youMayLike.length === 1 ? 'piece' : 'pieces'} to explore — tap the heart to save any for later.
+          </div>
         </div>
         <div className="agx-pgrid" style={css('gap:clamp(12px,1.8vw,20px);margin-top:22px;')}>
           {youMayLike.map((p) => renderCard(p))}

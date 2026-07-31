@@ -181,7 +181,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
               {images.map((src, i) => (
                 <div key={src} style={css('position:relative;width:56px;height:56px;border-radius:10px;overflow:hidden;flex:none;')}>
-                  <img src={src} alt="" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
+                  <img src={src} alt={`Photo ${i + 1} you attached to this review`} style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
                   <button
                     onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
                     aria-label="Remove photo"

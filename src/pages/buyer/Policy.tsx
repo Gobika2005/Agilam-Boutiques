@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 import { POLICIES, POLICIES_UPDATED, findPolicy, legalPages } from '@/data/policies';
@@ -12,6 +13,7 @@ export function Policy() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const page = findPolicy(slug);
+  usePageMeta({ title: page?.title ?? null, description: page?.summary ?? null });
 
   if (!page) {
     return (

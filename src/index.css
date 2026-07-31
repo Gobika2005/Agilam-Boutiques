@@ -255,8 +255,41 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    so the composer meets the bottom edge, just above the keyboard.
    The inline `display:flex` on the dock is a non-important inline style, so a
    `!important` rule here overrides it. */
+/* Toast: clears whatever bottom furniture the current screen has. The dock sits
+   at bottom:24px and is ~64px tall, so 100px clears it everywhere; a product
+   page stacks its sticky action bar under the dock, and a chat has neither. */
+.agx-toast { bottom: 100px; }
+@media (max-width:640px){ .agx-toast { bottom: 90px; } }
+@media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 160px; } }
+@media (min-width:960px){ .agx-toast { bottom: 28px; } }
+body:has(.agx-chat-root) .agx-toast,
+body.agx-chatting .agx-toast,
+body.agx-photo-open .agx-toast { bottom: 28px; }
+
 body:has(.agx-chat-root) .agx-dock,
 body.agx-chatting .agx-dock { display: none !important; }
+
+/* Full-screen photo viewer. The dock and the PDP action bar are fixed siblings
+   of the viewer, not children, so they kept painting over the photo — the
+   viewer's own zoom controls ended up stacked on "Add to Bag". Retire both for
+   as long as it is open (ProductDetail sets the body class), and stop the page
+   behind from scrolling under the pinch/pan. */
+body.agx-photo-open .agx-dock,
+body.agx-photo-open .agx-pdp-sticky { display: none !important; }
+body.agx-photo-open { overflow: hidden; }
+
+/* The floating dock is the phone navigation. From 960px the header carries the
+   horizontal top nav and a search field (`.agx-topnav`, same breakpoint), and
+   the dock only floated over the content — covering the collection rail on Home
+   and the description on a product page. Hide it there; the header does the job.
+   The breakpoint has to match `.agx-topnav`'s exactly, or a window between the
+   two would have no navigation at all. */
+@media (min-width:960px){
+  .agx-dock { display: none !important; }
+  /* The bottom reserve only existed to clear the dock. */
+  .agx-app-main { padding-bottom: 40px !important; }
+  .agx-pdp-root { padding-bottom: 40px !important; }
+}
 .agx-chat-root { padding-bottom: env(safe-area-inset-bottom); }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
@@ -549,4 +582,17 @@ img {
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
+}
+
+/* Visually hidden, still announced. Used where a screen needs a heading or a
+   label that the visual design carries some other way (a logo, a hero photo). */
+.agx-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

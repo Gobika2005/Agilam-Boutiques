@@ -27,10 +27,19 @@
 export const COD_FEE = 49;
 export const COD_MAX_ORDER = 10000;
 
-// Free delivery over this cart value; a flat fee below it. Mirror of
-// FREE_SHIP_MIN / SHIP_FEE in src/lib/pricing.ts.
+// Free delivery over this value; a fee below it. Mirror of FREE_SHIP_MIN /
+// SHIP_FEE in src/lib/pricing.ts.
 const FREE_SHIP_MIN = 2000;
 const SHIP_FEE = 99;
+
+// Mirror of baseShipFee() in src/lib/pricing.ts: flat, once per cart, free over
+// the threshold — the rule published in the buyer's delivery policy. A seller's
+// own `boutiques.delivery_charge` is a logistics setting on their side and is
+// deliberately NOT part of what the buyer pays.
+function shipFeeFor(groupTotals) {
+  const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
+  return cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
+}
 
 /**
  * Fetch the coupon row for a code, or null. Only an active, unexpired coupon is
@@ -94,7 +103,7 @@ function couponSavings(coupon, cartSubtotal, groupTotals) {
     return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   }
   if (coupon.type === 'flat') return Math.min(coupon.off, base);
-  return cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE; // 'ship'
+  return shipFeeFor(groupTotals); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -121,8 +130,7 @@ export function computeCartPricing(groupTotals, coupon, codDeliveries = 0) {
     perBoutiqueDiscount[eligible.boutique_id] = discount;
   }
 
-  const baseShip = cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
-  const shipFee = freeShip ? 0 : baseShip;
+  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals);
   const codFee = Math.max(0, codDeliveries) * COD_FEE;
   const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
 

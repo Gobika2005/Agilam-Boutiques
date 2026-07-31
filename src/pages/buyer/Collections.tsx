@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { DiscoveryHeader, SectionLabel, EmptyState } from '@/components/buyer/DiscoveryPage';
@@ -24,6 +25,7 @@ import { fmt } from '@/data/demo';
  * Fabric comes last because it is the connoisseur's cut, not the beginner's.
  */
 export function Collections() {
+  usePageMeta({ title: 'Shop by collection', description: 'Every category, occasion, budget and colour our boutiques are listing right now.' });
   const navigate = useNavigate();
   const { setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { FeedPostCard } from '@/components/buyer/FeedPostCard';
 import { StoryRail } from '@/components/buyer/StoryRail';
 import { useInspireFeed } from '@/hooks/useInspireFeed';
@@ -26,6 +27,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 export function Inspire() {
+  usePageMeta({ title: 'Inspire', description: 'New pieces from the boutiques you follow on MangaiMart.' });
   const navigate = useNavigate();
   // A social-feed lens (For You / Following) as the primary filter.
   const [tab, setTab] = useState<TabKey>('foryou');
@@ -54,6 +56,11 @@ export function Inspire() {
   const showDivider = followsAnyone && firstDiscoverIndex > 0;
 
   return (
+    <>
+      {/* The feed's own chrome is the story rail and the For You / Following
+          tabs — there is no visible title, so this names the screen for anything
+          reading the page rather than looking at it. */}
+      <h1 className="agx-sr-only">Inspire — new pieces from Tamil Nadu boutiques</h1>
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div className="agx-feed">
         {/* ── Stories ── */}
@@ -182,5 +189,6 @@ export function Inspire() {
         )}
       </div>
     </div>
+    </>
   );
 }

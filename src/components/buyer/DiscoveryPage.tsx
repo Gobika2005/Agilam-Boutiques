@@ -46,9 +46,9 @@ export function DiscoveryHeader({
       </div>
 
       <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin-top:14px;')}>{eyebrow}</div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin-top:6px;letter-spacing:-.015em;text-wrap:balance;")}>
+      <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
         {title}{accent && <> <span style={css('font-style:italic;color:var(--ag-crimson);')}>{accent}</span></>}
-      </div>
+      </h1>
       <div style={css('display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-top:10px;')}>
         <div style={css('color:var(--ag-muted);font-size:14px;line-height:1.6;max-width:620px;')}>{subtitle}</div>
         {count != null && (

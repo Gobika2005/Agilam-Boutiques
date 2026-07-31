@@ -17,7 +17,7 @@ export function ThreadList({ threads, chatBase }: { threads: Thread[]; chatBase:
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')}>
       <div style={css('padding:6px 20px 12px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>Messages</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;margin:0;")}>Messages</h1>
       </div>
 
       {threads.length === 0 && (

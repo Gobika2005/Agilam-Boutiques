@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ThreadList } from '@/components/chat/ThreadList';
+import { usePageMeta } from '@/lib/pageMeta';
 import { useAsync } from '@/hooks/useAsync';
 import { useCatalog } from '@/state/CatalogContext';
 import { getBuyerId, fetchConversationsForBuyer } from '@/data/chat';
@@ -16,6 +17,7 @@ const relTime = (iso: string | null) => {
 };
 
 export function Messages() {
+  usePageMeta({ title: 'Messages', description: 'Your conversations with MangaiMart boutiques.' });
   // The inbox is keyed by boutique, so the catalogue can supply each shop's
   // logo for the thread avatar.
   const { boutiqueById } = useCatalog();

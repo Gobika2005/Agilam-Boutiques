@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { usePageMeta } from '@/lib/pageMeta';
 import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
 import { POLICY_TERMS } from '@/data/company';
@@ -12,6 +13,12 @@ export function Checkout() {
   const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
   const { productById, boutiques } = useCatalog();
   const [touched, setTouched] = useState(false);
+  usePageMeta({ title: 'Checkout', description: 'Confirm your delivery details and place your MangaiMart order.' });
+
+  // Nothing to check out. Deep-linking (or emptying the bag in another tab) used
+  // to leave a full delivery form quoting a ₹0 total with a live "Continue to
+  // payment" button — a dead end that only fails at the payment step.
+  const bagIsEmpty = Object.keys(cart).length === 0;
 
   // The boutiques actually in the bag — checkout becomes one order per
   // boutique, so each one's own delivery setting (not a single generic
@@ -30,6 +37,20 @@ export function Checkout() {
     return list;
   }, [cart, productById, boutiques]);
 
+  /**
+   * What this boutique's despatch will cost the buyer.
+   *
+   * Delivery is a platform charge — flat, once per cart, free over the threshold
+   * (see the delivery policy and `@/lib/pricing`). This block used to print the
+   * seller's own `delivery_charge` instead, so a buyer read "lilium · ₹150
+   * delivery" immediately above a summary that said FREE and a total that had
+   * added nothing. It now states the fee the summary is actually charging.
+   */
+  const deliveryLine = (b: { deliveryAvailable?: boolean }) => {
+    if (b.deliveryAvailable === false) return 'Store pickup only';
+    return shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`;
+  };
+
   const errors = {
     name: !nameOk(guest.name),
     phone: !phoneOk(guest.phone),
@@ -42,7 +63,7 @@ export function Checkout() {
   const continueToPayment = () => {
     if (invalid) {
       setTouched(true);
-      showToast('Please fill in your delivery details');
+      showToast('Please fill in your delivery details', 'error');
       return;
     }
     navigate('/buyer/payment');
@@ -50,12 +71,14 @@ export function Checkout() {
 
   const errorRing = (bad: boolean) => (touched && bad ? '#E0748C' : 'var(--ag-border)');
 
+  if (bagIsEmpty) return <Navigate to="/buyer/cart" replace />;
+
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 2 of 3 · Delivery</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Where should we deliver?</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Where should we deliver?</h1>
         </div>
 
         <div className="agx-cart-grid" style={css('display:grid;gap:22px;align-items:start;margin-top:18px;')}>
@@ -93,10 +116,10 @@ export function Checkout() {
                     <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
                     <div style={css('flex:1;min-width:0;')}>
                       <div style={css('font-weight:800;font-size:14px;color:var(--ag-crimson);')}>
-                        {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + (b.deliveryAvailable === false ? 'Store pickup only' : b.deliveryCharge ? `₹${b.deliveryCharge} delivery` : 'Free delivery')}
+                        {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + deliveryLine(b)}
                       </div>
                       <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>
-                        {cartBoutiques.length > 1 && (b.deliveryAvailable === false ? 'Store pickup only · ' : b.deliveryCharge ? `₹${b.deliveryCharge} delivery · ` : 'Free delivery · ')}
+                        {cartBoutiques.length > 1 && `${b.deliveryAvailable === false ? 'Store pickup only' : 'Delivery included in the one fee below'} · `}
                         {POLICY_TERMS.deliveryEstimate} from dispatch{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
                       </div>
                     </div>

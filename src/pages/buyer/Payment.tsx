@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { usePageMeta } from '@/lib/pageMeta';
 import { useShop } from '@/state/ShopContext';
 import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
@@ -9,13 +10,18 @@ import { COD_FEE } from '@/lib/pricing';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
+  usePageMeta({ title: 'Payment', description: 'Choose how to pay for your MangaiMart order.' });
   const navigate = useNavigate();
   const {
     payMethod, setPayMethod, subtotal, discount, shipFee, codFee, total,
     guest, orderItems, appliedCoupon, coupon,
     placeOrder, placeCodOrder, retryPendingPayment, showToast,
     payingCash, codUnavailableReason, codDeliveries,
+    cart,
   } = useShop();
+  // Same guard as checkout: an empty bag has nothing to pay for, and a step-3
+  // screen quoting ₹0 is only a slower way of saying so.
+  const bagIsEmpty = Object.keys(cart).length === 0;
   const [processing, setProcessing] = useState(false);
   // `processing` disables the button, but React re-renders asynchronously, so a
   // same-frame double-tap can fire onPlaceOrder twice before the DOM updates.
@@ -30,12 +36,12 @@ export function Payment() {
   const onPlaceOrder = async () => {
     if (inFlight.current) return;
     if (total < 1) {
-      showToast('Your bag is empty');
+      showToast('Your bag is empty', 'error');
       return;
     }
     // Safety net if the buyer deep-linked past the checkout gate.
     if (!hasDeliveryDetails(guest)) {
-      showToast('Please add your delivery details first');
+      showToast('Please add your delivery details first', 'error');
       navigate('/buyer/checkout');
       return;
     }
@@ -76,7 +82,7 @@ export function Payment() {
       // them to pay twice.
       const stranded = payingCash ? null : readPendingPayment();
       setPending(stranded);
-      showToast(stranded ? `${msg} Your payment is safe — tap Complete my order.` : msg);
+      showToast(stranded ? `${msg} Your payment is safe — tap Complete my order.` : msg, 'error');
     } finally {
       setProcessing(false);
       inFlight.current = false;
@@ -98,7 +104,7 @@ export function Payment() {
       const still = readPendingPayment();
       setPending(still);
       if (!still) navigate('/buyer/orders');
-      showToast(msg);
+      showToast(msg, 'error');
     } finally {
       setProcessing(false);
       inFlight.current = false;
@@ -115,12 +121,16 @@ export function Payment() {
     showToast('Dismissed. Contact support with your payment reference for a refund.');
   };
 
+  // A stranded payment still needs this screen even with an empty bag — that is
+  // exactly the state after the bag was cleared but the order never landed.
+  if (bagIsEmpty && !pending) return <Navigate to="/buyer/cart" replace />;
+
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 3 of 3 · Payment</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>How would you like to pay?</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>How would you like to pay?</h1>
         </div>
 
         {pending && (
