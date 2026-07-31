@@ -140,7 +140,7 @@ export function MyProducts() {
                 className="agx-lift"
                 style={css('display:flex;gap:11px;align-items:center;cursor:pointer;')}
               >
-                <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
+                <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone % TONES.length]};position:relative;overflow:hidden;`)}>
                   <ImageSlot src={p.image_url ?? undefined} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                 </div>
                 <div style={css('flex:1;min-width:0;')}>
@@ -171,17 +171,23 @@ export function MyProducts() {
         })}
       </div>
 
+      {/* align-items:flex-start, not center: a dialog taller than the viewport
+          centred inside a scroll container has its top clipped and unreachable.
+          The panel is capped to the viewport and scrolls its own body, so the
+          header stays put instead of the action sitting ~1300px down the page. */}
       {editing && (
-        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
-          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:var(--ag-bg);border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}>
-            <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
+        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;')}>
+          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:var(--ag-bg);border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);display:flex;flex-direction:column;max-height:calc(100dvh - 40px);')}>
+            <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>
               <button onClick={closeEdit} style={css('width:36px;height:36px;border-radius:11px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>
             </div>
 
-            <div style={css('margin-top:16px;')}>
+            {/* The one scroll region: form + destructive action travel together. */}
+            <div style={css('flex:1;min-height:0;overflow-y:auto;margin:16px -20px -24px;padding:0 20px 24px;')}>
+            <div>
               <ProductForm
                 boutiqueId={editing.boutique_id}
                 submitLabel="Save changes"
@@ -207,7 +213,7 @@ export function MyProducts() {
 
             {confirmDelete ? (
               <div style={css('margin-top:12px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
-                <div style={css('font-size:13px;font-weight:700;color:#8A2A34;')}>Delete “{editing.title}”? This can't be undone.</div>
+                <div style={css('font-size:13px;font-weight:700;color:var(--ag-bad-text);')}>Delete “{editing.title}”? This can't be undone.</div>
                 <div style={css('display:flex;gap:10px;margin-top:10px;')}>
                   <button onClick={() => setConfirmDelete(false)} disabled={busy} style={css('flex:1;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;')}>Cancel</button>
                   <button onClick={remove} disabled={busy} style={css(`flex:1;height:44px;border:none;background:#D6455A;color:#fff;border-radius:12px;font-weight:800;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}>{busy ? 'Deleting…' : 'Delete'}</button>
@@ -218,6 +224,7 @@ export function MyProducts() {
                 <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>delete</span>Delete product
               </button>
             )}
+            </div>
           </div>
         </div>
       )}

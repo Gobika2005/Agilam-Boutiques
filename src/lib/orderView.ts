@@ -55,6 +55,12 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
   const shippingFee = Number(o.shipping_fee ?? 0);
   const isCod = o.payment_method === 'COD';
   const grandTotal = Number(o.total) + shippingFee + codFee;
+  // A cancelled or rejected order is never collected against: nobody is at the
+  // door and no cash changes hands. Without this the order still counted toward
+  // the seller's outstanding cash — the Orders banner and the "To collect" tab
+  // listed it, and printInvoice told the buyer to pay on delivery — while the
+  // dashboard tile (which filters these itself) disagreed and showed ₹0.
+  const collectable = o.status !== 'cancelled' && o.status !== 'rejected';
   return {
     id: o.id,
     number: '#' + o.order_number,
@@ -79,7 +85,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     isCod,
     // Goods, delivery and the handling fee — the single figure the seller
     // counts out at the door. Zero once collected, so the UI never asks twice.
-    collectAmount: isCod && paymentStatus === 'pending' ? grandTotal : 0,
+    collectAmount: isCod && paymentStatus === 'pending' && collectable ? grandTotal : 0,
     codFee,
     shippingFee,
     grandTotal,

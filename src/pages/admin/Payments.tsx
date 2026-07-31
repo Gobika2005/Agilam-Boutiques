@@ -26,7 +26,12 @@ export function Payments() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const rows = summaries ?? [];
+  // Money out and money in are two different jobs. Sorting payables first (then
+  // by size) stops a "seller owes us" row reading as a pending payment when the
+  // only difference was a minus sign in the last column.
+  const rows = [...(summaries ?? [])].sort((a, b) =>
+    (a.net < 0 ? 1 : 0) - (b.net < 0 ? 1 : 0) || Math.abs(b.net) - Math.abs(a.net),
+  );
   const totalPayable = rows.reduce((s, r) => s + Math.max(r.net, 0), 0);
   const totalOwedToUs = rows.reduce((s, r) => s + Math.max(-r.net, 0), 0);
   const unsettledCommission = rows.reduce((s, r) => s + r.prepaidCommission + r.codCommission, 0);
@@ -85,15 +90,24 @@ export function Payments() {
       render: (r) => <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? 'var(--ag-bad-text)' : T.muted};`)}>{r.codOwed > 0 ? '−' + fmtInr(r.codOwed) : '—'}</span>,
     },
     {
-      key: 'net', header: 'NET PAYABLE', width: '1fr', align: 'right',
-      render: (r) => <span style={css(`font-size:14px;font-weight:800;color:${r.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(r.net)}</span>,
+      key: 'net', header: 'NET', width: '1.2fr', align: 'right',
+      render: (r) => (
+        <div style={css('display:flex;flex-direction:column;align-items:flex-end;gap:2px;')}>
+          <span style={css(`font-size:14px;font-weight:800;color:${r.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(r.net)}</span>
+          <span style={css(`font-size:10.5px;font-weight:700;letter-spacing:.02em;color:${r.net < 0 ? 'var(--ag-bad-text)' : T.muted};`)}>
+            {r.net < 0 ? 'seller owes us' : 'we owe seller'}
+          </span>
+        </div>
+      ),
     },
     {
-      key: 'action', header: '', width: '120px', align: 'right',
+      key: 'action', header: '', width: '140px', align: 'right',
       render: (r) => (
         <div style={css('display:flex;justify-content:flex-end;')} onClick={(e) => e.stopPropagation()}>
-          <GhostButton tone="primary" icon="payments" onClick={() => { setNote(''); setConfirm(r); }}>
-            {r.net < 0 ? 'Record' : 'Pay out'}
+          {/* "Record" alone read as "record a payout" on rows where no money
+              leaves the platform. Name the direction in the button. */}
+          <GhostButton tone="primary" icon={r.net < 0 ? 'south_west' : 'payments'} onClick={() => { setNote(''); setConfirm(r); }}>
+            {r.net < 0 ? 'Record dues' : 'Pay out'}
           </GhostButton>
         </div>
       ),
@@ -111,7 +125,15 @@ export function Payments() {
 
       {/* Awaiting settlement */}
       <div>
-        <div style={css('font-weight:800;font-size:15px;margin-bottom:12px;')}>Awaiting settlement</div>
+        <div style={css('display:flex;align-items:baseline;gap:9px;margin-bottom:12px;')}>
+          <span style={css('font-weight:800;font-size:15px;')}>Awaiting settlement</span>
+          {/* The tiles above count payables only, so a table of "owes us" rows
+              under a "0 sellers awaiting payout" tile looked contradictory. */}
+          <span style={css(`font-size:12px;font-weight:600;color:${T.muted};`)}>
+            {rows.length === 0 ? 'nothing outstanding'
+              : `${rows.filter((r) => r.net > 0).length} to pay · ${rows.filter((r) => r.net < 0).length} to collect`}
+          </span>
+        </div>
         <DataTable
           columns={columns}
           rows={rows}

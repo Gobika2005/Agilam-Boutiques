@@ -217,8 +217,10 @@ export function OrderDetail() {
           {o.paymentMethod && (
             <div style={css('display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);font-size:13px;')}>
               <span style={css('color:var(--ag-muted);')}>Payment · {o.paymentMethod}</span>
-              <span style={css(`font-weight:800;padding:3px 10px;border-radius:8px;background:${o.isCod ? (settled ? 'var(--ag-good-bg)' : 'var(--ag-warn-bg)') : 'var(--ag-good-bg)'};color:${o.isCod ? (settled ? 'var(--ag-good)' : '#B0862B') : 'var(--ag-good)'};`)}>
-                {!o.isCod ? 'Paid online' : settled ? 'Cash collected' : 'Collect on delivery'}
+              {/* A cancelled/rejected COD order is neither collected nor still
+                  collectable — it must not read "Collect on delivery". */}
+              <span style={css(`font-weight:800;padding:3px 10px;border-radius:8px;background:${!o.isCod || settled ? 'var(--ag-good-bg)' : closed ? 'var(--ag-surface-2)' : 'var(--ag-warn-bg)'};color:${!o.isCod || settled ? 'var(--ag-good)' : closed ? 'var(--ag-muted)' : 'var(--ag-warn-text)'};`)}>
+                {!o.isCod ? 'Paid online' : settled ? 'Cash collected' : closed ? 'Not collected' : 'Collect on delivery'}
               </span>
             </div>
           )}

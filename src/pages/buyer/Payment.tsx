@@ -6,12 +6,13 @@ import { useShop } from '@/state/ShopContext';
 import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
 import { readPendingPayment, clearPendingPayment } from '@/lib/pendingPayment';
-import { COD_FEE } from '@/lib/pricing';
+import { useSettings } from '@/data/settings';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   usePageMeta({ title: 'Payment', description: 'Choose how to pay for your MangaiMart order.' });
   const navigate = useNavigate();
+  const terms = useSettings();
   const {
     payMethod, setPayMethod, subtotal, discount, shipFee, codFee, total,
     guest, orderItems, appliedCoupon, coupon,
@@ -174,9 +175,9 @@ export function Payment() {
                     <div style={css('font-weight:800;font-size:14.5px;')}>{m.label}</div>
                     <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;line-height:1.45;')}>
                       {blocked ?? (m.kind === 'cod' && codDeliveries > 1
-                        ? `${m.sub} · ${fmt(COD_FEE)} handling fee × ${codDeliveries} deliveries`
+                        ? `${m.sub} · ${fmt(terms.cod_fee)} handling fee × ${codDeliveries} deliveries`
                         : m.kind === 'cod'
-                          ? `${m.sub} · ${fmt(COD_FEE)} handling fee`
+                          ? `${m.sub} · ${fmt(terms.cod_fee)} handling fee`
                           : m.sub)}
                     </div>
                   </div>

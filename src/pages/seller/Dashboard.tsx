@@ -116,6 +116,11 @@ export function Dashboard() {
     { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/add-product', badge: 0 },
   ];
 
+  // Buyer-facing discovery & engagement surfaces the seller reaches from here.
+  const GROW = [
+    { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: '#C99A3F', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
+  ];
+
   const TODAY = [
     { label: "Today's orders", value: String(todaysOrders.length), ic: 'var(--ag-info-text)' },
     { label: "Today's revenue", value: fmt(todaysRevenue), ic: 'var(--ag-good)' },
@@ -189,7 +194,7 @@ export function Dashboard() {
             <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${q.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
               <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${q.ic};`)}>{q.icon}</span>
               {q.badge > 0 && (
-                <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;')}>
+                <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
                   {q.badge > 99 ? '99+' : q.badge}
                 </span>
               )}
@@ -205,10 +210,11 @@ export function Dashboard() {
       {/* Grow your shop — the buyer-facing discovery & engagement surfaces. */}
       <div style={css('margin-top:16px;')}>
         <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 2px 10px;')}>Grow your shop</div>
-        <div style={css('display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;')}>
-          {[
-            { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: '#C99A3F', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
-          ].map((g) => (
+        {/* Tracks follow the card count: the section once held three tiles, and
+            leaving it at repeat(3,…) rendered the lone Reviews card a third of
+            the width beside two empty columns. */}
+        <div style={css(`display:grid;grid-template-columns:repeat(${Math.min(GROW.length, 3)},minmax(0,1fr));gap:10px;`)}>
+          {GROW.map((g) => (
             <button
               key={g.label}
               onClick={() => navigate(g.to)}

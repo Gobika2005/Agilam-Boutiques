@@ -247,7 +247,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!supabaseAdmin) return res.status(500).json({ error: 'User service is not configured' });
+  if (!supabaseAdmin) return res.status(500).json({ error: 'User management is not configured on the server. Set SUPABASE_SERVICE_ROLE_KEY in the deployment environment and redeploy.' });
 
   const auth = await authenticateAdmin(req);
   if (!auth.ok) {

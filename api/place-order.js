@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon, COD_FEE, COD_MAX_ORDER } from './_pricing.js';
+import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
+import { loadTerms } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
 /**
@@ -276,16 +277,20 @@ export default async function handler(req, res) {
     // only its own boutique's slice, a platform coupon the whole cart.
     const groupTotals = Object.fromEntries([...groups.values()].map((g) => [g.boutique_id, g.total]));
     const coupon = await loadCoupon(supabase, couponCode);
+    // Admin-editable commercial terms. Read once per request so every total
+    // below (COD cap, fees, the paise the payment is checked against) is priced
+    // from one consistent snapshot even if an admin saves mid-checkout.
+    const terms = await loadTerms(supabase);
 
     // ── Cash on Delivery ───────────────────────────────────────────────────
     // No payment to bind an amount against, so the checks are about whether
     // this unpaid order should be allowed to consume a seller's stock at all.
     if (isCod) {
-      const codTotals = computeCartPricing(groupTotals, coupon, groups.size);
+      const codTotals = computeCartPricing(groupTotals, coupon, groups.size, terms);
 
-      if (codTotals.total > COD_MAX_ORDER) {
+      if (codTotals.total > terms.cod_max_order) {
         return res.status(400).json({
-          error: `Cash on delivery is available on orders up to ₹${COD_MAX_ORDER.toLocaleString('en-IN')}. Please pay online for this order.`,
+          error: `Cash on delivery is available on orders up to ₹${terms.cod_max_order.toLocaleString('en-IN')}. Please pay online for this order.`,
         });
       }
 
@@ -352,7 +357,7 @@ export default async function handler(req, res) {
       if (!razorpay) {
         return res.status(500).json({ error: 'Payment verification is not configured' });
       }
-      const expectedPaise = computeCartPricing(groupTotals, coupon).totalPaise;
+      const expectedPaise = computeCartPricing(groupTotals, coupon, 0, terms).totalPaise;
 
       let rzPayment;
       try {
@@ -456,8 +461,24 @@ export default async function handler(req, res) {
     // first order of the checkout. Summed across the orders this request
     // creates, total + shipping_fee + cod_fee equals exactly what the buyer was
     // quoted — which is what lets a seller collect the right cash at the door.
-    const cartTotals = computeCartPricing(groupTotals, coupon, isCod ? groups.size : 0);
+    const cartTotals = computeCartPricing(groupTotals, coupon, isCod ? groups.size : 0, terms);
     let shippingToAssign = cartTotals.shipFee;
+
+    // Claim the redemption before writing the orders. Done here — after pricing,
+    // before the rows exist — so a code that ran out between the buyer loading
+    // checkout and submitting is rejected rather than over-redeemed. `coupon` is
+    // only set when it actually discounted this cart, so nothing is consumed by
+    // a code that turned out to be ineligible.
+    let couponApplied = null;
+    if (cartTotals.discount > 0 && coupon) {
+      const claimed = await redeemCoupon(supabase, coupon.code);
+      if (!claimed) {
+        return res.status(409).json({
+          error: 'That coupon has just reached its redemption limit. Remove it and try again.',
+        });
+      }
+      couponApplied = coupon.code;
+    }
 
     // Stock is now reserved — if the order rows fail to write, put it back
     // (and refund) so a failed write can't silently eat inventory or money.
@@ -483,7 +504,9 @@ export default async function handler(req, res) {
             status: 'pending',
             // One handling fee per delivery, stored on the order it belongs to
             // so the seller knows the exact cash to collect at that door.
-            cod_fee: isCod ? COD_FEE : 0,
+            cod_fee: isCod ? terms.cod_fee : 0,
+            // Which code paid for this, so redemptions are auditable (0049).
+            coupon_code: couponApplied,
             shipping_fee: shippingForThisOrder,
             ...guestFields,
           })

@@ -123,9 +123,15 @@ export function Orders() {
         {TABS.map((t) => {
           const on = tab === t;
           return (
-            <div key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};cursor:pointer;`)}>
+            <button
+              key={t}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setTab(t)}
+              style={css(`flex:none;border:none;font-family:inherit;padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};cursor:pointer;`)}
+            >
               {t}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -135,10 +141,16 @@ export function Orders() {
         {PERIODS.map((p) => {
           const on = period === p;
           return (
-            <div key={p} onClick={() => setPeriod(p)} style={css(`flex:none;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};cursor:pointer;`)}>
+            <button
+              key={p}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setPeriod(p)}
+              style={css(`flex:none;display:flex;align-items:center;gap:5px;font-family:inherit;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};cursor:pointer;`)}
+            >
               {on && <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>event</span>}
               {p}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -158,13 +170,26 @@ export function Orders() {
                   <span style={css('display:flex;align-items:center;gap:7px;')}>
                     <span style={css('font-weight:800;font-size:13px;color:var(--ag-muted);')}>{o.number}</span>
                     {o.channel === 'offline' && (
-                      <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-purple-bg);color:#7B5FB0;')}>Offline</span>
+                      <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-purple-bg);color:var(--ag-purple-text);')}>Offline</span>
                     )}
-                    {o.channel === 'online' && o.paymentMethod && (
-                      <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.collectAmount > 0 ? 'var(--ag-warn-bg)' : 'var(--ag-good-bg)'};color:${o.collectAmount > 0 ? '#B0862B' : 'var(--ag-good)'};`)}>
-                        {!o.isCod ? 'Paid' : o.collectAmount > 0 ? `COD · collect ${fmt(o.collectAmount)}` : 'COD · collected'}
-                      </span>
-                    )}
+                    {o.channel === 'online' && o.paymentMethod && (() => {
+                      // Three distinct states, not two: cash still owed, cash
+                      // actually taken, and "no cash will ever change hands"
+                      // (cancelled/rejected). Collapsing the last into the second
+                      // would label a cancelled order as collected.
+                      const owed = o.collectAmount > 0;
+                      const settled = !o.isCod || o.paymentStatus === 'paid';
+                      const tone = owed
+                        ? { bg: 'var(--ag-warn-bg)', fg: 'var(--ag-warn-text)' }
+                        : settled
+                          ? { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' }
+                          : { bg: 'var(--ag-surface-2)', fg: 'var(--ag-muted)' };
+                      return (
+                        <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${tone.bg};color:${tone.fg};`)}>
+                          {!o.isCod ? 'Paid' : owed ? `COD · collect ${fmt(o.collectAmount)}` : settled ? 'COD · collected' : 'COD · not collected'}
+                        </span>
+                      );
+                    })()}
                   </span>
                   <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                 </div>

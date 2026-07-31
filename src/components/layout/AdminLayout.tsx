@@ -27,6 +27,12 @@ const NAV = [
   { label: 'Settings', icon: 'settings', to: '/admin/settings', title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
 ];
 
+/** Console routes with no sidebar tile — opened from the header bell, not the
+ *  nav. They still need a title, so they are resolved alongside NAV. */
+const OFF_NAV = [
+  { label: 'Notifications', icon: 'notifications', to: '/admin/notifications', title: 'Notifications', sub: 'Alerts across the marketplace' },
+];
+
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,7 +42,13 @@ export function AdminLayout() {
   // so every showToast() on the console (create user, block, delete, errors…) was
   // silently discarded. Render it here too so admin actions give feedback.
   const { toast } = useShop();
-  const active = NAV.find((n) => location.pathname.startsWith(n.to)) ?? NAV[0];
+  // Routes that exist in the console but deliberately have no sidebar entry —
+  // reached from the header instead. Without these the `?? NAV[0]` fallback
+  // below labelled them "Overview · Marketplace health at a glance".
+  const active =
+    NAV.find((n) => location.pathname.startsWith(n.to)) ??
+    OFF_NAV.find((n) => location.pathname.startsWith(n.to)) ??
+    NAV[0];
 
   const logout = async () => {
     await signOut();
@@ -74,7 +86,13 @@ export function AdminLayout() {
             );
           })}
 
-          <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:#D6455A;font-family:inherit;')}>
+          {/* Seventeen destinations do not fit a 900px-tall window, so the last
+              few (and Log out) sit below the fold. The list scrolls, but with no
+              scrollbar and a flush bottom edge there was nothing to say so — this
+              spacer keeps the final row clear of the viewport edge and of the
+              non-production ribbon. */}
+          <div style={css('flex:none;height:10px;')} />
+          <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:#D6455A;font-family:inherit;margin-bottom:6px;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>logout</span>
             <span>Log out</span>
           </button>

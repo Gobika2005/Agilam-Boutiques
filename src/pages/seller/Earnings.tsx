@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { fmt } from '@/data/demo';
-import { POLICY_TERMS } from '@/data/company';
+import { useSettings } from '@/data/settings';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
@@ -28,7 +28,6 @@ import type { OrderWithDetails } from '@/data/types';
  * a promise of payment is not revenue.
  */
 
-const COMMISSION = POLICY_TERMS.commissionPct / 100;
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const startOfMonth = () => {
@@ -63,6 +62,10 @@ function lastSevenDays(orders: OrderWithDetails[]): { label: string; total: numb
 const maskAccount = (n: string | null) => (n && n.length > 4 ? `•••• ${n.slice(-4)}` : n ?? '');
 
 export function Earnings() {
+  // The platform commission is admin-editable, so the seller's take-home is
+  // derived from the live rate rather than a compile-time constant.
+  const { commission_pct: commissionPct } = useSettings();
+  const COMMISSION = commissionPct / 100;
   const navigate = useNavigate();
   const { boutique } = useMyBoutique();
   const { data: orderRows, loading } = useAsync(
@@ -138,7 +141,7 @@ export function Earnings() {
     { label: 'Orders this month', value: String(thisMonth.length), color: 'var(--ag-ink)' },
     { label: 'Pending payout', value: fmt(pendingPayout), color: '#C99A3F' },
     { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
-    { label: `Commission (${POLICY_TERMS.commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
+    { label: `Commission (${commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
   ];
 
   return (
@@ -164,7 +167,7 @@ export function Earnings() {
             {loading ? '—' : fmt(netEarnings)}
           </div>
           <div style={css('font-size:12.5px;opacity:.82;margin-top:6px;')}>
-            {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {POLICY_TERMS.commissionPct}% MangaiMart commission
+            {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {commissionPct}% MangaiMart commission
           </div>
           {deltaPct != null && (
             <div style={css('display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px;font-weight:700;')}>
@@ -209,7 +212,7 @@ export function Earnings() {
           </div>
 
           <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.6;margin-top:12px;')}>
-            You keep the cash your customers hand over. MangaiMart’s {POLICY_TERMS.commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
+            You keep the cash your customers hand over. MangaiMart’s {commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
             {codOutstanding > 0 && ' Cash you have not collected yet is not counted as earnings.'}
           </div>
 

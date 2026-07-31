@@ -5,7 +5,7 @@ import { fmtInr } from '@/lib/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { supabase } from '@/lib/supabase';
 import { fetchDashboard, type WindowStat, type DashboardData } from '@/data/admin';
-import { POLICY_TERMS } from '@/data/company';
+import { useSettings } from '@/data/settings';
 import { fetchActivity } from '@/data/activityLog';
 import { SectionCard, StatusPill, Avatar, Icon, EmptyState, T } from '@/components/admin/kit';
 
@@ -37,6 +37,7 @@ const RANGES: { key: RangeKey; label: string; cur: keyof DashboardData; prev: ke
 ];
 
 export function Overview() {
+  const { commission_pct: commissionPct } = useSettings();
   const navigate = useNavigate();
   const { data, loading, reload } = useAsync(() => fetchDashboard(), []);
   const { data: activity } = useAsync(() => fetchActivity(8), []);
@@ -94,7 +95,7 @@ export function Overview() {
         <HeroCard label={`Revenue · ${rc.label}`} value={compactInr(cur.revenue)} icon="payments" tint="var(--ag-bad-bg)" ic="#D6336C" trend={trend(cur.revenue, prev.revenue)} vs={rc.vs} bars={ordBars} />
         <HeroCard label={`Orders · ${rc.label}`} value={String(cur.orders)} icon="receipt_long" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" trend={trend(cur.orders, prev.orders)} vs={rc.vs} bars={revBars} />
         <HeroCard label={`Avg. order · ${rc.label}`} value={compactInr(aov)} icon="shopping_cart" tint="#F3EAF5" ic="#9B7FC7" trend={trend(aov, prevAov)} vs={rc.vs} />
-        <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (POLICY_TERMS.commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="#C99A3F" sub={`${POLICY_TERMS.commissionPct}% commission`} />
+        <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="#C99A3F" sub={`${commissionPct}% commission`} />
       </div>
 
       {/* Health-insight tiles + quick-nav counters */}

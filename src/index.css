@@ -27,6 +27,7 @@
   --ag-deep: #8E1C44;        /* deepest crimson text (brightened on dark) */
   --ag-ink-3: #6B4A56;       /* muted mauve secondary text */
   --ag-purple: #9B7FC7; --ag-purple-bg: #F3ECFA;  /* purple accent (analytics) */
+  --ag-purple-text: #6E4E93; /* readable purple ON --ag-purple-bg (status chips) */
   --ag-frost: rgba(251,246,242,.88);   /* sticky header glass */
   --ag-frost-strong: rgba(255,255,255,.94); /* dock / tab bar glass */
   --ag-frost-border: #EFDCE4;          /* glass edge */
@@ -56,7 +57,7 @@
   --ag-crimson: #E85088;
   --ag-deep: #F06A96;
   --ag-ink-3: #C9B4BE;
-  --ag-purple: #B9A3E0; --ag-purple-bg: #241830;
+  --ag-purple: #B9A3E0; --ag-purple-bg: #241830; --ag-purple-text: #C9B4EC;
   --ag-frost: rgba(18,10,14,.82);
   --ag-frost-strong: rgba(28,18,22,.92);
   --ag-frost-border: #3A2730;
@@ -153,8 +154,12 @@ select:-webkit-autofill {
 @media (max-width: 780px) { .agx-filters { width: 100% !important; position: static !important; } }
 .agx-cart-grid { grid-template-columns: 1fr; }
 @media (min-width: 840px) { .agx-cart-grid { grid-template-columns: minmax(0,1fr) 350px; } }
-.agx-an-grid { grid-template-columns: 1fr; }
-@media (min-width: 900px) { .agx-an-grid { grid-template-columns: 1.4fr 1fr; } }
+/* minmax(0,…) not plain fr — see the catalogue-grid note above: a plain `1fr`
+   track can never shrink below its item's min-content width, and these cards
+   hold nowrap+ellipsis product titles, so the page scrolled sideways. */
+.agx-an-grid { grid-template-columns: minmax(0, 1fr); }
+.agx-an-grid > * { min-width: 0; }
+@media (min-width: 900px) { .agx-an-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
 @media (max-width: 839px) { .agx-cart-sticky { position: static !important; } }
 /* Seller forms: paired fields sit side by side, stacking on a phone. */
 @media (max-width: 560px) { .agx-form-row { grid-template-columns: 1fr !important; } }
@@ -164,7 +169,8 @@ select:-webkit-autofill {
 .agx-sd-quick { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (min-width: 860px) { .agx-sd-quick { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .agx-sd-stats > *, .agx-sd-quick > * { min-width: 0; }
-.agx-sd-split { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.agx-sd-split { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.agx-sd-split > * { min-width: 0; }
 @media (min-width: 1000px) { .agx-sd-split { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); } }
 /* ---------- v2 elevation system ---------- */
 .agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }

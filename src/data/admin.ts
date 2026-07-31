@@ -1,9 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import { fmtInr } from '@/lib/tokens';
-import { POLICY_TERMS } from '@/data/company';
-import type { OrderStatus } from '@/types/database';
+import { currentSettings } from '@/data/settings';
+import type { OrderStatus, PaymentStatus } from '@/types/database';
 
-const COMMISSION_RATE = POLICY_TERMS.commissionPct / 100;
+/** The live commission, read per call so a rate change in Platform Settings
+ *  reaches the payout and revenue figures instead of the compile-time default. */
+const commissionRate = () => currentSettings().commission_pct / 100;
 
 export interface OverviewMetrics {
   gmv: number;
@@ -24,7 +26,7 @@ export async function fetchOverviewMetrics(): Promise<OverviewMetrics> {
   const gmv = rows.reduce((sum, o) => sum + Number(o.total), 0);
   const ordersThisMonth = rows.filter((o) => new Date(o.created_at) >= monthStart).length;
 
-  return { gmv, activeBoutiques: activeBoutiques ?? 0, ordersThisMonth, platformRevenue: gmv * COMMISSION_RATE };
+  return { gmv, activeBoutiques: activeBoutiques ?? 0, ordersThisMonth, platformRevenue: gmv * commissionRate() };
 }
 
 export async function fetchGmvBars(): Promise<string[]> {
@@ -45,16 +47,52 @@ export interface CategoryStat {
   pct: number;
 }
 
+/**
+ * Share of units sold per category.
+ *
+ * This used to count rows in `products`, i.e. how many items were *listed* per
+ * category, under a chart captioned "Orders by category" — a catalogue mix
+ * presented as a sales mix. It now counts sold quantity from `order_items`.
+ *
+ * Everything outside the top five is folded into "Other" so the bars total
+ * 100%; the old version sliced the top six and left the remainder unaccounted,
+ * which is why the percentages added up to 81%.
+ */
 export async function fetchCategoryStats(): Promise<CategoryStat[]> {
-  const { data } = await supabase.from('products').select('category');
-  const rows = data ?? [];
-  const counts = new Map<string, number>();
-  rows.forEach((r) => counts.set(r.category, (counts.get(r.category) ?? 0) + 1));
-  const total = rows.length || 1;
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, pct: Math.round((count / total) * 100) }))
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 6);
+  const [{ data: items }, { data: products }] = await Promise.all([
+    supabase.from('order_items').select('product_id, qty'),
+    supabase.from('products').select('id, category'),
+  ]);
+
+  const categoryOf = new Map((products ?? []).map((p) => [p.id, p.category]));
+  const units = new Map<string, number>();
+  let total = 0;
+  (items ?? []).forEach((it) => {
+    // product_id is nullable — an item whose product row was hard-deleted has
+    // nothing to attribute, so it sits outside the category split entirely.
+    const cat = it.product_id ? categoryOf.get(it.product_id) : undefined;
+    if (!cat) return; // product deleted — no category to attribute it to
+    const q = Number(it.qty) || 0;
+    units.set(cat, (units.get(cat) ?? 0) + q);
+    total += q;
+  });
+  if (total === 0) return [];
+
+  const sorted = [...units.entries()].sort((a, b) => b[1] - a[1]);
+  const top = sorted.slice(0, 5);
+  const restUnits = sorted.slice(5).reduce((s, [, v]) => s + v, 0);
+
+  // Largest-remainder rounding so the displayed percentages sum to exactly 100.
+  const parts = [...top, ...(restUnits > 0 ? [['Other', restUnits] as [string, number]] : [])];
+  const exact = parts.map(([name, v]) => ({ name, raw: (v / total) * 100 }));
+  const out = exact.map((e) => ({ name: e.name, pct: Math.floor(e.raw) }));
+  let slack = 100 - out.reduce((s, o) => s + o.pct, 0);
+  exact
+    .map((e, i) => ({ i, frac: e.raw - Math.floor(e.raw) }))
+    .sort((a, b) => b.frac - a.frac)
+    .forEach(({ i }) => { if (slack > 0) { out[i].pct += 1; slack -= 1; } });
+
+  return out;
 }
 
 export interface CityStat {
@@ -233,7 +271,7 @@ export async function fetchDashboard(): Promise<DashboardData> {
   return {
     ...acc,
     gmv,
-    platformRevenue: gmv * COMMISSION_RATE,
+    platformRevenue: gmv * commissionRate(),
     earnedOrders,
     fulfilledOrders,
     refunds: { count: refundCount, amount: refundAmount },
@@ -269,9 +307,38 @@ export interface RefundRow {
   total: number;
   status: OrderStatus;
   payment_id: string | null;
+  /** Whether money actually reached us — the only thing that makes an order
+   *  refundable. A COD order sits at 'pending' until the cash is collected on
+   *  delivery, so it is NOT refundable however it was later cancelled. */
+  payment_status: PaymentStatus;
   refunded: boolean;
   refunded_at: string | null;
   created_at: string;
+}
+
+/**
+ * Was money actually collected for this order?
+ *
+ * Online orders are paid up front. A COD order only becomes "paid" when the
+ * seller collects at the door and the order is marked delivered, which is what
+ * moves `payment_status` to 'paid' — before that there is nothing to give back.
+ */
+export function moneyCollected(r: Pick<RefundRow, 'payment_id' | 'payment_status'>): boolean {
+  return r.payment_status === 'paid' || (!!r.payment_id && r.payment_status !== 'failed');
+}
+
+/**
+ * An order the platform genuinely owes a refund on: money was taken, the order
+ * fell through, and it has not been refunded yet.
+ *
+ * The rejected/cancelled test alone used to be the whole rule, which listed
+ * every abandoned COD order as "Awaiting refund" — orders that were never paid
+ * for. Acting on one would have paid out cash the platform never received.
+ */
+export function isRefundCandidate(r: RefundRow): boolean {
+  if (r.refunded) return false;
+  if (r.status !== 'rejected' && r.status !== 'cancelled') return false;
+  return moneyCollected(r);
 }
 
 /**
@@ -283,7 +350,7 @@ export interface RefundRow {
 export async function fetchRefunds(): Promise<RefundRow[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, order_number, total, status, payment_id, refunded, refunded_at, created_at, guest_name, boutique:boutiques(name), buyer:profiles!orders_buyer_id_fkey(full_name)')
+    .select('id, order_number, total, status, payment_id, payment_status, refunded, refunded_at, created_at, guest_name, boutique:boutiques(name), buyer:profiles!orders_buyer_id_fkey(full_name)')
     .order('created_at', { ascending: false })
     .limit(150);
   if (error) throw error;
@@ -300,6 +367,7 @@ export async function fetchRefunds(): Promise<RefundRow[]> {
     total: Number(r.total),
     status: r.status,
     payment_id: r.payment_id,
+    payment_status: r.payment_status ?? 'pending',
     refunded: r.refunded,
     refunded_at: r.refunded_at,
     created_at: r.created_at,
@@ -330,7 +398,7 @@ export async function fetchPayments(): Promise<PaymentRow[]> {
     txn: '#TXN-' + r.id.slice(0, 6).toUpperCase(),
     name: r.boutique?.name ?? 'Boutique',
     amount: fmtInr(Number(r.total)),
-    commission: fmtInr(Number(r.total) * COMMISSION_RATE),
+    commission: fmtInr(Number(r.total) * commissionRate()),
     status: r.status === 'delivered' || r.status === 'shipped' ? 'Settled' : 'Pending',
     orderStatus: r.status,
   }));

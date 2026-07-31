@@ -269,17 +269,23 @@ export const ANALYTICS = {
   revenueBars: [{ m: 'Feb', h: '38%' }, { m: 'Mar', h: '52%' }, { m: 'Apr', h: '46%' }, { m: 'May', h: '68%' }, { m: 'Jun', h: '82%' }, { m: 'Jul', h: '96%' }],
 };
 
+/**
+ * Status chip colours. These MUST stay as `--ag-*` custom properties rather
+ * than literal hex: the console is themeable, and hardcoded pastels left the
+ * badge glowing light-pink on the dark page background.
+ */
 export function statusStyle(status: string): { bg: string; fg: string } {
+  const neutral = { bg: 'var(--ag-surface-2)', fg: 'var(--ag-muted)' };
   const map: Record<string, { bg: string; fg: string }> = {
-    'Pending': { bg: '#FBF0DA', fg: '#B8860B' },
-    'Accepted': { bg: '#F3EAF5', fg: '#6E4E93' },
-    'Shipped': { bg: '#E6F0FA', fg: '#3A6EA5' },
-    'Delivered': { bg: '#E5F3EC', fg: '#218456' },
-    'Approved': { bg: '#E5F3EC', fg: '#218456' },
-    'Rejected': { bg: '#FBE3E3', fg: '#C0392B' },
-    'Cancelled': { bg: '#F1E4EB', fg: '#8A7078' },
+    'Pending': { bg: 'var(--ag-warn-bg)', fg: 'var(--ag-warn-text)' },
+    'Accepted': { bg: 'var(--ag-purple-bg)', fg: 'var(--ag-purple-text)' },
+    'Shipped': { bg: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)' },
+    'Delivered': { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' },
+    'Approved': { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' },
+    'Rejected': { bg: 'var(--ag-bad-bg)', fg: 'var(--ag-bad-text)' },
+    'Cancelled': neutral,
   };
-  return map[status] || { bg: '#F1E4EB', fg: '#8A7078' };
+  return map[status] || neutral;
 }
 
 export const fmt = (n: number) => '₹' + n.toLocaleString('en-IN');

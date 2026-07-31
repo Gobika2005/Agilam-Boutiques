@@ -14,7 +14,7 @@ import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { usePageMeta } from '@/lib/pageMeta';
 import { TONES, fmt } from '@/data/demo';
-import { FREE_SHIP_MIN, SHIP_FEE } from '@/lib/pricing';
+import { useSettings } from '@/data/settings';
 import { POLICY_TERMS } from '@/data/company';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -59,6 +59,9 @@ const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] 
 export function ProductDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  // Delivery copy must quote the fee checkout actually charges, so it reads the
+  // live admin settings rather than a compile-time constant.
+  const terms = useSettings();
   const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   // Null until the buyer picks one, so the shown size can fall back to what the
@@ -611,7 +614,7 @@ export function ProductDetail() {
                           used, so the two contradicted each other. */}
                       {boutique?.deliveryAvailable === false
                         ? 'Store pickup only'
-                        : `${fmt(SHIP_FEE)} delivery · free over ${fmt(FREE_SHIP_MIN)}`}
+                        : `${fmt(terms.standard_shipping)} delivery · free over ${fmt(terms.free_delivery_over)}`}
                     </div>
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>

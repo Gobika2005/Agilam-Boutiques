@@ -108,6 +108,23 @@ export function CouponFormFields({
       </label>
 
       <label style={css(label)}>
+        Total redemptions
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={input.usage_limit ?? ''}
+          onChange={(e) => onChange({ usage_limit: e.target.value === '' ? null : Number(e.target.value) })}
+          placeholder="Unlimited"
+          style={css(field)}
+        />
+        <span style={css('display:block;margin-top:5px;font-size:11.5px;color:#A98D99;font-weight:600;')}>
+          How many times this code may be used in total. Blank means unlimited.
+        </span>
+        <Err msg={errors.usage_limit} />
+      </label>
+
+      <label style={css(label)}>
         Description <span style={css('font-weight:600;color:#A98B98;')}>· shown to buyers</span>
         <input
           value={input.description}

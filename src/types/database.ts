@@ -268,6 +268,8 @@ export interface Database {
           accepted_at: string | null;
           shipped_at: string | null;
           delivered_at: string | null;
+          /** Discount code this order was placed with, if any (migration 0049). */
+          coupon_code: string | null;
           // ── Cash on Delivery (migration 0022) ────────────────────────────
           payment_status: PaymentStatus;
           paid_at: string | null;
@@ -317,6 +319,10 @@ export interface Database {
           off: number;
           min_subtotal: number;
           max_discount: number | null;
+          /** Total redemptions allowed; null = unlimited (migration 0049). */
+          usage_limit: number | null;
+          /** Redemptions taken, maintained by redeem_coupon() (migration 0049). */
+          used_count: number;
           description: string;
           expires_at: string;
           active: boolean;

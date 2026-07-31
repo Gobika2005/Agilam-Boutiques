@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
+import { loadTerms } from './_settings.js';
 import {
   rxConfigured, ensureFundAccount, createPayout, RazorpayXError,
   createFundAccountValidation, getFundAccountValidation, validationOutcome,
@@ -32,7 +33,9 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const cronSecret = process.env.PAYOUT_CRON_SECRET;
 const vercelCronSecret = process.env.CRON_SECRET;
-const HOLD_DAYS = Math.max(0, Number(process.env.PAYOUT_HOLD_DAYS ?? 3) || 0);
+/** Env override for the hold window; when unset the admin-editable
+ *  `platform_settings.payout_hold_days` applies (see resolveHoldDays below). */
+const HOLD_DAYS_ENV = process.env.PAYOUT_HOLD_DAYS;
 
 const BOUTIQUE_COLS =
   'id, name, email, phone, whatsapp, bank_account_name, bank_account_number, bank_ifsc, upi_id, razorpayx_contact_id, razorpayx_fund_account_id, payout_details_verified';
@@ -198,7 +201,12 @@ export default async function handler(req, res) {
     boutiques: 0, opened: 0, paid: 0, processing: 0, failed: 0, noDetails: 0, skippedZero: 0, recovered: 0,
     verifyStarted: 0, verifyPending: 0, verifyFailed: 0,
   };
-  const cutoff = new Date(Date.now() - HOLD_DAYS * 86400000).toISOString();
+  // The hold window is an admin-editable setting; an explicit env var still wins
+  // so a deploy can pin it during an incident.
+  const holdDays = HOLD_DAYS_ENV != null
+    ? Math.max(0, Number(HOLD_DAYS_ENV) || 0)
+    : (await loadTerms(supabase)).payout_hold_days;
+  const cutoff = new Date(Date.now() - holdDays * 86400000).toISOString();
 
   try {
     // ── 1) Recover stuck transfers ──────────────────────────────────────────
@@ -283,7 +291,7 @@ export default async function handler(req, res) {
       await attemptTransfer(supabase, payout, account, boutique, result);
     }
 
-    return res.status(200).json({ ok: true, holdDays: HOLD_DAYS, ...result });
+    return res.status(200).json({ ok: true, holdDays, ...result });
   } catch (err) {
     console.error('run-payouts failed:', err?.message ?? err);
     return res.status(500).json({ error: 'Payout run failed', ...result });

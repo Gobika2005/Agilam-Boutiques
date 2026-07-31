@@ -89,7 +89,7 @@ export function Settings() {
             <div style={css('font-weight:800;font-size:14.5px;')}>Maintenance mode</div>
             <div style={css(`font-size:12.5px;color:${T.muted};margin-top:2px;`)}>Show a maintenance notice to buyers while you work on the storefront.</div>
           </div>
-          <Toggle on={form.maintenance_mode} onChange={(v) => set('maintenance_mode', v)} />
+          <Toggle on={form.maintenance_mode} onChange={(v) => set('maintenance_mode', v)} label="Maintenance mode" />
         </div>
       </Card>
 
@@ -136,10 +136,30 @@ export function Settings() {
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+/**
+ * On/off switch.
+ *
+ * `role="switch"` + `aria-checked` because the state was conveyed by background
+ * colour alone: a screen reader announced only "Toggle, button", and anyone who
+ * cannot separate crimson from grey had nothing to read the state from. The
+ * visible on/off word covers the latter.
+ */
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button onClick={() => onChange(!on)} aria-label="Toggle" style={css(`width:50px;height:29px;border-radius:99px;border:none;cursor:pointer;flex:none;padding:3px;display:flex;justify-content:${on ? 'flex-end' : 'flex-start'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};transition:.15s;`)}>
-      <span style={css('width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);')} />
-    </button>
+    <div style={css('display:flex;align-items:center;gap:9px;flex:none;')}>
+      <span style={css(`font-size:11.5px;font-weight:800;letter-spacing:.03em;color:${on ? 'var(--ag-crimson)' : T.muted};`)}>
+        {on ? 'ON' : 'OFF'}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={() => onChange(!on)}
+        style={css(`width:50px;height:29px;border-radius:99px;border:none;cursor:pointer;flex:none;padding:3px;display:flex;justify-content:${on ? 'flex-end' : 'flex-start'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};transition:.15s;`)}
+      >
+        <span style={css('width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);')} />
+      </button>
+    </div>
   );
 }

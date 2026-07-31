@@ -131,12 +131,30 @@ export function Coupons() {
           : <span style={css('font-size:12.5px;font-weight:700;color:var(--ag-info-text);background:var(--ag-info-bg);border-radius:8px;padding:3px 9px;')}>Platform</span>,
     },
     { key: 'discount', header: 'Discount', width: '1.4fr', render: (c) => <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{describeCoupon(c)}</span> },
+    {
+      // Redemptions were invisible: there was no way to tell a code used twice
+      // from one used two thousand times, or to see a cap being approached.
+      key: 'used', header: 'Used', width: '0.8fr',
+      render: (c) => {
+        const exhausted = c.usage_limit != null && c.used_count >= c.usage_limit;
+        return (
+          <span style={css(`font-size:12.5px;font-weight:700;color:${exhausted ? 'var(--ag-bad-text)' : 'var(--ag-label)'};`)}>
+            {c.used_count}{c.usage_limit != null ? ` / ${c.usage_limit}` : ''}
+            {c.usage_limit == null && <span style={css('font-weight:600;color:var(--ag-muted);')}> · no cap</span>}
+          </span>
+        );
+      },
+    },
     { key: 'expires', header: 'Expires', width: '0.9fr', render: (c) => <span style={css(`font-size:12.5px;font-weight:600;color:${isExpired(c) ? 'var(--ag-bad-text)' : 'var(--ag-label)'};`)}>{fmtDate(c.expires_at)}</span> },
     {
       key: 'status',
       header: 'Status',
       width: '0.8fr',
-      render: (c) => <StatusPill status={isExpired(c) ? 'expired' : c.active ? 'active' : 'paused'} label={isExpired(c) ? 'Expired' : c.active ? 'Active' : 'Off'} />,
+      render: (c) => {
+        const exhausted = c.usage_limit != null && c.used_count >= c.usage_limit;
+        if (exhausted) return <StatusPill status="expired" label="Used up" />;
+        return <StatusPill status={isExpired(c) ? 'expired' : c.active ? 'active' : 'paused'} label={isExpired(c) ? 'Expired' : c.active ? 'Active' : 'Off'} />;
+      },
     },
     {
       key: 'actions',

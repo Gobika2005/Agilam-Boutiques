@@ -6,6 +6,7 @@ import { ScrollManager } from '@/components/layout/ScrollManager';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 import { PresenceTracker } from '@/components/layout/PresenceTracker';
 import { LaunchNotice } from '@/components/layout/LaunchNotice';
+import { MaintenanceNotice } from '@/components/layout/MaintenanceNotice';
 import { EnvBadge } from '@/components/layout/EnvBadge';
 
 import { Loading } from '@/pages/Loading';
@@ -112,6 +113,8 @@ export default function App() {
       <PresenceTracker />
       {/* "Launching soon" preview notice for public visitors (hidden in the consoles). */}
       <LaunchNotice />
+      {/* Buyer-facing banner while Platform Settings → Maintenance mode is on. */}
+      <MaintenanceNotice />
       {/* Corner ribbon that marks non-production (TEST/staging) builds. Renders
           nothing in production. See ENVIRONMENTS.md. */}
       <EnvBadge />

@@ -79,7 +79,7 @@ export function SignUp() {
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="priya@example.com" style={css(fieldStyle)} />
       </label>
 
-      <PasswordField value={password} onChange={setPassword} />
+      <PasswordField value={password} onChange={setPassword} autoComplete="new-password" />
 
       <label style={css(labelStyle)}>
         City

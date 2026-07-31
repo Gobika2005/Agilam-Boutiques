@@ -111,14 +111,20 @@ export function Select({ value, onChange, options }: { value: string; onChange: 
   );
 }
 
-export function GhostButton({ icon, children, onClick, tone = 'default', title }: { icon?: string; children?: ReactNode; onClick?: () => void; tone?: 'default' | 'danger' | 'primary'; title?: string }) {
+export function GhostButton({ icon, children, onClick, tone = 'default', title, disabled = false }: { icon?: string; children?: ReactNode; onClick?: () => void; tone?: 'default' | 'danger' | 'primary'; title?: string; disabled?: boolean }) {
   const styles = {
     default: `border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);`,
     danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;',
     primary: 'border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;',
   }[tone];
   return (
-    <button type="button" title={title} onClick={onClick} style={css(`height:42px;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;${styles}`)}>
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      style={css(`height:42px;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? 0.45 : 1};display:flex;align-items:center;gap:6px;font-family:inherit;${styles}`)}
+    >
       {icon && <Icon name={icon} size={18} />}
       {children}
     </button>

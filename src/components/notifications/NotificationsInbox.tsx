@@ -4,6 +4,8 @@ import { css } from '@/lib/css';
 import { useNotifications } from '@/state/NotificationContext';
 
 const TABS = ['All', 'Orders', 'Messages', 'Wishlist', 'Updates'];
+/** The admin console has no wishlist, so that filter is dropped there. */
+const ADMIN_TABS = ['All', 'Orders', 'Messages', 'Updates'];
 
 const STYLE: Record<string, { icon: string; tint: string; ic: string }> = {
   Orders: { icon: 'shopping_bag', tint: 'var(--ag-surface-2)', ic: '#D6336C' },
@@ -27,12 +29,21 @@ const relTime = (iso: string) => {
  * "view all"/`/…/notifications` pages so there's one list UI instead of three.
  * `orderBasePath` (e.g. '/buyer' or '/seller') lets a row with an order_id
  * deep-link to that console's order screen; admin has none, so it's optional.
+ *
+ * `embedded` drops the back button and page title for hosts that already draw a
+ * header around the outlet — the admin console did, so the screen showed two
+ * competing titles (its own "Notifications" under the layout's own heading).
  */
-export function NotificationsInbox({ backTo, orderBasePath }: { backTo: string; orderBasePath?: string }) {
+export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: {
+  backTo: string;
+  orderBasePath?: string;
+  embedded?: boolean;
+}) {
   const navigate = useNavigate();
   const { items, loading, markRead, markAllRead, unreadCount } = useNotifications();
   const [tab, setTab] = useState('All');
 
+  const tabs = embedded ? ADMIN_TABS : TABS;
   const notifs = items.filter((n) => tab === 'All' || n.type === tab);
 
   const open = async (n: (typeof items)[number]) => {
@@ -42,11 +53,15 @@ export function NotificationsInbox({ backTo, orderBasePath }: { backTo: string; 
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
-      <div style={css('padding:6px 20px 8px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate(backTo)} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
-        </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
+      <div style={css(`padding:6px 20px 8px;display:flex;align-items:center;gap:10px;${embedded ? 'justify-content:flex-end;min-height:0;' : ''}`)}>
+        {!embedded && (
+          <>
+            <button onClick={() => navigate(backTo)} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+            </button>
+            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
+          </>
+        )}
         {unreadCount > 0 && (
           <button onClick={() => markAllRead()} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;')}>
             Mark all read
@@ -55,7 +70,7 @@ export function NotificationsInbox({ backTo, orderBasePath }: { backTo: string; 
       </div>
 
       <div className="agx-scroll" style={css('display:flex;gap:8px;overflow-x:auto;padding:4px 20px 10px;')}>
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const on = tab === t;
           return (
             <button key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 15px;border:none;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};`)}>

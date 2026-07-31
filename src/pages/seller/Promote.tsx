@@ -66,11 +66,16 @@ export function Promote() {
     return m;
   }, [placements]);
 
+  // Two-step inline confirm, matching how MyProducts and OrderDetail guard their
+  // destructive actions — a native window.confirm was the only browser dialog
+  // left in the console and broke out of the app's own visual language.
+  const [confirmDraft, setConfirmDraft] = useState<string | null>(null);
+
   const removeDraft = async (id: string) => {
-    if (!window.confirm('Delete this unpaid draft?')) return;
     try {
       await deleteDraft(id);
       showToast('Draft deleted');
+      setConfirmDraft(null);
       reload();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not delete draft');
@@ -145,12 +150,22 @@ export function Promote() {
                       {status === 'pending_payment' ? 'Finish & pay' : status === 'changes_requested' ? 'Edit & resubmit' : 'Edit ad'}
                     </button>
                   )}
-                  {status === 'pending_payment' && (
-                    <button onClick={() => removeDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                  {status === 'pending_payment' && confirmDraft !== c.id && (
+                    <button onClick={() => setConfirmDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       Delete draft
                     </button>
                   )}
                 </div>
+
+                {status === 'pending_payment' && confirmDraft === c.id && (
+                  <div style={css('margin-top:10px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:12px;padding:11px 13px;')}>
+                    <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-bad-text);')}>Delete this unpaid draft? This can’t be undone.</div>
+                    <div style={css('display:flex;gap:8px;margin-top:9px;')}>
+                      <button onClick={() => setConfirmDraft(null)} style={css('flex:1;height:38px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Cancel</button>
+                      <button onClick={() => removeDraft(c.id)} style={css('flex:1;height:38px;border:none;background:#D6455A;color:#fff;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Delete</button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

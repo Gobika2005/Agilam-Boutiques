@@ -26,11 +26,21 @@ export async function broadcast(audience: Audience, title: string, body: string)
 }
 
 /** Rough audience sizes so the composer can preview reach before sending. */
+/**
+ * How many people each audience reaches.
+ *
+ * "Everyone" is buyers + sellers, matching what `broadcast_notification` sends
+ * (migration 0050). It used to count every profile row, so it silently included
+ * admins and the tiles never added up — Everyone showed 19 against 4 buyers and
+ * 13 sellers. Derived from the two role counts rather than a third query so the
+ * arithmetic cannot drift again.
+ */
 export async function fetchAudienceSizes(): Promise<{ all: number; buyer: number; seller: number }> {
-  const [all, buyer, seller] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+  const [buyer, seller] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('role', 'buyer'),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('role', 'seller'),
   ]);
-  return { all: all.count ?? 0, buyer: buyer.count ?? 0, seller: seller.count ?? 0 };
+  const b = buyer.count ?? 0;
+  const s = seller.count ?? 0;
+  return { all: b + s, buyer: b, seller: s };
 }

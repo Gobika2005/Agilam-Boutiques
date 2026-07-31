@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
@@ -42,7 +42,11 @@ export function SignIn() {
     }
   }
 
-  async function handleSignIn() {
+  // Takes the submit event because the fields live in a real <form>: that is
+  // what makes Enter in the email/password field sign in, the way every other
+  // login on the web behaves.
+  async function handleSignIn(e?: FormEvent) {
+    e?.preventDefault();
     const trimmedEmail = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
     if (!password) return toast('Enter your password');
@@ -85,10 +89,14 @@ export function SignIn() {
       sub={`Sign in to continue to your ${roleWord} workspace.`}
       onBack={() => navigate('/buyer/home')}
     >
+      {/* A real form, so Enter submits and password managers recognise the pair. */}
+      <form onSubmit={handleSignIn} style={css('display:flex;flex-direction:column;gap:15px;')}>
       <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
         Email or phone
         <input
           type="email"
+          name="email"
+          autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="hello@mangaimart.com"
@@ -106,13 +114,14 @@ export function SignIn() {
       </div>
 
       <button
-        onClick={handleSignIn}
+        type="submit"
         disabled={sending}
         style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;')}
       >
         {sending ? 'Signing in…' : 'Login'}
         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </button>
+      </form>
 
       <div style={css('display:flex;align-items:center;gap:12px;color:var(--ag-muted-soft);font-size:13px;')}>
         <div style={css('flex:1;height:1px;background:var(--ag-border);')} />or continue with<div style={css('flex:1;height:1px;background:var(--ag-border);')} />

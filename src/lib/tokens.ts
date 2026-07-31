@@ -14,26 +14,32 @@ export function initial(name: string) {
 
 type StatusStyle = { bg: string; fg: string };
 
+/** Theme tokens, never literal hex — see the note on `statusStyle` in
+ *  @/data/demo, which these mirror. */
 export function statusStyle(status: string): StatusStyle {
+  const good = { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' };
+  const warn = { bg: 'var(--ag-warn-bg)', fg: 'var(--ag-warn-text)' };
+  const bad = { bg: 'var(--ag-bad-bg)', fg: 'var(--ag-bad-text)' };
+  const neutral = { bg: 'var(--ag-surface-2)', fg: 'var(--ag-muted)' };
   const map: Record<string, StatusStyle> = {
-    Pending: { bg: '#FBF0DA', fg: '#B8860B' },
-    Shipped: { bg: '#E6F0FA', fg: '#3A6EA5' },
-    Delivered: { bg: '#E5F3EC', fg: '#218456' },
-    Approved: { bg: '#E5F3EC', fg: '#218456' },
-    Active: { bg: '#E5F3EC', fg: '#218456' },
-    Live: { bg: '#E5F3EC', fg: '#218456' },
-    Settled: { bg: '#E5F3EC', fg: '#218456' },
-    Due: { bg: '#FBF0DA', fg: '#B8860B' },
-    Paused: { bg: '#FBF0DA', fg: '#B8860B' },
-    Rejected: { bg: '#FBE3E3', fg: '#C0392B' },
-    Expired: { bg: '#FBE3E3', fg: '#C0392B' },
-    Draft: { bg: '#F1E4EB', fg: '#8A7078' },
+    Pending: warn,
+    Shipped: { bg: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)' },
+    Delivered: good,
+    Approved: good,
+    Active: good,
+    Live: good,
+    Settled: good,
+    Due: warn,
+    Paused: warn,
+    Rejected: bad,
+    Expired: bad,
+    Draft: neutral,
   };
-  return map[status] || { bg: '#F1E4EB', fg: '#8A7078' };
+  return map[status] || neutral;
 }
 
 export function stockInfo(stock: number) {
-  if (stock === 0) return { label: 'Out of stock', bg: '#FBE3E3', fg: '#D6455A' };
-  if (stock <= 5) return { label: `Low · ${stock} left`, bg: '#FBF0DA', fg: '#C99A3F' };
-  return { label: 'In stock', bg: '#E5F3EC', fg: '#2FA36B' };
+  if (stock === 0) return { label: 'Out of stock', bg: 'var(--ag-bad-bg)', fg: 'var(--ag-bad-text)' };
+  if (stock <= 5) return { label: `Low · ${stock} left`, bg: 'var(--ag-warn-bg)', fg: 'var(--ag-warn-text)' };
+  return { label: 'In stock', bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' };
 }

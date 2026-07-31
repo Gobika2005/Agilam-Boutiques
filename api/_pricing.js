@@ -19,26 +19,25 @@
  * helper imported by create-order.js / place-order.js, not an endpoint.
  */
 
-// Mirror of POLICY_TERMS.codFee / codMaxOrder in src/data/company.ts (which
-// src/lib/pricing.ts and the buyer policy pages both read). The COD fee is per
-// delivery — one boutique order is one cash collection — while the cap applies
-// to the whole cart, so it cannot be dodged by splitting a large bag across
-// several boutiques. Change all three together.
-export const COD_FEE = 49;
-export const COD_MAX_ORDER = 10000;
-
-// Free delivery over this value; a fee below it. Mirror of FREE_SHIP_MIN /
-// SHIP_FEE in src/lib/pricing.ts.
-const FREE_SHIP_MIN = 2000;
-const SHIP_FEE = 99;
+// The commercial terms (COD fee and cap, delivery threshold and fee) are
+// admin-editable and come from the `platform_settings` row via
+// api/_settings.js — callers load them with `loadTerms(supabase)` and pass them
+// in. They used to be the hardcoded constants below, which meant the Platform
+// Settings page changed nothing and the client's `src/lib/pricing.ts` was the
+// only place a fee could be adjusted. `DEFAULT_TERMS` is the fallback.
+//
+// The COD fee is per delivery — one boutique order is one cash collection —
+// while the cap applies to the whole cart, so it cannot be dodged by splitting
+// a large bag across several boutiques.
+import { DEFAULT_TERMS } from './_settings.js';
 
 // Mirror of baseShipFee() in src/lib/pricing.ts: flat, once per cart, free over
 // the threshold — the rule published in the buyer's delivery policy. A seller's
 // own `boutiques.delivery_charge` is a logistics setting on their side and is
 // deliberately NOT part of what the buyer pays.
-function shipFeeFor(groupTotals) {
+function shipFeeFor(groupTotals, terms) {
   const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
-  return cartSubtotal === 0 || cartSubtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
+  return cartSubtotal === 0 || cartSubtotal >= terms.free_delivery_over ? 0 : terms.standard_shipping;
 }
 
 /**
@@ -56,7 +55,7 @@ export async function loadCoupon(supabase, code) {
   try {
     const { data, error } = await supabase
       .from('coupons')
-      .select('id, code, boutique_id, type, off, min_subtotal, max_discount, expires_at, active')
+      .select('id, code, boutique_id, type, off, min_subtotal, max_discount, usage_limit, used_count, expires_at, active')
       .eq('code', String(code).trim().toUpperCase())
       .eq('active', true)
       .gte('expires_at', today)
@@ -66,6 +65,12 @@ export async function loadCoupon(supabase, code) {
       return null;
     }
     if (!data) return null;
+    // A code that has hit its redemption cap (migration 0049) prices as no
+    // coupon, the same as an expired one. `redeemCoupon` below re-checks this
+    // atomically at the moment the order is written — this is the cheap
+    // pre-check so the buyer sees the right total rather than a late failure.
+    const limit = data.usage_limit == null ? null : Number(data.usage_limit);
+    if (limit != null && Number(data.used_count ?? 0) >= limit) return null;
     return {
       id: data.id,
       code: data.code,
@@ -78,6 +83,30 @@ export async function loadCoupon(supabase, code) {
   } catch (e) {
     console.error('loadCoupon threw:', e?.message ?? e);
     return null;
+  }
+}
+
+/**
+ * Atomically take one redemption of a code, returning false if the cap was
+ * already reached. Backed by the `redeem_coupon` function in migration 0049, so
+ * two checkouts racing for the last redemption cannot both win.
+ *
+ * A missing function (migration not yet applied) resolves to `true`: an
+ * un-migrated deploy keeps behaving exactly as it did before rather than
+ * refusing every coupon.
+ */
+export async function redeemCoupon(supabase, code) {
+  if (!supabase || !code) return true;
+  try {
+    const { data, error } = await supabase.rpc('redeem_coupon', { p_code: String(code).trim().toUpperCase() });
+    if (error) {
+      console.error('redeemCoupon failed:', error?.message ?? error);
+      return true;
+    }
+    return data !== false;
+  } catch (e) {
+    console.error('redeemCoupon threw:', e?.message ?? e);
+    return true;
   }
 }
 
@@ -96,14 +125,14 @@ function isEligible(coupon, cartSubtotal, groupTotals) {
 }
 
 // Mirror of couponSavings() in src/lib/pricing.ts.
-function couponSavings(coupon, cartSubtotal, groupTotals) {
+function couponSavings(coupon, cartSubtotal, groupTotals, terms) {
   if (!isEligible(coupon, cartSubtotal, groupTotals)) return 0;
   const base = couponBase(coupon, cartSubtotal, groupTotals);
   if (coupon.type === 'pct') {
     return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   }
   if (coupon.type === 'flat') return Math.min(coupon.off, base);
-  return shipFeeFor(groupTotals); // 'ship' — the delivery fee waived
+  return shipFeeFor(groupTotals, terms); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -114,14 +143,16 @@ function couponSavings(coupon, cartSubtotal, groupTotals) {
  *
  * `perBoutiqueDiscount` is the seller-funded portion to net off each boutique's
  * order total (empty for a platform coupon). `codDeliveries` is the number of
- * boutique orders being paid in cash — 0 for a prepaid checkout.
+ * boutique orders being paid in cash — 0 for a prepaid checkout. `terms` comes
+ * from `loadTerms(supabase)`; it defaults to the published fallback so an older
+ * caller still prices at the policy rates rather than NaN.
  */
-export function computeCartPricing(groupTotals, coupon, codDeliveries = 0) {
+export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms = DEFAULT_TERMS) {
   const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
   const eligible = coupon && isEligible(coupon, cartSubtotal, groupTotals) ? coupon : null;
 
   const freeShip = eligible?.type === 'ship';
-  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals) : 0;
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals, terms) : 0;
 
   // Only a seller coupon's discount is allocated to a boutique (and so funded by
   // that seller). A platform coupon reduces the buyer's payment but no order.
@@ -130,8 +161,8 @@ export function computeCartPricing(groupTotals, coupon, codDeliveries = 0) {
     perBoutiqueDiscount[eligible.boutique_id] = discount;
   }
 
-  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals);
-  const codFee = Math.max(0, codDeliveries) * COD_FEE;
+  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, terms);
+  const codFee = Math.max(0, codDeliveries) * terms.cod_fee;
   const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
 
   return {

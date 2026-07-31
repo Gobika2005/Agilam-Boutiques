@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { supabase } from '@/lib/supabase';
 import { POLICY_TERMS, COMPANY } from '@/data/company';
 
@@ -6,6 +7,12 @@ import { POLICY_TERMS, COMPANY } from '@/data/company';
  * hold window…) added in migration 0048. Falls back to the compile-time
  * defaults in company.ts when the table isn't there yet, so the console renders
  * and degrades gracefully before the migration is applied.
+ *
+ * These are not just for the console. `src/lib/pricing.ts` prices every bag from
+ * the cached row below, and `api/_settings.js` loads the same row server-side so
+ * api/place-order.js re-derives an identical total. Before this was wired the
+ * admin form saved values nothing ever read, and the storefront quietly kept
+ * charging the compile-time constants.
  */
 export interface PlatformSettings {
   commission_pct: number;
@@ -45,7 +52,27 @@ export async function fetchSettings(): Promise<PlatformSettings> {
     return DEFAULT_SETTINGS;
   }
   if (!data) return DEFAULT_SETTINGS;
-  return { ...DEFAULT_SETTINGS, ...(data as Partial<PlatformSettings>) };
+  return merge(data as Partial<PlatformSettings>);
+}
+
+/**
+ * Overlay a stored row on the defaults, ignoring blanks.
+ *
+ * A column that is null, an empty string or a non-finite number keeps its
+ * default rather than overwriting it — otherwise an unset `support_email`
+ * blanks out the published support address, and a null fee would price a cart
+ * at NaN. This is why the Settings form showed an empty support email despite
+ * `COMPANY.supportEmail` having a value.
+ */
+function merge(row: Partial<PlatformSettings>): PlatformSettings {
+  const out = { ...DEFAULT_SETTINGS };
+  for (const [k, v] of Object.entries(row) as [keyof PlatformSettings, unknown][]) {
+    if (v == null) continue;
+    if (typeof v === 'string' && v.trim() === '') continue;
+    if (typeof v === 'number' && !Number.isFinite(v)) continue;
+    (out as Record<string, unknown>)[k] = v;
+  }
+  return out;
 }
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
@@ -60,5 +87,51 @@ export async function saveSettings(patch: Partial<PlatformSettings>, updatedBy?:
     console.error('saveSettings failed:', error.message);
     return { ok: false, error: 'Could not save settings. Please try again.' };
   }
+  // Push the saved values into the live cache so pricing, the policy copy and
+  // every open screen pick them up without a reload.
+  publish({ ...current, ...patch });
   return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Live cache
+ *
+ * Pricing runs in synchronous code paths (cart memos, render), so it cannot
+ * await a fetch. The app loads the row once at boot and everything reads this
+ * snapshot; until it resolves, the compile-time defaults apply — the same
+ * numbers the policy pages quote, so a slow load can never price a bag at zero.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+let current: PlatformSettings = DEFAULT_SETTINGS;
+let inflight: Promise<PlatformSettings> | null = null;
+const listeners = new Set<() => void>();
+
+function publish(next: PlatformSettings) {
+  current = next;
+  listeners.forEach((l) => l());
+}
+
+/** The settings in force right now. Never null — defaults until the load lands. */
+export function currentSettings(): PlatformSettings {
+  return current;
+}
+
+/** Load (once) and cache the platform settings. Safe to call repeatedly. */
+export function loadSettings(force = false): Promise<PlatformSettings> {
+  if (inflight) return inflight;
+  if (!force && current !== DEFAULT_SETTINGS) return Promise.resolve(current);
+  inflight = fetchSettings()
+    .then((s) => { publish(s); return s; })
+    .finally(() => { inflight = null; });
+  return inflight;
+}
+
+function subscribe(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+/** Re-renders the component when the platform settings land or change. */
+export function useSettings(): PlatformSettings {
+  return useSyncExternalStore(subscribe, currentSettings, currentSettings);
 }

@@ -161,16 +161,29 @@ export interface CustomerStat {
   tone: number;
 }
 
-const CUSTOMER_SELECT = 'buyer_id, total, guest_name, guest_phone, guest_city, buyer:profiles!orders_buyer_id_fkey(full_name, city)';
+const CUSTOMER_SELECT = 'buyer_id, total, status, refunded, guest_name, guest_phone, guest_city, buyer:profiles!orders_buyer_id_fkey(full_name, city)';
 
 type CustomerRow = {
   buyer_id: string | null;
   total: number;
+  status: OrderStatus;
+  refunded: boolean;
   guest_name: string | null;
   guest_phone: string | null;
   guest_city: string | null;
   buyer: { full_name: string; city: string | null } | null;
 };
+
+/**
+ * Did this order actually earn money from the customer?
+ *
+ * Lifetime value used to sum every row, so a buyer whose orders were all
+ * rejected still ranked as a top spender — one test account showed ₹29k of
+ * "lifetime" spend made entirely of rejected COD orders. Only orders that
+ * completed and were not refunded count towards what someone has spent.
+ */
+const isEarnedOrder = (r: Pick<CustomerRow, 'status' | 'refunded'>) =>
+  !r.refunded && r.status !== 'rejected' && r.status !== 'cancelled';
 
 export async function fetchCustomersForBoutique(boutiqueId: string): Promise<CustomerStat[]> {
   const { data, error } = await supabase.from('orders').select(CUSTOMER_SELECT).eq('boutique_id', boutiqueId);
@@ -184,7 +197,11 @@ export async function fetchCustomersAdmin(): Promise<CustomerStat[]> {
   return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);
 }
 
-function aggregateCustomers(rows: CustomerRow[]): CustomerStat[] {
+function aggregateCustomers(all: CustomerRow[]): CustomerStat[] {
+  // Rejected, cancelled and refunded orders are not spend. They are dropped
+  // before aggregation so "orders", "spent" and every average derived from them
+  // describe money the platform actually took.
+  const rows = all.filter(isEarnedOrder);
   const map = new Map<string, CustomerStat>();
   rows.forEach((r, i) => {
     // Registered buyers group by id; anonymous guests by phone (falling back to

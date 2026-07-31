@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS } from '@/data/demo';
 import { computeTotals, codBlockedReason, findCoupon } from '@/lib/pricing';
+import { loadSettings, useSettings } from '@/data/settings';
 import { fetchActiveCoupons, type CouponRow } from '@/data/coupons';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
@@ -499,6 +500,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const payingCash = payMethod === 'cod';
 
+  // Commission, delivery and COD terms are admin-editable (Platform Settings).
+  // Fetch the row once at boot; until it lands `useSettings()` hands back the
+  // compile-time defaults, and every total below re-derives when it arrives.
+  useEffect(() => { void loadSettings(); }, []);
+  const terms = useSettings();
+
   // The applied code resolved to the coupon row that actually qualifies on this
   // bag (per-boutique aware), or undefined. Shared by the totals and the COD gate
   // so both price the identical discount.
@@ -509,8 +516,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   /** Why cash isn't offered on this bag, or null when it is. */
   const codUnavailableReason = useMemo(
-    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod),
-    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod],
+    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms),
+    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms],
   );
 
   // Adding one more item can push a bag past the COD cap. Silently leaving
@@ -528,8 +535,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // The COD handling fee is one per delivery, so it only enters the total once
   // the buyer has actually chosen to pay cash.
   const { discount, shipFee, codFee, total } = useMemo(
-    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash ? cartBoutiques.deliveries : 0),
-    [subtotal, boutiqueSubtotals, coupon, payingCash, cartBoutiques.deliveries],
+    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash ? cartBoutiques.deliveries : 0, terms),
+    [subtotal, boutiqueSubtotals, coupon, payingCash, cartBoutiques.deliveries, terms],
   );
 
   const orderItems = useMemo(

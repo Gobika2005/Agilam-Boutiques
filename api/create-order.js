@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
 import { computeCartPricing, loadCoupon } from './_pricing.js';
+import { loadTerms } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
 /**
@@ -130,7 +131,8 @@ export default async function handler(req, res) {
   // The coupon (if any) is re-fetched and applied here so the Razorpay order is
   // opened for the exact discounted amount place-order will re-verify.
   const coupon = await loadCoupon(supabase, couponCode);
-  const paise = computeCartPricing(priced.groupTotals, coupon).totalPaise;
+  const terms = await loadTerms(supabase);
+  const paise = computeCartPricing(priced.groupTotals, coupon, 0, terms).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   if (!Number.isFinite(paise) || paise < 100) {

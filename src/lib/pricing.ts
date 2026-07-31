@@ -13,10 +13,21 @@
  * goods value in the bag) alongside the cart subtotal.
  */
 import type { CouponRow } from '@/data/coupons';
-import { POLICY_TERMS } from '@/data/company';
+import { currentSettings, type PlatformSettings } from '@/data/settings';
 
-export const FREE_SHIP_MIN = 2000;
-export const SHIP_FEE = 99;
+/**
+ * The commercial terms a calculation runs under.
+ *
+ * Every exported function takes these as a trailing argument defaulting to the
+ * live admin-editable settings (`src/data/settings.ts`), so changing the
+ * commission, COD fee or delivery threshold in the console actually re-prices
+ * the storefront. They used to be module constants frozen at import time, which
+ * is why the Platform Settings page had no effect on anything.
+ *
+ * Components that display a fee should read `useSettings()` so they re-render
+ * when the row loads; pure calculations can rely on the default.
+ */
+export type Terms = Pick<PlatformSettings, 'free_delivery_over' | 'standard_shipping' | 'cod_fee' | 'cod_max_order'>;
 
 /**
  * Delivery is a PLATFORM charge, not a per-boutique one.
@@ -41,8 +52,7 @@ export const SHIP_FEE = 99;
  * The cap applies to the WHOLE cart rather than each order, otherwise splitting
  * a ₹50,000 bag across five boutiques would dodge it.
  */
-export const COD_FEE = POLICY_TERMS.codFee;
-export const COD_MAX_ORDER = POLICY_TERMS.codMaxOrder;
+/* The COD fee and cap now come from `terms` on each call — see `Terms` above. */
 
 /** Today as a UTC YYYY-MM-DD string — compared lexicographically against a
  *  coupon's `expires_at`. Matches the server (api/_pricing.js) exactly so a
@@ -68,8 +78,8 @@ export function isExpired(coupon: CouponRow): boolean {
 
 /** Delivery before any coupon — free over the threshold, and on an empty bag.
  *  Flat and once per cart, exactly as the published delivery policy says. */
-export function baseShipFee(subtotal: number): number {
-  return subtotal === 0 || subtotal >= FREE_SHIP_MIN ? 0 : SHIP_FEE;
+export function baseShipFee(subtotal: number, terms: Terms = currentSettings()): number {
+  return subtotal === 0 || subtotal >= terms.free_delivery_over ? 0 : terms.standard_shipping;
 }
 
 /**
@@ -97,12 +107,13 @@ export function couponSavings(
   coupon: CouponRow,
   cartSubtotal: number,
   boutiqueSubtotals: Record<string, number>,
+  terms: Terms = currentSettings(),
 ): number {
   if (!isEligible(coupon, cartSubtotal, boutiqueSubtotals)) return 0;
   const base = couponBase(coupon, cartSubtotal, boutiqueSubtotals);
   if (coupon.type === 'pct') return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   if (coupon.type === 'flat') return Math.min(coupon.off, base); // never exceed the goods it applies to
-  return baseShipFee(cartSubtotal); // 'ship' — the delivery fee waived
+  return baseShipFee(cartSubtotal, terms); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -134,12 +145,13 @@ export function computeTotals(
   boutiqueSubtotals: Record<string, number>,
   coupon: CouponRow | undefined,
   codDeliveries = 0,
+  terms: Terms = currentSettings(),
 ) {
   const eligible = coupon && isEligible(coupon, cartSubtotal, boutiqueSubtotals) ? coupon : undefined;
   const freeShip = eligible?.type === 'ship';
-  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, boutiqueSubtotals) : 0;
-  const shipFee = freeShip ? 0 : baseShipFee(cartSubtotal);
-  const codFee = Math.max(0, codDeliveries) * COD_FEE;
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, boutiqueSubtotals, terms) : 0;
+  const shipFee = freeShip ? 0 : baseShipFee(cartSubtotal, terms);
+  const codFee = Math.max(0, codDeliveries) * terms.cod_fee;
   return {
     coupon: eligible,
     discount,
@@ -161,11 +173,12 @@ export function codBlockedReason(
   boutiqueSubtotals: Record<string, number>,
   coupon: CouponRow | undefined,
   codEnabledEverywhere: boolean,
+  terms: Terms = currentSettings(),
 ): string | null {
   if (!codEnabledEverywhere) return 'One of the boutiques in your bag does not accept cash on delivery.';
-  const payable = computeTotals(cartSubtotal, boutiqueSubtotals, coupon).total;
-  if (payable > COD_MAX_ORDER) {
-    return `Cash on delivery is available on orders up to ₹${COD_MAX_ORDER.toLocaleString('en-IN')}.`;
+  const payable = computeTotals(cartSubtotal, boutiqueSubtotals, coupon, 0, terms).total;
+  if (payable > terms.cod_max_order) {
+    return `Cash on delivery is available on orders up to ₹${terms.cod_max_order.toLocaleString('en-IN')}.`;
   }
   return null;
 }

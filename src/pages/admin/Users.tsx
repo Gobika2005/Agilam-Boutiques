@@ -327,14 +327,22 @@ export function Users() {
             { value: 'deleted', label: 'Deleted' },
           ]}
         />
-        <GhostButton icon="download" onClick={exportCsv}>Export</GhostButton>
-        <GhostButton icon="person_add" tone="primary" onClick={() => setCreateOpen(true)}>Create User</GhostButton>
+        {/* Both of these go through the same service-role endpoint the list
+            uses. Offering them while it is down just produces a second 500. */}
+        <GhostButton icon="download" onClick={exportCsv} disabled={!!error}>Export</GhostButton>
+        <GhostButton icon="person_add" tone="primary" onClick={() => setCreateOpen(true)} disabled={!!error}>Create User</GhostButton>
       </div>
 
       {error && (
-        <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
+        <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:flex-start;gap:8px;line-height:1.5;')}>
           <Icon name="error" size={18} color="#B02454" />
-          Couldn&apos;t load users: {error}
+          <span>
+            Couldn&apos;t load users: {error}
+            <br />
+            <span style={css('font-weight:600;opacity:.85;')}>
+              Creating, exporting and editing users are unavailable until this is resolved. The rest of the console is unaffected.
+            </span>
+          </span>
         </div>
       )}
 

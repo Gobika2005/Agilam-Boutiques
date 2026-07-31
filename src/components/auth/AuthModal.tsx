@@ -61,7 +61,7 @@ export function AuthModal({
 }
 
 /** Password field with the design's inline visibility toggle. */
-export function PasswordField({ value, onChange, label = 'Password' }: { value: string; onChange: (v: string) => void; label?: string }) {
+export function PasswordField({ value, onChange, label = 'Password', autoComplete = 'current-password', name = 'password' }: { value: string; onChange: (v: string) => void; label?: string; autoComplete?: string; name?: string }) {
   const [show, setShow] = useState(false);
   return (
     <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
@@ -69,6 +69,8 @@ export function PasswordField({ value, onChange, label = 'Password' }: { value: 
       <div style={css('display:flex;align-items:center;gap:8px;margin-top:7px;background:var(--ag-surface);border:1.5px solid var(--ag-border);border-radius:14px;padding:0 15px;height:52px;')}>
         <input
           type={show ? 'text' : 'password'}
+          name={name}
+          autoComplete={autoComplete}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           style={css('border:none;background:none;flex:1;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')}

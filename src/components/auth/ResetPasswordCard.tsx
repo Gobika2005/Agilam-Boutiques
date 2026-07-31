@@ -90,8 +90,8 @@ export function ResetPasswordCard({
         <div style={css('text-align:center;color:var(--ag-muted);font-size:14px;')}>Verifying your reset link…</div>
       ) : (
         <>
-          <PasswordField value={password} onChange={setPassword} label="New password" />
-          <PasswordField value={confirm} onChange={setConfirm} label="Confirm new password" />
+          <PasswordField value={password} onChange={setPassword} label="New password" name="new-password" autoComplete="new-password" />
+          <PasswordField value={confirm} onChange={setConfirm} label="Confirm new password" name="confirm-password" autoComplete="new-password" />
 
           <button onClick={handleReset} disabled={busy} style={css(primaryButton)}>
             {busy ? 'Updating…' : 'Update password'}
