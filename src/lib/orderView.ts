@@ -33,7 +33,14 @@ export type OrderView = {
   collectAmount: number;
   codFee: number;
   shippingFee: number;
-  /** Goods + delivery + cash handling: what the buyer was charged in full. */
+  /**
+   * Platform-funded coupon discount on this order (migration 0053). The seller
+   * is still settled on the full goods value, so this is shown to explain why
+   * the buyer pays less than goods + delivery + handling.
+   */
+  platformDiscount: number;
+  /** Goods + delivery + cash handling − any platform coupon: what the buyer
+   *  actually pays, and so exactly what is collected at a COD door. */
   grandTotal: number;
   paymentStatus: NonNullable<OrderWithDetails['payment_status']>;
   cancelReason: string | null;
@@ -54,7 +61,12 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
   const codFee = Number(o.cod_fee ?? 0);
   const shippingFee = Number(o.shipping_fee ?? 0);
   const isCod = o.payment_method === 'COD';
-  const grandTotal = Number(o.total) + shippingFee + codFee;
+  // A platform coupon is funded by us and so never lands in `total` (the seller
+  // is paid in full), but the buyer genuinely does not owe it — leaving it out
+  // here is what used to make a cash order ask for the undiscounted amount at
+  // the door. See migration 0053.
+  const platformDiscount = Number(o.platform_discount ?? 0);
+  const grandTotal = Math.max(0, Number(o.total) + shippingFee + codFee - platformDiscount);
   // A cancelled or rejected order is never collected against: nobody is at the
   // door and no cash changes hands. Without this the order still counted toward
   // the seller's outstanding cash — the Orders banner and the "To collect" tab
@@ -88,6 +100,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     collectAmount: isCod && paymentStatus === 'pending' && collectable ? grandTotal : 0,
     codFee,
     shippingFee,
+    platformDiscount,
     grandTotal,
     paymentStatus,
     cancelReason: o.cancel_reason ?? null,

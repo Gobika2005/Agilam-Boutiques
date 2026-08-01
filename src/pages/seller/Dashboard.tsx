@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { TONES, fmt, statusStyle } from '@/data/demo';
@@ -6,6 +7,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { fetchProductsByBoutique } from '@/data/products';
+import { fetchBoutiquePrivate } from '@/data/boutiques';
 import { countUnreadNotifications } from '@/data/notifications';
 import { fetchReviewsForBoutique } from '@/data/reviews';
 import { toOrderView } from '@/lib/orderView';
@@ -45,6 +47,23 @@ export function Dashboard() {
     () => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
+  // Bank details live in `boutique_private`, which is fetched separately from
+  // the boutique row — a null result (not-yet-loaded, or no row) must NOT flash
+  // the warning, so this stays false until we actually know.
+  const [needsBankDetails, setNeedsBankDetails] = useState(false);
+  const boutiqueId = boutique?.id;
+  useEffect(() => {
+    if (!boutiqueId) return;
+    let cancelled = false;
+    fetchBoutiquePrivate(boutiqueId)
+      .then((p) => {
+        if (cancelled || !p) return;
+        setNeedsBankDetails(!p.bank_account_number || !p.bank_ifsc);
+      })
+      .catch(() => { /* never block the dashboard on a supporting lookup */ });
+    return () => { cancelled = true; };
+  }, [boutiqueId]);
+
   const { data: unread } = useAsync(
     () => (profile ? countUnreadNotifications(profile.id) : Promise.resolve(0)),
     [profile?.id],
@@ -170,6 +189,27 @@ export function Dashboard() {
         </span>
         <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
       </button>
+
+      {/* Payouts go to a bank account only. A seller who onboarded under the old
+          "UPI or bank" rule can be fully approved and selling while having no
+          bank account on file — so they would earn money we have no way to send
+          them. This is the one nudge that cannot be dismissed, because the cost
+          of missing it is unpaid earnings. ------------------------------------ */}
+      {boutique && needsBankDetails && (
+        <button
+          onClick={() => navigate('/seller/onboarding')}
+          style={css('width:100%;margin-top:14px;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--ag-warn-border,var(--ag-surface-3));background:var(--ag-warn-bg);border-radius:18px;padding:14px 16px;cursor:pointer;font-family:inherit;')}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>account_balance</span>
+          <span style={css('flex:1;min-width:0;')}>
+            <span style={css('display:block;font-size:13.5px;font-weight:800;color:var(--ag-warn-text);')}>Add your bank account to get paid</span>
+            <span style={css('display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--ag-warn-text);opacity:.9;line-height:1.5;')}>
+              MangaiMart settles earnings by bank transfer only. We can’t send your money until you add an account.
+            </span>
+          </span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);flex:none;")}>chevron_right</span>
+        </button>
+      )}
 
       {/* Greeting + what needs the seller right now. This sits directly under
           the boutique card because it answers the only question an owner opens

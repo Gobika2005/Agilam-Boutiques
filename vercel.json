@@ -7,10 +7,6 @@
   ],
   "crons": [
     {
-      "path": "/api/run-payouts",
-      "schedule": "0 2 * * *"
-    },
-    {
       "path": "/api/ads?action=lifecycle",
       "schedule": "15 0 * * *"
     }

@@ -590,7 +590,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ items, guest, payment, couponCode, paymentMethod }),
     });
     const data = (await res.json().catch(() => ({}))) as {
-      orders?: { order_number: string; boutique_id: string; total?: number; cod_fee?: number; shipping_fee?: number }[];
+      orders?: {
+        order_number: string;
+        boutique_id: string;
+        total?: number;
+        platform_discount?: number;
+        cod_fee?: number;
+        shipping_fee?: number;
+      }[];
       error?: string;
     };
 
@@ -628,6 +635,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       const orderLines = itemsByBoutique.get(o.boutique_id) ?? [];
       const fee = Number(o.cod_fee ?? 0);
       const shipping = Number(o.shipping_fee ?? 0);
+      // A platform coupon is funded by us, so the server keeps it out of the
+      // order's goods total and records it beside — it still has to come off
+      // what we tell the buyer to pay (and, on COD, hand over at the door).
+      const platformDiscount = Number(o.platform_discount ?? 0);
       return {
         id: '#' + o.order_number,
         orderNumber: o.order_number,
@@ -637,12 +648,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         status: 'pending',
         // Prefer the server's total: it's the authoritative goods figure, plus
         // the delivery and cash-handling this particular order carries.
-        total: (o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0)) + shipping + fee,
+        total: Math.max(
+          0,
+          (o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0)) + shipping + fee - platformDiscount,
+        ),
         items: orderLines,
         paymentMethod: isCodOrder ? 'COD' : 'Razorpay',
         paymentStatus: isCodOrder ? 'pending' : 'paid',
         codFee: fee,
         shippingFee: shipping,
+        platformDiscount,
       };
     });
     addOrders(placed);

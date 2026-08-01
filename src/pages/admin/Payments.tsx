@@ -1,19 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchPayoutSummaries, fetchPayoutHistory, settlePayout, PAYOUT_RATE, type PayoutSummary } from '@/data/payouts';
-import { fetchBoutiquePrivate } from '@/data/boutiques';
-import type { BoutiquePrivate } from '@/data/types';
+import {
+  fetchPayoutSummaries, fetchPayoutHistory, fetchPayoutDestinations, settlePayout,
+  PAYOUT_RATE, type PayoutSummary, type PayoutDestination,
+} from '@/data/payouts';
+import { useIfscLookup } from '@/hooks/useIfscLookup';
+import { CopyRow } from '@/components/admin/CopyRow';
 import {
   T, Card, StatCard, DataTable, StatusPill, Avatar, GhostButton, ConfirmDialog, Drawer, Field, EmptyState,
-  type Column,
+  BulkBar, type Column,
 } from '@/components/admin/kit';
 
 /** Signed money: keeps a real minus for the "seller owes us" case. */
 const money = (n: number) => (n < -0.005 ? '−' : '') + fmtInr(Math.abs(n));
 const RATE_PCT = Math.round(PAYOUT_RATE * 100);
+
+/**
+ * A bank reference is required before money OUT can be marked paid: with
+ * automatic payouts disabled, this reference is the only link between a row in
+ * this console and a real transaction at the bank. Recording dues (net < 0)
+ * moves no money and therefore has nothing to reference.
+ */
+const needsReference = (net: number) => net > 0;
 
 export function Payments() {
   const { showToast } = useShop();
@@ -21,10 +32,37 @@ export function Payments() {
   const { data: history, loading: histLoading, reload: reloadHistory } = useAsync(() => fetchPayoutHistory(), []);
 
   const [selected, setSelected] = useState<PayoutSummary | null>(null);
-  const [bank, setBank] = useState<BoutiquePrivate | null>(null);
   const [confirm, setConfirm] = useState<PayoutSummary | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Batch settlement: ticked boutiques, and the reference captured for each.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchRefs, setBatchRefs] = useState<Record<string, string>>({});
+  const [batchProgress, setBatchProgress] = useState<string | null>(null);
+
+  // Where each boutique's money has to go. Loaded for the whole table rather
+  // than per-drawer, because whether a seller CAN be paid changes what the row
+  // itself is allowed to offer.
+  const [dests, setDests] = useState<Map<string, PayoutDestination>>(new Map());
+  const [destsLoaded, setDestsLoaded] = useState(false);
+  const summaryIds = useMemo(() => (summaries ?? []).map((s) => s.boutique_id).join(','), [summaries]);
+
+  useEffect(() => {
+    if (!summaries) return;
+    let cancelled = false;
+    setDestsLoaded(false);
+    fetchPayoutDestinations(summaries.map((s) => s.boutique_id))
+      .then((m) => { if (!cancelled) { setDests(m); setDestsLoaded(true); } })
+      .catch(() => { if (!cancelled) setDestsLoaded(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryIds]);
+
+  const destOf = (id: string) => dests.get(id) ?? null;
+  /** Money out is only allowed once we know there is an account to send it to. */
+  const payable = (r: PayoutSummary) => r.net <= 0 || (destsLoaded && (destOf(r.boutique_id)?.hasBank ?? false));
 
   // Money out and money in are two different jobs. Sorting payables first (then
   // by size) stops a "seller owes us" row reading as a pending payment when the
@@ -36,18 +74,34 @@ export function Payments() {
   const totalOwedToUs = rows.reduce((s, r) => s + Math.max(-r.net, 0), 0);
   const unsettledCommission = rows.reduce((s, r) => s + r.prepaidCommission + r.codCommission, 0);
 
-  const openDrawer = async (s: PayoutSummary) => {
+  // Sellers we owe money to but have no account for. Surfaced as its own number
+  // because it is a chase-the-seller job, not a pay-the-seller job.
+  const blocked = rows.filter((r) => r.net > 0 && destsLoaded && !destOf(r.boutique_id)?.hasBank);
+  const blockedTotal = blocked.reduce((s, r) => s + r.net, 0);
+
+  const batchRows = rows.filter((r) => picked.has(r.boutique_id));
+  const batchTotal = batchRows.reduce((s, r) => s + r.net, 0);
+  // Every money-out line in the batch needs its own bank reference — one
+  // transfer, one UTR — so the run cannot start until each is filled in.
+  const batchReady = batchRows.length > 0 && batchRows.every((r) => !needsReference(r.net) || (batchRefs[r.boutique_id] ?? '').trim().length > 0);
+
+  const toggle = (id: string) =>
+    setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const selectableRows = rows.filter(payable);
+  const toggleAll = () =>
+    setPicked((p) => (p.size >= selectableRows.length ? new Set() : new Set(selectableRows.map((r) => r.boutique_id))));
+
+  const openDrawer = (s: PayoutSummary) => {
     setSelected(s);
-    setBank(null);
-    try {
-      setBank(await fetchBoutiquePrivate(s.boutique_id));
-    } catch {
-      /* bank details are a convenience here — absence never blocks a payout */
-    }
+    setNote('');
   };
 
   const doSettle = async () => {
     if (!confirm) return;
+    if (needsReference(confirm.net) && !note.trim()) {
+      showToast('Enter the bank reference / UTR before marking this paid');
+      return;
+    }
     setBusy(true);
     try {
       const rec = await settlePayout(confirm.boutique_id, note.trim() || undefined);
@@ -59,12 +113,51 @@ export function Payments() {
       setConfirm(null);
       setSelected(null);
       setNote('');
+      setPicked((p) => { const n = new Set(p); n.delete(confirm.boutique_id); return n; });
       reload();
       reloadHistory();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not settle this payout');
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * Record several settlements in one pass.
+   *
+   * Sequential, not parallel: each call stamps the orders it covers, and firing
+   * them together against the same tables invites races for no real gain at
+   * this volume. A failure stops the run and reports how far it got, so nothing
+   * is silently half-settled.
+   */
+  const doBatch = async () => {
+    const list = batchRows;
+    setBusy(true);
+    let done = 0;
+    try {
+      for (const r of list) {
+        setBatchProgress(`Recording ${done + 1} of ${list.length} — ${r.name}…`);
+        await settlePayout(r.boutique_id, batchRefs[r.boutique_id]?.trim() || undefined);
+        done += 1;
+      }
+      showToast(`Recorded ${done} payout${done === 1 ? '' : 's'}`);
+      setBatchOpen(false);
+      setPicked(new Set());
+      setBatchRefs({});
+      reload();
+      reloadHistory();
+    } catch (e) {
+      showToast(
+        done > 0
+          ? `Recorded ${done} of ${list.length}, then failed: ${e instanceof Error ? e.message : 'unknown error'}`
+          : e instanceof Error ? e.message : 'Could not record these payouts',
+      );
+      reload();
+      reloadHistory();
+    } finally {
+      setBusy(false);
+      setBatchProgress(null);
     }
   };
 
@@ -87,7 +180,14 @@ export function Payments() {
     },
     {
       key: 'cod', header: 'COD OWED', width: '1fr', align: 'right',
-      render: (r) => <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? 'var(--ag-bad-text)' : T.muted};`)}>{r.codOwed > 0 ? '−' + fmtInr(r.codOwed) : '—'}</span>,
+      // Normally the seller owes us (commission + fees on cash they hold), but a
+      // platform coupon they honoured in cash can tip this the other way — then
+      // it is a credit, and printing '—' would silently swallow money we owe.
+      render: (r) => (
+        <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? 'var(--ag-bad-text)' : r.codOwed < 0 ? 'var(--ag-good-text)' : T.muted};`)}>
+          {r.codOwed === 0 ? '—' : (r.codOwed > 0 ? '−' : '+') + fmtInr(Math.abs(r.codOwed))}
+        </span>
+      ),
     },
     {
       key: 'net', header: 'NET', width: '1.2fr', align: 'right',
@@ -101,16 +201,28 @@ export function Payments() {
       ),
     },
     {
-      key: 'action', header: '', width: '140px', align: 'right',
-      render: (r) => (
-        <div style={css('display:flex;justify-content:flex-end;')} onClick={(e) => e.stopPropagation()}>
-          {/* "Record" alone read as "record a payout" on rows where no money
-              leaves the platform. Name the direction in the button. */}
-          <GhostButton tone="primary" icon={r.net < 0 ? 'south_west' : 'payments'} onClick={() => { setNote(''); setConfirm(r); }}>
-            {r.net < 0 ? 'Record dues' : 'Pay out'}
-          </GhostButton>
-        </div>
-      ),
+      key: 'action', header: '', width: '170px', align: 'right',
+      render: (r) => {
+        // A "Pay out" button on a seller with no account leads to a dead end —
+        // the admin opens the drawer, finds nothing to copy, and closes it. Say
+        // so on the row instead, and make it the actionable thing.
+        if (r.net > 0 && destsLoaded && !destOf(r.boutique_id)?.hasBank) {
+          return (
+            <div style={css('display:flex;justify-content:flex-end;')} onClick={(e) => e.stopPropagation()}>
+              <StatusPill status="failed" label="No bank account" />
+            </div>
+          );
+        }
+        return (
+          <div style={css('display:flex;justify-content:flex-end;')} onClick={(e) => e.stopPropagation()}>
+            {/* "Record" alone read as "record a payout" on rows where no money
+                leaves the platform. Name the direction in the button. */}
+            <GhostButton tone="primary" icon={r.net < 0 ? 'south_west' : 'payments'} onClick={() => { setNote(''); openDrawer(r); }}>
+              {r.net < 0 ? 'Record dues' : 'Pay out'}
+            </GhostButton>
+          </div>
+        );
+      },
     },
   ];
 
@@ -123,6 +235,19 @@ export function Payments() {
         <StatCard label={`Commission (${RATE_PCT}% incl. gateway + tax)`} value={fmtInr(unsettledCommission)} icon="percent" tint="var(--ag-warn-bg)" ic="var(--ag-warn-text)" sub="unsettled" />
       </div>
 
+      {/* Money we owe but cannot send. Kept above the table because it needs a
+          different action entirely — chasing the seller, not paying them. */}
+      {blocked.length > 0 && (
+        <Card style="padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--ag-warn-bg);">
+          <span className="material-symbols-rounded" style={css('color:var(--ag-warn-text);')}>account_balance</span>
+          <span style={css('flex:1;min-width:220px;font-size:13px;font-weight:700;color:var(--ag-warn-text);line-height:1.5;')}>
+            {fmtInr(blockedTotal)} is owed to {blocked.length} seller{blocked.length === 1 ? '' : 's'} with no bank account on file
+            {' — '}{blocked.map((b) => b.name).slice(0, 3).join(', ')}{blocked.length > 3 ? ` +${blocked.length - 3} more` : ''}.
+            They are prompted to add one each time they open their dashboard.
+          </span>
+        </Card>
+      )}
+
       {/* Awaiting settlement */}
       <div>
         <div style={css('display:flex;align-items:baseline;gap:9px;margin-bottom:12px;')}>
@@ -134,11 +259,22 @@ export function Payments() {
               : `${rows.filter((r) => r.net > 0).length} to pay · ${rows.filter((r) => r.net < 0).length} to collect`}
           </span>
         </div>
+        <BulkBar count={picked.size}>
+          <span style={css('font-size:12.5px;font-weight:700;opacity:.85;align-self:center;')}>{money(batchTotal)}</span>
+          <GhostButton icon="close" onClick={() => setPicked(new Set())}>Clear</GhostButton>
+          <GhostButton tone="primary" icon="payments" onClick={() => { setBatchRefs({}); setBatchOpen(true); }}>
+            Record {picked.size} payout{picked.size === 1 ? '' : 's'}
+          </GhostButton>
+        </BulkBar>
         <DataTable
           columns={columns}
           rows={rows}
           loading={loading}
           getId={(r) => r.boutique_id}
+          selectable
+          selectedIds={picked}
+          onToggle={(id) => { const r = rows.find((x) => x.boutique_id === id); if (r && payable(r)) toggle(id); }}
+          onToggleAll={toggleAll}
           onRowClick={openDrawer}
           empty={<EmptyState icon="task_alt" title="All settled" sub="No boutique has an outstanding balance right now." />}
         />
@@ -185,8 +321,13 @@ export function Payments() {
         onClose={() => setSelected(null)}
         title={selected?.name ?? 'Payout'}
         footer={selected && (
-          <GhostButton tone="primary" icon="payments" onClick={() => setConfirm(selected)}>
-            {selected.net < 0 ? `Record ${money(selected.net)}` : `Pay out ${money(selected.net)}`}
+          <GhostButton
+            tone="primary"
+            icon="payments"
+            disabled={!payable(selected) || (needsReference(selected.net) && !note.trim())}
+            onClick={() => setConfirm(selected)}
+          >
+            {selected.net < 0 ? `Record ${money(selected.net)}` : `Mark ${money(selected.net)} paid`}
           </GhostButton>
         )}
       >
@@ -204,47 +345,43 @@ export function Payments() {
               <Field label={`Commission (${RATE_PCT}%)`} value={`− ${fmtInr(selected.prepaidCommission)}`} />
               <Field label="Online payout" value={<span style={css('color:var(--ag-good-text);')}>{fmtInr(selected.prepaidPayout)}</span>} />
               {selected.codGoods > 0 && <>
-                <Field label="COD cash held by seller" value={fmtInr(selected.codGoods)} />
+                <Field label="COD cash held by seller" value={fmtInr(selected.codGoods - selected.codPlatformDiscount)} />
                 <Field label={`Commission owed (${RATE_PCT}%)`} value={`− ${fmtInr(selected.codCommission)}`} />
                 <Field label="Delivery / COD fees owed" value={`− ${fmtInr(selected.codFees)}`} />
-                <Field label="COD adjustment" value={<span style={css('color:var(--ag-bad-text);')}>− {fmtInr(selected.codOwed)}</span>} />
+                {/* The seller honoured our coupon in cash they never received,
+                    so we hand that back rather than settling them on it. */}
+                {selected.codPlatformDiscount > 0 && (
+                  <Field label="Platform coupons we fund" value={<span style={css('color:var(--ag-good-text);')}>+ {fmtInr(selected.codPlatformDiscount)}</span>} />
+                )}
+                <Field
+                  label="COD adjustment"
+                  value={
+                    <span style={css(`color:${selected.codOwed >= 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>
+                      {selected.codOwed >= 0 ? '− ' : '+ '}{fmtInr(Math.abs(selected.codOwed))}
+                    </span>
+                  }
+                />
               </>}
             </div>
 
-            <div>
-              <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;')}>
-                <div style={css('font-weight:800;font-size:13.5px;')}>Bank / UPI details</div>
-                {bank && (() => {
-                  const v = bank.payout_verification_status ?? 'unverified';
-                  const meta =
-                    v === 'verified' ? { status: 'approved', label: 'Verified' }
-                    : v === 'pending' ? { status: 'pending', label: 'Verifying…' }
-                    : v === 'failed' ? { status: 'failed', label: 'Verification failed' }
-                    : { status: 'draft', label: 'Not verified' };
-                  return <StatusPill status={meta.status} label={meta.label} />;
-                })()}
-              </div>
-              <div style={css('background:var(--ag-surface);border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
-                {!bank && <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>Loading payout details…</div>}
-                {bank && !bank.bank_account_number && !bank.upi_id && (
-                  <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>The seller has not added payout details yet.</div>
-                )}
-                {bank && bank.bank_account_name && <Field label="Account name" value={bank.bank_account_name} />}
-                {bank && bank.bank_account_number && <Field label="Account no." value={bank.bank_account_number} />}
-                {bank && bank.bank_ifsc && <Field label="IFSC" value={bank.bank_ifsc} />}
-                {bank && bank.upi_id && <Field label="UPI" value={bank.upi_id} />}
-              </div>
-            </div>
+            {selected.net > 0 && <TransferWorksheet dest={destOf(selected.boutique_id)} loaded={destsLoaded} amount={selected.net} name={selected.name} />}
 
-            <div>
-              <div style={css('font-weight:800;font-size:13.5px;margin-bottom:8px;')}>Reference (optional)</div>
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Bank reference / UTR number"
-                style={css(`width:100%;height:44px;border:1.5px solid ${T.field};border-radius:12px;padding:0 14px;font-size:13.5px;font-family:inherit;background:var(--ag-surface);box-sizing:border-box;`)}
-              />
-            </div>
+            {needsReference(selected.net) && (
+              <div>
+                <div style={css('font-weight:800;font-size:13.5px;margin-bottom:8px;')}>
+                  Bank reference / UTR <span style={css('color:var(--ag-bad-text);')}>*</span>
+                </div>
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="e.g. UTR 123456789012"
+                  style={css(`width:100%;height:44px;border:1.5px solid ${T.field};border-radius:12px;padding:0 14px;font-size:13.5px;font-family:inherit;background:var(--ag-surface);box-sizing:border-box;`)}
+                />
+                <span style={css(`display:block;margin-top:6px;font-size:11.5px;font-weight:600;color:${T.muted};line-height:1.5;`)}>
+                  Paste this from your bank after the transfer goes through. It is the only record tying this settlement to a real transaction.
+                </span>
+              </div>
+            )}
           </div>
         )}
       </Drawer>
@@ -257,7 +394,7 @@ export function Payments() {
           message={
             confirm.net < 0
               ? `Record that ${confirm.name} owes the platform ${money(-confirm.net)} across ${confirm.orders} order(s). This closes the current cycle for this boutique.`
-              : `Pay ${money(confirm.net)} to ${confirm.name} for ${confirm.orders} order(s). Once recorded these orders are marked settled and won't be paid again.`
+              : `Confirm you have transferred ${money(confirm.net)} to ${confirm.name} for ${confirm.orders} order(s)${note.trim() ? ` (ref ${note.trim()})` : ''}. Once recorded these orders are marked settled and won't be paid again.`
           }
           confirmLabel={confirm.net < 0 ? 'Record' : 'Mark paid'}
           onConfirm={doSettle}
@@ -265,6 +402,100 @@ export function Payments() {
           busy={busy}
         />
       )}
+
+      {/* Batch settlement ---------------------------------------------------
+          Deliberately NOT a single "pay all" button: each seller is a separate
+          bank transfer with its own UTR, so this collects one reference per
+          line and refuses to run until they are all present. */}
+      <Drawer
+        open={batchOpen}
+        onClose={() => { if (!busy) setBatchOpen(false); }}
+        title={`Record ${batchRows.length} payout${batchRows.length === 1 ? '' : 's'}`}
+        footer={
+          <GhostButton tone="primary" icon="task_alt" disabled={!batchReady || busy} onClick={doBatch}>
+            {busy ? (batchProgress ?? 'Recording…') : `Record ${batchRows.length} · ${money(batchTotal)}`}
+          </GhostButton>
+        }
+      >
+        <div style={css('display:flex;flex-direction:column;gap:14px;')}>
+          <div style={css(`font-size:12.5px;font-weight:600;color:${T.muted};line-height:1.6;`)}>
+            Make each transfer in your bank first, then paste its reference here. Nothing is recorded until you press the button below, and each line is settled in turn.
+          </div>
+          {batchRows.map((r) => {
+            const d = destOf(r.boutique_id);
+            const need = needsReference(r.net);
+            return (
+              <div key={r.boutique_id} style={css(`background:var(--ag-surface);border:1px solid ${T.border};border-radius:14px;padding:13px 15px;`)}>
+                <div style={css('display:flex;align-items:center;gap:10px;')}>
+                  <Avatar name={r.name} tone={r.tone} />
+                  <div style={css('flex:1;min-width:0;')}>
+                    <div style={css('font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{r.name}</div>
+                    <div style={css(`font-size:11.5px;font-weight:600;color:${T.muted};`)}>
+                      {d?.accountNumber ? `A/c ${d.accountNumber} · ${d.ifsc ?? ''}` : r.net < 0 ? 'No transfer — recording dues' : 'No bank account'}
+                    </div>
+                  </div>
+                  <span style={css(`font-size:14px;font-weight:800;color:${r.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(r.net)}</span>
+                </div>
+                {need && (
+                  <input
+                    value={batchRefs[r.boutique_id] ?? ''}
+                    onChange={(e) => setBatchRefs((m) => ({ ...m, [r.boutique_id]: e.target.value }))}
+                    placeholder="Bank reference / UTR (required)"
+                    style={css(`width:100%;margin-top:10px;height:40px;border:1.5px solid ${(batchRefs[r.boutique_id] ?? '').trim() ? T.field : 'var(--ag-bad-text)'};border-radius:11px;padding:0 12px;font-size:13px;font-family:inherit;background:var(--ag-surface);box-sizing:border-box;`)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Drawer>
+    </div>
+  );
+}
+
+/**
+ * The bank transfer, laid out to be executed rather than read.
+ *
+ * Order matches a typical net-banking payee form — name, account, IFSC, amount
+ * — so an admin can work straight down it, and every value is copyable because
+ * re-typing an account number is how manual payouts go wrong. The IFSC is
+ * resolved to its actual bank and branch: with automatic penny-drop
+ * verification switched off, this is the last check that the destination is a
+ * real place before money leaves.
+ */
+function TransferWorksheet({ dest, loaded, amount, name }: { dest: PayoutDestination | null; loaded: boolean; amount: number; name: string }) {
+  const ifscStatus = useIfscLookup(dest?.ifsc ?? '');
+  const branch = ifscStatus.kind === 'valid'
+    ? `${ifscStatus.bank}${ifscStatus.branch ? ` · ${ifscStatus.branch}` : ''}${ifscStatus.city ? `, ${ifscStatus.city}` : ''}`
+    : ifscStatus.kind === 'invalid' ? 'No branch found for this IFSC — check before transferring'
+    : undefined;
+
+  if (!loaded) {
+    return <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>Loading payout details…</div>;
+  }
+
+  if (!dest?.hasBank) {
+    return (
+      <Card style="padding:16px 18px;background:var(--ag-warn-bg);">
+        <div style={css('font-size:13px;font-weight:800;color:var(--ag-warn-text);')}>No bank account on file</div>
+        <div style={css('margin-top:5px;font-size:12.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.55;')}>
+          {name} cannot be paid until they add an account number and IFSC. They are prompted on their dashboard every time they sign in.
+          {dest?.upiId && <><br /><br />A legacy UPI ID is on file — <strong>{dest.upiId}</strong> — from before bank-only payouts. Use it only if you have agreed this with the seller.</>}
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      <div style={css('font-weight:800;font-size:13.5px;margin-bottom:8px;')}>Transfer these details</div>
+      <div style={css('background:var(--ag-surface);border-radius:16px;padding:2px 16px 8px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <CopyRow label="ACCOUNT NAME" value={dest.accountName} missing="Not provided — confirm with the seller" />
+        <CopyRow label="ACCOUNT NO." value={dest.accountNumber} mono />
+        <CopyRow label="IFSC" value={dest.ifsc} mono hint={branch} />
+        {/* Plain digits, no ₹ or separators: pasted straight into an amount field. */}
+        <CopyRow label="AMOUNT" value={amount.toFixed(2)} hint={`${money(amount)} — the figure to transfer`} />
+      </div>
     </div>
   );
 }

@@ -72,7 +72,11 @@ export function Earnings() {
     () => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
-  const [payout, setPayout] = useState<{ upi: string | null; account: string | null; ifsc: string | null } | null>(null);
+  // Payouts are made to a bank account only. A seller who onboarded under the
+  // old "UPI or bank" rule may still have a UPI id on file — we keep it (admin
+  // can still pay them with it) but never present it as a valid destination
+  // here, because what they need to do is add a bank account.
+  const [payout, setPayout] = useState<{ account: string | null; ifsc: string | null } | null>(null);
   const boutiqueId = boutique?.id;
 
   useEffect(() => {
@@ -81,7 +85,7 @@ export function Earnings() {
     fetchBoutiquePrivate(boutiqueId)
       .then((p) => {
         if (cancelled || !p) return;
-        setPayout({ upi: p.upi_id, account: maskAccount(p.bank_account_number), ifsc: p.bank_ifsc });
+        setPayout({ account: maskAccount(p.bank_account_number), ifsc: p.bank_ifsc });
       })
       .catch(() => { /* payout destination is supporting detail, never blocking */ });
     return () => { cancelled = true; };
@@ -110,16 +114,25 @@ export function Earnings() {
   // The seller holds this money. Only counted once they confirm the cash
   // arrived — an uncollected COD order is a promise, not revenue.
   const codCollected = cod.filter(collected);
-  const codCash = codCollected.reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
+  // A MangaiMart-funded coupon comes off the cash at the door but never off
+  // `total` — the seller is still settled on the full goods value, so it is
+  // netted out of the cash they hold and credited back below (migration 0053).
+  const cashAtDoor = (o: OrderWithDetails) =>
+    Number(o.total) + Number(o.cod_fee ?? 0) - Number(o.platform_discount ?? 0);
+  const codCash = codCollected.reduce((s, o) => s + cashAtDoor(o), 0);
   // Commission is charged on the goods value, not on MangaiMart's own handling fee.
   const codCommissionOwed = Math.round(codCollected.reduce((s, o) => s + Number(o.total), 0) * COMMISSION);
-  const codOutstanding = cod.filter((o) => !collected(o)).reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
+  // The coupon money the seller honoured out of their own goods — MangaiMart
+  // funds it, so it comes back on the next payout rather than being lost.
+  const codPlatformCredit = codCollected.reduce((s, o) => s + Number(o.platform_discount ?? 0), 0);
+  const codOutstanding = cod.filter((o) => !collected(o)).reduce((s, o) => s + cashAtDoor(o), 0);
 
   const offlineCollected = offline.reduce((s, o) => s + Number(o.total), 0);
 
   // What the seller actually takes home this month: their share of the prepaid
-  // orders, plus the cash they already hold, minus what they owe on that cash.
-  const netEarnings = prepaidNet + codCash - codCommissionOwed;
+  // orders, plus the cash they already hold and the coupon money MangaiMart
+  // reimburses them for, minus what they owe on that cash.
+  const netEarnings = prepaidNet + codCash + codPlatformCredit - codCommissionOwed;
 
   // Settled once the buyer has the goods; anything still in flight is money
   // MangaiMart is holding, which is what the seller wants to see as "pending".
@@ -127,7 +140,7 @@ export function Earnings() {
   const pendingPayout = Math.round((prepaidGross - settledGross) * (1 - COMMISSION));
   // The COD debt comes out of the payout MangaiMart is about to make, which is why
   // it is netted here rather than billed separately.
-  const settledPayout = prepaidNet - pendingPayout - codCommissionOwed;
+  const settledPayout = prepaidNet - pendingPayout - codCommissionOwed + codPlatformCredit;
 
   const lastMonthNet = lastMonth
     .filter((o) => (o.channel ?? 'online') === 'online' && (!isCod(o) || collected(o)))
@@ -260,14 +273,8 @@ export function Earnings() {
       {/* Payout destination -------------------------------------------------- */}
       <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Payout account</div>
       <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
-        {payout?.upi || payout?.account ? (
+        {payout?.account ? (
           <div style={css('display:flex;flex-direction:column;gap:9px;')}>
-            {payout.upi && (
-              <div style={css('display:flex;gap:12px;align-items:baseline;')}>
-                <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:var(--ag-muted);')}>UPI ID</span>
-                <span style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>{payout.upi}</span>
-              </div>
-            )}
             {payout.account && (
               <div style={css('display:flex;gap:12px;align-items:baseline;')}>
                 <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:var(--ag-muted);')}>Bank account</span>
@@ -285,13 +292,13 @@ export function Earnings() {
           <div style={css('display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);")}>account_balance</span>
             <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
-              No payout account on file — MangaiMart cannot settle your online orders until you add one.
+              No bank account on file — MangaiMart settles earnings by bank transfer only, so we cannot pay you until you add one.
             </span>
             <button
               onClick={() => navigate('/seller/onboarding')}
               style={css('height:40px;padding:0 16px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
             >
-              Add details
+              Add bank details
             </button>
           </div>
         )}

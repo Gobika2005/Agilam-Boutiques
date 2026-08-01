@@ -286,6 +286,11 @@ export interface Database {
            *  0036); 0 unless a seller coupon applied. `total` is already net of
            *  it, so payouts settle unchanged. */
           discount: number;
+          /** Platform-coupon discount carried by this order (migration 0053).
+           *  The platform funds it, so it is NOT taken off `total` — but it IS
+           *  off the buyer's bill: they pay
+           *  total + shipping_fee + cod_fee − platform_discount. */
+          platform_discount: number;
           cancelled_at: string | null;
           cancel_reason: string | null;
           payment_method: string | null;

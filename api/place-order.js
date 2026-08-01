@@ -105,7 +105,9 @@ async function notifySellers(supabase, created, guestFields) {
       // The seller's next action differs completely between the two: a prepaid
       // order just ships, a COD order means counting cash at the door. Say which.
       const money = isCodOrder
-        ? `Collect ₹${Math.round(order.total + (order.shipping_fee ?? 0) + (order.cod_fee ?? 0))} in cash on delivery.`
+        ? `Collect ₹${Math.round(
+            order.total + (order.shipping_fee ?? 0) + (order.cod_fee ?? 0) - (order.platform_discount ?? 0),
+          )} in cash on delivery.`
         : 'Paid online.';
       rows.push({
         profile_id: ownerId,
@@ -505,6 +507,13 @@ export default async function handler(req, res) {
         // platform coupon never lands in perBoutiqueDiscount, so those orders
         // keep their full goods total (the platform funds that discount).
         const orderDiscount = cartTotals.perBoutiqueDiscount[g.boutique_id] ?? 0;
+        // A platform coupon is funded by us, so it is NOT taken off `total` —
+        // the seller is still paid for the full goods value. It is recorded
+        // alongside instead, because it IS money the buyer no longer owes:
+        // total + shipping_fee + cod_fee − platform_discount is what they pay.
+        // Skipping this used to hand a COD buyer an undiscounted bill at the
+        // door (migration 0053).
+        const platformDiscount = cartTotals.perBoutiquePlatformDiscount[g.boutique_id] ?? 0;
         const { data: order, error: orderErr } = await supabase
           .from('orders')
           .insert({
@@ -513,6 +522,7 @@ export default async function handler(req, res) {
             boutique_id: g.boutique_id,
             total: g.total - orderDiscount,
             discount: orderDiscount,
+            platform_discount: platformDiscount,
             status: 'pending',
             // One handling fee per delivery, stored on the order it belongs to
             // so the seller knows the exact cash to collect at that door.
@@ -522,7 +532,7 @@ export default async function handler(req, res) {
             shipping_fee: shippingForThisOrder,
             ...guestFields,
           })
-          .select('id, order_number, boutique_id, total, cod_fee, shipping_fee, created_at')
+          .select('id, order_number, boutique_id, total, discount, platform_discount, cod_fee, shipping_fee, created_at')
           .single();
         if (orderErr) throw orderErr;
 
@@ -536,6 +546,7 @@ export default async function handler(req, res) {
           order_number: order.order_number,
           boutique_id: order.boutique_id,
           total: Number(order.total),
+          platform_discount: Number(order.platform_discount ?? 0),
           cod_fee: Number(order.cod_fee ?? 0),
           shipping_fee: Number(order.shipping_fee ?? 0),
           created_at: order.created_at,
@@ -566,11 +577,12 @@ export default async function handler(req, res) {
     await notifySellers(supabase, created, guestFields);
 
     return res.status(200).json({
-      orders: created.map(({ id, order_number, boutique_id, total, cod_fee, shipping_fee, created_at }) => ({
+      orders: created.map(({ id, order_number, boutique_id, total, platform_discount, cod_fee, shipping_fee, created_at }) => ({
         id,
         order_number,
         boutique_id,
         total,
+        platform_discount,
         cod_fee,
         shipping_fee,
         created_at,

@@ -187,10 +187,29 @@ async function attemptTransfer(supabase, payout, account, boutique, result) {
   }
 }
 
+/**
+ * Automatic payouts are OFF: MangaiMart settles sellers manually from the admin
+ * Payouts console.
+ *
+ * Everything below this flag still works and is deliberately left intact —
+ * turning automation back on is this one constant plus re-adding the
+ * `/api/run-payouts` cron to vercel.json. It is a constant rather than an env
+ * var on purpose: moving real money should require a code change and a review,
+ * not a dashboard toggle someone can flip by accident.
+ */
+const AUTO_PAYOUTS_ENABLED = false;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.setHeader('Allow', 'POST, GET');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Checked before authorization on purpose: when payouts are manual there is
+  // no such thing as a caller allowed to move money here, so there is nothing
+  // to authenticate. Answering 200 keeps any leftover scheduler quiet.
+  if (!AUTO_PAYOUTS_ENABLED) {
+    return res.status(200).json({ ok: true, skipped: 'automatic payouts are disabled — payouts are made manually from /admin/payments' });
   }
 
   if (!rxConfigured()) return res.status(200).json({ ok: true, skipped: 'RazorpayX not configured' });

@@ -146,6 +146,13 @@ function couponSavings(coupon, cartSubtotal, groupTotals, terms) {
  * boutique orders being paid in cash — 0 for a prepaid checkout. `terms` comes
  * from `loadTerms(supabase)`; it defaults to the published fallback so an older
  * caller still prices at the policy rates rather than NaN.
+ *
+ * `perBoutiquePlatformDiscount` is the mirror of that for a PLATFORM coupon: it
+ * is NOT netted off any order total (the platform funds it, so the seller is
+ * still paid in full) but it IS what the buyer stops owing, so each order
+ * records its share in `orders.platform_discount` (migration 0053). Without it
+ * a cash-on-delivery buyer was quoted the discounted total at checkout and then
+ * asked for the undiscounted one at the door.
  */
 export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms = DEFAULT_TERMS) {
   const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
@@ -161,6 +168,21 @@ export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms
     perBoutiqueDiscount[eligible.boutique_id] = discount;
   }
 
+  // A platform coupon applies to the whole cart, so a bag spanning boutiques has
+  // to share it out — proportionally to each boutique's goods, with the rounding
+  // remainder on the largest so the shares add back up to `discount` exactly.
+  const perBoutiquePlatformDiscount = {};
+  if (eligible && !eligible.boutique_id && discount > 0 && cartSubtotal > 0) {
+    const ids = Object.keys(groupTotals).sort((a, b) => groupTotals[b] - groupTotals[a]);
+    let remaining = discount;
+    for (const id of ids.slice(1)) {
+      const share = Math.floor((discount * groupTotals[id]) / cartSubtotal);
+      if (share > 0) perBoutiquePlatformDiscount[id] = share;
+      remaining -= share;
+    }
+    if (ids.length > 0) perBoutiquePlatformDiscount[ids[0]] = remaining;
+  }
+
   const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, terms);
   const codFee = Math.max(0, codDeliveries) * terms.cod_fee;
   const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
@@ -169,6 +191,7 @@ export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms
     cartSubtotal,
     discount,
     perBoutiqueDiscount,
+    perBoutiquePlatformDiscount,
     shipFee,
     codFee,
     total,

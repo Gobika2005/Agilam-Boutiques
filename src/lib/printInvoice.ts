@@ -71,6 +71,7 @@ export function printInvoice(o: OrderView, boutiqueName: string): void {
     <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr></thead>
     <tbody>
       ${rows || '<tr><td colspan="4">No items</td></tr>'}
+      ${o.platformDiscount > 0 ? `<tr><td colspan="3" class="lbl">${esc(COMPANY.brand)} offer</td><td class="num">− ${money(o.platformDiscount)}</td></tr>` : ''}
       ${feeRow('Delivery', o.shippingFee)}
       ${feeRow('Cash handling', o.codFee)}
       <tr class="total"><td colspan="3" class="lbl">Total</td><td class="num">${money(o.grandTotal)}</td></tr>

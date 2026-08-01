@@ -175,6 +175,7 @@ export function OrderDetail() {
             buyerName={o.customer}
             buyerPhone={o.phone ?? undefined}
             items={o.items.map((it) => ({ title: it.title, qty: it.qty, price: Number(it.price) }))}
+            discount={o.platformDiscount}
             shippingFee={o.shippingFee}
             codFee={o.codFee}
             total={o.grandTotal}
@@ -198,6 +199,15 @@ export function OrderDetail() {
           <div style={css('border-top:1px solid var(--ag-border-soft);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-size:13px;color:var(--ag-muted);')}>
             <span>Subtotal</span><span style={css('font-weight:700;color:var(--ag-ink);')}>{fmt(subtotal)}</span>
           </div>
+          {/* A MangaiMart coupon is funded by us, not the boutique: the seller
+              is still paid on the full subtotal above, but the customer hands
+              over this much less — so it has to be on the bill they both read. */}
+          {o.platformDiscount > 0 && (
+            <div style={css('display:flex;justify-content:space-between;font-size:13px;color:var(--ag-muted);margin-top:4px;')}>
+              <span>MangaiMart offer</span>
+              <span style={css('font-weight:700;color:var(--ag-good);')}>− {fmt(o.platformDiscount)}</span>
+            </div>
+          )}
           <div style={css('display:flex;justify-content:space-between;font-size:13px;color:var(--ag-muted);margin-top:4px;')}>
             <span>Delivery</span>
             <span style={css(`font-weight:700;color:${o.shippingFee === 0 ? 'var(--ag-good)' : 'var(--ag-ink)'};`)}>
@@ -246,7 +256,8 @@ export function OrderDetail() {
             {!settled && (
               <>
                 <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.55;margin-top:10px;')}>
-                  Take the full amount in cash when you hand the order over, then tap below. MangaiMart’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
+                  Take this exact amount in cash when you hand the order over, then tap below. MangaiMart’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
+                  {o.platformDiscount > 0 && ` The customer used a MangaiMart offer, so collect ${fmt(o.platformDiscount)} less — we add it back to your payout.`}
                 </div>
                 <button
                   onClick={collectCash}

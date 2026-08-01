@@ -11,6 +11,7 @@ import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
+import { useIfscLookup, type IfscStatus } from '@/hooks/useIfscLookup';
 import {
   fetchMyBoutique,
   fetchBoutiquePrivate,
@@ -76,7 +77,6 @@ const PHONE_RE = /^[6-9][0-9]{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/;
-const UPI_RE = /^[\w.-]{2,}@[a-zA-Z]{2,}$/;
 
 type Form = {
   name: string; ownerName: string; description: string; logoUrl: string; coverUrl: string;
@@ -86,7 +86,7 @@ type Form = {
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
   codEnabled: boolean; onlinePaymentEnabled: boolean;
-  bankAccountName: string; bankAccountNumber: string; bankIfsc: string; upiId: string;
+  bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
 };
 
 const EMPTY: Form = {
@@ -97,7 +97,7 @@ const EMPTY: Form = {
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
   codEnabled: true, onlinePaymentEnabled: true,
-  bankAccountName: '', bankAccountNumber: '', bankIfsc: '', upiId: '',
+  bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -115,7 +115,7 @@ function validateAccount(a: Account): AccountErrors {
 }
 
 /** Per-step validation. Returns the fields that are wrong; empty means the step is good. */
-function validateStep(step: number, f: Form): Errors {
+function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
   const e: Errors = {};
   if (step === 1) {
     if (f.name.trim().length < 2) e.name = 'Enter your boutique name';
@@ -147,15 +147,30 @@ function validateStep(step: number, f: Form): Errors {
     if (!f.codEnabled && !f.onlinePaymentEnabled) e.codEnabled = 'Enable at least one payment method';
   }
   if (step === 6) {
-    const hasBank = !!(f.bankAccountName.trim() || f.bankAccountNumber.trim() || f.bankIfsc.trim());
-    const hasUpi = !!f.upiId.trim();
-    if (!hasBank && !hasUpi) e.upiId = 'Add a UPI ID or your bank account details';
-    if (hasBank) {
-      if (f.bankAccountName.trim().length < 3) e.bankAccountName = 'Enter the account holder name';
-      if (!/^[0-9]{9,18}$/.test(f.bankAccountNumber.trim())) e.bankAccountNumber = 'Enter a valid account number';
-      if (!IFSC_RE.test(f.bankIfsc.trim().toUpperCase())) e.bankIfsc = 'Enter a valid IFSC code';
+    // Bank details are now the ONLY payout destination — payouts are made
+    // manually by an admin reading exactly these three fields, so all three are
+    // required and none can be left to "we'll sort it out later".
+    if (f.bankAccountName.trim().length < 3) {
+      e.bankAccountName = 'Enter the account holder name as printed on the passbook';
+    } else if (!/^[A-Za-z][A-Za-z.\s'-]{2,}$/.test(f.bankAccountName.trim())) {
+      // Bank names carry initials, apostrophes and hyphens, but never digits —
+      // a number here is nearly always the account number typed into the wrong box.
+      e.bankAccountName = 'Account holder name should not contain numbers';
     }
-    if (hasUpi && !UPI_RE.test(f.upiId.trim())) e.upiId = 'Enter a valid UPI ID (name@bank)';
+    if (!/^[0-9]{9,18}$/.test(f.bankAccountNumber.trim())) {
+      e.bankAccountNumber = 'Enter a valid account number (9–18 digits)';
+    } else if (f.bankAccountNumberConfirm.trim() !== f.bankAccountNumber.trim()) {
+      // Re-entry catches the one mistake nothing downstream can: a typo in a
+      // number no human recognises by sight.
+      e.bankAccountNumberConfirm = 'Account numbers do not match';
+    }
+    if (!IFSC_RE.test(f.bankIfsc.trim().toUpperCase())) {
+      e.bankIfsc = 'Enter a valid IFSC code (e.g. HDFC0001234)';
+    } else if (ifscKnownBad) {
+      // Only a confirmed 404 from the branch directory blocks. A lookup that
+      // could not run (offline, outage) never stops the seller finishing setup.
+      e.bankIfsc = 'No bank branch found for this IFSC — please check it';
+    }
   }
   return e;
 }
@@ -209,7 +224,11 @@ function toPatch(f: Form): BoutiquePatch {
     bank_account_name: orNull(f.bankAccountName),
     bank_account_number: orNull(f.bankAccountNumber),
     bank_ifsc: orNull(f.bankIfsc.toUpperCase()),
-    upi_id: orNull(f.upiId),
+    // `upi_id` is deliberately NOT written here. MangaiMart pays out to bank
+    // accounts only, so the wizard no longer collects a UPI ID — but the ~9
+    // boutiques that onboarded with UPI and no bank details still have theirs on
+    // file, and admin needs it to pay them during the transition. Including the
+    // field would send `null` and silently wipe exactly that fallback.
   };
 }
 
@@ -346,7 +365,9 @@ export function SellerOnboarding() {
           bankAccountName: priv?.bank_account_name ?? '',
           bankAccountNumber: priv?.bank_account_number ?? '',
           bankIfsc: priv?.bank_ifsc ?? '',
-          upiId: priv?.upi_id ?? '',
+          // Pre-filled so an existing seller editing their profile isn't forced
+          // to retype a number they already confirmed once.
+          bankAccountNumberConfirm: priv?.bank_account_number ?? '',
         });
         // Resume on the step after the last completed one, capped at review.
         setStep(Math.min(7, Math.max(1, (row.onboarding_step ?? 0) + 1)));
@@ -380,8 +401,16 @@ export function SellerOnboarding() {
     }
   };
 
+  // Resolves the typed IFSC to a real bank + branch so the seller can recognise
+  // (or fail to recognise) their own. Only a confirmed "no such branch" blocks
+  // submission — see useIfscLookup for why an outage must not.
+  const ifscStatus = useIfscLookup(form.bankIfsc);
+  const ifscKnownBad = ifscStatus.kind === 'invalid';
+
   // Steps the seller has not satisfied yet — drives the review checklist and
-  // stops a half-filled boutique from reaching the admin queue.
+  // stops a half-filled boutique from reaching the admin queue. The IFSC lookup
+  // is deliberately not consulted here: the checklist reflects what the seller
+  // still has to fill in, not whether a third-party directory answered.
   const incomplete = useMemo(
     () => STEPS.slice(0, 6).filter((s) => Object.keys(validateStep(s.n, form)).length > 0),
     [form],
@@ -440,7 +469,7 @@ export function SellerOnboarding() {
   };
 
   const saveAndNext = async () => {
-    const stepErrors = validateStep(step, form);
+    const stepErrors = validateStep(step, form, ifscKnownBad);
     if (Object.keys(stepErrors).length) {
       setErrors(stepErrors);
       toast('Please fix the highlighted fields');
@@ -744,16 +773,40 @@ export function SellerOnboarding() {
         )}
 
         {step === 6 && (
-          <SectionCard subtitle="MangaiMart sends your order payouts here. These details stay private — buyers and other sellers can never see them.">
-            <Field label="UPI ID" value={form.upiId} onChange={(v) => set('upiId', v)} placeholder="boutique@okaxis" error={errors.upiId} hint="Fastest way to get paid. Add this, or your bank account below." />
-            <div style={css('display:flex;align-items:center;gap:10px;')}>
-              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
-              <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>AND / OR BANK ACCOUNT</span>
-              <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
-            </div>
-            <Field label="Account holder name" value={form.bankAccountName} onChange={(v) => set('bankAccountName', v)} placeholder="Lakshmi Priya" error={errors.bankAccountName} />
-            <Field label="Bank account number" value={form.bankAccountNumber} onChange={(v) => set('bankAccountNumber', v.replace(/\D/g, '').slice(0, 18))} placeholder="123456789012" inputMode="numeric" error={errors.bankAccountNumber} />
-            <Field label="IFSC code" value={form.bankIfsc} onChange={(v) => set('bankIfsc', v.toUpperCase().slice(0, 11))} placeholder="HDFC0001234" error={errors.bankIfsc} />
+          <SectionCard subtitle="MangaiMart transfers your earnings to this bank account. These details stay private — buyers and other sellers can never see them.">
+            <Field
+              label="Account holder name"
+              value={form.bankAccountName}
+              onChange={(v) => set('bankAccountName', v)}
+              placeholder="Lakshmi Priya"
+              error={errors.bankAccountName}
+              hint="Exactly as printed on your passbook or cheque book."
+            />
+            <Field
+              label="Bank account number"
+              value={form.bankAccountNumber}
+              onChange={(v) => set('bankAccountNumber', v.replace(/\D/g, '').slice(0, 18))}
+              placeholder="123456789012"
+              inputMode="numeric"
+              error={errors.bankAccountNumber}
+            />
+            <Field
+              label="Re-enter account number"
+              value={form.bankAccountNumberConfirm}
+              onChange={(v) => set('bankAccountNumberConfirm', v.replace(/\D/g, '').slice(0, 18))}
+              placeholder="123456789012"
+              inputMode="numeric"
+              error={errors.bankAccountNumberConfirm}
+              hint="A typo here is the one mistake we cannot catch for you."
+            />
+            <Field
+              label="IFSC code"
+              value={form.bankIfsc}
+              onChange={(v) => set('bankIfsc', v.toUpperCase().slice(0, 11))}
+              placeholder="HDFC0001234"
+              error={errors.bankIfsc}
+            />
+            <IfscStatusLine status={ifscStatus} />
           </SectionCard>
         )}
 
@@ -802,6 +855,47 @@ export function SellerOnboarding() {
 }
 
 /** Step 7 — a read-only summary with an Edit shortcut per section. */
+/**
+ * The resolved bank/branch for the IFSC currently typed.
+ *
+ * Shows a seller the human-readable consequence of the code they entered, which
+ * is the only way a wrong-but-well-formed IFSC gets caught before an admin
+ * transfers real money to it. Silent while the code is still being typed.
+ */
+function IfscStatusLine({ status }: { status: IfscStatus }) {
+  if (status.kind === 'idle' || status.kind === 'typing') return null;
+
+  const base = 'display:flex;align-items:flex-start;gap:8px;margin-top:-4px;font-size:11.5px;font-weight:700;line-height:1.45;';
+
+  if (status.kind === 'checking') {
+    return <span style={css(`${base}color:var(--ag-muted);`)}>Checking this IFSC…</span>;
+  }
+  if (status.kind === 'invalid') {
+    return (
+      <span style={css(`${base}color:var(--ag-danger-text);`)}>
+        <span className="material-symbols-rounded" style={css('font-size:15px;')}>error</span>
+        No bank branch is registered against this IFSC. Please check it against your passbook.
+      </span>
+    );
+  }
+  if (status.kind === 'unavailable') {
+    return (
+      <span style={css(`${base}color:var(--ag-muted);`)}>
+        We couldn’t verify this IFSC just now — you can continue, and we’ll confirm it before your first payout.
+      </span>
+    );
+  }
+  return (
+    <span style={css(`${base}color:var(--ag-good);`)}>
+      <span className="material-symbols-rounded" style={css('font-size:15px;')}>verified</span>
+      <span>
+        {status.bank}
+        {status.branch ? <><br /><span style={css('font-weight:600;color:var(--ag-muted);')}>{status.branch}{status.city ? `, ${status.city}` : ''}</span></> : null}
+      </span>
+    </span>
+  );
+}
+
 function ReviewStep({
   form, incomplete, onEdit, editMode,
 }: {
@@ -844,7 +938,7 @@ function ReviewStep({
     },
     {
       step: 6, title: 'Payout details',
-      rows: [['UPI ID', dash(form.upiId)], ['Account holder', dash(form.bankAccountName)], ['Account number', form.bankAccountNumber ? maskAccount(form.bankAccountNumber) : '—'], ['IFSC', dash(form.bankIfsc)]],
+      rows: [['Account holder', dash(form.bankAccountName)], ['Account number', form.bankAccountNumber ? maskAccount(form.bankAccountNumber) : '—'], ['IFSC', dash(form.bankIfsc)]],
     },
   ];
 

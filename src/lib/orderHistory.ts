@@ -49,6 +49,8 @@ export type PlacedOrder = {
   codFee?: number;
   /** Delivery fee on this order, already included in `total`. */
   shippingFee?: number;
+  /** Platform coupon taken off this order, already deducted from `total`. */
+  platformDiscount?: number;
   /** When the boutique moved this order into each stage (migration 0042). Absent
    *  on a guest's locally-mirrored order until it's read back from the server. */
   acceptedAt?: string | null;
@@ -125,6 +127,7 @@ export type BuyerDbOrder = {
   payment_status?: PaymentStatus;
   cod_fee?: number;
   shipping_fee?: number;
+  platform_discount?: number;
   boutique: { name: string; tone: number } | null;
   items: { product_id?: string | null; title: string; price: number; qty: number; size: string | null }[];
 };
@@ -134,6 +137,10 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
   const tone = o.boutique?.tone ?? 0;
   const codFee = Number(o.cod_fee ?? 0);
   const shippingFee = Number(o.shipping_fee ?? 0);
+  // A platform coupon never reduces `orders.total` — the seller is paid the full
+  // goods value and we fund the discount — so it has to come off here instead,
+  // or the buyer is shown (and, paying cash, asked for) more than they owe.
+  const platformDiscount = Number(o.platform_discount ?? 0);
   return {
     id: '#' + o.order_number,
     rowId: o.id,
@@ -144,11 +151,12 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     status: o.status,
     // `orders.total` is the goods value; delivery and the COD fee are stored
     // beside it, so add them back to show the figure the buyer actually pays.
-    total: Number(o.total) + shippingFee + codFee,
+    total: Math.max(0, Number(o.total) + shippingFee + codFee - platformDiscount),
     paymentMethod: o.payment_method ?? null,
     paymentStatus: o.payment_status ?? 'paid',
     codFee,
     shippingFee,
+    platformDiscount,
     acceptedAt: o.accepted_at ?? null,
     shippedAt: o.shipped_at ?? null,
     deliveredAt: o.delivered_at ?? null,

@@ -160,6 +160,9 @@ export interface OrderWithDetails {
   cod_fee?: number;
   /** Delivery fee on this order (cart-level, so it lands on the first order). */
   shipping_fee?: number;
+  /** Platform-funded coupon discount (migration 0053). Not deducted from
+   *  `total` — the seller is paid in full — but it is off what the buyer owes. */
+  platform_discount?: number;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
