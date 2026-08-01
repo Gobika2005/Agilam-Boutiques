@@ -1,4 +1,4 @@
-const config = {
+export const config = {
   /**
    * Skip anything that is not an HTML page request.
    *
@@ -530,7 +530,7 @@ async function sitemapXml(origin) {
 ${entries.join("\n")}
 </urlset>`;
 }
-async function middleware(request) {
+export default async function middleware(request) {
   try {
     const url = new URL(request.url);
     const { pathname, origin } = url;
@@ -549,6 +549,15 @@ async function middleware(request) {
           "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}, stale-while-revalidate=86400`
         }
       });
+    }
+    if (
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/assets/") ||
+      pathname.startsWith("/_vercel") ||
+      pathname === "/index.html" ||
+      /\.[a-zA-Z0-9]+$/.test(pathname)
+    ) {
+      return void 0;
     }
     if (request.method !== "GET") return void 0;
     const meta = await resolveMeta(pathname, origin);
@@ -574,7 +583,3 @@ async function middleware(request) {
     return void 0;
   }
 }
-export {
-  config,
-  middleware as default
-};
