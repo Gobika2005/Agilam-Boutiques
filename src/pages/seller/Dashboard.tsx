@@ -137,10 +137,18 @@ export function Dashboard() {
     { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/add-product', badge: 0 },
   ];
 
-  // Buyer-facing discovery & engagement surfaces the seller reaches from here.
-  const GROW = [
-    { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: 'var(--ag-gold-text)', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
-  ];
+  // The single line in the welcome card that says what needs the seller right
+  // now — and where tapping it takes them, when there is something to do.
+  const nudge: { text: string; to: string | null } =
+    pendingCount > 0
+      ? { text: `${pendingCount} order${pendingCount > 1 ? 's are' : ' is'} waiting for you to accept.`, to: '/seller/orders' }
+      : todaysOrders.length > 0
+        ? { text: `${todaysOrders.length} order${todaysOrders.length > 1 ? 's' : ''} came in today — everything is up to date.`, to: '/seller/orders' }
+        : products.length === 0
+          ? { text: 'Add your first product to start selling on MangaiMart.', to: '/seller/add-product' }
+          : { text: 'No new orders right now. Your storefront is live and listening.', to: null };
+  // Bound to a const so the narrowing survives into the click handler's closure.
+  const nudgeTo = nudge.to;
 
   const TODAY = [
     { label: "Today's orders", value: String(todaysOrders.length), ic: 'var(--ag-info-text)' },
@@ -155,40 +163,67 @@ export function Dashboard() {
       {/* The page's identity is carried visually by the boutique card; screen
           readers need an actual heading to navigate to. */}
       <h1 className="agx-sr-only">Seller dashboard</h1>
-      {/* Boutique identity ------------------------------------------------- */}
-      <button
-        onClick={() => navigate('/seller/boutique')}
-        className="agx-lift"
-        style={css('width:100%;text-align:left;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface));border:1px solid var(--ag-border);border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:inherit;')}
-      >
-        <span style={css("width:56px;height:56px;flex:none;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#C62A60,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>
-          {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
-        </span>
-        <span style={css('flex:1;min-width:0;')}>
-          <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2.4vw,25px);color:var(--ag-ink);")}>
-            <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{boutiqueName}</span>
-            {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-info-text);")}>verified</span>}
-          </span>
-          <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;')}>
-            {[boutique?.category, boutique?.area || boutique?.city].filter(Boolean).join(' · ') || 'Complete your boutique profile'}
-          </span>
-          {facts.length > 0 && (
-            <span style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;')}>
-              {facts.map((f) => (
-                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--ag-surface-2);border:1px solid var(--ag-border);font-size:10.5px;font-weight:800;color:#8A5A72;')}>
-                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? 'var(--ag-info-text)' : f.icon === 'star' ? 'var(--ag-star)' : 'var(--ag-crimson)'};`)}>{f.icon}</span>
-                  {f.text}
-                </span>
-              ))}
+
+      {/* One welcome card ---------------------------------------------------
+          This was two stacked cards — a boutique identity card and, right below
+          it, a crimson greeting card. Between them they said who you are twice
+          and filled the whole first screen before showing a single action. They
+          are now one card: greeting, boutique, its standing, and the one line
+          about what needs the seller right now. */}
+      <div style={css('border-radius:22px;background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;padding:18px;position:relative;overflow:hidden;')}>
+        <div style={css('position:absolute;top:-70px;right:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
+        <div style={css('position:relative;')}>
+          <div style={css('font-size:13px;opacity:.85;')}>{greeting()}, {ownerName || boutiqueName}</div>
+
+          <button
+            onClick={() => navigate('/seller/boutique')}
+            style={css('width:100%;margin-top:11px;text-align:left;background:none;border:none;padding:0;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:inherit;')}
+          >
+            <span style={css("width:54px;height:54px;flex:none;border-radius:17px;overflow:hidden;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>
+              {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
             </span>
+            <span style={css('flex:1;min-width:0;')}>
+              <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.8vw,28px);line-height:1.15;")}>
+                <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{boutiqueName}</span>
+                {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:19px;flex:none;opacity:.9;")}>verified</span>}
+              </span>
+              <span style={css('display:block;font-size:12.5px;opacity:.85;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>
+                {[boutique?.category, boutique?.area || boutique?.city].filter(Boolean).join(' · ') || 'Complete your boutique profile'}
+              </span>
+            </span>
+            <span style={css("font-family:'Material Symbols Outlined';flex:none;opacity:.75;")}>chevron_right</span>
+          </button>
+
+          {/* Standing and the small facts, as one wrapped row of translucent
+              pills — legible on the gradient without fighting it. */}
+          <div style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;')}>
+            <span style={css('display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:11px;font-weight:800;')}>
+              <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? '#5BE0A0' : '#F4D9A6'};`)} />
+              {approved ? 'Active seller' : 'Awaiting verification'}
+            </span>
+            {facts.map((f) => (
+              <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:11px;font-weight:800;')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;opacity:.9;")}>{f.icon}</span>
+                {f.text}
+              </span>
+            ))}
+          </div>
+
+          {/* The one line that answers "what needs me?" — and, when there is
+              something to do, tapping it goes straight there. */}
+          {nudgeTo ? (
+            <button
+              onClick={() => navigate(nudgeTo)}
+              style={css('width:100%;margin-top:14px;text-align:left;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:15px;padding:12px 14px;cursor:pointer;font-family:inherit;color:inherit;')}
+            >
+              <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;line-height:1.5;')}>{nudge.text}</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;flex:none;opacity:.8;")}>chevron_right</span>
+            </button>
+          ) : (
+            <div style={css('margin-top:14px;font-size:13.5px;opacity:.9;line-height:1.55;max-width:520px;')}>{nudge.text}</div>
           )}
-          <span style={css(`display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:${approved ? 'var(--ag-good-bg)' : 'var(--ag-warn-bg)'};color:${approved ? 'var(--ag-good-text)' : 'var(--ag-warn-text)'};`)}>
-            <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)} />
-            {approved ? 'Active seller' : 'Awaiting verification'}
-          </span>
-        </span>
-        <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
-      </button>
+        </div>
+      </div>
 
       {/* Payouts go to a bank account only. A seller who onboarded under the old
           "UPI or bank" rule can be fully approved and selling while having no
@@ -210,29 +245,6 @@ export function Dashboard() {
           <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);flex:none;")}>chevron_right</span>
         </button>
       )}
-
-      {/* Greeting + what needs the seller right now. This sits directly under
-          the boutique card because it answers the only question an owner opens
-          the app with — "what needs me?". It used to sit ~700px down, below the
-          paid-promotion banner. ------------------------------------------- */}
-      <div style={css('margin-top:16px;border-radius:22px;background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;padding:20px 22px;position:relative;overflow:hidden;')}>
-        <div style={css('position:absolute;top:-70px;right:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
-        <div style={css('position:relative;')}>
-          <div style={css('font-size:13px;opacity:.85;')}>{greeting()},</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(23px,3vw,32px);line-height:1.1;margin-top:3px;")}>
-            {ownerName || boutiqueName}
-          </div>
-          <div style={css('font-size:13.5px;opacity:.9;margin-top:8px;max-width:520px;line-height:1.55;')}>
-            {pendingCount > 0
-              ? `${pendingCount} order${pendingCount > 1 ? 's are' : ' is'} waiting for you to accept.`
-              : todaysOrders.length > 0
-                ? `${todaysOrders.length} order${todaysOrders.length > 1 ? 's' : ''} came in today — everything is up to date.`
-                : products.length === 0
-                  ? 'Add your first product to start selling on MangaiMart.'
-                  : 'No new orders right now. Your storefront is live and listening.'}
-          </div>
-        </div>
-      </div>
 
       {/* Quick actions ----------------------------------------------------- */}
       <div className="agx-sd-quick" style={css('margin-top:16px;')}>
@@ -259,36 +271,36 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Grow your shop — the buyer-facing discovery & engagement surfaces. */}
-      <div style={css('margin-top:16px;')}>
-        <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 2px 10px;')}>Grow your shop</div>
-        {/* Tracks follow the card count: the section once held three tiles, and
-            leaving it at repeat(3,…) rendered the lone Reviews card a third of
-            the width beside two empty columns. */}
-        <div style={css(`display:grid;grid-template-columns:repeat(${Math.min(GROW.length, 3)},minmax(0,1fr));gap:10px;`)}>
-          {GROW.map((g) => (
-            <button
-              key={g.label}
-              onClick={() => navigate(g.to)}
-              className="agx-lift"
-              style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:13px 11px;display:flex;flex-direction:column;align-items:flex-start;gap:9px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
-            >
-              <span style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${g.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${g.ic};`)}>{g.icon}</span>
-                {g.badge > 0 && (
-                  <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
-                    {g.badge > 99 ? '99+' : g.badge}
-                  </span>
-                )}
-              </span>
-              <span style={css('min-width:0;')}>
-                <span style={css('display:block;font-weight:800;font-size:13px;color:var(--ag-ink);')}>{g.label}</span>
-                <span style={css('display:block;font-size:11px;color:var(--ag-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{g.sub}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Reviews. This used to be a lone tile under a "Grow your shop" eyebrow —
+          a section heading over one card, with the card's own label repeating
+          what the heading already said. It is now just the row it always was,
+          in the same shape as the quick actions above it, saying in words what
+          is waiting rather than only carrying a badge. -------------------- */}
+      <button
+        onClick={() => navigate('/seller/reviews')}
+        className="agx-lift"
+        style={css('width:100%;margin-top:12px;text-align:left;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;display:flex;align-items:center;gap:11px;cursor:pointer;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
+      >
+        <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-gold-bg);display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-gold-text);")}>reviews</span>
+        </span>
+        <span style={css('flex:1;min-width:0;')}>
+          <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>Reviews</span>
+          <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>
+            {reviewsNeedingReply > 0
+              ? `${reviewsNeedingReply} review${reviewsNeedingReply > 1 ? 's are' : ' is'} waiting for your reply`
+              : rating > 0
+                ? `${rating.toFixed(1)} out of 5 from your buyers`
+                : 'See what buyers say about your pieces'}
+          </span>
+        </span>
+        {reviewsNeedingReply > 0 && (
+          <span style={css('flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:#D6336C;color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>
+            {reviewsNeedingReply > 99 ? '99+' : reviewsNeedingReply}
+          </span>
+        )}
+        <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
+      </button>
 
       {/* Promote CTA — an upsell, so it follows the seller's own numbers
           rather than outranking them. ---------------------------------------- */}
