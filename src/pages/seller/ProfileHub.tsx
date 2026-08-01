@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { resolveDisplayName } from '@/lib/displayName';
+import { shareBoutique } from '@/lib/share';
 import { BOUTIQUE_STATUS_LABEL } from '@/data/types';
 import type { BoutiqueStatus } from '@/data/types';
 
@@ -35,14 +36,21 @@ export function ProfileHub() {
 
   // The public storefront a buyer sees, so the seller can preview or share it.
   const storefrontPath = boutique ? `/buyer/boutique/${boutique.id}` : null;
+  // Sends the shop's logo along with the caption where the browser supports it,
+  // so the storefront lands in WhatsApp looking like the shop rather than as a
+  // bare link — the same treatment a product gets. See `shareBoutique`.
   const shareStorefront = async () => {
     if (!boutique) return;
-    const url = `${window.location.origin}/buyer/boutique/${boutique.id}`;
-    const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
-    try {
-      if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on MangaiMart`, url });
-      else { await navigator.clipboard.writeText(url); showToast('Shop link copied'); }
-    } catch { /* the seller dismissed the share sheet — nothing to report */ }
+    const result = await shareBoutique({
+      name: boutique.name,
+      url: `${window.location.origin}/buyer/boutique/${boutique.id}`,
+      logo: boutique.logo_url ?? undefined,
+      cover: boutique.cover_url ?? undefined,
+      city: [boutique.area, boutique.city].filter(Boolean).join(', ') || undefined,
+      desc: boutique.description || undefined,
+    });
+    if (result === 'copied') showToast('Shop link copied');
+    else if (result === 'failed') showToast("Couldn't share your shop", 'error');
   };
 
   // Grouped so the hub reads as sections rather than one long undifferentiated

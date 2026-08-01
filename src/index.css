@@ -375,6 +375,15 @@ body.agx-photo-open { overflow: hidden; }
    `max()` rather than `+`: the home-indicator inset is under the keyboard while
    it is open, so adding both would leave a gap. */
 .agx-chat-root { padding-bottom: max(var(--ag-kb, 0px), env(safe-area-inset-bottom, 0px)); }
+/* A page-level banner (maintenance mode) is `position:sticky`, so it occupies
+   real height in the document — and the shell below it is already `min-height:
+   100vh`. Together that made the page taller than the viewport underneath a
+   chat that is sized to the viewport exactly, so the document scrolled and took
+   the composer off the bottom of the screen with it. While a chat is open the
+   banner is taken out of flow; it keeps its place at the top of the screen, and
+   the chat reserves its measured height (`--ag-banner-h`) instead of sliding
+   under it. */
+body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */

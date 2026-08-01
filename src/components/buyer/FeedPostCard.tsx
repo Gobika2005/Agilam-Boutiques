@@ -5,7 +5,7 @@ import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop } from '@/state/ShopContext';
-import { shareProduct } from '@/lib/shareProduct';
+import { shareProduct } from '@/lib/share';
 import { TONES, fmt } from '@/data/demo';
 import type { FeedProduct } from '@/data/feed';
 

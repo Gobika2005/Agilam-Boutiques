@@ -268,8 +268,12 @@ export function ChatView({
   const statusOn = live && peerOnline;
   const canSend = live && !!draft.trim() && !sending;
 
+  // `top` rather than `inset:0`: a page-level banner (maintenance mode) is a
+  // sticky element in the document flow and sits above this surface in the
+  // stacking order, so covering the whole viewport put the chat header
+  // underneath it. `--ag-banner-h` is 0px whenever no banner is showing.
   return (
-    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:var(--ag-banner-h,0px);left:0;right:0;bottom:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>

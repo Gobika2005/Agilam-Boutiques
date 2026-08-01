@@ -9,7 +9,7 @@ import { ImageZoom } from '@/components/buyer/ImageZoom';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
-import { shareProduct } from '@/lib/shareProduct';
+import { shareProduct } from '@/lib/share';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { usePageMeta } from '@/lib/pageMeta';

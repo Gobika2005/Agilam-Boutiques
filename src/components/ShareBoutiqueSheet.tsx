@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { css } from '@/lib/css';
 import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
 import { useShop } from '@/state/ShopContext';
+import { shareBoutique } from '@/lib/share';
 import { TONES, type Boutique } from '@/data/demo';
 
 /**
@@ -72,9 +73,22 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
     },
   ];
 
-  const nativeShare = () => {
-    if (navigator.share) navigator.share({ title: boutique.name, text: message, url: link }).catch(() => {});
-    else copy();
+  /**
+   * Shares the logo alongside the caption where the browser supports it, so a
+   * boutique arrives in WhatsApp looking like the shop — the same treatment a
+   * product gets. See `shareBoutique`.
+   */
+  const nativeShare = async () => {
+    const result = await shareBoutique({
+      name: boutique.name,
+      url: link,
+      logo: boutique.logo,
+      cover: boutique.image,
+      city: boutique.area && boutique.area !== boutique.city ? `${boutique.area}, ${boutique.city}` : boutique.city,
+      desc: boutique.desc,
+    });
+    if (result === 'copied') showToast('Boutique details copied — paste to share');
+    else if (result === 'failed') showToast("Couldn't share this boutique", 'error');
   };
 
   return (
@@ -105,8 +119,17 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
             <div style={css(`height:74px;background:linear-gradient(135deg,${TONES[boutique.tone]},var(--ag-surface-2));`)} />
             <div style={css('padding:0 18px 18px;')}>
               <div style={css('display:flex;align-items:flex-end;gap:12px;margin-top:-30px;')}>
-                <div style={css('width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);border:3px solid #fff;box-shadow:0 12px 26px -14px rgba(214,51,108,.9);display:flex;align-items:center;justify-content:center;flex:none;')}>
-                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;color:#fff;")}>{monogram(boutique.name)}</span>
+                {/* The real logo — this card is billed as the template a
+                    recipient sees, and the shared image is now the logo, so a
+                    monogram here would be previewing something else. The
+                    monogram stays as the fallback for a shop that has not
+                    uploaded one. */}
+                <div style={css('width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);border:3px solid #fff;box-shadow:0 12px 26px -14px rgba(214,51,108,.9);display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;')}>
+                  {boutique.logo ? (
+                    <img src={boutique.logo} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />
+                  ) : (
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;color:#fff;")}>{monogram(boutique.name)}</span>
+                  )}
                 </div>
                 <div style={css('flex:1;min-width:0;padding-bottom:2px;')}>
                   <div style={css('display:flex;align-items:center;gap:5px;')}>
