@@ -41,6 +41,12 @@
   --ag-cover-fade: rgba(251,246,242,.55); /* cover image → page fade */
   --ag-shimmer-1: #F1E5EC;             /* skeleton loader */
   --ag-shimmer-2: #F9F0F4;
+  /* Unread row highlight (notification inbox). This was the literal #FFF3F8
+     written straight into the card, so in dark mode an unread notification kept
+     a near-white background while its text stayed on the dark palette — the
+     title rendered at 1.07:1 (invisible) and the body at 2.79:1. The light value
+     is unchanged; dark gets a lifted rose-tinted surface instead. */
+  --ag-unread: #FFF3F8;
   /* status chips */
   /* `--ag-good` is the fill/accent (dots, bars — 3:1 is enough); `--ag-good-text`
      is for text ON a light surface and was 4.35:1, just under AA. The "20% off"
@@ -84,6 +90,9 @@
   --ag-cover-fade: rgba(18,10,14,.7);
   --ag-shimmer-1: #241820;
   --ag-shimmer-2: #33222B;
+  /* Lifted above --ag-surface (#1C1216) so "unread" still reads at a glance,
+     while ink lands at 13.6:1 and muted body text at 5.2:1. */
+  --ag-unread: #301E29;
   --ag-good: #43C489; --ag-good-bg: #143026; --ag-good-text: #6FE0AE;
   /* On the dark surfaces the original gold already clears 3:1 comfortably
      (≈10:1), so dark mode keeps the brighter star. */

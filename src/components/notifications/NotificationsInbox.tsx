@@ -105,7 +105,7 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
             <div
               key={n.id}
               onClick={() => open(n)}
-              style={css(`background:${n.read ? 'var(--ag-surface)' : '#FFF3F8'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${n.order_id && orderBasePath ? 'pointer' : 'default'};`)}
+              style={css(`background:${n.read ? 'var(--ag-surface)' : 'var(--ag-unread)'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${n.order_id && orderBasePath ? 'pointer' : 'default'};`)}
             >
               <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${s.tint};display:flex;align-items:center;justify-content:center;`)}>
                 <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${s.ic};`)}>{s.icon}</span>
