@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 import { ScrollManager } from '@/components/layout/ScrollManager';
+import { ScrollReveal } from '@/components/layout/ScrollReveal';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 import { PresenceTracker } from '@/components/layout/PresenceTracker';
 import { LaunchNotice } from '@/components/layout/LaunchNotice';
@@ -107,6 +108,8 @@ export default function App() {
     <>
       {/* Every forward navigation starts at the top; back restores where you were. */}
       <ScrollManager />
+      {/* Page sections fade and rise as they scroll into view, app-wide. */}
+      <ScrollReveal />
       {/* Holds background refresh while the user is checking out or filling a form. */}
       <LiveRefreshGate />
       {/* Broadcasts this tab's live presence so the admin console can see who's on the site. */}

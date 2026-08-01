@@ -213,6 +213,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-zoom:hover .agx-zoomable, .agx-zoom:hover image-slot { transform: scale(1.06); }
 @keyframes agx-rise { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform:none; } }
 @keyframes agx-pop { 0%{transform:scale(1);} 45%{transform:scale(1.4);} 100%{transform:scale(1);} }
+/* Scroll-in reveal (see components/layout/ScrollReveal.tsx).
+   `.agx-sr` is the hidden state and is ONLY ever added by that file, never by
+   markup — so if its JS never runs, nothing is hidden and every page renders as
+   it always did. Both classes are stripped once the animation finishes, which
+   is why no element is left holding a transform (and therefore acting as a
+   containing block for any `position:fixed` descendant). */
+.agx-sr { opacity: 0; transform: translateY(22px); will-change: opacity, transform; }
+.agx-sr-in {
+  animation: agx-rise .6s cubic-bezier(.2,.7,.2,1) both;
+  animation-delay: var(--agx-sr-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce){
+  /* Belt and braces — ScrollReveal already opts out before adding any class. */
+  .agx-sr, .agx-sr-in { opacity: 1 !important; transform: none !important; animation: none !important; }
+}
 .agx-reveal { animation: agx-rise .55s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
