@@ -1,5 +1,5 @@
 {
-  // Vercel Edge Middleware (`middleware.ts`).
+  // Vercel Edge Middleware (`middleware.js`).
   //
   // It needs its own project because it belongs to neither of the others: it is
   // not app code (tsconfig.app.json covers `src` only, and pulls in React/JSX
@@ -24,7 +24,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true
   },
-  "include": ["middleware.ts"]
+  "include": ["middleware.js"]
 }
