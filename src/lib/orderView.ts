@@ -16,6 +16,9 @@ export type OrderView = {
   /** 6-digit delivery pincode — the courier can't route the parcel without it. */
   pincode: string | null;
   item: string;     // first item title (+ "+N more")
+  /** Photo of the first item, joined from its catalogue row. Null once the
+   *  product is gone — the tone placeholder is the fallback. */
+  image: string | null;
   color: string | null;
   size: string | null;
   qty: number;
@@ -83,6 +86,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     address: o.guest_address ?? null,
     pincode: o.guest_pincode ?? null,
     item: (first?.title ?? 'Item') + extra,
+    image: first?.product?.image_url ?? null,
     color: first?.color ?? null,
     size: first?.size ?? null,
     qty,

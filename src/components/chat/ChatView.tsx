@@ -97,6 +97,7 @@ export function ChatView({
   const [buyerId, setBuyerId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Flag the whole app as "in a chat" while this full-screen surface is mounted,
   // so the floating bottom nav dock can be hidden (it has no place over a chat,
@@ -107,6 +108,48 @@ export function ChatView({
   useEffect(() => {
     document.body.classList.add('agx-chatting');
     return () => document.body.classList.remove('agx-chatting');
+  }, []);
+
+  /**
+   * Keep the composer above the on-screen keyboard.
+   *
+   * The chat is a fixed, full-viewport surface, and the *layout* viewport does
+   * not shrink when a phone keyboard opens (iOS Safari never does it; Android
+   * only in some modes). So the field the buyer was typing into sat underneath
+   * the keyboard, and the last messages went with it. The visual viewport does
+   * report the change, so measure the covered strip from it and publish it as
+   * `--ag-kb` for `.agx-chat-root` to reserve.
+   *
+   * Written to the body so the toast — a fixed sibling, not a child — can clear
+   * the keyboard too. Both are cleaned up when the chat unmounts.
+   */
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let last = '';
+    const apply = () => {
+      // offsetTop matters on iOS: the visual viewport can be scrolled within
+      // the layout viewport, and only what is below it is actually hidden.
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      // Ignore the few pixels a collapsing URL bar accounts for — only a real
+      // keyboard should move the layout.
+      const kb = covered > 120 ? `${Math.round(covered)}px` : '0px';
+      if (kb === last) return;
+      last = kb;
+      rootRef.current?.style.setProperty('--ag-kb', kb);
+      document.body.style.setProperty('--ag-kb', kb);
+      // The thread just got shorter; without this the message you were reading
+      // when you tapped the field scrolls out of sight behind the keyboard.
+      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+    };
+    apply();
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+      document.body.style.removeProperty('--ag-kb');
+    };
   }, []);
 
   useEffect(() => {
@@ -226,7 +269,7 @@ export function ChatView({
   const canSend = live && !!draft.trim() && !sending;
 
   return (
-    <div className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>

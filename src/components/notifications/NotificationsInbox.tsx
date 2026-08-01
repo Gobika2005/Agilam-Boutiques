@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { messagePreview } from '@/data/chat';
 import { useNotifications } from '@/state/NotificationContext';
 
 const TABS = ['All', 'Orders', 'Messages', 'Wishlist', 'Updates'];
@@ -110,12 +111,17 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
               <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${s.tint};display:flex;align-items:center;justify-content:center;`)}>
                 <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${s.ic};`)}>{s.icon}</span>
               </div>
-              <div style={css('flex:1;')}>
+              <div style={css('flex:1;min-width:0;')}>
                 <div style={css('display:flex;justify-content:space-between;align-items:center;gap:8px;')}>
                   <span style={css('font-weight:800;font-size:13.5px;')}>{n.title}</span>
                   <span style={css('font-size:11px;color:var(--ag-muted-soft);flex:none;')}>{relTime(n.created_at)}</span>
                 </div>
-                <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.4;margin-top:2px;')}>{n.body}</div>
+                {/* `overflow-wrap` because a message body is arbitrary buyer text
+                    — an unbroken run like a pasted URL used to push the row's
+                    width out past the screen instead of wrapping. */}
+                <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.4;margin-top:2px;overflow-wrap:anywhere;')}>
+                  {messagePreview(n.body)}
+                </div>
               </div>
             </div>
           );

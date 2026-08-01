@@ -79,11 +79,21 @@ export async function fetchConversationsForBoutique(boutiqueId: string): Promise
   return shapeConversations(data ?? [], boutiqueId, 'seller');
 }
 
-// Friendly one-line preview for the inbox: product-card messages carry an
-// encoded body, so surface the product name instead of the raw marker/JSON.
-function previewText(body: string): string {
-  const card = parseProductCard(body);
-  return card ? `🛍️ ${card.title}` : body;
+/**
+ * Friendly one-line summary of a message body, for anywhere a message is shown
+ * outside the thread itself — the conversation inbox and the "New message"
+ * notification.
+ *
+ * Card messages carry a marker + JSON payload as their body, which is only
+ * meaningful to ChatView's renderer. Anywhere else it has to be summarised, or
+ * the raw `@@ORDER@@{"orderId":…}` blob shows up as the preview text.
+ */
+export function messagePreview(body: string): string {
+  const product = parseProductCard(body);
+  if (product) return `🛍️ ${product.title}`;
+  const order = parseOrderCard(body);
+  if (order) return `🧾 ${order.orderId} · ${order.title}`;
+  return body;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,7 +138,7 @@ function shapeConversations(rows: any[], viewerId: string, mode: 'buyer' | 'sell
         buyer_name: mode === 'seller' ? r.buyer?.full_name ?? 'Customer' : '',
         boutique_name: mode === 'buyer' ? r.boutique?.name ?? 'Boutique' : '',
         boutique_tone: r.boutique?.tone ?? 0,
-        last_message: last ? previewText(last.body) : 'Say hello 👋',
+        last_message: last ? messagePreview(last.body) : 'Say hello 👋',
         last_message_at: last?.created_at ?? null,
         unread,
       } as ConversationWithPeer;

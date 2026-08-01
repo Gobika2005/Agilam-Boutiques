@@ -7,6 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { printInvoice } from '@/lib/printInvoice';
+import { ImageSlot } from '@/components/ui/ImageSlot';
 
 // "To collect" is not a fulfilment status — it is every COD order whose cash is
 // still outstanding, which is the list a seller actually chases at end of day.
@@ -194,9 +195,12 @@ export function Orders() {
                   <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                 </div>
                 <div style={css('display:flex;gap:11px;align-items:center;margin-top:10px;')}>
-                  <div style={css(`width:44px;height:44px;flex:none;border-radius:12px;background:${TONES[o.tone]};position:relative;overflow:hidden;`)}>
-                    <div style={css('position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0 1px,transparent 1px 12px);')} />
-                  </div>
+                  <ImageSlot
+                    src={o.image ?? undefined}
+                    placeholder={o.item}
+                    alt={o.item}
+                    style={css(`width:44px;height:44px;flex:none;border-radius:12px;background:${TONES[o.tone]};`)}
+                  />
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
                     <div style={css('font-size:12px;color:var(--ag-muted);')}>{o.customer} · Qty {o.qty} · {o.date}</div>

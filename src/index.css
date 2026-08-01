@@ -313,17 +313,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    `!important` rule here overrides it. */
 /* Toast: clears whatever bottom furniture the current screen has. The dock sits
    at bottom:24px and is ~64px tall, so 100px clears it everywhere; a product
-   page stacks its sticky action bar under the dock, and a chat has neither. */
+   page stacks its sticky action bar under the dock. */
 .agx-toast { bottom: 100px; }
 @media (max-width:640px){ .agx-toast { bottom: 90px; } }
 @media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 160px; } }
 @media (min-width:960px){ .agx-toast { bottom: 28px; } }
-body:has(.agx-chat-root) .agx-toast,
-body.agx-chatting .agx-toast,
 body.agx-photo-open .agx-toast { bottom: 28px; }
+/* A chat has no dock, but it does have the composer pinned to the bottom edge —
+   which is ~68px tall plus the safe area. Dropping the toast to 28px here put
+   "Could not send" straight on top of the field the message has to be retyped
+   in. Sit it above the composer instead, and above the keyboard when one is
+   open (`--ag-kb`, set by ChatView from visualViewport). */
+body:has(.agx-chat-root) .agx-toast,
+body.agx-chatting .agx-toast {
+  bottom: calc(84px + var(--ag-kb, 0px) + env(safe-area-inset-bottom, 0px));
+}
 
+/* Furniture that floats over the page has no business over a conversation: the
+   dock covers the composer, and the buyer's floating bag (z-index 45, above the
+   chat's 40) parked itself on the quick replies and the field. Retire both for
+   as long as a chat is on screen. */
 body:has(.agx-chat-root) .agx-dock,
-body.agx-chatting .agx-dock { display: none !important; }
+body.agx-chatting .agx-dock,
+body:has(.agx-chat-root) .agx-fab-bag,
+body.agx-chatting .agx-fab-bag { display: none !important; }
 
 /* Full-screen photo viewer. The dock and the PDP action bar are fixed siblings
    of the viewer, not children, so they kept painting over the photo — the
@@ -353,7 +366,15 @@ body.agx-photo-open { overflow: hidden; }
    Messages behind a notice — covering navigation is worse than covering
    content. Lift it clear at every width, since the dock is now everywhere. */
 .agx-launch-notice { bottom: 104px !important; }
-.agx-chat-root { padding-bottom: env(safe-area-inset-bottom); }
+/* The chat is `position:fixed; inset:0`, so it is sized to the *layout* viewport
+   — which iOS Safari does not shrink when the on-screen keyboard opens. The
+   composer therefore stayed at the bottom of the page, underneath the keyboard,
+   and you typed into a field you could not see. `--ag-kb` is the keyboard's
+   height, measured from visualViewport by ChatView (0 when it is closed), and
+   reserving it here lifts the whole chat column clear of it.
+   `max()` rather than `+`: the home-indicator inset is under the keyboard while
+   it is open, so adding both would leave a gap. */
+.agx-chat-root { padding-bottom: max(var(--ag-kb, 0px), env(safe-area-inset-bottom, 0px)); }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */

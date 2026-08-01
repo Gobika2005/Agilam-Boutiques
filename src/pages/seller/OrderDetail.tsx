@@ -12,6 +12,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
 import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
+import { ImageSlot } from '@/components/ui/ImageSlot';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -185,17 +186,40 @@ export function OrderDetail() {
         </div>
 
         <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
-          <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>ITEM</div>
-          <div style={css('display:flex;gap:11px;align-items:center;margin-top:8px;')}>
-            <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[o.tone]};position:relative;overflow:hidden;`)}>
-              <div style={css('position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0 1px,transparent 1px 12px);')} />
-            </div>
-            <div style={css('flex:1;')}>
-              <div style={css('font-weight:700;font-size:13.5px;')}>{o.item}</div>
-              <div style={css('font-size:12px;color:var(--ag-muted);')}>Size {o.size ?? 'Free'} · {o.color ?? '—'} · Qty {o.qty}</div>
-            </div>
-            <div style={css('font-weight:800;color:var(--ag-crimson);')}>{fmt(o.amount)}</div>
+          <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>
+            {o.items.length > 1 ? `ITEMS · ${o.items.length}` : 'ITEM'}
           </div>
+          {/* Every line, not just the first: a seller packing a multi-item order
+              has to see all of it, and tapping a line opens that product so the
+              stock and photo are one tap away from the order being packed. */}
+          {o.items.map((it) => {
+            const open = it.product_id ? () => navigate(`/seller/products/${it.product_id}`) : undefined;
+            return (
+              <div
+                key={it.id}
+                onClick={open}
+                style={css(`display:flex;gap:11px;align-items:center;margin-top:10px;cursor:${open ? 'pointer' : 'default'};`)}
+              >
+                <ImageSlot
+                  src={it.product?.image_url ?? undefined}
+                  placeholder={it.title}
+                  alt={it.title}
+                  style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[(it.product?.tone ?? o.tone) % 8]};`)}
+                />
+                <div style={css('flex:1;min-width:0;')}>
+                  <div style={css('font-weight:700;font-size:13.5px;')}>{it.title}</div>
+                  <div style={css('font-size:12px;color:var(--ag-muted);')}>Size {it.size ?? 'Free'} · {it.color ?? '—'} · Qty {it.qty}</div>
+                </div>
+                <div style={css('display:flex;align-items:center;gap:2px;')}>
+                  <span style={css('font-weight:800;color:var(--ag-crimson);')}>{fmt(Number(it.price) * it.qty)}</span>
+                  {open && <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-muted-soft);")}>chevron_right</span>}
+                </div>
+              </div>
+            );
+          })}
+          {o.items.length === 0 && (
+            <div style={css('margin-top:8px;font-size:13px;color:var(--ag-muted);')}>No item lines recorded on this order.</div>
+          )}
           <div style={css('border-top:1px solid var(--ag-border-soft);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-size:13px;color:var(--ag-muted);')}>
             <span>Subtotal</span><span style={css('font-weight:700;color:var(--ag-ink);')}>{fmt(subtotal)}</span>
           </div>

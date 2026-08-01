@@ -181,7 +181,23 @@ export interface OrderWithDetails {
   cancel_reason?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
-  items: { id: string; product_id: string | null; title: string; price: number; qty: number; size: string | null; color: string | null }[];
+  items: {
+    id: string;
+    product_id: string | null;
+    title: string;
+    price: number;
+    qty: number;
+    size: string | null;
+    color: string | null;
+    /**
+     * The catalogue row this line was bought from, joined in for its photo.
+     * `order_items` deliberately snapshots the title and price at purchase
+     * time but keeps no image, so without this join every order screen could
+     * only paint a tinted placeholder. Null when the product has since been
+     * deleted (or is not readable), which is why the placeholder stays.
+     */
+    product?: { image_url: string | null; tone: number } | null;
+  }[];
 }
 
 export interface ConversationWithPeer {
