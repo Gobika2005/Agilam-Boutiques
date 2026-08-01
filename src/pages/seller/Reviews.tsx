@@ -88,7 +88,7 @@ export function Reviews() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 4px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Reviews</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Reviews</h1>
         <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;')}>
           What buyers say about your pieces — reply in public.
         </div>
@@ -97,18 +97,18 @@ export function Reviews() {
       {/* Summary ---------------------------------------------------------- */}
       <div style={css('margin:12px 20px 0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;display:flex;gap:12px;flex-wrap:wrap;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>Average</div>
+          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Average</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;color:var(--ag-crimson);margin-top:3px;")}>
-            {summary.count ? summary.avg.toFixed(1) : '—'} <span style={css('font-size:13px;color:#E0B84B;')}>★</span>
+            {summary.count ? summary.avg.toFixed(1) : '—'} <span style={css('font-size:13px;color:var(--ag-star);')}>★</span>
           </div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>Total reviews</div>
+          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Total reviews</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;")}>{summary.count}</div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>Needs reply</div>
-          <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;color:${summary.needsReply ? '#C99A3F' : 'var(--ag-good)'};`)}>{summary.needsReply}</div>
+          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Needs reply</div>
+          <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;color:${summary.needsReply ? 'var(--ag-gold-text)' : 'var(--ag-good)'};`)}>{summary.needsReply}</div>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export function Reviews() {
             <div style={css('font-weight:700;font-size:14.5px;margin-top:8px;color:var(--ag-ink);')}>
               {filter === 'Needs reply' && summary.count > 0 ? 'All caught up' : reviews.length === 0 ? 'No reviews yet' : 'Nothing here'}
             </div>
-            <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;margin-top:4px;line-height:1.5;')}>
+            <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:4px;line-height:1.5;')}>
               {reviews.length === 0
                 ? 'When buyers review your pieces, they show up here for you to reply to.'
                 : filter === 'Needs reply'
@@ -181,7 +181,7 @@ export function Reviews() {
                   </div>
                   <div style={css('color:var(--ag-muted);font-size:11.5px;margin-top:1px;')}>{timeAgo(r.created_at)}</div>
                 </div>
-                <span style={css('color:#E0B84B;font-size:13px;letter-spacing:1px;flex:none;')}>{starsFor(r.rating)}</span>
+                <span style={css('color:var(--ag-gold-text);font-size:13px;letter-spacing:1px;flex:none;')}>{starsFor(r.rating)}</span>
               </div>
               {r.body && <div style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:9px;')}>{r.body}</div>}
               {r.images?.length > 0 && (
@@ -226,7 +226,7 @@ export function Reviews() {
                       {busy ? 'Saving…' : r.seller_reply ? 'Update reply' : 'Post reply'}
                     </button>
                     {r.seller_reply && (
-                      <button onClick={() => send(r, true)} disabled={busy} style={css('height:42px;padding:0 14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Remove</button>
+                      <button onClick={() => send(r, true)} disabled={busy} style={css('height:42px;padding:0 14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Remove</button>
                     )}
                     <button onClick={() => { setOpenId(null); setDraft(''); }} disabled={busy} style={css('height:42px;padding:0 16px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Cancel</button>
                   </div>

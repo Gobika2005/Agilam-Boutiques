@@ -473,8 +473,20 @@ export default async function handler(req, res) {
     if (cartTotals.discount > 0 && coupon) {
       const claimed = await redeemCoupon(supabase, coupon.code);
       if (!claimed) {
+        // Stock was already reserved above and, on the prepaid path, the buyer
+        // has already been charged. Bailing out here without undoing both would
+        // eat the inventory AND keep the money for an order that never exists —
+        // so unwind exactly as the order-write failure below does.
+        try {
+          await supabase.rpc('release_stock', { p_items: reserveItems });
+        } catch (releaseErr) {
+          console.error('place-order: stock release failed after coupon exhaustion:', releaseErr?.message ?? releaseErr);
+        }
+        if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
         return res.status(409).json({
-          error: 'That coupon has just reached its redemption limit. Remove it and try again.',
+          error: isCod
+            ? 'That coupon has just reached its redemption limit. Remove it and try again.'
+            : 'That coupon has just reached its redemption limit; your payment has been refunded. Remove it and try again.',
         });
       }
       couponApplied = coupon.code;

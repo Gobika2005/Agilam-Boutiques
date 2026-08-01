@@ -177,7 +177,16 @@ type DashOrder = {
 };
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-const isEarned = (o: DashOrder) => o.status !== 'rejected' && !o.refunded;
+/**
+ * Did this order actually earn the marketplace anything?
+ *
+ * `cancelled` used to be missing here, so a cancelled order still counted
+ * toward GMV, Revenue, Avg. order and the 10% Platform earning tile — the
+ * platform booked commission on an order nobody paid for, and the admin's
+ * numbers drifted above the seller console's for the same orders.
+ * (A seller-side cancellation and an admin-side rejection are both "no sale".)
+ */
+const isEarned = (o: DashOrder) => o.status !== 'rejected' && o.status !== 'cancelled' && !o.refunded;
 
 export async function fetchDashboard(): Promise<DashboardData> {
   const [ordersRes, itemsRes, buyers, sellers, activeBoutiques, pendingApprovals, products, lowStockRes] = await Promise.all([

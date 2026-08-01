@@ -83,7 +83,7 @@ export function Settings() {
       <Card style={form.maintenance_mode ? 'border:1.5px solid var(--ag-warn-text);' : ''}>
         <div style={css('display:flex;align-items:center;gap:14px;')}>
           <div style={css(`width:44px;height:44px;border-radius:13px;background:${form.maintenance_mode ? 'var(--ag-warn-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;flex:none;`)}>
-            <Icon name="engineering" size={24} color={form.maintenance_mode ? '#C99A3F' : T.muted} />
+            <Icon name="engineering" size={24} color={form.maintenance_mode ? 'var(--ag-gold-text)' : T.muted} />
           </div>
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('font-weight:800;font-size:14.5px;')}>Maintenance mode</div>

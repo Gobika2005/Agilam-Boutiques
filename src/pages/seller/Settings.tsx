@@ -121,12 +121,13 @@ export function Settings() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 0 14px;display:flex;align-items:center;gap:10px;')}>
         <button
+          aria-label="Go back"
           onClick={() => navigate('/seller/profile')}
           style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Settings</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Settings</h1>
       </div>
 
       <div style={css('max-width:760px;display:flex;flex-direction:column;gap:16px;')}>
@@ -165,7 +166,7 @@ export function Settings() {
         <SectionCard title="Payments accepted">
           <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
           <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
-          {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:#D6455A;')}>{errors.codEnabled}</span>}
+          {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
         </SectionCard>
 
         <SectionCard title="Notifications" subtitle="What lands in your notifications inbox.">

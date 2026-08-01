@@ -177,7 +177,7 @@ export function TopBoutiques() {
                 {/* The numbers behind the rank, stated plainly. A leaderboard
                     that will not show its working is just an advert. */}
                 <div style={css('display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
-                  <Stat icon="star" tint="#E0B84B" value={String(b.rating)} sub={`${compactCount(b.reviews)} reviews`} />
+                  <Stat icon="star" tint="var(--ag-star)" value={String(b.rating)} sub={`${compactCount(b.reviews)} reviews`} />
                   {(b.unitsSold ?? 0) > 0 && (
                     <Stat icon="local_fire_department" tint="var(--ag-good)" value={compactCount(b.unitsSold ?? 0)} sub="sold" />
                   )}

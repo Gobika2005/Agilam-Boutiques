@@ -10,7 +10,7 @@ import type { CouponFieldErrors } from '@/lib/couponForm';
 
 const field = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:0 13px;height:46px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;';
 const label = 'font-size:12.5px;font-weight:800;color:var(--ag-label);display:block;';
-const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
+const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
 
 function Err({ msg }: { msg?: string }) {
   return msg ? <span style={css(errStyle)}>{msg}</span> : null;
@@ -99,7 +99,7 @@ export function CouponFormFields({
           placeholder="0"
           style={css(field)}
         />
-        <span style={css('display:block;margin-top:5px;font-size:11.5px;color:#A98D99;font-weight:600;')}>
+        <span style={css('display:block;margin-top:5px;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>
           {input.boutique_id
             ? 'Measured against just your boutique’s items in the bag.'
             : '0 means no minimum. Measured against the whole cart.'}
@@ -118,7 +118,7 @@ export function CouponFormFields({
           placeholder="Unlimited"
           style={css(field)}
         />
-        <span style={css('display:block;margin-top:5px;font-size:11.5px;color:#A98D99;font-weight:600;')}>
+        <span style={css('display:block;margin-top:5px;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>
           How many times this code may be used in total. Blank means unlimited.
         </span>
         <Err msg={errors.usage_limit} />

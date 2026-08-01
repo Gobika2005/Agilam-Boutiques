@@ -92,7 +92,7 @@ export function AdminLayout() {
               spacer keeps the final row clear of the viewport edge and of the
               non-production ribbon. */}
           <div style={css('flex:none;height:10px;')} />
-          <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:#D6455A;font-family:inherit;margin-bottom:6px;')}>
+          <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:var(--ag-danger-text);font-family:inherit;margin-bottom:6px;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>logout</span>
             <span>Log out</span>
           </button>
@@ -154,7 +154,7 @@ export function AdminLayout() {
         <button
           onClick={logout}
           aria-label="Log out"
-          style={css("flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:transparent;color:#D6455A;")}
+          style={css("flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:transparent;color:var(--ag-danger-text);")}
         >
           <span translate="no" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>logout</span>
           <span style={css('font-size:10px;font-weight:700;white-space:nowrap;')}>Log out</span>

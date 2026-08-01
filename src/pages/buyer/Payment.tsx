@@ -136,7 +136,7 @@ export function Payment() {
 
         {pending && (
           <div style={css('margin-top:16px;background:var(--ag-gold-bg);border:1.5px solid var(--ag-gold-border);border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:24px;")}>error</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:24px;")}>error</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:14.5px;')}>We received your {fmt(pending.total)} payment</div>
               <div style={css('color:#7A6450;font-size:12.5px;margin-top:3px;line-height:1.5;')}>

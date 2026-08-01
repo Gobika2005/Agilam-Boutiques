@@ -331,7 +331,7 @@ export function FeedPostCard({
         )}
 
         {hasMrp && (
-          <div style={css('position:absolute;left:12px;top:12px;background:linear-gradient(135deg,var(--ag-good),#1E8455);color:#fff;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 8px 20px -10px rgba(30,132,85,.9);')}>
+          <div style={css('position:absolute;left:12px;top:12px;background:linear-gradient(135deg,var(--ag-good-text),#186B43);color:#fff;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 8px 20px -10px rgba(30,132,85,.9);')}>
             {discountPct}% off
           </div>
         )}
@@ -432,9 +432,9 @@ export function FeedPostCard({
           <div style={css('flex:1;min-width:0;display:flex;align-items:center;gap:9px;')}>
             <span style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);color:#B8892B;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:9px;')}>
               {product.rating}
-              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;font-variation-settings:'FILL' 1;")}>star</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);font-variation-settings:'FILL' 1;")}>star</span>
             </span>
-            {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:#C99A3F;')}>Only {product.stock} left</span>}
+            {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:var(--ag-gold-text);')}>Only {product.stock} left</span>}
           </div>
 
           {soldOut ? (

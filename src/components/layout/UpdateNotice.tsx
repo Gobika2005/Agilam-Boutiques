@@ -94,7 +94,7 @@ export function UpdateNotice() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        style={css('flex:none;border:none;cursor:pointer;padding:7px 15px;border-radius:999px;background:linear-gradient(140deg,#E14A7E,#B02454 70%);color:#fff;font-family:inherit;font-size:13px;font-weight:700;')}
+        style={css('flex:none;border:none;cursor:pointer;padding:7px 15px;border-radius:999px;background:linear-gradient(140deg,#C62A60,#B02454 70%);color:#fff;font-family:inherit;font-size:13px;font-weight:700;')}
       >
         Refresh
       </button>

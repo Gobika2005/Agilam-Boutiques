@@ -243,7 +243,7 @@ function ReviewDrawer({
               <div style={css('margin-top:9px;display:flex;flex-direction:column;gap:7px;')}>
                 {g.rows.map(([k, v]) => (
                   <div key={k} style={css('display:flex;gap:12px;align-items:baseline;')}>
-                    <span style={css('flex:none;width:130px;font-size:11.5px;font-weight:700;color:#A98D99;')}>{k}</span>
+                    <span style={css('flex:none;width:130px;font-size:11.5px;font-weight:700;color:var(--ag-muted);')}>{k}</span>
                     <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-ink);word-break:break-word;')}>{v}</span>
                   </div>
                 ))}
@@ -257,7 +257,7 @@ function ReviewDrawer({
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>
                 {asking === 'rejected' ? 'Reason for rejection' : 'What needs changing?'}
               </div>
-              <div style={css('font-size:12px;color:#A98D99;font-weight:600;margin-top:3px;')}>
+              <div style={css('font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>
                 The seller sees this word for word on their verification screen.
               </div>
               <textarea

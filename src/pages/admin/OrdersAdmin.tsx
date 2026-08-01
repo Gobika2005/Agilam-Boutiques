@@ -206,7 +206,7 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
         <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery'} />
         {o.payment_id && <Field label="Payment ID" value={<span style={css('font-size:11.5px;')}>{o.payment_id}</span>} />}
         <Field label="Order total" value={fmtInr(o.total)} />
-        <Field label={`Commission (${pct}%)`} value={<span style={css('color:#C99A3F;')}>{fmtInr(o.total * (pct / 100))}</span>} />
+        <Field label={`Commission (${pct}%)`} value={<span style={css('color:var(--ag-gold-text);')}>{fmtInr(o.total * (pct / 100))}</span>} />
         <Field label="Refund" value={o.refunded ? <StatusPill status="refunded" label="Refunded" /> : 'None'} />
       </div>
     </div>

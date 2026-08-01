@@ -78,7 +78,7 @@ export function Inspire() {
                 onClick={() => setTab(t.key)}
                 style={css(
                   `flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;border:none;cursor:pointer;border-radius:11px;font-family:inherit;font-weight:800;font-size:13.5px;transition:background .25s ease,color .25s ease,box-shadow .25s ease;background:${
-                    on ? 'linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44)' : 'transparent'
+                    on ? 'linear-gradient(135deg,#C62A60,#B02454 70%,#8E1C44)' : 'transparent'
                   };color:${on ? '#fff' : 'var(--ag-muted)'};box-shadow:${
                     on ? '0 1px 0 rgba(255,255,255,.3) inset,0 10px 22px -12px rgba(176,36,84,.9)' : 'none'
                   };`,
@@ -115,7 +115,7 @@ export function Inspire() {
 
         {!loading && error && (
           <div style={css('display:flex;gap:12px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>cloud_off</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>cloud_off</span>
             <div style={css('font-size:13px;color:#7A6450;line-height:1.55;')}>{error}</div>
           </div>
         )}

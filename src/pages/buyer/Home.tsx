@@ -199,7 +199,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
+        <a href="/buyer/collections" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CIRCLES.map((c) => (
@@ -248,7 +248,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fresh off the loom</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>New arrivals</h2>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
+        <a href="/buyer/new-arrivals" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {NEW_ARRIVALS.map((p) => (
@@ -272,7 +272,7 @@ export function Home() {
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
                 <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>{p.rating}
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
                 </span>
               </div>
             </div>
@@ -286,7 +286,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Most-loved right now</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best sellers</h2>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>See all →</a>
+        <a href="/buyer/best-sellers" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
       <div className="agx-rgrid">
         {BEST_SELLERS.map((p) => (
@@ -309,7 +309,7 @@ export function Home() {
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
                 <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>{p.rating}
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
                   <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {reviewsF(p.reviews)}</span>
                 </span>
               </div>
@@ -324,7 +324,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>View all →</a>
+        <a href="/buyer/top-boutiques" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {TOP_BOUTIQUES.map((b) => (
@@ -350,7 +350,7 @@ export function Home() {
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
                 <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>{b.products} styles</div>
                 <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
                 </div>
               </div>
             </div>
@@ -399,7 +399,7 @@ export function Home() {
                       <span
                         key={i}
                         className={i <= r.rating ? 'agx-heart agx-heart-on' : 'agx-heart'}
-                        style={css(`font-size:17px;color:${i <= r.rating ? '#E0B84B' : '#E8D7DF'};`)}
+                        style={css(`font-size:17px;color:${i <= r.rating ? 'var(--ag-star)' : '#E8D7DF'};`)}
                       >
                         star
                       </span>

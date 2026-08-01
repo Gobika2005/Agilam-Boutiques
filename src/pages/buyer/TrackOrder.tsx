@@ -22,8 +22,11 @@ export function TrackOrder() {
   const { orders, refresh, refreshing } = useBuyerOrders();
 
   const decoded = id ? decodeURIComponent(id) : undefined;
+  // Three handles resolve to the same order: the display id (`#AGL-…`, what the
+  // orders list links with), the bare order number, and the DB row uuid — which
+  // is what an order notification carries, so tapping one has to land here too.
   const order = useMemo(
-    () => orders.find((o) => o.id === decoded || o.orderNumber === decoded),
+    () => orders.find((o) => o.id === decoded || o.orderNumber === decoded || o.rowId === decoded),
     [orders, decoded],
   );
 
@@ -159,7 +162,7 @@ export function TrackOrder() {
         {/* ---------- Cash on delivery ---------- */}
         {owes && (
           <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>payments</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>payments</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-gold-text);")}>
                 Keep {fmt(order.total)} ready

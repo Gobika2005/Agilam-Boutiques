@@ -28,6 +28,13 @@ function devApi(env: Record<string, string>): Plugin {
     // Vercel Hobby 12-function limit) — so the Promote flow works under `npm run
     // dev`, not only on Vercel.
     '/api/ads': './api/ads.js',
+    // Read-only diagnostics. Without these two the dev server has no route for
+    // them, so Vite serves the handler's SOURCE as a module: /api/health — the
+    // endpoint ENVIRONMENTS.md tells you to check first — could not be used
+    // locally at all, and the presence tracker's /api/geo call parsed JS as JSON
+    // on every navigation. Neither has side effects, so both are safe in dev.
+    '/api/health': './api/health.js',
+    '/api/geo': './api/geo.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
   // bundled or statically type-checked (the handlers are plain .js).

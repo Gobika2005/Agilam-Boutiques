@@ -103,7 +103,7 @@ export function MyOrders() {
           might be behind what the boutique has already done. */}
       {error && (
         <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:19px;flex:none;")}>cloud_off</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:19px;flex:none;")}>cloud_off</span>
           {error}
         </div>
       )}

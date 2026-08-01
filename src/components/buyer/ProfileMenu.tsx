@@ -112,7 +112,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
         <button onClick={() => go('/buyer/profile')} style={css('width:100%;height:38px;border:none;border-radius:11px;background:linear-gradient(135deg,#8E1C44,#B02454);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>settings</span>Account &amp; settings
         </button>
-        <button onClick={logout} style={css('width:100%;height:34px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;')}>
+        <button onClick={logout} style={css('width:100%;height:34px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>logout</span>
           {signedIn ? 'Log out' : 'Clear my details'}
         </button>

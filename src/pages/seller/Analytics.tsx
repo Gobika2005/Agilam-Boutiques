@@ -7,7 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique, fetchCustomersForBoutique } from '@/data/orders';
 import { fetchProductsByBoutique } from '@/data/products';
 
-const CAT_COLORS = ['#D6336C', '#B0863B', '#9B7FC7', '#5FA37E', 'var(--ag-info-text)', '#E0B84B'];
+const CAT_COLORS = ['#D6336C', '#B0863B', '#9B7FC7', '#5FA37E', 'var(--ag-info-text)', 'var(--ag-star)'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const compactInr = (n: number) =>
   n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmt(n);
@@ -138,7 +138,7 @@ export function Analytics() {
       <div style={css('max-width:1240px;margin:0 auto;')}>
         <div style={css('padding:6px 0 4px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business insights</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</h1>
         </div>
 
         {/* Time filter */}

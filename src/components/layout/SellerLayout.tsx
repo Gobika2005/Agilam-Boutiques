@@ -49,7 +49,7 @@ const BANNERS: Record<
     action: 'See what to fix', to: '/seller/verification',
   },
   rejected: {
-    bg: 'var(--ag-bad-bg)', border: 'var(--ag-bad-bg)', fg: 'var(--ag-crimson)', accent: '#D6455A', icon: 'cancel',
+    bg: 'var(--ag-bad-bg)', border: 'var(--ag-bad-bg)', fg: 'var(--ag-crimson)', accent: 'var(--ag-danger-text)', icon: 'cancel',
     text: 'Your boutique was not approved, so it is not visible to buyers.',
     action: 'See the reason', to: '/seller/verification',
   },

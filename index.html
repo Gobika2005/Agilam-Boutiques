@@ -14,9 +14,51 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600;1,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" />
+<!-- ── First paint ──────────────────────────────────────────────────────────
+     Everything below renders from HTML alone, before a single byte of the app
+     bundle has run. It exists because on a 3G connection — the normal case for
+     this marketplace's audience — the page was a blank white screen for 7.4
+     seconds and unusable for 14.8, with no logo and no motion to say the site
+     was alive. Now the brand and a spinner land as soon as the HTML does.
+     Styles are inline and the wordmark is TEXT, not an image: the 93 kB PNG
+     logo cost ~2 s of the very wait this is meant to cover, so the splash now
+     needs exactly zero network requests and paints with the HTML. It removes
+     itself the moment React paints, via #root:not(:empty) — no JS, no timer,
+     no flash. -->
+<style>
+  #ag-boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;background:#FBF6F2;
+    transition:opacity .35s ease}
+  html[data-theme="dark"] #ag-boot{background:#120A0E}
+  /* Georgia paints instantly; Playfair swaps in when the webfont lands. */
+  #ag-boot .ag-boot-mark{font-family:'Playfair Display',Georgia,'Times New Roman',serif;
+    font-size:38px;font-weight:700;letter-spacing:-.5px;color:#B02454;line-height:1}
+  html[data-theme="dark"] #ag-boot .ag-boot-mark{color:#E85088}
+  #ag-boot .ag-boot-tag{font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+    font-size:10px;letter-spacing:.22em;font-weight:700;
+    color:#775D66;text-transform:uppercase}
+  html[data-theme="dark"] #ag-boot .ag-boot-tag{color:#A98D99}
+  #ag-boot .ag-boot-ring{width:26px;height:26px;border-radius:50%;
+    border:2.5px solid #F0D8E2;border-top-color:#B02454;
+    animation:ag-boot-spin .8s linear infinite}
+  html[data-theme="dark"] #ag-boot .ag-boot-ring{border-color:#3A2730;border-top-color:#E85088}
+  @keyframes ag-boot-spin{to{transform:rotate(360deg)}}
+  /* The app has mounted — retire the splash. */
+  #root:not(:empty)+#ag-boot{opacity:0;pointer-events:none;visibility:hidden}
+  @media (prefers-reduced-motion:reduce){
+    #ag-boot .ag-boot-ring{animation-duration:2s}
+    #ag-boot{transition:none}
+  }
+</style>
 </head>
 <body>
 <div id="root"></div>
+<div id="ag-boot" role="status" aria-live="polite">
+  <span class="ag-boot-mark">MangaiMart</span>
+  <span class="ag-boot-tag">All boutiques · one place</span>
+  <span class="ag-boot-ring" aria-hidden="true"></span>
+  <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Loading MangaiMart…</span>
+</div>
 <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

@@ -142,7 +142,7 @@ export function ProductsAdmin() {
     { key: 'price', header: 'PRICE', width: '1fr', render: (p) => <span style={css('font-size:13px;font-weight:700;')}>{fmtInr(p.price)}</span> },
     {
       key: 'stock', header: 'STOCK', width: '.9fr',
-      render: (p) => <span style={css(`font-size:13px;font-weight:700;color:${p.stock === 0 ? '#D6455A' : p.stock <= 5 ? '#C99A3F' : 'var(--ag-label)'};`)}>{p.stock}</span>,
+      render: (p) => <span style={css(`font-size:13px;font-weight:700;color:${p.stock === 0 ? 'var(--ag-danger-text)' : p.stock <= 5 ? 'var(--ag-gold-text)' : 'var(--ag-label)'};`)}>{p.stock}</span>,
     },
     { key: 'status', header: 'STATUS', width: '1fr', render: (p) => <StatusPill status={p.deleted_at ? 'rejected' : p.status} label={p.deleted_at ? 'Deleted' : undefined} /> },
     {
@@ -179,7 +179,7 @@ export function ProductsAdmin() {
       <BulkBar count={selected.size}>
         <button onClick={() => bulk('active')} style={bulkBtn('var(--ag-good-text)')}>Approve</button>
         <button onClick={() => bulk('hidden')} style={bulkBtn('var(--ag-muted)')}>Hide</button>
-        <button onClick={() => setConfirmDelete('bulk')} style={bulkBtn('#D6455A')}>Delete</button>
+        <button onClick={() => setConfirmDelete('bulk')} style={bulkBtn('var(--ag-danger-text)')}>Delete</button>
       </BulkBar>
 
       <DataTable

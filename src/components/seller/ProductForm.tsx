@@ -33,7 +33,7 @@ const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
 const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
-const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
+const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
 
 /**
  * Category, colour, occasion and fabric used to be four free-text boxes. They
@@ -249,7 +249,7 @@ export function ProductForm({
           />
           {p.key === 'color' && !form.color && colorSuggestions.length > 0 && (
             <div style={css('margin-top:7px;')}>
-              <span style={css('display:block;font-size:11.5px;font-weight:700;color:#A98D99;margin-bottom:6px;')}>
+              <span style={css('display:block;font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-bottom:6px;')}>
                 {colorSuggestions.length > 1 ? 'Colours we spotted in your photo — tap one' : 'Colour we spotted in your photo — tap to use'}
               </span>
               <div style={css('display:flex;gap:7px;flex-wrap:wrap;')}>

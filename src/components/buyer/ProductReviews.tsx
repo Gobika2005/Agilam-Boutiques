@@ -123,7 +123,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:var(--ag-crimson);")}>
               {summary.count ? summary.avg.toFixed(1) : '—'}
             </div>
-            <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>
+            <div style={css('color:var(--ag-star);font-size:15px;letter-spacing:2px;margin-top:4px;')}>
               {summary.count ? starsFor(Math.round(summary.avg)) : '☆☆☆☆☆'}
             </div>
             <div style={css('color:var(--ag-muted);font-size:12px;margin-top:6px;')}>
@@ -134,7 +134,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             {summary.bars.map((r) => (
               <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
                 <span style={css('font-size:11px;font-weight:700;color:var(--ag-muted);width:10px;')}>{r.stars}</span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
                 <span style={css('flex:1;height:7px;border-radius:4px;background:var(--ag-border-soft);overflow:hidden;')}>
                   <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
                 </span>
@@ -163,7 +163,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                   key={n}
                   onClick={() => setRating(n)}
                   aria-label={`${n} star${n === 1 ? '' : 's'}`}
-                  style={css(`background:none;border:none;cursor:pointer;font-size:22px;line-height:1;padding:0 1px;color:${n <= rating ? '#E0B84B' : '#E0CBD3'};`)}
+                  style={css(`background:none;border:none;cursor:pointer;font-size:22px;line-height:1;padding:0 1px;color:${n <= rating ? 'var(--ag-star)' : '#E0CBD3'};`)}
                 >
                   ★
                 </button>
@@ -258,7 +258,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                   </div>
                   <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{timeAgo(rv.created_at)}</div>
                 </div>
-                <span style={css('color:#E0B84B;font-size:13px;letter-spacing:1px;')}>{starsFor(rv.rating)}</span>
+                <span style={css('color:var(--ag-gold-text);font-size:13px;letter-spacing:1px;')}>{starsFor(rv.rating)}</span>
               </div>
               {rv.body && <div style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.body}</div>}
               {rv.images?.length > 0 && (

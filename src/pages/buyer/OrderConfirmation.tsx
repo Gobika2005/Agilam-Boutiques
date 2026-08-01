@@ -90,7 +90,7 @@ export function OrderConfirmation() {
         {/* The one thing a COD buyer must not miss. */}
         {isCod && (
           <div style={css('display:flex;gap:12px;margin-top:14px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;text-align:left;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>payments</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>payments</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:14px;color:var(--ag-gold-text);')}>
                 Keep {fmt(grandTotal)} in cash ready

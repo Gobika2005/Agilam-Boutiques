@@ -29,7 +29,7 @@ const TONE: Record<Exclude<BoutiqueStatus, 'approved'>, Tone> = {
   draft: { bg: 'var(--ag-gold-bg)', border: 'var(--ag-gold-border)', fg: 'var(--ag-gold-text)', icon: 'edit_note', accent: 'var(--ag-gold-text)' },
   pending: { bg: 'var(--ag-info-bg)', border: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)', icon: 'hourglass_top', accent: 'var(--ag-info-text)' },
   changes_requested: { bg: 'var(--ag-gold-bg)', border: 'var(--ag-gold-border)', fg: 'var(--ag-gold-text)', icon: 'edit_note', accent: 'var(--ag-gold-text)' },
-  rejected: { bg: 'var(--ag-bad-bg)', border: 'var(--ag-bad-bg)', fg: 'var(--ag-crimson)', icon: 'cancel', accent: '#D6455A' },
+  rejected: { bg: 'var(--ag-bad-bg)', border: 'var(--ag-bad-bg)', fg: 'var(--ag-crimson)', icon: 'cancel', accent: 'var(--ag-danger-text)' },
 };
 
 const COPY: Record<Exclude<BoutiqueStatus, 'approved'>, { eyebrow: string; heading: string; body: string; cta: string | null }> = {
@@ -96,10 +96,11 @@ export function Verification() {
       <div style={css('max-width:760px;margin:0 auto;padding:8px clamp(16px,4vw,24px) 0;')}>
         <div style={css('display:flex;align-items:center;gap:10px;padding:6px 0 14px;')}>
           <button
+            aria-label="Go back"
             onClick={() => navigate('/seller/profile')}
             style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Verification</div>
         </div>

@@ -143,7 +143,7 @@ export function Profile() {
               </span>
               <span style={css('flex:1;min-width:0;')}>
                 <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>{r.label}</span>
-                <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
+                <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
               </span>
               <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
             </>
@@ -239,7 +239,7 @@ export function Profile() {
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>Sign in to sync</span>
-              <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;')}>Google or email to back up orders &amp; details</span>
+              <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;')}>Google or email to back up orders &amp; details</span>
             </span>
             <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);flex:none;")}>chevron_right</span>
           </button>
@@ -264,7 +264,7 @@ export function Profile() {
           <span style={css("font-family:'Material Symbols Outlined';opacity:.8;")}>chevron_right</span>
         </button>
 
-        <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+        <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>
           {signedIn ? 'Log out' : 'Clear my details'}
         </button>
@@ -275,7 +275,7 @@ export function Profile() {
 
         {/* Build stamp — the first thing support asks for. Injected from
             package.json at build time, so it can't drift from what's deployed. */}
-        <div style={css('margin:18px 20px 0;text-align:center;color:#C0A8B3;')}>
+        <div style={css('margin:18px 20px 0;text-align:center;color:var(--ag-muted-soft);')}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-muted-soft);")}>{COMPANY.brand}</div>
           <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:5px;letter-spacing:.06em;")}>
             Version {APP_VERSION}

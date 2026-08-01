@@ -69,7 +69,7 @@ export function ProductAnalytics() {
     { icon: 'visibility', label: 'Views', value: String(p?.views_count ?? 0), tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)' },
     { icon: 'favorite', label: 'Likes', value: String(p?.likes_count ?? 0), tint: 'var(--ag-surface-2)', ic: '#D6336C' },
     { icon: 'ios_share', label: 'Shares', value: String(p?.shares_count ?? 0), tint: 'var(--ag-purple-bg)', ic: '#9B7FC7' },
-    { icon: 'bookmark', label: 'Wishlist saves', value: String(p?.wishlist_count ?? 0), tint: 'var(--ag-warn-bg)', ic: '#C99A3F' },
+    { icon: 'bookmark', label: 'Wishlist saves', value: String(p?.wishlist_count ?? 0), tint: 'var(--ag-warn-bg)', ic: 'var(--ag-gold-text)' },
     { icon: 'shopping_bag', label: 'Orders', value: String(orderCount), tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)' },
     { icon: 'payments', label: 'Revenue generated', value: fmt(revenue), tint: 'var(--ag-gold-bg)', ic: 'var(--ag-warn-text)' },
   ];
@@ -77,16 +77,16 @@ export function ProductAnalytics() {
   const stock = p?.stock ?? 0;
   const stockTag =
     stock === 0
-      ? { label: 'Out of stock', bg: 'var(--ag-bad-bg)', fg: '#D6455A' }
+      ? { label: 'Out of stock', bg: 'var(--ag-bad-bg)', fg: 'var(--ag-danger-text)' }
       : stock <= 5
-        ? { label: `Low · ${stock} left`, bg: 'var(--ag-warn-bg)', fg: '#C99A3F' }
-        : { label: `${stock} in stock`, bg: 'var(--ag-good-bg)', fg: 'var(--ag-good)' };
+        ? { label: `Low · ${stock} left`, bg: 'var(--ag-warn-bg)', fg: 'var(--ag-gold-text)' }
+        : { label: `${stock} in stock`, bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' };
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
         <button onClick={() => navigate('/seller/products')} aria-label="Back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Product analytics</div>
       </div>

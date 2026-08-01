@@ -65,7 +65,7 @@ export function Messages() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')} onClick={() => menu && setMenu(null)}>
       <div style={css('padding:6px 20px 10px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>Messages</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>Messages</h1>
       </div>
 
       {/* Search */}
@@ -114,7 +114,7 @@ export function Messages() {
                 <div style={css('display:flex;justify-content:space-between;align-items:center;gap:8px;')}>
                   <span style={css('display:flex;align-items:center;gap:5px;min-width:0;')}>
                     {m.pinned && <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>push_pin</span>}
-                    {m.fav && <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>}
+                    {m.fav && <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>}
                     <span style={css('font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{m.name}</span>
                   </span>
                   <span style={css('font-size:11.5px;color:var(--ag-muted-soft);flex:none;')}>{m.time}</span>

@@ -13,8 +13,8 @@ const STATUS_TONE: Record<BoutiqueStatus, { fg: string; icon: string }> = {
   draft: { fg: 'var(--ag-gold-text)', icon: 'edit_note' },
   pending: { fg: 'var(--ag-info-text)', icon: 'hourglass_top' },
   changes_requested: { fg: 'var(--ag-gold-text)', icon: 'feedback' },
-  approved: { fg: 'var(--ag-good)', icon: 'verified' },
-  rejected: { fg: '#D6455A', icon: 'cancel' },
+  approved: { fg: 'var(--ag-good-text)', icon: 'verified' },
+  rejected: { fg: 'var(--ag-danger-text)', icon: 'cancel' },
 };
 
 export function ProfileHub() {
@@ -89,6 +89,9 @@ export function ProfileHub() {
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
+      {/* The page's identity is carried visually by the boutique card; screen
+          readers need an actual heading to navigate to. */}
+      <h1 className="agx-sr-only">Your profile</h1>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:24px 20px 30px;color:#fff;')}>
         {/* The whole identity card opens the profile editor — one tap to manage
             "who am I" from the top of the hub — with an explicit Edit chip so the
@@ -148,7 +151,7 @@ export function ProfileHub() {
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
                   <span style={css('display:block;font-weight:700;font-size:14.5px;')}>{r.label}</span>
-                  {r.sub && <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;margin-top:1px;')}>{r.sub}</span>}
+                  {r.sub && <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>{r.sub}</span>}
                 </span>
                 <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
               </button>
@@ -157,7 +160,7 @@ export function ProfileHub() {
         </div>
       ))}
 
-      <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;')}>
+      <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;')}>
         Log out
       </button>
     </div>

@@ -84,7 +84,7 @@ export function Results() {
 
   const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 
-  const stockFg = (stock: number) => (stock === 0 ? '#D6455A' : stock <= 5 ? '#C99A3F' : 'var(--ag-good)');
+  const stockFg = (stock: number) => (stock === 0 ? 'var(--ag-danger-text)' : stock <= 5 ? 'var(--ag-gold-text)' : 'var(--ag-good-text)');
   const stockLabel = (stock: number) => (stock === 0 ? 'Out of stock' : stock <= 5 ? `Low · ${stock} left` : 'In stock');
 
   return (
@@ -151,7 +151,7 @@ export function Results() {
           <aside className="agx-filters agx-res-aside" style={css('width:266px;flex:none;position:sticky;top:78px;max-height:calc(100vh - 104px);overflow-y:auto;padding:20px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:20px;')}>
             <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ag-border);padding-bottom:14px;')}>
               <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-ink);')}>Filters</div>
-              <button onClick={resetCollection} style={css('border:none;background:none;color:#D6336C;font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
+              <button onClick={resetCollection} style={css('border:none;background:none;color:var(--ag-crimson);font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
             </div>
 
             <div className="agx-res-aside-scroll agx-scroll">
@@ -160,7 +160,7 @@ export function Results() {
                 <div style={css('display:flex;justify-content:space-between;font-size:12.5px;color:var(--ag-muted);font-weight:700;margin-top:12px;')}>
                   <span>₹0</span><span style={css('color:var(--ag-crimson);')}>{fmt(filters.maxPrice)}{pricePlus}</span>
                 </div>
-                <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} style={css('width:100%;accent-color:#D6336C;margin-top:8px;')} />
+                <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} aria-label="Maximum price" aria-valuetext={fmt(filters.maxPrice)} style={css('width:100%;accent-color:#D6336C;margin-top:8px;')} />
               </div>
 
               <div style={css('padding:18px 0;border-bottom:1px solid var(--ag-border);')}>
@@ -237,7 +237,7 @@ export function Results() {
                     />
                     {p.reviews > 0 && (
                       <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
-                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>{p.rating}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
                         <span style={css('width:1px;height:11px;background:#E8D7DF;')} />
                         <span style={css('color:#8A7078;font-weight:700;')}>{reviewsF(p.reviews)}</span>
                       </div>

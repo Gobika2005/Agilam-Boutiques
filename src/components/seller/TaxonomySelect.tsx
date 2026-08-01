@@ -31,8 +31,8 @@ const SELECT =
   "width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface) url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B02454' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>\") no-repeat right 14px center;border-radius:13px;padding:0 40px 0 14px;height:50px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;appearance:none;-webkit-appearance:none;cursor:pointer;";
 const SELECT_ERR = SELECT.replace('var(--ag-border)', 'var(--ag-border)');
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
-const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
-const HINT = 'display:block;margin-top:5px;font-size:11.5px;font-weight:600;color:#A98D99;line-height:1.5;';
+const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
+const HINT = 'display:block;margin-top:5px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.5;';
 
 const ADD_NEW = '__add_new__';
 

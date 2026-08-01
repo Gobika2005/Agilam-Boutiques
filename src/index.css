@@ -20,8 +20,14 @@
   --ag-border-soft: #EFDCE4; /* soft dividers */
   --ag-ink: #241019;         /* primary text */
   --ag-ink-2: #4B3840;       /* secondary text */
-  --ag-muted: #8A7078;       /* muted text */
-  --ag-muted-soft: #B79AA6;  /* softest text / placeholders */
+  /* Secondary text. Both of these carry real information — boutique names on
+     cards, breadcrumbs, timestamps, struck-through MRPs — so both must clear
+     WCAG AA 4.5:1 on the three surfaces they sit on (page #FBF6F2, card #FFF,
+     rose chip #FDEEF4). The previous values measured 4.19:1 and 2.39:1, which
+     put the MRP a buyer compares against the sale price close to invisible.
+     Now 5.52:1 and 4.53:1 — the visual hierarchy between them is preserved. */
+  --ag-muted: #775D66;       /* muted text */
+  --ag-muted-soft: #836B74;  /* softest text / placeholders */
   --ag-label: #6B5560;       /* field labels */
   --ag-crimson: #B02454;     /* deep-crimson text/icons (brightened on dark) */
   --ag-deep: #8E1C44;        /* deepest crimson text (brightened on dark) */
@@ -36,11 +42,24 @@
   --ag-shimmer-1: #F1E5EC;             /* skeleton loader */
   --ag-shimmer-2: #F9F0F4;
   /* status chips */
-  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #218456;
-  --ag-warn-bg: #FBF0DA; --ag-warn-text: #B8860B;
+  /* `--ag-good` is the fill/accent (dots, bars — 3:1 is enough); `--ag-good-text`
+     is for text ON a light surface and was 4.35:1, just under AA. The "20% off"
+     badge now uses -text rather than the accent, which measured 2.79:1. */
+  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
+  /* Rating stars are informative icons, so they need 3:1, not the 1.78:1 the
+     old #E0B84B gave on a light card. Still unmistakably gold. */
+  --ag-star: #AD7D08;
+  /* Was #B8860B — 2.88:1 on its own warn-bg, which is where the "Draft · unpaid"
+     and COD status chips render it. Now 4.73:1. */
+  --ag-warn-bg: #FBF0DA; --ag-warn-text: #8A6420;
   --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;
   --ag-info-bg: #E6F0FA; --ag-info-text: #3A6EA5;
   --ag-gold: #C99A3F; --ag-gold-text: #8A6420; --ag-gold-bg: #FFF8E8; --ag-gold-border: #F0DCB4;
+  /* Warning/danger FOREGROUNDS. `#C99A3F` (2.39:1) and `#D6455A` (4.03:1) were
+     used directly as text for "Only 2 left", "Pending payout" and stock counts —
+     the numbers a seller acts on. These are their readable counterparts; the
+     lighter originals stay available for fills and borders. */
+  --ag-danger-text: #AD2439;
 }
 :root[data-theme="dark"] {
   --ag-bg: #120A0E;
@@ -52,7 +71,7 @@
   --ag-ink: #F7ECF0;
   --ag-ink-2: #D8C4CD;
   --ag-muted: #A98D99;
-  --ag-muted-soft: #8A7078;
+  --ag-muted-soft: #9A8089;  /* was #8A7078 — 4.34:1 on the dark page, now 5.41:1 */
   --ag-label: #B79AA6;
   --ag-crimson: #E85088;
   --ag-deep: #F06A96;
@@ -66,8 +85,14 @@
   --ag-shimmer-1: #241820;
   --ag-shimmer-2: #33222B;
   --ag-good: #43C489; --ag-good-bg: #143026; --ag-good-text: #6FE0AE;
+  /* On the dark surfaces the original gold already clears 3:1 comfortably
+     (≈10:1), so dark mode keeps the brighter star. */
+  --ag-star: #E0B84B;
   --ag-warn-bg: #34260E; --ag-warn-text: #E7C169;
   --ag-bad-bg: #3A1A1A; --ag-bad-text: #F09797;
+  /* Dark-mode counterparts of the light-theme foregrounds: light on dark, so
+     these are the bright ends of the scale rather than the deep ones. */
+  --ag-danger-text: #F09797;
   --ag-info-bg: #142430; --ag-info-text: #82BEF0;
   --ag-gold: #E0B84B; --ag-gold-text: #E0B84B; --ag-gold-bg: #34260E; --ag-gold-border: #4A3A18;
 }
@@ -198,9 +223,32 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-only-mobile { display:flex !important; }
 @media (min-width:960px){
   .agx-only-desktop{ display:flex !important; }
+  /* The horizontal top nav that replaces the floating dock from here up. This
+     rule was missing: `.agx-topnav` had a base `display:none` and a
+     max-width:959px hide, but nothing ever turned it back ON — and no component
+     rendered it — so every viewport ≥960px had no primary navigation at all. */
+  .agx-topnav{ display:flex !important; }
   .agx-app-main{ padding-left:44px !important; padding-right:44px !important; padding-bottom:96px !important; }
   .agx-app-header{ padding-left:44px !important; padding-right:44px !important; }
   .agx-only-mobile{ display:none !important; }
+}
+/* The wordmark is 240px; below ~1180px the nav, search field and avatar stop
+   fitting on one row beside it. Tighten the mark rather than wrap the header. */
+@media (min-width:960px) and (max-width:1180px){
+  .agx-topnav button{ padding:0 9px !important; font-size:13.5px !important; }
+  .agx-brand-mark{ width:150px !important; }
+  .agx-brand-mark-btn{ height:64px !important; }
+}
+/* 960–1099px is the tightest desktop band: wordmark + five nav items + search +
+   bell + avatar needed 1051px and the page scrolled sideways. The nav icons are
+   the cheapest thing to give up — the labels carry the meaning — and the header
+   gutter tightens to match. */
+@media (min-width:960px) and (max-width:1099px){
+  .agx-topnav button span[aria-hidden="true"]:first-child{ display:none !important; }
+  .agx-topnav button{ padding:0 8px !important; gap:0 !important; }
+  .agx-topnav{ gap:0 !important; }
+  .agx-app-header{ gap:10px !important; padding-left:20px !important; padding-right:20px !important; }
+  .agx-app-main{ padding-left:20px !important; padding-right:20px !important; }
 }
 @media (max-width:959px){ .agx-topnav{ display:none !important; } }
 @media (max-width:640px){
@@ -290,6 +338,14 @@ body.agx-photo-open { overflow: hidden; }
    and the description on a product page. Hide it there; the header does the job.
    The breakpoint has to match `.agx-topnav`'s exactly, or a window between the
    two would have no navigation at all. */
+/* Below 960px the floating dock IS the navigation, and it sits at bottom:14px
+   with a 73px height. The launch notice's own bottom:16px put it straight on
+   top of the dock, hiding Home/Boutiques/Inspire/Orders/Messages behind a
+   notice — covering navigation is worse than covering content. Lift it clear.
+   From 960px the dock is gone, so the notice keeps its natural corner. */
+@media (max-width:959px){
+  .agx-launch-notice { bottom: 104px !important; }
+}
 @media (min-width:960px){
   .agx-dock { display: none !important; }
   /* The bottom reserve only existed to clear the dock. */
@@ -393,7 +449,11 @@ body.agx-photo-open { overflow: hidden; }
    Desktop keeps an always-open search field. Below 960px the header collapses
    to one row — wordmark, search icon, profile — so the app opens with content
    on screen instead of ~130px of chrome. */
-.agx-search-desktop { width: 280px; flex: none; }
+/* Was a fixed 280px with `flex:none`. Once the header also carries the top nav,
+   that fixed width plus the 240px wordmark overflowed the viewport between 960
+   and ~1180px — the page scrolled sideways. It now shrinks to 170px before
+   anything else gives. */
+.agx-search-desktop { width: 280px; flex: 0 1 280px; min-width: 170px; }
 @media (max-width: 959px) {
   .agx-app-header { gap: 10px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
   .agx-brand-mark, .agx-brand-mark-btn { height: 46px !important; }

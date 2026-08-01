@@ -38,7 +38,7 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
           <span className="text-[15px] font-extrabold text-rose-primaryDark">{fmtInr(p.price)}</span>
           {showRating && (
             <span className="flex items-center gap-0.5 text-[11.5px] font-bold text-rose-label">
-              <Icon name="star" className="text-sm" style={{ color: '#E0B84B' }} />
+              <Icon name="star" className="text-sm" style={{ color: 'var(--ag-star)' }} />
               {p.rating}
             </span>
           )}

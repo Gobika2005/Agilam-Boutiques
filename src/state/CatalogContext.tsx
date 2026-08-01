@@ -69,7 +69,16 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     insta: b.instagram || instaHandle(b.name),
     mapUrl: b.map_url ?? '',
     phone: b.phone ?? '',
-    since: b.established_year ?? (b.created_at ? new Date(b.created_at).getFullYear() : undefined),
+    // Same fallback chain the seller console uses (src/pages/seller/Dashboard.tsx):
+    // the established year if given, else derived from the years-in-business the
+    // seller entered during onboarding, and only then the join date. Skipping the
+    // middle step showed a boutique trading since 2023 as "Since 2026" to buyers
+    // while its own dashboard said 2023 — the join date dressed up as a founding
+    // date, which understates exactly the history a buyer is judging trust on.
+    since:
+      b.established_year ??
+      (b.years_in_business ? new Date().getFullYear() - b.years_in_business : undefined) ??
+      (b.created_at ? new Date(b.created_at).getFullYear() : undefined),
     followers: b.followers_count ?? 0,
     positiveRating: b.positive_rating ?? 0,
     rating: Number(b.rating),

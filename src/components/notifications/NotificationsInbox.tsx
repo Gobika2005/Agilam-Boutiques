@@ -56,8 +56,8 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
       <div style={css(`padding:6px 20px 8px;display:flex;align-items:center;gap:10px;${embedded ? 'justify-content:flex-end;min-height:0;' : ''}`)}>
         {!embedded && (
           <>
-            <button onClick={() => navigate(backTo)} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+            <button onClick={() => navigate(backTo)} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
             </button>
             <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
           </>
@@ -81,8 +81,23 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
       </div>
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
+        {/* Every other empty state in the app gives an icon, a line explaining
+            what will land here, and a way onward. This one was the bare string
+            "Nothing here yet." — the only screen that stopped at a full stop. */}
         {!loading && notifs.length === 0 && (
-          <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Nothing here yet.</div>
+          <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:48px 24px 40px;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-muted-soft);")}>
+              notifications_none
+            </span>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-top:12px;")}>
+              No notifications yet
+            </div>
+            <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;max-width:330px;line-height:1.55;')}>
+              {orderBasePath === '/seller'
+                ? 'We’ll tell you the moment an order comes in, a buyer messages you, or a review needs a reply.'
+                : 'We’ll tell you the moment a boutique confirms, packs or ships your order — and when something you saved comes back in stock.'}
+            </div>
+          </div>
         )}
         {notifs.map((n) => {
           const s = STYLE[n.type] ?? STYLE.Updates;

@@ -79,7 +79,7 @@ export function Orders() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</h1>
         {all.length > 0 && (
           <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export
@@ -110,7 +110,7 @@ export function Orders() {
           onClick={() => setTab('To collect')}
           style={css('margin:2px 20px 10px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:21px;")}>payments</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:21px;")}>payments</span>
           <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
             <strong>{fmt(outstanding)}</strong> still to collect in cash across your open COD orders.
           </span>

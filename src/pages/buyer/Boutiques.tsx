@@ -128,6 +128,7 @@ export function Boutiques() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search boutiques by name…"
+          aria-label="Search boutiques by name"
           style={css('border:none;background:none;flex:1;font-size:14px;font-weight:500;color:var(--ag-ink);min-width:0;')}
         />
         {query && (
@@ -140,9 +141,11 @@ export function Boutiques() {
         )}
         <button
           onClick={() => setShowFilters((s) => !s)}
-          style={css(`position:relative;width:38px;height:38px;flex:none;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${showFilters || activeFilters ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface-2)'};box-shadow:${showFilters || activeFilters ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
+          aria-label={showFilters ? 'Hide boutique filters' : 'Filter boutiques'}
+          aria-expanded={showFilters}
+          style={css(`position:relative;width:44px;height:44px;flex:none;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${showFilters || activeFilters ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface-2)'};box-shadow:${showFilters || activeFilters ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${showFilters || activeFilters ? '#fff' : 'var(--ag-crimson)'};`)}>tune</span>
+          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${showFilters || activeFilters ? '#fff' : 'var(--ag-crimson)'};`)}>tune</span>
           {!!activeFilters && (
             <span style={css('position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--ag-surface);color:var(--ag-crimson);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid #B02454;')}>
               {activeFilters}
@@ -269,7 +272,7 @@ export function Boutiques() {
                 {adId && <PromotedBadge label="Promoted" style={{ flex: 'none' }} />}
               </div>
               <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>
                 <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{b.rating}</span>
                 <span style={css('font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>({formatCount(b.reviews)})</span>
               </div>

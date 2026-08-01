@@ -85,25 +85,25 @@ export function MyProducts() {
 
   const stockOf = (stock: number) =>
     stock === 0
-      ? { label: 'Out of stock', bg: 'var(--ag-bad-bg)', fg: '#D6455A' }
+      ? { label: 'Out of stock', bg: 'var(--ag-bad-bg)', fg: 'var(--ag-danger-text)' }
       : stock <= 5
-        ? { label: `Low · ${stock} left`, bg: 'var(--ag-warn-bg)', fg: '#C99A3F' }
-        : { label: 'In stock', bg: 'var(--ag-good-bg)', fg: 'var(--ag-good)' };
+        ? { label: `Low · ${stock} left`, bg: 'var(--ag-warn-bg)', fg: 'var(--ag-gold-text)' }
+        : { label: 'In stock', bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' };
 
   const compact = (n: number) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n));
   const metricsOf = (p: ProductWithBoutique) => [
     { icon: 'visibility', label: 'Views', value: compact(p.views_count ?? 0), ic: 'var(--ag-info-text)' },
     { icon: 'favorite', label: 'Likes', value: compact(p.likes_count ?? 0), ic: '#D6336C' },
     { icon: 'ios_share', label: 'Shares', value: compact(p.shares_count ?? 0), ic: '#9B7FC7' },
-    { icon: 'bookmark', label: 'Saved', value: compact(p.wishlist_count ?? 0), ic: '#C99A3F' },
+    { icon: 'bookmark', label: 'Saved', value: compact(p.wishlist_count ?? 0), ic: 'var(--ag-gold-text)' },
     { icon: 'shopping_bag', label: 'Sold', value: compact(p.sold_count ?? 0), ic: 'var(--ag-good)' },
-    { icon: 'inventory_2', label: 'Stock', value: String(p.stock), ic: p.stock === 0 ? '#D6455A' : 'var(--ag-label)' },
+    { icon: 'inventory_2', label: 'Stock', value: String(p.stock), ic: p.stock === 0 ? 'var(--ag-danger-text)' : 'var(--ag-label)' },
   ];
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;justify-content:space-between;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>My Products</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>My Products</h1>
         <button onClick={() => navigate('/seller/add-product')} style={css('background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
         </button>
@@ -216,11 +216,11 @@ export function MyProducts() {
                 <div style={css('font-size:13px;font-weight:700;color:var(--ag-bad-text);')}>Delete “{editing.title}”? This can't be undone.</div>
                 <div style={css('display:flex;gap:10px;margin-top:10px;')}>
                   <button onClick={() => setConfirmDelete(false)} disabled={busy} style={css('flex:1;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;')}>Cancel</button>
-                  <button onClick={remove} disabled={busy} style={css(`flex:1;height:44px;border:none;background:#D6455A;color:#fff;border-radius:12px;font-weight:800;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}>{busy ? 'Deleting…' : 'Delete'}</button>
+                  <button onClick={remove} disabled={busy} style={css(`flex:1;height:44px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:12px;font-weight:800;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}>{busy ? 'Deleting…' : 'Delete'}</button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} disabled={busy} style={css('width:100%;height:48px;margin-top:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
+              <button onClick={() => setConfirmDelete(true)} disabled={busy} style={css('width:100%;height:48px;margin-top:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>delete</span>Delete product
               </button>
             )}

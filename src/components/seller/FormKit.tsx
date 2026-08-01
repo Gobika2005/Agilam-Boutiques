@@ -12,8 +12,8 @@ const INPUT = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);bac
 const INPUT_ERR = INPUT.replace('var(--ag-border)', 'var(--ag-border)').replace('background:var(--ag-surface)', 'background:var(--ag-surface-2)');
 const TEXTAREA = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;resize:vertical;min-height:88px;';
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
-const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
-const HINT = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:#A98D99;';
+const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
+const HINT = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);';
 
 export function Field({
   label, value, onChange, placeholder, error, hint, type = 'text', inputMode, maxLength, disabled,
@@ -135,7 +135,7 @@ export function Toggle({
       )}
       <span style={css('flex:1;min-width:0;')}>
         <span style={css('display:block;font-weight:700;font-size:14px;color:var(--ag-ink);')}>{label}</span>
-        {description && <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;margin-top:2px;')}>{description}</span>}
+        {description && <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;')}>{description}</span>}
       </span>
       <span style={css(`width:46px;height:27px;flex:none;border-radius:999px;background:${on ? '#D6336C' : 'var(--ag-border)'};position:relative;transition:background .18s;`)}>
         <span style={css(`position:absolute;top:3px;left:${on ? '22px' : '3px'};width:21px;height:21px;border-radius:50%;background:var(--ag-surface);box-shadow:0 2px 6px rgba(0,0,0,.2);transition:left .18s;`)} />
@@ -149,7 +149,7 @@ export function SectionCard({ title, subtitle, children }: { title?: string; sub
   return (
     <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
       {title && <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-ink);")}>{title}</div>}
-      {subtitle && <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;margin-top:3px;')}>{subtitle}</div>}
+      {subtitle && <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>{subtitle}</div>}
       <div style={css(`display:flex;flex-direction:column;gap:14px;${title || subtitle ? 'margin-top:16px;' : ''}`)}>{children}</div>
     </div>
   );

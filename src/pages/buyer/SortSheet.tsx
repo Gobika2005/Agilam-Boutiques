@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
 import { useShop } from '@/state/ShopContext';
 import { SORTS } from '@/data/demo';
 
@@ -9,6 +10,7 @@ export function SortSheet() {
   const { filters, setSort } = useShop();
 
   const close = () => navigate('/buyer/results');
+  useDismissOnEscape(close);
 
   return (
     <div style={css('position:fixed;inset:0;z-index:120;')}>

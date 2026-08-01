@@ -170,8 +170,8 @@ export function Billing() {
     return (
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
         <div className="agx-no-print" style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-          <button onClick={newBill} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <button onClick={newBill} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Bill generated</div>
         </div>
@@ -209,10 +209,10 @@ export function Billing() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/dashboard')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+        <button onClick={() => navigate('/seller/dashboard')} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>New Bill</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>New Bill</h1>
       </div>
 
       <div style={css('padding:6px 20px 0;display:flex;flex-direction:column;gap:14px;')}>
@@ -263,7 +263,7 @@ export function Billing() {
                   </div>
                   <span style={css('font-weight:800;font-size:13.5px;color:var(--ag-crimson);width:74px;text-align:right;')}>{fmt(l.price * l.qty)}</span>
                   <button onClick={() => removeLine(l.key)} style={css('width:28px;height:28px;border:none;background:none;cursor:pointer;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#D6455A;")}>close</span>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-danger-text);")}>close</span>
                   </button>
                 </div>
               ))}

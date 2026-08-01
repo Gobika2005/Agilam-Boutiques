@@ -95,7 +95,7 @@ export function Overview() {
         <HeroCard label={`Revenue · ${rc.label}`} value={compactInr(cur.revenue)} icon="payments" tint="var(--ag-bad-bg)" ic="#D6336C" trend={trend(cur.revenue, prev.revenue)} vs={rc.vs} bars={ordBars} />
         <HeroCard label={`Orders · ${rc.label}`} value={String(cur.orders)} icon="receipt_long" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" trend={trend(cur.orders, prev.orders)} vs={rc.vs} bars={revBars} />
         <HeroCard label={`Avg. order · ${rc.label}`} value={compactInr(aov)} icon="shopping_cart" tint="#F3EAF5" ic="#9B7FC7" trend={trend(aov, prevAov)} vs={rc.vs} />
-        <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="#C99A3F" sub={`${commissionPct}% commission`} />
+        <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" sub={`${commissionPct}% commission`} />
       </div>
 
       {/* Health-insight tiles + quick-nav counters */}
@@ -117,13 +117,13 @@ export function Overview() {
         ].map((c) => (
           <button key={c.label} onClick={() => navigate(c.to)} style={css(T.card + 'padding:16px;text-align:left;border:none;cursor:pointer;display:flex;align-items:center;gap:12px;font-family:inherit;position:relative;')}>
             <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${c.hot ? 'var(--ag-bad-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;`)}>
-              <Icon name={c.icon} size={20} color={c.hot ? '#D6455A' : 'var(--ag-crimson)'} />
+              <Icon name={c.icon} size={20} color={c.hot ? 'var(--ag-danger-text)' : 'var(--ag-crimson)'} />
             </div>
             <div style={css('min-width:0;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1;")}>{c.value}</div>
               <div style={css(`color:${T.muted};font-size:12px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`)}>{c.label}</div>
             </div>
-            {c.hot && <span style={css('position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:#D6455A;')} />}
+            {c.hot && <span style={css('position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--ag-danger-text);')} />}
           </button>
         ))}
       </div>

@@ -575,7 +575,7 @@ export function SellerOnboarding() {
           <div>
             <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
-            <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;')}>{active.sub}</div>
+            <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;')}>{active.sub}</div>
           </div>
         </div>
 
@@ -657,7 +657,7 @@ export function SellerOnboarding() {
                   <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('cover', e.target.files?.[0]); e.target.value = ''; }} />
                 </div>
               </div>
-              {errors.logoUrl && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;')}>{errors.logoUrl}</span>}
+              {errors.logoUrl && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.logoUrl}</span>}
             </div>
 
             <Field label="Boutique name *" value={form.name} onChange={(v) => set('name', v)} placeholder="Uzhamagal Boutique" error={errors.name} />
@@ -738,7 +738,7 @@ export function SellerOnboarding() {
             <SectionCard title="Payments accepted">
               <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
               <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
-              {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:#D6455A;')}>{errors.codEnabled}</span>}
+              {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
             </SectionCard>
           </div>
         )}
@@ -852,7 +852,7 @@ function ReviewStep({
     <div style={css('display:flex;flex-direction:column;gap:14px;')}>
       {incomplete.length > 0 && (
         <div style={css('background:var(--ag-surface-2);border:1px solid #F2C9D3;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#D6455A;")}>error</span>
+          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);")}>error</span>
           <div style={css('font-size:13px;color:#8E2B3C;font-weight:600;line-height:1.5;')}>
             {incomplete.length} step{incomplete.length > 1 ? 's are' : ' is'} still incomplete:{' '}
             {incomplete.map((s) => s.title).join(', ')}. Fix {incomplete.length > 1 ? 'them' : 'it'} before submitting.
@@ -875,7 +875,7 @@ function ReviewStep({
           <div style={css('margin-top:10px;display:flex;flex-direction:column;gap:8px;')}>
             {g.rows.map(([k, v]) => (
               <div key={k} style={css('display:flex;gap:12px;align-items:baseline;')}>
-                <span style={css('flex:none;width:130px;font-size:12px;font-weight:700;color:#A98D99;')}>{k}</span>
+                <span style={css('flex:none;width:130px;font-size:12px;font-weight:700;color:var(--ag-muted);')}>{k}</span>
                 <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ag-ink);word-break:break-word;')}>{v}</span>
               </div>
             ))}

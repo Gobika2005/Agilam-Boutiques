@@ -86,7 +86,7 @@ export function Promote() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:28px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:22px 20px 26px;color:#fff;')}>
         <div className="agx-eyebrow" style={css('font-size:10.5px;opacity:.85;')}>Grow your reach</div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:25px;margin-top:4px;")}>Promote & Ads</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:25px;margin-top:4px;")}>Promote & Ads</h1>
         <div style={css('opacity:.85;font-size:13px;margin-top:4px;max-width:440px;')}>
           Book a slot on the marketplace, pay online, and go live after a quick review. You’re charged a flat daily rate — no bidding, no surprises.
         </div>
@@ -121,7 +121,7 @@ export function Promote() {
                 <div style={css('display:flex;justify-content:space-between;align-items:flex-start;gap:10px;')}>
                   <div style={css('min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{rate?.name ?? c.placement_code}</div>
-                    <div style={css('font-size:12px;color:#A98D99;margin-top:2px;')}>
+                    <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>
                       {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
                       {status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : status === 'expired' && c.end_at ? ` · ended ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
@@ -151,7 +151,7 @@ export function Promote() {
                     </button>
                   )}
                   {status === 'pending_payment' && confirmDraft !== c.id && (
-                    <button onClick={() => setConfirmDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                    <button onClick={() => setConfirmDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       Delete draft
                     </button>
                   )}
@@ -162,7 +162,7 @@ export function Promote() {
                     <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-bad-text);')}>Delete this unpaid draft? This can’t be undone.</div>
                     <div style={css('display:flex;gap:8px;margin-top:9px;')}>
                       <button onClick={() => setConfirmDraft(null)} style={css('flex:1;height:38px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Cancel</button>
-                      <button onClick={() => removeDraft(c.id)} style={css('flex:1;height:38px;border:none;background:#D6455A;color:#fff;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Delete</button>
+                      <button onClick={() => removeDraft(c.id)} style={css('flex:1;height:38px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Delete</button>
                     </div>
                   </div>
                 )}
@@ -438,7 +438,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <SectionTitle>Customise the hero</SectionTitle>
 
                 <label style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);display:block;margin-top:12px;')}>
-                  Tag <span style={css('font-weight:600;color:#A98D99;')}>· small label above the title</span>
+                  Tag <span style={css('font-weight:600;color:var(--ag-muted);')}>· small label above the title</span>
                   <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={24} placeholder="Festive Edit" style={css(field)} />
                 </label>
 
@@ -471,7 +471,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                     <button onClick={() => setHeroImage('')} disabled={uploading} style={css('flex:none;height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;')}>Reset</button>
                   )}
                 </div>
-                <div style={css('font-size:11.5px;color:#A98D99;margin-top:6px;')}>
+                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;')}>
                   Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB.
                   {!heroBoutique && ' Leave it and we’ll use the product’s own photo.'}
                 </div>
@@ -493,7 +493,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <button key={d} onClick={() => setDays(d)} style={css(`flex:1;height:38px;border-radius:10px;border:1.5px solid ${days === d ? '#D6336C' : 'var(--ag-border)'};background:${days === d ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${days === d ? 'var(--ag-crimson)' : 'var(--ag-muted)'};font-weight:800;font-size:12.5px;cursor:pointer;`)}>{d}d</button>
               ))}
             </div>
-            <div style={css('font-size:11.5px;color:#A98D99;margin-top:8px;')}>Each day is a full 24 hours, counted from when your ad goes live.</div>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:8px;')}>Each day is a full 24 hours, counted from when your ad goes live.</div>
             <label style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);display:block;margin-top:14px;')}>
               Start date
               <input type="date" min={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} style={css(field)} />
@@ -510,7 +510,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:var(--ag-crimson);")}>{money(price)}</span>
               </div>
             </div>
-            <div style={css('font-size:11.5px;color:#A98D99;margin-top:10px;text-align:center;')}>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:10px;text-align:center;')}>
               Paid securely via Razorpay. Your ad goes live after our team approves it.
             </div>
           </div>
@@ -574,7 +574,7 @@ function AdPreview({
   if (placementCode === 'sponsored_card') {
     if (!product) {
       return (
-        <div style={css(frame + 'color:#A98D99;font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
+        <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
           Choose a product below to preview your ad.
         </div>
@@ -606,7 +606,7 @@ function AdPreview({
   if (placementCode === 'home_hero') {
     if (subjectType === 'product' && !product) {
       return (
-        <div style={css(frame + 'color:#A98D99;font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
+        <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
           Choose a product below to preview your ad.
         </div>
@@ -650,7 +650,7 @@ function AdPreview({
             </span>
           </div>
           <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12.5px;color:var(--ag-muted);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
             {(boutique.rating ?? 0).toFixed(1)}
             {boutique.city && <span>· {boutique.city}</span>}
           </div>

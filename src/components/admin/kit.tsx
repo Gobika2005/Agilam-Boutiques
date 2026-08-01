@@ -114,7 +114,7 @@ export function Select({ value, onChange, options }: { value: string; onChange: 
 export function GhostButton({ icon, children, onClick, tone = 'default', title, disabled = false }: { icon?: string; children?: ReactNode; onClick?: () => void; tone?: 'default' | 'danger' | 'primary'; title?: string; disabled?: boolean }) {
   const styles = {
     default: `border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);`,
-    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;',
+    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);',
     primary: 'border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;',
   }[tone];
   return (
@@ -134,7 +134,7 @@ export function GhostButton({ icon, children, onClick, tone = 'default', title, 
 export function IconButton({ icon, onClick, tone = 'default', title }: { icon: string; onClick?: () => void; tone?: 'default' | 'danger' | 'success' | 'warn'; title?: string }) {
   const styles = {
     default: `border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-crimson);`,
-    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;',
+    danger: 'border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);',
     success: 'border:none;background:var(--ag-good-text);color:#fff;',
     warn: 'border:none;background:var(--ag-warn-bg);color:var(--ag-warn-text);',
   }[tone];

@@ -149,6 +149,7 @@ export function Coupons() {
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && applyTyped()}
             placeholder="Enter coupon code"
+            aria-label="Coupon code"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}

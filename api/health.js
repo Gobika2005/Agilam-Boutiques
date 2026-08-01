@@ -173,6 +173,45 @@ function keyFormatOf(key) {
   return 'unrecognised';
 }
 
+/**
+ * Does the gateway actually accept these keys?
+ *
+ * Checking only that the two variables are non-empty was the same false
+ * assurance this endpoint exists to kill: an invalid or rotated test key is a
+ * perfectly well-formed string, so health reported `checkoutReady: true` while
+ * every prepaid checkout died on Razorpay's 401 and the buyer saw nothing but
+ * "Could not create payment order".
+ *
+ * `GET /v1/payments?count=1` is the cheapest authenticated read Razorpay
+ * offers: it moves no money, creates nothing, and a 401 there is exactly the
+ * 401 /api/create-order would hit. Only the gateway's own message is reported —
+ * never the key.
+ */
+async function checkRazorpay() {
+  if (!configured(razorpayKeyId) || !configured(razorpayKeySecret)) {
+    return { ok: false, error: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not both set' };
+  }
+  const mode = razorpayKeyId.startsWith('rzp_live') ? 'live' : razorpayKeyId.startsWith('rzp_test') ? 'test' : 'unknown';
+  try {
+    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString('base64');
+    const r = await fetch('https://api.razorpay.com/v1/payments?count=1', {
+      headers: { Authorization: `Basic ${auth}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) return { ok: true, mode, status: r.status };
+    let description = `HTTP ${r.status}`;
+    try {
+      const body = await r.json();
+      description = body?.error?.description || description;
+    } catch { /* keep the status line */ }
+    return { ok: false, mode, status: r.status, error: description };
+  } catch (err) {
+    // A network/DNS failure reaching Razorpay is not proof the keys are wrong,
+    // so say so rather than branding them invalid.
+    return { ok: false, mode, error: `Could not reach Razorpay: ${err?.message ?? String(err)}` };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -181,9 +220,7 @@ export default async function handler(req, res) {
 
   if (!(await enforceRateLimit(req, res, { key: 'health', limit: 30, windowMs: 60_000 }))) return;
 
-  const database = await checkDatabase();
-  const razorpay = { ok: configured(razorpayKeyId) && configured(razorpayKeySecret) };
-  if (!razorpay.ok) razorpay.error = 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not both set';
+  const [database, razorpay] = await Promise.all([checkDatabase(), checkRazorpay()]);
 
   // Orders need both: the gateway to take the money and the service role to
   // write the row. Either one down means checkout is down.

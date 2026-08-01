@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
@@ -38,6 +39,7 @@ export function FilterSheet() {
   );
 
   const close = () => navigate('/buyer/results');
+  useDismissOnEscape(close);
   const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 
   /**
@@ -77,7 +79,7 @@ export function FilterSheet() {
         <div style={css('display:flex;justify-content:space-between;font-size:13px;color:var(--ag-muted);font-weight:700;margin-top:8px;')}>
           <span>₹0</span><span style={css('color:var(--ag-crimson);')}>{fmt(filters.maxPrice)}{pricePlus}</span>
         </div>
-        <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} style={css('width:100%;accent-color:#D6336C;margin-top:6px;height:24px;')} />
+        <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} aria-label="Maximum price" aria-valuetext={fmt(filters.maxPrice)} style={css('width:100%;accent-color:#D6336C;margin-top:6px;height:24px;')} />
 
         <div style={css('font-weight:800;font-size:14px;margin-top:12px;')}>Category</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>

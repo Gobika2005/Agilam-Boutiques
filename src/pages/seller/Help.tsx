@@ -49,9 +49,9 @@ export function Help() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
         <button onClick={() => navigate('/seller/profile')} aria-label="Back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Help &amp; Support</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Help &amp; Support</h1>
       </div>
 
       <div style={css('max-width:760px;')}>
@@ -103,7 +103,7 @@ export function Help() {
           ))}
         </div>
 
-        <div style={css('margin:12px 24px 0;font-size:11.5px;font-weight:600;color:#A98D99;')}>Support hours: {COMPANY.supportHours}</div>
+        <div style={css('margin:12px 24px 0;font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>Support hours: {COMPANY.supportHours}</div>
       </div>
     </div>
   );

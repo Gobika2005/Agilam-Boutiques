@@ -124,10 +124,10 @@ export const CATEGORIES = [
 
 export const COLORS = [
   { name: 'Pink', hex: '#E7719F' },
-  { name: 'Red', hex: '#D6455A' },
+  { name: 'Red', hex: 'var(--ag-danger-text)' },
   { name: 'Green', hex: '#5FA37E' },
   { name: 'Purple', hex: '#9B7FC7' },
-  { name: 'Yellow', hex: '#E0B84B' },
+  { name: 'Yellow', hex: 'var(--ag-star)' },
   { name: 'Teal', hex: '#4F9CA3' },
   { name: 'Peach', hex: '#E8A583' },
 ];
@@ -201,7 +201,7 @@ export const NOTIFS = [
   { type: 'Orders', icon: 'shopping_bag', title: 'New order received', body: 'Priya Sharma ordered Rose Zari Silk Saree · ₹4,899', time: '2m', unread: true, tint: '#FCE0EC', ic: '#D6336C' },
   { type: 'Messages', icon: 'chat_bubble', title: 'New message', body: 'Anitha R: Please share the price for the maroon saree.', time: '40m', unread: true, tint: '#E6F0FA', ic: '#3A6EA5' },
   { type: 'Updates', icon: 'local_shipping', title: 'Order shipped', body: 'Order #AGL-2478 marked as shipped.', time: '3h', unread: false, tint: '#E5F3EC', ic: '#2FA36B' },
-  { type: 'Updates', icon: 'payments', title: 'Payment received', body: '₹12,999 credited for order #AGL-2478.', time: '5h', unread: false, tint: '#FBF0DA', ic: '#C99A3F' },
+  { type: 'Updates', icon: 'payments', title: 'Payment received', body: '₹12,999 credited for order #AGL-2478.', time: '5h', unread: false, tint: '#FBF0DA', ic: 'var(--ag-gold-text)' },
   { type: 'Updates', icon: 'star', title: 'New review', body: 'Neha Verma rated Mustard Cotton Kurti 5 ★.', time: '1d', unread: false, tint: '#F3EAF5', ic: '#9B7FC7' },
 ];
 

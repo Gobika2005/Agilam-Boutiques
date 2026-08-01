@@ -103,8 +103,8 @@ export function OrderDetail() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);display:flex;flex-direction:column;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/orders')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+        <button onClick={() => navigate('/seller/orders')} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>Order {o.number}</div>
@@ -232,7 +232,7 @@ export function OrderDetail() {
           <div style={css(`margin-top:12px;border-radius:16px;padding:16px;border:1.5px solid ${settled ? '#CFE6D9' : 'var(--ag-gold-border)'};background:${settled ? '#F3F9F5' : 'var(--ag-gold-bg)'};`)}>
             <div style={css('display:flex;align-items:center;gap:11px;')}>
               <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;`)}>
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : '#C99A3F'};`)}>{settled ? 'task_alt' : 'payments'}</span>
+                <span style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)}>{settled ? 'task_alt' : 'payments'}</span>
               </span>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css(`font-size:11.5px;font-weight:800;letter-spacing:.05em;color:${settled ? '#2C6249' : '#B0862B'};`)}>
@@ -299,13 +299,13 @@ export function OrderDetail() {
                 </div>
                 <div style={css('display:flex;gap:10px;margin-top:11px;')}>
                   <button onClick={() => setConfirmReject(false)} style={css('flex:1;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Keep order</button>
-                  <button onClick={() => { setConfirmReject(false); setStatus('rejected', 'Order rejected'); }} style={css('flex:1;height:48px;border:none;background:#D6455A;color:#fff;border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject order</button>
+                  <button onClick={() => { setConfirmReject(false); setStatus('rejected', 'Order rejected'); }} style={css('flex:1;height:48px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject order</button>
                 </div>
               </div>
             ) : (
               <div style={css('display:flex;gap:10px;')}>
                 {canReject && (
-                  <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
+                  <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
                 )}
                 {forward && (
                   <button onClick={() => setStatus(forward.status, forward.msg)} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>{forward.label}</button>

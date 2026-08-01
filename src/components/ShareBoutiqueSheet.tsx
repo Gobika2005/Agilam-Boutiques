@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
 import { useShop } from '@/state/ShopContext';
 import { TONES, type Boutique } from '@/data/demo';
 
@@ -27,6 +28,7 @@ function compact(n: number): string {
 
 export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Boutique; link: string; onClose: () => void }) {
   const { showToast } = useShop();
+  useDismissOnEscape(onClose);
   const [copied, setCopied] = useState(false);
   const prettyLink = link.replace(/^https?:\/\//, '');
   const message = `Check out ${boutique.name} on MangaiMart ✨ ${boutique.desc}`;
@@ -112,7 +114,7 @@ export function ShareBoutiqueSheet({ boutique, link, onClose }: { boutique: Bout
                     {boutique.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                   </div>
                   <div style={css('display:flex;align-items:center;gap:4px;margin-top:3px;color:var(--ag-muted);font-size:12px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>
                     <span style={css('font-weight:700;color:var(--ag-ink-2);')}>{boutique.rating}</span>
                     <span>·</span>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-crimson);")}>location_on</span>

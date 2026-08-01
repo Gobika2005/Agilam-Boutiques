@@ -110,7 +110,7 @@ export function Coupons() {
         <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
           <div style={css('flex:1;min-width:0;')}>
             <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);')}>Boutique offers</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1.1;margin-top:3px;")}>Coupons</div>
+            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1.1;margin-top:3px;")}>Coupons</h1>
             <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:5px;line-height:1.5;')}>
               Discount codes for your own items. You fund these — the discount comes off your payout, and commission is taken on the reduced amount.
             </div>
@@ -170,11 +170,11 @@ export function Coupons() {
                     <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:var(--ag-crimson);")}>{c.code}</span>
                     <div style={css('font-size:12px;color:var(--ag-label);font-weight:600;margin-top:1px;')}>{describeCoupon(c)}</div>
                   </div>
-                  <span style={css('font-size:11px;color:#9A8088;font-weight:600;')}>till {fmtDate(c.expires_at)}</span>
+                  <span style={css('font-size:11px;color:var(--ag-muted);font-weight:600;')}>till {fmtDate(c.expires_at)}</span>
                 </div>
               ))}
             </div>
-            <div style={css('font-size:11.5px;color:#A98D99;margin-top:8px;line-height:1.5;')}>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:8px;line-height:1.5;')}>
               These are funded by MangaiMart, not you — your payout is unaffected when a buyer uses one.
             </div>
           </div>
@@ -223,7 +223,7 @@ function IconBtn({ icon, onClick, danger }: { icon: string; onClick: () => void;
     <button
       type="button"
       onClick={onClick}
-      style={css(`width:34px;height:34px;border-radius:10px;border:1.5px solid ${danger ? 'var(--ag-border)' : 'var(--ag-border)'};background:var(--ag-surface);color:${danger ? '#D6455A' : 'var(--ag-crimson)'};cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
+      style={css(`width:34px;height:34px;border-radius:10px;border:1.5px solid ${danger ? 'var(--ag-border)' : 'var(--ag-border)'};background:var(--ag-surface);color:${danger ? 'var(--ag-danger-text)' : 'var(--ag-crimson)'};cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
     >
       <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{icon}</span>
     </button>

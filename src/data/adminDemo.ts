@@ -16,7 +16,7 @@ export const METRICS = [
   { label: 'Gross merchandise value', value: '₹42.6L', icon: 'payments', tint: '#FCE0EC', ic: '#D6336C', delta: '+18%', deltaColor: '#218456' },
   { label: 'Active boutiques', value: '218', icon: 'storefront', tint: '#E6F0FA', ic: '#3A6EA5', delta: '+12', deltaColor: '#218456' },
   { label: 'Orders this month', value: '1,842', icon: 'receipt_long', tint: '#F3EAF5', ic: '#9B7FC7', delta: '+9%', deltaColor: '#218456' },
-  { label: 'Platform revenue', value: '₹3.4L', icon: 'account_balance', tint: '#FBF0DA', ic: '#C99A3F', delta: '+21%', deltaColor: '#218456' },
+  { label: 'Platform revenue', value: '₹3.4L', icon: 'account_balance', tint: '#FBF0DA', ic: 'var(--ag-gold-text)', delta: '+21%', deltaColor: '#218456' },
 ];
 
 export const GMV_BARS = ['38%', '52%', '44%', '60%', '48%', '66%', '58%', '74%', '62%', '82%', '76%', '94%'];

@@ -139,7 +139,7 @@ export function Earnings() {
 
   const TILES = [
     { label: 'Orders this month', value: String(thisMonth.length), color: 'var(--ag-ink)' },
-    { label: 'Pending payout', value: fmt(pendingPayout), color: '#C99A3F' },
+    { label: 'Pending payout', value: fmt(pendingPayout), color: 'var(--ag-gold-text)' },
     { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
     { label: `Commission (${commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
   ];
@@ -149,11 +149,11 @@ export function Earnings() {
       <div style={css('padding:6px 0 12px;display:flex;align-items:center;gap:10px;')}>
         <button
           onClick={() => navigate('/seller/profile')}
-          style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Earnings</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Earnings</h1>
       </div>
 
       {/* Hero — net earnings after commission ------------------------------ */}
@@ -181,7 +181,7 @@ export function Earnings() {
       <div className="agx-sd-quick" style={css('margin-top:14px;')}>
         {TILES.map((t) => (
           <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
-            <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>{t.label}</div>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>{t.label}</div>
             <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:5px;color:${t.color};word-break:break-word;`)}>{t.value}</div>
           </div>
         ))}
@@ -192,21 +192,21 @@ export function Earnings() {
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:20px;")}>payments</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery</div>
           </div>
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Cash you collected</div>
+              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Cash you collected</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codCash)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Commission owed on it</div>
+              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Commission owed on it</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-bad-text);")}>– {fmt(codCommissionOwed)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Still to collect</div>
+              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Still to collect</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codOutstanding)}</div>
             </div>
           </div>
@@ -219,7 +219,7 @@ export function Earnings() {
           {codOutstanding > 0 && (
             <button
               onClick={() => navigate('/seller/orders')}
-              style={css('margin-top:12px;height:42px;padding:0 18px;border:none;border-radius:12px;background:#B9862F;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+              style={css('margin-top:12px;height:44px;padding:0 18px;border:none;border-radius:12px;background:var(--ag-gold-text);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
             >
               See orders to collect
             </button>
@@ -264,13 +264,13 @@ export function Earnings() {
           <div style={css('display:flex;flex-direction:column;gap:9px;')}>
             {payout.upi && (
               <div style={css('display:flex;gap:12px;align-items:baseline;')}>
-                <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:#A98D99;')}>UPI ID</span>
+                <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:var(--ag-muted);')}>UPI ID</span>
                 <span style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>{payout.upi}</span>
               </div>
             )}
             {payout.account && (
               <div style={css('display:flex;gap:12px;align-items:baseline;')}>
-                <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:#A98D99;')}>Bank account</span>
+                <span style={css('flex:none;width:110px;font-size:12px;font-weight:700;color:var(--ag-muted);')}>Bank account</span>
                 <span style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>{payout.account}{payout.ifsc ? ` · ${payout.ifsc}` : ''}</span>
               </div>
             )}
@@ -283,7 +283,7 @@ export function Earnings() {
           </div>
         ) : (
           <div style={css('display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;")}>account_balance</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);")}>account_balance</span>
             <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
               No payout account on file — MangaiMart cannot settle your online orders until you add one.
             </span>

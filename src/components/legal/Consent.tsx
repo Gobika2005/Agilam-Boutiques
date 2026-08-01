@@ -58,7 +58,7 @@ export function ConsentCheckbox({
 
 export function ConsentNotice({ align = 'center' }: { align?: 'center' | 'left' }) {
   return (
-    <div style={css(`text-align:${align};font-size:12px;line-height:1.55;color:#9A8088;font-weight:600;`)}>
+    <div style={css(`text-align:${align};font-size:12px;line-height:1.55;color:var(--ag-muted);font-weight:600;`)}>
       By continuing, you agree to our <PolicyLinks />.
     </div>
   );

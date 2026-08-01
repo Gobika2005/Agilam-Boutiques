@@ -26,6 +26,14 @@ export type PlacedOrderItem = {
 export type PlacedOrder = {
   /** Display id, e.g. `#AGL-1234567`. */
   id: string;
+  /**
+   * The `orders` row's uuid. Deep links built from a DB id — notably an order
+   * notification, whose only handle on the order is `notifications.order_id` —
+   * arrive as `/buyer/orders/<uuid>`, which matches neither `id` nor
+   * `orderNumber`, so the tracking screen answered "Order not found". Absent on
+   * a guest's locally-mirrored order until it is read back from the server.
+   */
+  rowId?: string;
   orderNumber: string;
   /** ISO timestamp of when the order was placed. */
   placedAt: string;
@@ -104,6 +112,7 @@ export function findOrder(id: string | undefined): PlacedOrder | undefined {
 
 /** A signed-in buyer's order as read back via RLS (see data/orders.ts). */
 export type BuyerDbOrder = {
+  id: string;
   order_number: string;
   boutique_id: string;
   status: OrderStatus;
@@ -127,6 +136,7 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
   const shippingFee = Number(o.shipping_fee ?? 0);
   return {
     id: '#' + o.order_number,
+    rowId: o.id,
     orderNumber: o.order_number,
     placedAt: o.created_at,
     boutique: o.boutique?.name ?? 'Boutique',

@@ -37,8 +37,13 @@ const vercelCronSecret = process.env.CRON_SECRET;
  *  `platform_settings.payout_hold_days` applies (see resolveHoldDays below). */
 const HOLD_DAYS_ENV = process.env.PAYOUT_HOLD_DAYS;
 
+// `payout_verification_status` and `razorpayx_validation_id` are load-bearing:
+// ensurePayoutVerified() below branches on both. Leaving them out of this select
+// made `razorpayx_validation_id` read as undefined on every row, so the
+// "penny-drop already running → poll it" branch was unreachable and each run
+// started a BRAND NEW validation instead of checking the one in flight.
 const BOUTIQUE_COLS =
-  'id, name, email, phone, whatsapp, bank_account_name, bank_account_number, bank_ifsc, upi_id, razorpayx_contact_id, razorpayx_fund_account_id, payout_details_verified';
+  'id, name, email, phone, whatsapp, bank_account_name, bank_account_number, bank_ifsc, upi_id, razorpayx_contact_id, razorpayx_fund_account_id, payout_details_verified, payout_verification_status, razorpayx_validation_id';
 
 function authorized(req) {
   if (!present(cronSecret) && !present(vercelCronSecret)) return false;

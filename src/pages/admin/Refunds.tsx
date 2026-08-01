@@ -115,7 +115,7 @@ export function Refunds() {
       <div className="agx-adm-g4">
         <StatCard label="Refunds issued" value={String(refundedList.length)} icon="undo" tint="var(--ag-bad-bg)" ic="var(--ag-bad-text)" />
         <StatCard label="Refunded value" value={compactInr(refundedAmount)} icon="payments" tint="var(--ag-surface-2)" ic="#D6336C" />
-        <StatCard label="Awaiting refund" value={String(candidates.length)} icon="pending_actions" tint="var(--ag-warn-bg)" ic="#C99A3F" sub={candidates.length ? 'action needed' : 'clear'} />
+        <StatCard label="Awaiting refund" value={String(candidates.length)} icon="pending_actions" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" sub={candidates.length ? 'action needed' : 'clear'} />
         {/* Money the platform is actually holding and owes back — not the value
             of every failed order, which is what this used to total. */}
         <StatCard label="Owed to buyers" value={compactInr(candidates.reduce((s, r) => s + r.total, 0))} icon="account_balance_wallet" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" sub={unpaid.length ? `${unpaid.length} unpaid write-offs excluded` : undefined} />

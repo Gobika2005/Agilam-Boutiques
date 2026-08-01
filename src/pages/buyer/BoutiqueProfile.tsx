@@ -135,7 +135,7 @@ export function BoutiqueProfile() {
           aria-label="Back to boutiques"
           style={css('position:absolute;left:clamp(14px,3vw,28px);top:16px;width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
       </div>
 
@@ -162,7 +162,7 @@ export function BoutiqueProfile() {
 
           {/* Rating */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:15px;font-weight:700;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#E0B84B;")}>star</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-star);")}>star</span>
             {ab.rating}
             <span style={css('color:var(--ag-muted);font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
           </div>
@@ -295,7 +295,7 @@ export function BoutiqueProfile() {
                   />
                   {p.reviews > 0 && (
                     <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
                       {p.rating}
                     </div>
                   )}

@@ -191,7 +191,7 @@ export function ProductDetail() {
     .slice(0, 30);
 
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
-  const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : 'var(--ag-good)';
+  const stockFg = ap.stock === 0 ? 'var(--ag-danger-text)' : ap.stock <= 5 ? 'var(--ag-gold-text)' : 'var(--ag-good-text)';
 
   const sizeOptions = sortSizes(ap.sizes?.length ? ap.sizes : FALLBACK_SIZES);
   const isSaree = ap.cat.trim().toLowerCase() === 'sarees';
@@ -396,7 +396,7 @@ export function ProductDetail() {
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:6px;')}>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
             <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#E0B84B;")}>star</span>{p.rating}
+              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
             </span>
           </div>
         </div>
@@ -438,7 +438,7 @@ export function ProductDetail() {
                 losing their place. Home is only the fallback for a cold deep
                 link with no history behind it. */}
             <button onClick={goBack} aria-label="Go back" title="Back" style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
             </button>
             {/* No zoom button: the photo itself opens the viewer on tap, and
                 `cursor:zoom-in` on the slide says so without extra chrome. */}
@@ -471,14 +471,25 @@ export function ProductDetail() {
                     <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_right</span>
                   </button>
                 )}
+                {/* The dot stays 7px; the BUTTON around it is 44px tall and
+                    transparent, so the thumb has something to hit. As 7×7
+                    controls these were unhittable, and a buyer who missed them
+                    never discovered photos 2–4. Negative margins keep the pill
+                    visually identical. */}
                 <div style={css('position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(36,16,25,.42);backdrop-filter:blur(6px);')}>
                   {gallery.map((_, i) => (
                     <button
                       key={`${ap.id}-d${i}`}
                       aria-label={`Go to photo ${i + 1}`}
+                      aria-current={i === imgIndex}
                       onClick={() => goToImage(i)}
-                      style={css(`width:${i === imgIndex ? 18 : 7}px;height:7px;padding:0;border:none;border-radius:999px;cursor:pointer;background:${i === imgIndex ? '#fff' : 'rgba(255,255,255,.5)'};transition:width .25s ease,background .25s ease;`)}
-                    />
+                      style={css('display:flex;align-items:center;justify-content:center;width:22px;height:44px;margin:-18px -7px;padding:0;border:none;background:none;cursor:pointer;')}
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={css(`display:block;width:${i === imgIndex ? 18 : 7}px;height:7px;border-radius:999px;background:${i === imgIndex ? '#fff' : 'rgba(255,255,255,.5)'};transition:width .25s ease,background .25s ease;`)}
+                      />
+                    </button>
                   ))}
                 </div>
               </>
@@ -508,14 +519,14 @@ export function ProductDetail() {
             {hasMrp && (
               <>
                 <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:16px;font-weight:700;')}>{fmt(ap.mrp as number)}</span>
-                <span style={css('background:var(--ag-good-bg);color:var(--ag-good);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
+                <span style={css('background:var(--ag-good-bg);color:var(--ag-good-text);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
               </>
             )}
             <button
               onClick={jumpToReviews}
               style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;cursor:pointer;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
             </button>
             <span style={css(`font-size:12.5px;font-weight:800;color:${stockFg};`)}>{stockLabel}</span>
           </div>

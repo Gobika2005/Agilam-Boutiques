@@ -57,7 +57,7 @@ export function Customers() {
         <StatCard label="Customers" value={String(all.length)} icon="group" tint="var(--ag-surface-2)" ic="#D6336C" />
         <StatCard label="Repeat buyers" value={String(repeat)} icon="autorenew" tint="var(--ag-good-bg)" ic="var(--ag-good-text)" sub={all.length ? `${Math.round((repeat / all.length) * 100)}%` : '0%'} />
         <StatCard label="Total orders" value={String(totalOrders)} icon="receipt_long" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" />
-        <StatCard label="Avg. lifetime" value={compactInr(avgSpend)} icon="payments" tint="var(--ag-warn-bg)" ic="#C99A3F" />
+        <StatCard label="Avg. lifetime" value={compactInr(avgSpend)} icon="payments" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" />
       </div>
 
       <div style={css('display:flex;gap:10px;flex-wrap:wrap;')}>

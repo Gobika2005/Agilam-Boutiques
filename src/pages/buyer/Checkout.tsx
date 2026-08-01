@@ -151,7 +151,7 @@ export function Checkout() {
             <button onClick={continueToPayment} style={css(`width:100%;height:54px;margin-top:${touched && invalid ? '10px' : '18px'};border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
               Continue to payment<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
             </button>
-            <div style={css('text-align:center;font-size:11.5px;line-height:1.5;color:#9A8088;font-weight:600;margin-top:11px;')}>
+            <div style={css('text-align:center;font-size:11.5px;line-height:1.5;color:var(--ag-muted);font-weight:600;margin-top:11px;')}>
               By placing your order you agree to our{' '}
               <a href="/buyer/policy/terms" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Terms</a>,{' '}
               <a href="/buyer/policy/return-refund-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Return &amp; Refund</a> and{' '}

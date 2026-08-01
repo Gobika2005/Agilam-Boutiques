@@ -250,7 +250,7 @@ export function Ads() {
                         </button>
                       )}
                       {(status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
-                        <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:700;font-size:12.5px;cursor:pointer;')}>
+                        <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Reject & refund
                         </button>
                       )}
@@ -299,7 +299,7 @@ export function Ads() {
                 </button>
               )}
               {(effectiveAdStatus(preview) === 'pending_review' || effectiveAdStatus(preview) === 'changes_requested' || effectiveAdStatus(preview) === 'scheduled' || effectiveAdStatus(preview) === 'live' || effectiveAdStatus(preview) === 'paused') && (
-                <button disabled={busyId === preview.id} onClick={() => doReject(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#D6455A;font-weight:800;font-size:13.5px;cursor:pointer;')}>
+                <button disabled={busyId === preview.id} onClick={() => doReject(preview)} style={css('flex:1;height:44px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:800;font-size:13.5px;cursor:pointer;')}>
                   Reject & refund
                 </button>
               )}
@@ -467,7 +467,7 @@ function AdEditor({ campaign, onClose, onSaved }: { campaign: AdCampaignAdmin; o
         {isHero && (
           <div>
             <label style={label}>
-              Tag <span style={css('font-weight:600;color:#A98D99;')}>· small label above the title</span>
+              Tag <span style={css('font-weight:600;color:var(--ag-muted);')}>· small label above the title</span>
               <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={24} placeholder="Festive Edit" style={field} />
             </label>
             <label style={label}>
@@ -496,7 +496,7 @@ function AdEditor({ campaign, onClose, onSaved }: { campaign: AdCampaignAdmin; o
                 <button onClick={() => setImage('')} disabled={uploading} style={css('flex:none;height:44px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;')}>Reset</button>
               )}
             </div>
-            <div style={css('font-size:11.5px;color:#A98D99;margin-top:6px;')}>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;')}>
               Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB.
             </div>
           </div>

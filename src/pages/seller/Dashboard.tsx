@@ -71,9 +71,11 @@ export function Dashboard() {
   const todaysRevenue = todaysOrders.filter(earned).reduce((s, o) => s + Number(o.total), 0);
   const pendingCount = rows.filter((o) => o.status === 'pending').length;
   // Cash the seller still has to collect at the door, across all open COD orders.
-  const toCollect = rows
-    .filter((o) => o.payment_method === 'COD' && (o.payment_status ?? 'paid') === 'pending' && o.status !== 'rejected' && o.status !== 'cancelled')
-    .reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
+  // Summed from the shared order view rather than re-derived here: this tile used
+  // to add only goods + handling and silently dropped the delivery fee, so it
+  // under-reported by ₹79 an order against the Orders banner and the invoice —
+  // the two numbers the seller actually counts cash against.
+  const toCollect = orders.reduce((s, o) => s + o.collectAmount, 0);
   // Guest orders have no buyer_id, so fall back to the phone number before
   // giving up and counting the order itself as its own customer.
   const customerCount = new Set(rows.map((o) => o.buyer_id ?? o.guest_phone ?? o.id)).size;
@@ -111,33 +113,36 @@ export function Dashboard() {
 
   const QUICK = [
     { label: 'New Bill', sub: 'Create invoice', icon: 'receipt_long', tint: 'var(--ag-surface-2)', ic: '#D6336C', to: '/seller/billing', badge: 0 },
-    { label: 'Notifications', sub: 'View alerts', icon: 'notifications', tint: 'var(--ag-gold-bg)', ic: '#C99A3F', to: '/seller/notifications', badge: unread ?? 0 },
+    { label: 'Notifications', sub: 'View alerts', icon: 'notifications', tint: 'var(--ag-gold-bg)', ic: 'var(--ag-gold-text)', to: '/seller/notifications', badge: unread ?? 0 },
     { label: 'Orders', sub: 'Manage orders', icon: 'shopping_bag', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7', to: '/seller/orders', badge: pendingCount },
     { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/add-product', badge: 0 },
   ];
 
   // Buyer-facing discovery & engagement surfaces the seller reaches from here.
   const GROW = [
-    { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: '#C99A3F', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
+    { label: 'Reviews', sub: reviewsNeedingReply ? `${reviewsNeedingReply} to reply` : 'Ratings', icon: 'reviews', ic: 'var(--ag-gold-text)', tint: 'var(--ag-gold-bg)', to: '/seller/reviews', badge: reviewsNeedingReply },
   ];
 
   const TODAY = [
     { label: "Today's orders", value: String(todaysOrders.length), ic: 'var(--ag-info-text)' },
     { label: "Today's revenue", value: fmt(todaysRevenue), ic: 'var(--ag-good)' },
-    { label: 'Pending orders', value: String(pendingCount), ic: '#C99A3F' },
+    { label: 'Pending orders', value: String(pendingCount), ic: 'var(--ag-gold-text)' },
     { label: 'Cash to collect', value: fmt(toCollect), ic: 'var(--ag-gold-text)' },
-    { label: 'Low stock', value: String(lowStock.length), ic: '#D6455A' },
+    { label: 'Low stock', value: String(lowStock.length), ic: 'var(--ag-danger-text)' },
   ];
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
+      {/* The page's identity is carried visually by the boutique card; screen
+          readers need an actual heading to navigate to. */}
+      <h1 className="agx-sr-only">Seller dashboard</h1>
       {/* Boutique identity ------------------------------------------------- */}
       <button
         onClick={() => navigate('/seller/boutique')}
         className="agx-lift"
         style={css('width:100%;text-align:left;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface));border:1px solid var(--ag-border);border-radius:22px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:inherit;')}
       >
-        <span style={css("width:56px;height:56px;flex:none;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#E14A7E,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>
+        <span style={css("width:56px;height:56px;flex:none;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#C62A60,#B02454);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>
           {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
         </span>
         <span style={css('flex:1;min-width:0;')}>
@@ -152,35 +157,42 @@ export function Dashboard() {
             <span style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;')}>
               {facts.map((f) => (
                 <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--ag-surface-2);border:1px solid var(--ag-border);font-size:10.5px;font-weight:800;color:#8A5A72;')}>
-                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? 'var(--ag-info-text)' : f.icon === 'star' ? '#E0B84B' : 'var(--ag-crimson)'};`)}>{f.icon}</span>
+                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? 'var(--ag-info-text)' : f.icon === 'star' ? 'var(--ag-star)' : 'var(--ag-crimson)'};`)}>{f.icon}</span>
                   {f.text}
                 </span>
               ))}
             </span>
           )}
           <span style={css(`display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:${approved ? 'var(--ag-good-bg)' : 'var(--ag-warn-bg)'};color:${approved ? 'var(--ag-good-text)' : 'var(--ag-warn-text)'};`)}>
-            <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? 'var(--ag-good)' : '#C99A3F'};`)} />
+            <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)} />
             {approved ? 'Active seller' : 'Awaiting verification'}
           </span>
         </span>
         <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
       </button>
 
-      {/* Promote CTA ------------------------------------------------------- */}
-      <button
-        onClick={() => navigate('/seller/promote')}
-        className="agx-lift"
-        style={css('width:100%;text-align:left;margin-top:16px;background:linear-gradient(135deg,#D6336C,#B02454);border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
-      >
-        <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
-        </span>
-        <span style={css('flex:1;min-width:0;')}>
-          <span style={css('display:block;font-weight:800;font-size:14.5px;')}>Promote your boutique</span>
-          <span style={css('display:block;font-size:12px;opacity:.85;margin-top:1px;')}>Book an ad slot and reach more buyers</span>
-        </span>
-        <span style={css("font-family:'Material Symbols Outlined';")}>chevron_right</span>
-      </button>
+      {/* Greeting + what needs the seller right now. This sits directly under
+          the boutique card because it answers the only question an owner opens
+          the app with — "what needs me?". It used to sit ~700px down, below the
+          paid-promotion banner. ------------------------------------------- */}
+      <div style={css('margin-top:16px;border-radius:22px;background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;padding:20px 22px;position:relative;overflow:hidden;')}>
+        <div style={css('position:absolute;top:-70px;right:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
+        <div style={css('position:relative;')}>
+          <div style={css('font-size:13px;opacity:.85;')}>{greeting()},</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(23px,3vw,32px);line-height:1.1;margin-top:3px;")}>
+            {ownerName || boutiqueName}
+          </div>
+          <div style={css('font-size:13.5px;opacity:.9;margin-top:8px;max-width:520px;line-height:1.55;')}>
+            {pendingCount > 0
+              ? `${pendingCount} order${pendingCount > 1 ? 's are' : ' is'} waiting for you to accept.`
+              : todaysOrders.length > 0
+                ? `${todaysOrders.length} order${todaysOrders.length > 1 ? 's' : ''} came in today — everything is up to date.`
+                : products.length === 0
+                  ? 'Add your first product to start selling on MangaiMart.'
+                  : 'No new orders right now. Your storefront is live and listening.'}
+          </div>
+        </div>
+      </div>
 
       {/* Quick actions ----------------------------------------------------- */}
       <div className="agx-sd-quick" style={css('margin-top:16px;')}>
@@ -201,7 +213,7 @@ export function Dashboard() {
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>{q.label}</span>
-              <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;')}>{q.sub}</span>
+              <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>{q.sub}</span>
             </span>
           </button>
         ))}
@@ -231,32 +243,29 @@ export function Dashboard() {
               </span>
               <span style={css('min-width:0;')}>
                 <span style={css('display:block;font-weight:800;font-size:13px;color:var(--ag-ink);')}>{g.label}</span>
-                <span style={css('display:block;font-size:11px;color:#A98D99;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{g.sub}</span>
+                <span style={css('display:block;font-size:11px;color:var(--ag-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{g.sub}</span>
               </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Welcome banner ---------------------------------------------------- */}
-      <div style={css('margin-top:16px;border-radius:22px;background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;padding:20px 22px;position:relative;overflow:hidden;')}>
-        <div style={css('position:absolute;top:-70px;right:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
-        <div style={css('position:relative;')}>
-          <div style={css('font-size:13px;opacity:.85;')}>{greeting()},</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(23px,3vw,32px);line-height:1.1;margin-top:3px;")}>
-            {ownerName || boutiqueName}
-          </div>
-          <div style={css('font-size:13.5px;opacity:.9;margin-top:8px;max-width:520px;line-height:1.55;')}>
-            {pendingCount > 0
-              ? `${pendingCount} order${pendingCount > 1 ? 's are' : ' is'} waiting for you to accept.`
-              : todaysOrders.length > 0
-                ? `${todaysOrders.length} order${todaysOrders.length > 1 ? 's' : ''} came in today — everything is up to date.`
-                : products.length === 0
-                  ? 'Add your first product to start selling on MangaiMart.'
-                  : 'No new orders right now. Your storefront is live and listening.'}
-          </div>
-        </div>
-      </div>
+      {/* Promote CTA — an upsell, so it follows the seller's own numbers
+          rather than outranking them. ---------------------------------------- */}
+      <button
+        onClick={() => navigate('/seller/promote')}
+        className="agx-lift"
+        style={css('width:100%;text-align:left;margin-top:16px;background:linear-gradient(135deg,#D6336C,#B02454);border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
+      >
+        <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
+        </span>
+        <span style={css('flex:1;min-width:0;')}>
+          <span style={css('display:block;font-weight:800;font-size:14.5px;')}>Promote your boutique</span>
+          <span style={css('display:block;font-size:12px;opacity:.85;margin-top:1px;')}>Book an ad slot and reach more buyers</span>
+        </span>
+        <span style={css("font-family:'Material Symbols Outlined';")}>chevron_right</span>
+      </button>
 
       {/* Business overview -------------------------------------------------- */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 14px;gap:12px;')}>
@@ -264,7 +273,7 @@ export function Dashboard() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business overview</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-top:5px;")}>Your numbers</div>
         </div>
-        <div style={css('font-size:12px;color:#A98D99;font-weight:700;white-space:nowrap;')}>
+        <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;white-space:nowrap;')}>
           {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
       </div>
@@ -293,7 +302,7 @@ export function Dashboard() {
       <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);display:flex;gap:12px;flex-wrap:wrap;')}>
         {TODAY.map((s) => (
           <div key={s.label} style={css('flex:1;min-width:120px;')}>
-            <div style={css('font-size:11.5px;color:#A98D99;font-weight:700;')}>{s.label}</div>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>{s.label}</div>
             <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:${s.ic};`)}>{s.value}</div>
           </div>
         ))}
@@ -318,7 +327,7 @@ export function Dashboard() {
               <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:22px;text-align:center;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>receipt_long</span>
                 <div style={css('font-weight:700;font-size:14px;margin-top:6px;color:var(--ag-ink);')}>No orders yet</div>
-                <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;margin-top:3px;')}>
+                <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>
                   Orders from buyers and your offline bills both show up here.
                 </div>
               </div>
@@ -381,7 +390,7 @@ export function Dashboard() {
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
                   <span style={css('display:block;font-weight:700;font-size:13px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</span>
-                  <span style={css('display:block;font-size:11.5px;color:#A98D99;font-weight:600;')}>{fmt(Number(p.price))}</span>
+                  <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>{fmt(Number(p.price))}</span>
                 </span>
                 <span style={css(`flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:8px;background:${p.stock === 0 ? 'var(--ag-bad-bg)' : 'var(--ag-warn-bg)'};color:${p.stock === 0 ? 'var(--ag-bad-text)' : 'var(--ag-warn-text)'};`)}>
                   {p.stock === 0 ? 'Out of stock' : `${p.stock} left`}
