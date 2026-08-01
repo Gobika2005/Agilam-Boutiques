@@ -468,6 +468,45 @@ const POLICY_SLUGS = [
   "cancellation-policy",
   "product-policy"
 ];
+const LEGACY_BUYER_REDIRECTS = {
+  "/buyer": "/",
+  "/buyer/home": "/",
+  "/buyer/results": "/shop",
+  "/buyer/filter": "/shop",
+  "/buyer/sort": "/shop",
+  "/buyer/collections": "/collections",
+  "/buyer/boutiques": "/boutiques",
+  "/buyer/new-arrivals": "/new-arrivals",
+  "/buyer/best-sellers": "/best-sellers",
+  "/buyer/top-boutiques": "/top-boutiques",
+  "/buyer/inspire": "/inspire",
+  "/buyer/cart": "/cart",
+  "/buyer/checkout": "/checkout",
+  "/buyer/payment": "/payment",
+  "/buyer/order-confirmation": "/order-confirmation",
+  "/buyer/orders": "/orders",
+  "/buyer/wishlist": "/wishlist",
+  "/buyer/profile": "/profile",
+  "/buyer/coupons": "/coupons",
+  "/buyer/notifications": "/notifications",
+  "/buyer/messages": "/messages"
+};
+function legacyRedirectPath(pathname) {
+  if (LEGACY_BUYER_REDIRECTS[pathname]) return LEGACY_BUYER_REDIRECTS[pathname];
+  let match = pathname.match(/^\/buyer\/product\/([^/]+)$/);
+  if (match) return `/products/${match[1]}`;
+  match = pathname.match(/^\/buyer\/boutique\/([^/]+)$/);
+  if (match) return `/boutique/${match[1]}`;
+  match = pathname.match(/^\/buyer\/policy\/([^/]+)$/);
+  if (match) return `/${match[1]}`;
+  match = pathname.match(/^\/buyer\/orders\/([^/]+)(\/track)?$/);
+  if (match) return `/orders/${match[1]}${match[2] || ""}`;
+  match = pathname.match(/^\/buyer\/chat\/([^/]+)$/);
+  if (match) return `/chat/${match[1]}`;
+  match = pathname.match(/^\/b\/([^/]+)$/);
+  if (match) return `/boutique/${match[1]}`;
+  return null;
+}
 async function sitemapXml(origin) {
   const [products, boutiques] = await Promise.all([
     db(`products?select=${PRODUCT_COLUMNS}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
@@ -534,6 +573,13 @@ export default async function middleware(request) {
   try {
     const url = new URL(request.url);
     const { pathname, origin } = url;
+    const legacyPath = legacyRedirectPath(pathname);
+    if (legacyPath) {
+      return new Response(null, {
+        status: 301,
+        headers: { location: `${origin}${legacyPath}${url.search}`, "cache-control": "public, max-age=3600" }
+      });
+    }
     if (pathname === "/robots.txt") {
       return new Response(robotsTxt(origin), {
         headers: {
