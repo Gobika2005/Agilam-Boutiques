@@ -552,25 +552,33 @@ Measured before the fix:
 So on any desktop or laptop, Boutiques, Inspire, Orders and Messages were
 reachable only by typing a URL.
 
-**Fixed.** Built the missing `TopNavItem` / `.agx-topnav` in `AppShell`, reading
-the **same `TabDef[]` the dock uses**, so the two can never drift on
-destinations, active-route matching or unread badges. Added the `min-width:960px`
-rule to show it. Two follow-on layout bugs surfaced and were fixed: the fixed
-280 px search field pushed the header past the viewport (now shrinks to 170 px),
-and between 960–1099 px the nav icons are dropped so the labels still fit.
+**Fixed — by keeping the floating dock at every width.**
 
-**The phone dock is deliberately untouched** — same floating pill, same raised
-Inspire orb, same stacked icon-over-label — per the owner's instruction to keep
-the existing mobile nav style. `git diff` confirms no change to the dock or its
-`Tab`/`RaisedTab` components.
+Two routes were possible: build the missing top nav, or stop hiding the dock.
+A horizontal top nav was built first and shown to the owner, who chose the
+simpler answer: **the floating dock is the navigation, phone and desktop alike.**
+One nav to learn, one place to look for it. The top nav was removed again
+(`AppShell` is now 65 lines *lighter* than before this work started) and the
+`@media (min-width:960px){ .agx-dock{ display:none } }` rule was dropped.
 
-**Also fixed:** on mobile the launch notice sat at `bottom:16px`, directly on top
-of the dock — hiding the entire primary navigation behind a notice. It now
-clears it (`bottom:104px` below 960px). Covering navigation is worse than
+The original reason for hiding it on desktop still had to be answered — it
+floats, so it covered the Home collection rail and the PDP description. Rather
+than remove the navigation to solve that, the bottom reserve that already exists
+on mobile now applies on desktop too (`padding-bottom:128px` on `.agx-app-main`
+and `.agx-pdp-root`), so page content ends clear of it.
+
+**The dock itself is untouched** — same floating pill, same 20 px radius, same
+raised Inspire orb, same stacked icon-over-label, same crimson active state.
+`git diff` shows no change to the dock markup or its `Tab`/`RaisedTab`
+components.
+
+**Also fixed:** the launch notice sat at `bottom:16px`, directly on top of the
+dock — hiding Home/Boutiques/Inspire/Orders/Messages behind a notice. It now
+clears it (`bottom:104px`) at every width. Covering navigation is worse than
 covering content, which is what P0-3 originally described.
 
-Verified across 9 widths from 1920 → 360 px: navigation present at every one,
-no horizontal scroll at any.
+Verified across 9 widths from 1920 → 360 px: the dock and all five destinations
+are present at every one, and no width scrolls sideways.
 
 ### What changed
 
