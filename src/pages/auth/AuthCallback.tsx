@@ -45,7 +45,7 @@ export function AuthCallback() {
         const boutique = await fetchMyBoutique(session.user.id).catch(() => null);
         navigate(boutique?.onboarding_complete ? '/seller/dashboard' : '/seller/onboarding', { replace: true });
       } else {
-        navigate('/buyer/profile', { replace: true });
+        navigate('/profile', { replace: true });
       }
     })();
   }, [session, loading, claimRole, navigate, toast]);

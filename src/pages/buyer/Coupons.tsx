@@ -12,9 +12,9 @@ import type { CouponRow } from '@/data/coupons';
 // open this page, and landing back on the one you came from — with the new
 // total already on it — is what makes applying a coupon feel finished.
 const RETURN_LABELS: Record<string, string> = {
-  '/buyer/cart': 'bag',
-  '/buyer/payment': 'payment',
-  '/buyer/checkout': 'delivery',
+  '/cart': 'bag',
+  '/payment': 'payment',
+  '/checkout': 'delivery',
 };
 
 // A coupon row carries no colour of its own (the tone lived on the old hardcoded
@@ -44,7 +44,7 @@ export function Coupons() {
   const { boutiques } = useCatalog();
   const [code, setCode] = useState('');
 
-  const from = state?.from && RETURN_LABELS[state.from] ? state.from : '/buyer/cart';
+  const from = state?.from && RETURN_LABELS[state.from] ? state.from : '/cart';
   const backLabel = RETURN_LABELS[from];
   const emptyBag = subtotal === 0;
 

@@ -34,7 +34,7 @@ export function TrackOrder() {
     return (
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
         <div style={css('max-width:720px;margin:0 auto;')}>
-          <button onClick={() => navigate('/buyer/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
+          <button onClick={() => navigate('/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
           </button>
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 30px;')}>
@@ -51,7 +51,7 @@ export function TrackOrder() {
             </div>
             {!refreshing && (
               <div style={css('display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:center;')}>
-                <button onClick={() => navigate('/buyer/orders')} style={css('height:46px;padding:0 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;')}>My orders</button>
+                <button onClick={() => navigate('/orders')} style={css('height:46px;padding:0 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;')}>My orders</button>
                 <a href={CONTACT_LINKS.support} style={css('display:flex;align-items:center;height:46px;padding:0 18px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13.5px;')}>Contact support</a>
               </div>
             )}
@@ -76,7 +76,7 @@ export function TrackOrder() {
   const owes = order.paymentMethod === 'COD' && (order.paymentStatus ?? 'pending') === 'pending' && !rejected;
 
   const chatWithBoutique = () => {
-    navigate(`/buyer/chat/${order.boutiqueId}`, {
+    navigate(`/chat/${order.boutiqueId}`, {
       state: {
         order: {
           orderId: order.id,
@@ -116,7 +116,7 @@ export function TrackOrder() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:720px;margin:0 auto;')}>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-          <button onClick={() => navigate('/buyer/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
+          <button onClick={() => navigate('/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
           </button>
           <button
@@ -227,7 +227,7 @@ export function TrackOrder() {
             {order.items.map((it, i) => (
               <div
                 key={`${it.pid}-${it.size}-${i}`}
-                onClick={() => it.pid && navigate(`/buyer/product/${it.pid}`)}
+                onClick={() => it.pid && navigate(`/products/${it.pid}`)}
                 style={css(`display:flex;gap:13px;align-items:center;cursor:${it.pid ? 'pointer' : 'default'};`)}
               >
                 <div className="agx-thumb-media" style={css(`width:58px;background:${TONES[it.tone ?? 0]};`)}>
@@ -304,8 +304,8 @@ export function TrackOrder() {
 
         {/* Where to go next, rather than a dead end. */}
         <div style={css('display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:18px;font-size:12.5px;')}>
-          <a href="/buyer/policy/return-refund-policy" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/return-refund-policy'); }} style={css('color:var(--ag-muted);font-weight:700;')}>Return & refund policy</a>
-          <a href="/buyer/policy/cancellation-policy" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/cancellation-policy'); }} style={css('color:var(--ag-muted);font-weight:700;')}>Cancellation policy</a>
+          <a href="/return-refund-policy" onClick={(e) => { e.preventDefault(); navigate('/return-refund-policy'); }} style={css('color:var(--ag-muted);font-weight:700;')}>Return & refund policy</a>
+          <a href="/cancellation-policy" onClick={(e) => { e.preventDefault(); navigate('/cancellation-policy'); }} style={css('color:var(--ag-muted);font-weight:700;')}>Cancellation policy</a>
           <a href={CONTACT_LINKS.call} style={css('color:var(--ag-muted);font-weight:700;')}>{COMPANY.phone}</a>
         </div>
       </div>

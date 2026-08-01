@@ -468,6 +468,30 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['platform_settings']['Row']>;
         Relationships: [];
       };
+      /** Platform spend, admin-only, with receipts in the private
+       *  `expense-proofs` bucket (migration 0056). */
+      expenses: {
+        Row: {
+          id: string;
+          spent_on: string;
+          category: string;
+          title: string;
+          vendor: string;
+          amount: number;
+          payment_method: string;
+          reference: string;
+          notes: string;
+          /** Storage paths inside `expense-proofs`, never public URLs. */
+          proofs: string[];
+          created_by: string | null;
+          created_by_name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['expenses']['Row']>;
+        Update: Partial<Database['public']['Tables']['expenses']['Row']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

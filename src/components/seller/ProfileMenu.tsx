@@ -37,7 +37,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
 
   const shareStorefront = async () => {
     if (!boutique) return;
-    const url = `${window.location.origin}/buyer/boutique/${boutique.id}`;
+    const url = `${window.location.origin}/boutique/${boutique.id}`;
     const share = (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }).share;
     try {
       if (share) await share.call(navigator, { title: boutique.name, text: `Shop ${boutique.name} on MangaiMart`, url });
@@ -55,7 +55,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
   const logout = async () => {
     close();
     await signOut();
-    navigate('/buyer/home', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (
@@ -86,7 +86,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
           </button>
           {boutique && (
             <>
-              <button onClick={() => go(`/buyer/boutique/${boutique.id}`)} style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-surface-2);color:var(--ag-crimson);border:none;border-radius:999px;padding:5px 9px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;')}>
+              <button onClick={() => go(`/boutique/${boutique.id}`)} style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-surface-2);color:var(--ag-crimson);border:none;border-radius:999px;padding:5px 9px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>visibility</span>View shop
               </button>
               <button onClick={shareStorefront} style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-surface-2);color:var(--ag-crimson);border:none;border-radius:999px;padding:5px 9px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;')}>

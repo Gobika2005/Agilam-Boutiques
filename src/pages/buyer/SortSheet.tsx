@@ -9,7 +9,7 @@ export function SortSheet() {
   const navigate = useNavigate();
   const { filters, setSort } = useShop();
 
-  const close = () => navigate('/buyer/results');
+  const close = () => navigate('/shop');
   useDismissOnEscape(close);
 
   return (

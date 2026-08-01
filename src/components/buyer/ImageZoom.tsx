@@ -50,6 +50,17 @@ export function ImageZoom({
   const [offset, setOffset] = useState<Pt>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [hint, setHint] = useState(true);
+  /**
+   * How far the photo strip is dragged from the current slide, in px.
+   *
+   * The viewer used to render one `<img>` and swap its `src` on swipe, so
+   * changing photo was an instant cut: nothing moved under the finger, and the
+   * new picture appeared only once it had decoded. Every slide is now laid out
+   * side by side in a track that this offset slides, so a swipe follows the
+   * finger and the release animates the rest of the way.
+   */
+  const [swipeDx, setSwipeDx] = useState(0);
+  const swipingRef = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const zoomed = scale > 1;
@@ -66,6 +77,10 @@ export function ImageZoom({
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const pressRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+  /** Did the press that is about to produce a `click` travel? A swipe that ends
+   *  over the letterboxing beside a portrait photo still fires one, and that
+   *  must not be read as "tap the backdrop to close". */
+  const lastMovedRef = useRef(false);
 
   // Keeps a pan from dragging the photo past its own edge. The bound is built
   // from the *image's* laid-out box, not the stage: a tall portrait saree is
@@ -121,10 +136,21 @@ export function ImageZoom({
     (i: number) => {
       if (i < 0 || i >= images.length) return;
       reset();
+      // Dropping the drag offset in the same update as the new index is what
+      // makes the slide continue from where the finger let go rather than
+      // snapping back first and then animating across.
+      swipingRef.current = false;
+      setSwipeDx(0);
       onIndexChange(i);
     },
     [images.length, onIndexChange, reset],
   );
+
+  /** Give up on the current swipe and let the strip settle back into place. */
+  const cancelSwipe = useCallback(() => {
+    swipingRef.current = false;
+    setSwipeDx(0);
+  }, []);
 
   // Lock the page behind the viewer so scrolling zooms/pans here, not there.
   useEffect(() => {
@@ -178,10 +204,11 @@ export function ImageZoom({
     if (pointers.current.size === 2) {
       const [a, b] = twoPointers();
       pinchRef.current = { dist: dist(a, b) || 1, scale: scaleRef.current };
-      // A pinch is neither a tap nor a pan.
+      // A pinch is neither a tap, a pan, nor a swipe.
       pressRef.current = null;
       dragRef.current = null;
       setDragging(false);
+      cancelSwipe();
       return;
     }
 
@@ -204,6 +231,24 @@ export function ImageZoom({
 
     const p = pressRef.current;
     if (p && (Math.abs(e.clientX - p.x) > MOVE_SLOP || Math.abs(e.clientY - p.y) > MOVE_SLOP)) p.moved = true;
+
+    // Fit view: the drag carries the whole strip, so the next photo is already
+    // sliding in under the finger before it lifts. Zoomed, the same drag pans
+    // the photo (below) — there is nowhere else for it to go.
+    if (p && !zoomed && images.length > 1) {
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      // Only commit to a swipe once it is clearly horizontal, so a vertical
+      // flick doesn't drag the strip sideways on its way past.
+      if (!swipingRef.current && (Math.abs(dx) <= MOVE_SLOP || Math.abs(dx) <= Math.abs(dy))) return;
+      swipingRef.current = true;
+      // Rubber band at the two ends: the strip still gives, so the gesture is
+      // acknowledged, but it visibly resists rather than pretending there is a
+      // photo there.
+      const atEdge = (dx > 0 && index === 0) || (dx < 0 && index === images.length - 1);
+      setSwipeDx(atEdge ? dx * 0.32 : dx);
+      return;
+    }
 
     const d = dragRef.current;
     if (!d) return;
@@ -230,10 +275,14 @@ export function ImageZoom({
     }
 
     const p = pressRef.current;
+    lastMovedRef.current = !!p?.moved;
     pressRef.current = null;
     dragRef.current = null;
     setDragging(false);
-    if (!p || cancelled) return;
+    if (!p || cancelled) {
+      cancelSwipe();
+      return;
+    }
 
     if (p.moved) {
       // A flick across a fit photo browses the set, the way the product page's
@@ -241,9 +290,14 @@ export function ImageZoom({
       if (zoomed) return;
       const dx = e.clientX - p.x;
       const dy = e.clientY - p.y;
-      if (Math.abs(dx) > SWIPE_MIN && Math.abs(dx) > Math.abs(dy)) go(index + (dx < 0 ? 1 : -1));
+      const next = index + (dx < 0 ? 1 : -1);
+      // Past the threshold the strip carries on to the next photo; short of it
+      // (or at either end) it eases back — either way it animates, never jumps.
+      if (Math.abs(dx) > SWIPE_MIN && Math.abs(dx) > Math.abs(dy) && next >= 0 && next < images.length) go(next);
+      else cancelSwipe();
       return;
     }
+    cancelSwipe();
 
     // A clean tap. Only the second one within the double-tap window zooms;
     // a lone tap is left alone so half-swipes and stray taps stay harmless.
@@ -258,7 +312,6 @@ export function ImageZoom({
     lastTapRef.current = { t: now, x: e.clientX, y: e.clientY };
   };
 
-  const src = images[index] ?? images[0];
   const pct = Math.round(scale * 100);
 
   const ctlStyle = (disabled = false) =>
@@ -305,8 +358,13 @@ export function ImageZoom({
       <div
         ref={stageRef}
         // Only the empty space around the photo closes the viewer; clicks on the
-        // photo and on the arrows are theirs to handle.
-        onClick={(e) => { e.stopPropagation(); if (e.target === stageRef.current) onClose(); }}
+        // photo and on the arrows are theirs to handle. The strip now covers the
+        // stage, so "empty space" is anything that isn't the photo itself —
+        // except at the end of a swipe, which is not a tap on the backdrop.
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!lastMovedRef.current && !(e.target instanceof HTMLImageElement)) onClose();
+        }}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -319,19 +377,50 @@ export function ImageZoom({
             `touch-action:none;cursor:${zoomed ? (dragging ? 'grabbing' : 'grab') : 'zoom-in'};`,
         )}
       >
-        <img
-          ref={imgRef}
-          src={src}
-          alt={`${title} — photo ${index + 1}`}
-          draggable={false}
-          style={css(
-            `max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;` +
-              `transform:translate(${offset.x}px,${offset.y}px) scale(${scale});transform-origin:center center;` +
-              // Easing a zoom step looks good; easing a drag or a pinch makes the
-              // photo lag behind the finger, so live gestures drop the transition.
-              `transition:${dragging || pinchRef.current ? 'none' : 'transform .18s cubic-bezier(.2,.7,.2,1)'};`,
-          )}
-        />
+        {/* The whole set, side by side. Rendering only the current photo meant
+            every "next" was a blank beat while the new file decoded; the
+            neighbours are decoded and laid out before they are ever asked for,
+            which is what makes the slide read as one continuous movement. */}
+        <div
+          style={{
+            // The moving parts stay out of `css()`: it memoises by string, and a
+            // gesture that writes a new transform every frame would put a fresh
+            // entry in that cache on each one.
+            ...css('position:absolute;inset:0;display:flex;align-items:center;will-change:transform;'),
+            transform: `translate3d(calc(${-index * 100}% + ${swipeDx}px),0,0)`,
+            // No transition while the finger is down — the strip has to sit
+            // exactly under it. On release the same property animates home.
+            transition: swipingRef.current ? 'none' : 'transform .34s cubic-bezier(.22,.72,.2,1)',
+          }}
+        >
+          {images.map((im, i) => {
+            const active = i === index;
+            return (
+              <div
+                key={`${im}-${i}`}
+                style={css('flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;')}
+              >
+                <img
+                  ref={active ? imgRef : undefined}
+                  src={im}
+                  alt={`${title} — photo ${i + 1}`}
+                  draggable={false}
+                  decoding="async"
+                  style={{
+                    ...css('max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;transform-origin:center center;'),
+                    // Only the photo on screen carries the zoom — the others are
+                    // always at rest, ready to be swiped to.
+                    transform: active ? `translate(${offset.x}px,${offset.y}px) scale(${scale})` : 'none',
+                    // Easing a zoom step looks good; easing a drag or a pinch
+                    // makes the photo lag behind the finger, so live gestures
+                    // drop the transition.
+                    transition: dragging || pinchRef.current ? 'none' : 'transform .18s cubic-bezier(.2,.7,.2,1)',
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
 
         {/* Photo stepping, only while fit — panning owns the drag when zoomed. */}
         {images.length > 1 && !zoomed && (

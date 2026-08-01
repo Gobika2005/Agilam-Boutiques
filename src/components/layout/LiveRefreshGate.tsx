@@ -12,9 +12,9 @@ import { pauseLiveRefresh } from '@/lib/liveRefresh';
  * meaningfully out of date by the time they leave.
  */
 const PAUSED_ROUTES = [
-  '/buyer/checkout',
-  '/buyer/payment',
-  '/buyer/order-confirmation',
+  '/checkout',
+  '/payment',
+  '/order-confirmation',
   '/seller/register',
   '/seller/onboarding',
   '/seller/add-product',

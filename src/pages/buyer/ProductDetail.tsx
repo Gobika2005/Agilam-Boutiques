@@ -13,6 +13,8 @@ import { shareProduct } from '@/lib/share';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { usePageMeta } from '@/lib/pageMeta';
+import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
+import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
 import { useSettings } from '@/data/settings';
 import { POLICY_TERMS } from '@/data/company';
@@ -59,7 +61,15 @@ const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] 
 
 export function ProductDetail() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  /**
+   * The route is `/products/:slug`, where slug is `title-slug-idprefix`. The id
+   * prefix is read straight back out, so a product page resolves without a
+   * database lookup of the slug and a retitled piece never 404s its own URL.
+   * A bare UUID also resolves — that is what every legacy `/buyer/product/:id`
+   * link and every 301 from `vercel.json` arrives as.
+   */
+  const { slug } = useParams();
+  const idKey = productIdFromSlug(slug);
   // Delivery copy must quote the fee checkout actually charges, so it reads the
   // live admin settings rather than a compile-time constant.
   const terms = useSettings();
@@ -79,6 +89,14 @@ export function ProductDetail() {
   const [activeImg, setActiveImg] = useState(0);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * The piece this page is about. Declared here rather than further down
+   * because the effects below (view tracking, canonical rewrite) read it, and a
+   * `const` referenced above its declaration is a runtime TDZ error, not just a
+   * lint complaint.
+   */
+  const ap = PRODUCTS.find((p) => matchesProductSlug(p, slug));
+
   // "1 Review" in the summary opens the Ratings & reviews panel and scrolls it
   // into view, rather than leaving the buyer to hunt for it further down.
   const jumpToReviews = () => {
@@ -94,13 +112,28 @@ export function ProductDetail() {
     setPickedSize(null);
     setZoomOpen(false);
     galleryRef.current?.scrollTo({ left: 0 });
-  }, [id]);
+  }, [idKey]);
 
   // Tell the seller their piece was viewed. Fire-and-forget and throttled once
   // per session inside recordProductView, so a re-render never double-counts.
   useEffect(() => {
-    if (id) void recordProductView(id);
-  }, [id]);
+    if (ap?.id) void recordProductView(ap.id);
+  }, [ap?.id]);
+
+  /**
+   * Settle the address bar on the one canonical form of this URL.
+   *
+   * A bare id gets here from three directions — a legacy `/buyer/product/:id`
+   * link, the `vercel.json` 301 that rewrites it, and any in-app navigation
+   * that only had an id to hand. All of them resolve, but they leave a URL with
+   * no keywords in it and a second address for a page that should have one.
+   * Replacing (not pushing) keeps the back button honest.
+   */
+  useEffect(() => {
+    if (!ap) return;
+    const canonical = routes.product(ap);
+    if (`/products/${slug}` !== canonical) navigate(canonical, { replace: true });
+  }, [ap, slug, navigate]);
 
   // Escape closes the size chart, like every other overlay in the app (the
   // photo viewer already handles its own).
@@ -152,16 +185,41 @@ export function ProductDetail() {
     setZoomOpen(true);
   };
 
-  const ap = PRODUCTS.find((p) => p.id === id);
 
-  // A shared product link used to preview as "MangaiMart" with no description;
-  // now it carries the piece, its boutique and its photo.
+  /**
+   * A shared product link used to preview as "MangaiMart" with no description;
+   * now it carries the piece, its boutique, its price and its photo — and, in
+   * `Product`/`Offer`/`AggregateRating` JSON-LD, everything Google needs to put
+   * the price, the stock status and the stars in the result itself.
+   *
+   * The rating is only claimed when there is at least one real review. Emitting
+   * an `aggregateRating` of 0 out of 0 is the single most common cause of a
+   * review-snippet manual action.
+   */
+  const pdpBoutique = ap ? BOUTIQUES.find((x) => x.id === ap.boutiqueId || x.name === ap.boutique) : undefined;
   usePageMeta({
     title: ap ? `${ap.title} — ${ap.boutique}` : null,
     description: ap
-      ? `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}. Shop verified Tamil Nadu boutiques on MangaiMart.`
+      ? clampDescription(
+          `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}${ap.color ? ` · ${ap.color}` : ''}. ${ap.stock === 0 ? 'Currently sold out.' : 'In stock'}${ap.stock > 0 ? ', 7-day returns, cash on delivery available.' : ''}`,
+        )
       : null,
     image: ap?.image ?? null,
+    canonical: ap ? routes.product(ap) : null,
+    type: 'product',
+    product: ap ? { price: ap.price, currency: 'INR', availability: ap.stock === 0 ? 'oos' : 'instock' } : null,
+    schema: ap
+      ? graph(
+          organizationSchema(),
+          productSchema(ap, { boutique: pdpBoutique }),
+          breadcrumbSchema([
+            { name: 'Home', path: '/' },
+            { name: 'Collections', path: routes.collections() },
+            { name: ap.cat, path: routes.category(ap.cat) },
+            { name: ap.title, path: routes.product(ap) },
+          ]),
+        )
+      : null,
   });
 
   if (!ap) {
@@ -184,8 +242,8 @@ export function ProductDetail() {
               It may have sold out or been taken down by the boutique. There is plenty more to see.
             </p>
             <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
-              <button onClick={() => navigate('/buyer/results')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
-              <button onClick={() => navigate('/buyer/home')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
+              <button onClick={() => navigate('/shop')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
+              <button onClick={() => navigate('/')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
             </div>
           </>
         )}
@@ -267,11 +325,11 @@ export function ProductDetail() {
 
   const openBoutique = () => {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
-    navigate(`/buyer/boutique/${boutiqueId}`);
+    navigate(`/boutique/${boutiqueId}`);
   };
   const openChat = () => {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
-    navigate(`/buyer/chat/${boutiqueId}`, {
+    navigate(`/chat/${boutiqueId}`, {
       state: {
         product: { id: ap.id, title: ap.title, price: ap.price, image: ap.image, tone: ap.tone, cat: ap.cat },
       },
@@ -312,7 +370,7 @@ export function ProductDetail() {
   // otherwise navigate out of the site entirely.
   const goBack = () => {
     if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/buyer/home');
+    else navigate('/');
   };
 
   const onAddToBag = () => {
@@ -368,7 +426,7 @@ export function ProductDetail() {
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
         </button>
         <button
-          onClick={() => navigate('/buyer/cart')}
+          onClick={() => navigate('/cart')}
           style={css('flex:1;min-width:0;height:100%;padding:0;border:none;background:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;')}
         >
           <span style={css('font-weight:800;font-size:15px;')}>{bagQty} in bag</span>
@@ -402,7 +460,7 @@ export function ProductDetail() {
 
   const renderCard = (p: (typeof PRODUCTS)[number]) => {
     return (
-      <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift">
+      <CardLink key={p.id} to={routes.product(p)} label={p.title} className="agx-lift">
         <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
           <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
           {p.featured && (
@@ -436,8 +494,8 @@ export function ProductDetail() {
     <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
       <div style={css('max-width:1300px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 0;')}>
         <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);')}>
-          <Link to="/buyer/home" style={css('color:var(--ag-muted);')}>Home</Link><span aria-hidden="true">/</span>
-          <Link to="/buyer/results" style={css('color:var(--ag-muted);')}>{ap.cat}</Link><span aria-hidden="true">/</span>
+          <Link to="/" style={css('color:var(--ag-muted);')}>Home</Link><span aria-hidden="true">/</span>
+          <Link to="/shop" style={css('color:var(--ag-muted);')}>{ap.cat}</Link><span aria-hidden="true">/</span>
           <span aria-current="page" style={css('color:var(--ag-ink);font-weight:700;')}>{ap.title}</span>
         </nav>
       </div>
@@ -458,7 +516,17 @@ export function ProductDetail() {
                   onClick={onSlideClick}
                   style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in;')}
                 >
-                  <ImageSlot src={src} placeholder={ap.title} alt={`${ap.title} — photo ${i + 1}`} style={css('position:absolute;inset:0;')} />
+                  {/* The first slide is the product page's LCP element, so it
+                      is eager and high-priority; the rest stay lazy. */}
+                  <ImageSlot
+                    src={src}
+                    placeholder={ap.title}
+                    alt={i === 0
+                      ? `${ap.title} — ${ap.cat}${ap.fabric ? ` in ${ap.fabric}` : ''} from ${ap.boutique}, ${ap.city}`
+                      : `${ap.title} — photo ${i + 1} of ${gallery.length}`}
+                    priority={i === 0}
+                    style={css('position:absolute;inset:0;')}
+                  />
                 </div>
               ))}
             </div>

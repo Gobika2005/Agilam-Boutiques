@@ -29,23 +29,23 @@ export function ProfileMenu({ close }: { close: () => void }) {
   const go = (to: string) => { close(); navigate(to); };
 
   const stats = [
-    { label: 'Orders', value: readOrders().length, icon: 'receipt_long', to: '/buyer/orders' },
-    { label: 'Wishlist', value: Object.keys(wishlist).length, icon: 'favorite', to: '/buyer/wishlist' },
-    { label: 'Bag', value: cartCount, icon: 'shopping_bag', to: '/buyer/cart' },
+    { label: 'Orders', value: readOrders().length, icon: 'receipt_long', to: '/orders' },
+    { label: 'Wishlist', value: Object.keys(wishlist).length, icon: 'favorite', to: '/wishlist' },
+    { label: 'Bag', value: cartCount, icon: 'shopping_bag', to: '/cart' },
   ];
 
   const links = [
-    { label: 'My orders', icon: 'receipt_long', to: '/buyer/orders' },
-    { label: 'Wishlist', icon: 'favorite', to: '/buyer/wishlist' },
-    { label: 'Coupons & offers', icon: 'confirmation_number', to: '/buyer/coupons' },
-    { label: 'Messages', icon: 'chat', to: '/buyer/messages' },
+    { label: 'My orders', icon: 'receipt_long', to: '/orders' },
+    { label: 'Wishlist', icon: 'favorite', to: '/wishlist' },
+    { label: 'Coupons & offers', icon: 'confirmation_number', to: '/coupons' },
+    { label: 'Messages', icon: 'chat', to: '/messages' },
   ];
 
   const logout = async () => {
     close();
     if (session) await signOut();
     clearGuest();
-    navigate('/buyer/home', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (
@@ -109,7 +109,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
 
       {/* Full account + sign out */}
       <div style={css('padding:6px 10px 10px;border-top:1px solid var(--ag-border-soft);display:flex;flex-direction:column;gap:6px;')}>
-        <button onClick={() => go('/buyer/profile')} style={css('width:100%;height:38px;border:none;border-radius:11px;background:linear-gradient(135deg,#8E1C44,#B02454);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
+        <button onClick={() => go('/profile')} style={css('width:100%;height:38px;border:none;border-radius:11px;background:linear-gradient(135deg,#8E1C44,#B02454);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>settings</span>Account &amp; settings
         </button>
         <button onClick={logout} style={css('width:100%;height:34px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;')}>

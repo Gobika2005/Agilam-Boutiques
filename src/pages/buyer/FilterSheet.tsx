@@ -38,7 +38,7 @@ export function FilterSheet() {
       (q === '' || [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique].some((f) => f?.toLowerCase().includes(q))),
   );
 
-  const close = () => navigate('/buyer/results');
+  const close = () => navigate('/shop');
   useDismissOnEscape(close);
   const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 

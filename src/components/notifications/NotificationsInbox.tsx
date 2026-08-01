@@ -28,7 +28,7 @@ const relTime = (iso: string) => {
 /**
  * Full notification inbox, shared by the buyer, seller and admin
  * "view all"/`/…/notifications` pages so there's one list UI instead of three.
- * `orderBasePath` (e.g. '/buyer' or '/seller') lets a row with an order_id
+ * `orderBasePath` (e.g. '' or '/seller') lets a row with an order_id
  * deep-link to that console's order screen; admin has none, so it's optional.
  *
  * `embedded` drops the back button and page title for hosts that already draw a

@@ -118,7 +118,7 @@ export function Chat() {
    */
   const leave = () => {
     if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/buyer/messages');
+    else navigate('/messages');
   };
 
   // An id that resolves to no boutique used to render a conversation header for
@@ -135,8 +135,8 @@ export function Chat() {
           This shop is no longer on MangaiMart, so there is nobody to chat to here.
         </p>
         <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
-          <button onClick={() => navigate('/buyer/messages')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My messages</button>
-          <button onClick={() => navigate('/buyer/boutiques')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse boutiques</button>
+          <button onClick={() => navigate('/messages')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My messages</button>
+          <button onClick={() => navigate('/boutiques')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse boutiques</button>
         </div>
       </div>
     );
@@ -150,12 +150,12 @@ export function Chat() {
         name={name}
         avatar={boutique?.logo}
         viewerRole="buyer"
-        backTo="/buyer/messages"
+        backTo="/messages"
         conversationId={live?.conversationId}
         senderId={live?.senderId}
         pending={(authLoading || catalogLoading || (signedIn && !live)) && !failed}
-        onProductClick={(pid) => navigate(`/buyer/product/${pid}`)}
-        onOrderClick={(oid) => navigate(`/buyer/orders/${encodeURIComponent(oid)}/track`)}
+        onProductClick={(pid) => navigate(`/products/${pid}`)}
+        onOrderClick={(oid) => navigate(`/orders/${encodeURIComponent(oid)}/track`)}
       />
       {!authLoading && !signedIn && (
         <AccountSheet

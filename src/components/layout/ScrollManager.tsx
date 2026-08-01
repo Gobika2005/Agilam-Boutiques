@@ -23,7 +23,7 @@ const positions = new Map<string, number>();
  * sheets render over the results grid. Moving between them must not move the
  * grid underneath.
  */
-const SHEET_GROUPS = [['/buyer/results', '/buyer/filter', '/buyer/sort']];
+const SHEET_GROUPS = [['/shop', '/shop/filter', '/shop/sort']];
 
 function sameScreen(a: string, b: string): boolean {
   if (a === b) return true;

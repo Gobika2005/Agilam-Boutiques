@@ -3,5 +3,5 @@ import { usePageMeta } from '@/lib/pageMeta';
 
 export function Notifications() {
   usePageMeta({ title: 'Notifications', description: 'Order updates, replies from boutiques and news from MangaiMart.' });
-  return <NotificationsInbox backTo="/buyer/profile" orderBasePath="/buyer" />;
+  return <NotificationsInbox backTo="/profile" orderBasePath="" />;
 }

@@ -11,13 +11,13 @@ export function Loading() {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    timer.current = setTimeout(() => navigate('/buyer/home', { replace: true }), 2500);
+    timer.current = setTimeout(() => navigate('/', { replace: true }), 2500);
     return () => clearTimeout(timer.current);
   }, [navigate]);
 
   const skip = () => {
     clearTimeout(timer.current);
-    navigate('/buyer/home', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (

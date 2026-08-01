@@ -35,7 +35,7 @@ export function ProfileHub() {
   const tone = status ? STATUS_TONE[status] : null;
 
   // The public storefront a buyer sees, so the seller can preview or share it.
-  const storefrontPath = boutique ? `/buyer/boutique/${boutique.id}` : null;
+  const storefrontPath = boutique ? `/boutique/${boutique.id}` : null;
   // Sends the shop's logo along with the caption where the browser supports it,
   // so the storefront lands in WhatsApp looking like the shop rather than as a
   // bare link — the same treatment a product gets. See `shareBoutique`.
@@ -43,7 +43,7 @@ export function ProfileHub() {
     if (!boutique) return;
     const result = await shareBoutique({
       name: boutique.name,
-      url: `${window.location.origin}/buyer/boutique/${boutique.id}`,
+      url: `${window.location.origin}/boutique/${boutique.id}`,
       logo: boutique.logo_url ?? undefined,
       cover: boutique.cover_url ?? undefined,
       city: [boutique.area, boutique.city].filter(Boolean).join(', ') || undefined,
@@ -92,7 +92,7 @@ export function ProfileHub() {
 
   const logout = async () => {
     await signOut();
-    navigate('/buyer/home', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (

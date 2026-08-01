@@ -14,21 +14,21 @@ export function BuyerLayout() {
    * has something in it.
    */
   const tabs: TabDef[] = [
-    { label: 'Home', icon: 'home', to: '/buyer/home', match: ['/buyer/home', '/buyer/results', '/buyer/filter', '/buyer/sort'] },
-    { label: 'Boutiques', icon: 'storefront', to: '/buyer/boutiques', match: ['/buyer/boutiques', '/buyer/boutique'] },
-    { label: 'Inspire', icon: 'auto_awesome', to: '/buyer/inspire', match: ['/buyer/inspire'], raised: true },
-    { label: 'Orders', icon: 'receipt_long', to: '/buyer/orders', match: ['/buyer/orders'] },
-    { label: 'Messages', icon: 'chat', to: '/buyer/messages', match: ['/buyer/messages', '/buyer/chat'], badge: unreadMessages },
+    { label: 'Home', icon: 'home', to: '/', match: ['/', '/shop', '/shop/filter', '/shop/sort'] },
+    { label: 'Boutiques', icon: 'storefront', to: '/boutiques', match: ['/boutiques', '/buyer/boutique'] },
+    { label: 'Inspire', icon: 'auto_awesome', to: '/inspire', match: ['/inspire'], raised: true },
+    { label: 'Orders', icon: 'receipt_long', to: '/orders', match: ['/orders'] },
+    { label: 'Messages', icon: 'chat', to: '/messages', match: ['/messages', '/chat'], badge: unreadMessages },
   ];
 
   return (
     <>
       <AppShell
         tabs={tabs}
-        profileTo="/buyer/profile"
-        homeTo="/buyer/home"
+        profileTo="/profile"
+        homeTo="/"
         searchable
-        headerAction={<NotificationBellMenu viewAllTo="/buyer/notifications" orderBasePath="/buyer" />}
+        headerAction={<NotificationBellMenu viewAllTo="/notifications" orderBasePath="" />}
         renderProfileMenu={(close) => <ProfileMenu close={close} />}
       />
       <FloatingBag />

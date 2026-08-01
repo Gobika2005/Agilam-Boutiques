@@ -82,7 +82,7 @@ export function Cart() {
                   </div>
                 </div>
               ))}
-              <button onClick={() => navigate('/buyer/home')} style={css('align-self:flex-start;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:4px 0;')}>
+              <button onClick={() => navigate('/')} style={css('align-self:flex-start;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:4px 0;')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>Continue shopping
               </button>
             </div>
@@ -98,7 +98,7 @@ export function Cart() {
                 </div>
               )}
 
-              <button onClick={() => navigate('/buyer/coupons', { state: { from: '/buyer/cart' } })} style={css('width:100%;margin-top:13px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
+              <button onClick={() => navigate('/coupons', { state: { from: '/cart' } })} style={css('width:100%;margin-top:13px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
                 <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
                 <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>{coupon ? 'Change coupon' : 'View coupons & offers'}</span>
                 <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
@@ -118,7 +118,7 @@ export function Cart() {
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
               </div>
 
-              <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
+              <button onClick={() => navigate('/checkout')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
                 Proceed to checkout<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
               </button>
             </div>
@@ -130,7 +130,7 @@ export function Cart() {
             </div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:20px;")}>Your bag is empty</div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;')}>Discover beautiful pieces from India&apos;s finest boutiques.</div>
-            <button onClick={() => navigate('/buyer/home')} style={css('margin-top:22px;height:50px;padding:0 28px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Start shopping</button>
+            <button onClick={() => navigate('/')} style={css('margin-top:22px;height:50px;padding:0 28px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Start shopping</button>
           </div>
         )}
       </div>

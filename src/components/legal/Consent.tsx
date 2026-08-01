@@ -15,8 +15,8 @@ import { css } from '@/lib/css';
  * never destroyed by navigating away.
  */
 
-const TERMS_HREF = '/buyer/policy/terms';
-const PRIVACY_HREF = '/buyer/policy/privacy-policy';
+const TERMS_HREF = '/terms';
+const PRIVACY_HREF = '/privacy-policy';
 
 /** The two linked policy names, shared by both variants. Exported so callers
  * with bespoke wording (e.g. a seller agreement) reuse the same link targets. */

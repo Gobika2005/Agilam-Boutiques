@@ -29,7 +29,7 @@ export type PlacedOrder = {
   /**
    * The `orders` row's uuid. Deep links built from a DB id — notably an order
    * notification, whose only handle on the order is `notifications.order_id` —
-   * arrive as `/buyer/orders/<uuid>`, which matches neither `id` nor
+   * arrive as `/orders/<uuid>`, which matches neither `id` nor
    * `orderNumber`, so the tracking screen answered "Order not found". Absent on
    * a guest's locally-mirrored order until it is read back from the server.
    */

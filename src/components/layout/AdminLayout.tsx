@@ -20,6 +20,7 @@ const NAV = [
   { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
   { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
   { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
+  { label: 'Expenses', icon: 'savings', to: '/admin/expenses', title: 'Expenses', sub: 'What the platform spends, with proof attached' },
   { label: 'Advertisements', icon: 'campaign', to: '/admin/ads', title: 'Advertisements', sub: 'Campaigns and promotions' },
   { label: 'Coupons', icon: 'local_offer', to: '/admin/coupons', title: 'Coupons', sub: 'Platform & seller discount codes' },
   { label: 'Broadcast', icon: 'send', to: '/admin/broadcast', title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },

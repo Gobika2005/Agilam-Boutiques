@@ -1,8 +1,77 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/buyer", "destination": "/", "permanent": true },
+    { "source": "/buyer/home", "destination": "/", "permanent": true },
+    { "source": "/buyer/results", "destination": "/shop", "permanent": true },
+    { "source": "/buyer/filter", "destination": "/shop", "permanent": true },
+    { "source": "/buyer/sort", "destination": "/shop", "permanent": true },
+    { "source": "/buyer/collections", "destination": "/collections", "permanent": true },
+    { "source": "/buyer/boutiques", "destination": "/boutiques", "permanent": true },
+    { "source": "/buyer/new-arrivals", "destination": "/new-arrivals", "permanent": true },
+    { "source": "/buyer/best-sellers", "destination": "/best-sellers", "permanent": true },
+    { "source": "/buyer/top-boutiques", "destination": "/top-boutiques", "permanent": true },
+    { "source": "/buyer/inspire", "destination": "/inspire", "permanent": true },
+
+    { "source": "/buyer/product/:id", "destination": "/products/:id", "permanent": true },
+    { "source": "/buyer/boutique/:id", "destination": "/boutique/:id", "permanent": true },
+    { "source": "/b/:slug", "destination": "/boutique/:slug", "permanent": true },
+    { "source": "/buyer/policy/:slug", "destination": "/:slug", "permanent": true },
+
+    { "source": "/buyer/cart", "destination": "/cart", "permanent": true },
+    { "source": "/buyer/checkout", "destination": "/checkout", "permanent": true },
+    { "source": "/buyer/payment", "destination": "/payment", "permanent": true },
+    { "source": "/buyer/order-confirmation", "destination": "/order-confirmation", "permanent": true },
+    { "source": "/buyer/orders", "destination": "/orders", "permanent": true },
+    { "source": "/buyer/orders/:id", "destination": "/orders/:id", "permanent": true },
+    { "source": "/buyer/orders/:id/track", "destination": "/orders/:id/track", "permanent": true },
+    { "source": "/buyer/wishlist", "destination": "/wishlist", "permanent": true },
+    { "source": "/buyer/profile", "destination": "/profile", "permanent": true },
+    { "source": "/buyer/coupons", "destination": "/coupons", "permanent": true },
+    { "source": "/buyer/notifications", "destination": "/notifications", "permanent": true },
+    { "source": "/buyer/messages", "destination": "/messages", "permanent": true },
+    { "source": "/buyer/chat/:id", "destination": "/chat/:id", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/((?!api/).*)",
       "destination": "/"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self), interest-cohort=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    },
+    {
+      "source": "/admin/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/seller/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/auth/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
   "crons": [

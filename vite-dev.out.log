@@ -1,47 +1,17 @@
 
 > mangaimart@0.1.0 dev
-> vite
+> vite --host 127.0.0.1
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m750[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1399[22m[2m[0m ms[22m
 
-  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
-[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
-[2m11:10:59 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
-[2m11:11:00 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
-[2m11:11:16 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/buyer/Payment.tsx, /src/pages/buyer/Coupons.tsx, /src/pages/seller/Coupons.tsx, /src/pages/buyer/ProductDetail.tsx, /src/pages/seller/Earnings.tsx, /src/components/layout/MaintenanceNotice.tsx[22m
-[2m11:11:16 pm[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/state/ShopContext.tsx[22m Could not Fast Refresh ("DEFAULT_FILTERS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
-[2m11:11:16 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/main.tsx, /src/index.css, /src/pages/buyer/Boutiques.tsx, /src/pages/buyer/SortSheet.tsx, /src/components/layout/PresenceTracker.tsx, /src/pages/buyer/Wishlist.tsx, /src/pages/buyer/Payment.tsx, /src/pages/buyer/BestSellers.tsx, /src/pages/buyer/FilterSheet.tsx, /src/pages/buyer/MyOrders.tsx, /src/pages/buyer/Chat.tsx, /src/pages/buyer/OrderConfirmation.tsx, /src/pages/buyer/TrackOrder.tsx, /src/pages/buyer/Coupons.tsx, /src/pages/buyer/Checkout.tsx, /src/pages/buyer/Home.tsx, /src/pages/buyer/BoutiqueProfile.tsx, /src/pages/buyer/Collections.tsx, /src/pages/buyer/NewArrivals.tsx, /src/pages/buyer/ProductDetail.tsx, /src/pages/buyer/Cart.tsx, /src/pages/buyer/Profile.tsx, /src/pages/buyer/Results.tsx, /src/pages/buyer/TopBoutiques.tsx, /src/components/buyer/SiteFooter.tsx, /src/components/buyer/FloatingBag.tsx, /src/components/buyer/LoginPrompt.tsx, /src/components/layout/AppShell.tsx, /src/components/buyer/ProfileMenu.tsx, /src/components/chat/ChatView.tsx, /src/components/buyer/StoryRail.tsx, /src/pages/buyer/Inspire.tsx, /src/components/buyer/FeedPostCard.tsx, /src/components/ShareBoutiqueSheet.tsx, /src/components/buyer/ProfileEditSheet.tsx, /src/components/SellModal.tsx, /src/components/buyer/GlobalSearch.tsx, /src/components/seller/ProfileMenu.tsx, /src/pages/seller/MyProducts.tsx, /src/components/seller/ProductForm.tsx, /src/components/seller/TaxonomySelect.tsx, /src/pages/seller/Billing.tsx, /src/pages/seller/Promote.tsx, /src/pages/seller/Coupons.tsx, /src/pages/seller/Reviews.tsx[22m
-[2m11:12:02 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:12:10 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:12:12 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:12:33 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:14:43 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/buyer/MyOrders.tsx, /src/pages/buyer/TrackOrder.tsx, /src/pages/buyer/Profile.tsx, /src/pages/seller/Dashboard.tsx, /src/pages/seller/Analytics.tsx, /src/pages/seller/Orders.tsx, /src/pages/seller/Earnings.tsx, /src/pages/seller/Customers.tsx[22m
-[2m11:14:53 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/buyer/MyOrders.tsx, /src/pages/buyer/TrackOrder.tsx, /src/pages/buyer/Profile.tsx, /src/pages/seller/Dashboard.tsx, /src/pages/seller/Analytics.tsx, /src/pages/seller/Orders.tsx, /src/pages/seller/Earnings.tsx, /src/pages/seller/Customers.tsx[22m
-[2m11:15:44 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/notifications/NotificationsInbox.tsx, /src/index.css[22m
-[2m11:15:52 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/notifications/NotificationsInbox.tsx, /src/index.css[22m
-[2m11:16:07 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/notifications/NotificationsInbox.tsx, /src/index.css[22m
-[2m11:18:47 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:19:02 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:19:04 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:19:13 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:19:14 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:19:32 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/coupons/CouponFormFields.tsx, /src/index.css[22m
-[2m11:21:22 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
-[2m11:21:37 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
-[2m11:24:18 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/broadcast.ts[22m
-[2m11:26:54 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:28:51 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/admin.ts[22m
-[2m11:30:48 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/EnvBadge.tsx, /src/index.css[22m
-[2m11:30:50 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/EnvBadge.tsx, /src/index.css[22m
-[2m11:30:51 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/EnvBadge.tsx, /src/index.css[22m
-[2m11:32:18 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/admin/kit.tsx[22m
-[2m11:35:13 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:35:26 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:35:48 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:36:28 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:36:55 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:37:43 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:37:49 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx[22m
-[2m11:40:22 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx, /src/pages/admin/Coupons.tsx[22m
-[2m11:40:37 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/state/ShopContext.tsx, /src/index.css, /src/pages/seller/Coupons.tsx, /src/pages/admin/Coupons.tsx[22m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
+[2m12:06:27 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ui/ImageSlot.tsx, /src/index.css[22m
+[2m12:06:27 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ui/ImageSlot.tsx, /src/index.css[22m
+[2m12:06:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Home.tsx, /src/index.css[22m
+[2m12:07:01 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/buyer/DiscoveryPage.tsx, /src/index.css[22m
+[2m12:07:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
+[2m12:07:38 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
+[2m12:08:05 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
+[2m12:09:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/NewArrivals.tsx, /src/index.css[22m
+[2m12:09:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/BestSellers.tsx, /src/index.css[22m

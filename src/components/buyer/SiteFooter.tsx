@@ -8,30 +8,30 @@ import { COMPANY, COMPANY_ADDRESS_LINE, CONTACT_LINKS } from '@/data/company';
  *
  * Everything factual here — address, phone, email, handles, statutory ids —
  * comes from `@/data/company`, so the business is corrected in exactly one
- * place. Policy links resolve to the real pages under /buyer/policy/:slug.
+ * place. Policy links resolve to the real pages under /:slug.
  */
 
 const SHOP_LINKS: { label: string; to: string; sort?: string }[] = [
-  { label: 'New arrivals', to: '/buyer/results', sort: 'Latest' },
-  { label: 'Best sellers', to: '/buyer/results', sort: 'Popularity' },
-  { label: 'All collections', to: '/buyer/results' },
-  { label: 'Boutiques', to: '/buyer/boutiques' },
-  { label: 'Coupons & offers', to: '/buyer/coupons' },
+  { label: 'New arrivals', to: '/shop', sort: 'Latest' },
+  { label: 'Best sellers', to: '/shop', sort: 'Popularity' },
+  { label: 'All collections', to: '/shop' },
+  { label: 'Boutiques', to: '/boutiques' },
+  { label: 'Coupons & offers', to: '/coupons' },
 ];
 
 const COMPANY_LINKS = [
-  { label: `About ${COMPANY.short}`, to: '/buyer/policy/about' },
-  { label: 'Help & support', to: '/buyer/policy/help' },
-  { label: 'Track your order', to: '/buyer/orders' },
-  { label: 'Wishlist', to: '/buyer/wishlist' },
+  { label: `About ${COMPANY.short}`, to: '/about' },
+  { label: 'Help & support', to: '/help' },
+  { label: 'Track your order', to: '/orders' },
+  { label: 'Wishlist', to: '/wishlist' },
 ];
 
 const POLICY_LINKS = [
-  { label: 'Delivery Policy', to: '/buyer/policy/delivery-policy' },
-  { label: 'Shipping Policy', to: '/buyer/policy/shipping-policy' },
-  { label: 'Return & Refund', to: '/buyer/policy/return-refund-policy' },
-  { label: 'Cancellation Policy', to: '/buyer/policy/cancellation-policy' },
-  { label: 'Product Policy', to: '/buyer/policy/product-policy' },
+  { label: 'Delivery Policy', to: '/delivery-policy' },
+  { label: 'Shipping Policy', to: '/shipping-policy' },
+  { label: 'Return & Refund', to: '/return-refund-policy' },
+  { label: 'Cancellation Policy', to: '/cancellation-policy' },
+  { label: 'Product Policy', to: '/product-policy' },
 ];
 
 const SOCIALS = [
@@ -50,7 +50,7 @@ export function SiteFooter() {
   // Footer shop links land on a clean results grid rather than inheriting
   // whatever filters the buyer left behind on a previous screen.
   const goShop = (to: string, sort?: string) => {
-    if (to === '/buyer/results') {
+    if (to === '/shop') {
       setQuery('');
       setFilters({ ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort });
     }
@@ -125,7 +125,7 @@ export function SiteFooter() {
 
           {col('For boutiques', (
             <>
-              <a href="/buyer/policy/about" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/about'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
+              <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
               <a href="/seller/register" onClick={(e) => { e.preventDefault(); navigate('/seller/register'); }} style={linkStyle}>Open your boutique</a>
               <a href="/auth/signin/seller" onClick={(e) => { e.preventDefault(); navigate('/auth/signin/seller'); }} style={linkStyle}>Boutique sign in</a>
               <a href={CONTACT_LINKS.whatsapp} target="_blank" rel="noreferrer noopener" style={linkStyle}>Partner support</a>
@@ -140,8 +140,8 @@ export function SiteFooter() {
             {COMPANY.gstin && <> · GSTIN {COMPANY.gstin}</>}
           </span>
           <span style={css('display:flex;gap:18px;flex-wrap:wrap;')}>
-            <a href="/buyer/policy/privacy-policy" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/privacy-policy'); }} style={css('color:#fff;')}>Privacy</a>
-            <a href="/buyer/policy/terms" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/terms'); }} style={css('color:#fff;')}>Terms</a>
+            <a href="/privacy-policy" onClick={(e) => { e.preventDefault(); navigate('/privacy-policy'); }} style={css('color:#fff;')}>Privacy</a>
+            <a href="/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }} style={css('color:#fff;')}>Terms</a>
             <a href={CONTACT_LINKS.grievance} style={css('color:#fff;')}>Grievance</a>
           </span>
         </div>

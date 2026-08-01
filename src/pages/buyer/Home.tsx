@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { graph, organizationSchema, websiteSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { WishButton } from '@/components/buyer/WishButton';
@@ -21,7 +22,19 @@ import { fetchTopReviews } from '@/data/reviews';
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 export function Home() {
-  usePageMeta({ title: 'Boutique ethnic wear from Tamil Nadu', description: 'Discover verified Tamil Nadu boutiques — sarees, kurta sets, kurtis and more, in one place.' });
+  /**
+   * The homepage carries the two site-wide entities — `Organization` and
+   * `WebSite` — plus the `SearchAction` that can put a search box straight into
+   * a Google result. They are emitted here rather than everywhere because this
+   * is the URL Google treats as the site's root entity.
+   */
+  usePageMeta({
+    title: 'Boutique Ethnic Wear from Tamil Nadu — Sarees, Kurta Sets & More',
+    description:
+      'Shop verified Tamil Nadu boutiques in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India.',
+    canonical: '/',
+    schema: graph(organizationSchema(), websiteSchema()),
+  });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
@@ -102,9 +115,9 @@ export function Home() {
 
   const heroCta = (h: { adId: string; target: 'product' | 'boutique'; productId: string | null; boutiqueId: string }) => {
     void trackAdClick(h.adId);
-    if (h.target === 'boutique') navigate(`/buyer/boutique/${h.boutiqueId}`);
-    else if (h.productId) navigate(`/buyer/product/${h.productId}`);
-    else navigate(`/buyer/boutique/${h.boutiqueId}`);
+    if (h.target === 'boutique') navigate(`/boutique/${h.boutiqueId}`);
+    else if (h.productId) navigate(`/products/${h.productId}`);
+    else navigate(`/boutique/${h.boutiqueId}`);
   };
 
   // A collection circle lands on results already filtered. Which field it maps
@@ -116,17 +129,29 @@ export function Home() {
     if (PRODUCTS.some((p) => p.cat === name)) setFilters({ ...DEFAULT_FILTERS, cats: [name] });
     else if (PRODUCTS.some((p) => p.occasion === name)) setFilters({ ...DEFAULT_FILTERS, occasions: [name] });
     else setFilters(DEFAULT_FILTERS);
-    navigate('/buyer/results');
+    navigate('/shop');
   };
-  const openProduct = (id: string) => navigate(`/buyer/product/${id}`);
-  const openBoutique = (id: string) => navigate(`/buyer/boutique/${id}`);
+  const openProduct = (id: string) => navigate(`/products/${id}`);
+  const openBoutique = (id: string) => navigate(`/boutique/${id}`);
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')}>
-      {/* The hero headline is the page's <h1>. With no paid hero live there is no
-          hero at all, so the page would have no heading — this stands in for it
-          for anything reading the page rather than looking at it. */}
-      {SLIDES.length === 0 && <h1 className="agx-sr-only">MangaiMart — boutique ethnic wear from across Tamil Nadu</h1>}
+      {/*
+        The homepage's <h1>.
+
+        It used to render only when no paid hero was live, on the reasoning that
+        the hero headline was the heading otherwise. But the hero is an *advert*
+        — whichever boutique bought the slot that week — so on a good sales week
+        the homepage's most important heading became a third party's slogan, and
+        on a very good week the page had no <h1> at all. The heading is now
+        constant and says what the site is; the hero sells alongside it rather
+        than instead of it.
+
+        Visually hidden because the design leads with imagery, not a headline.
+      */}
+      <h1 className="agx-sr-only">
+        MangaiMart — boutique ethnic wear from across Tamil Nadu
+      </h1>
       {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
       {SLIDES.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
@@ -142,7 +167,16 @@ export function Home() {
                 style={css('flex:0 0 100%;position:relative;height:100%;')}
               >
                 <div style={css('position:absolute;inset:0;')}>
-                  <ImageSlot src={h.image} placeholder="Drop a collection photo" style={css('position:absolute;inset:0;')} />
+                  {/* The visible hero slide is the homepage's LCP element. */}
+                  <ImageSlot
+                    src={h.image}
+                    placeholder="Drop a collection photo"
+                    alt={h.pre ? `${h.pre} — MangaiMart` : 'Featured collection on MangaiMart'}
+                    priority={i === 0}
+                    width={1600}
+                    height={900}
+                    style={css('position:absolute;inset:0;')}
+                  />
                 </div>
                 <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(45,8,24,.86) 0%,rgba(110,22,56,.5) 46%,rgba(110,22,56,.05) 100%);pointer-events:none;')} />
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
@@ -155,14 +189,17 @@ export function Home() {
                           <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
                         </div>
                       )}
-                      {(() => {
-                        const Heading = i === heroIndex ? 'h1' : 'div';
-                        return (
-                          <Heading style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin:16px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
-                            {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
-                          </Heading>
-                        );
-                      })()}
+                      {/*
+                        The active slide used to be promoted to <h1>. That made
+                        the homepage's primary heading whichever boutique had
+                        bought the hero slot — and gave the page two <h1>s once
+                        the constant one above was added. An advert's slogan is
+                        an <h2> at most: the page still has exactly one <h1>,
+                        which says what MangaiMart is.
+                      */}
+                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin:16px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                        {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
+                      </h2>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
                       <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
                         {h.cta}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
@@ -199,7 +236,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
-        <a href="/buyer/collections" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        <a href="/collections" onClick={(e) => { e.preventDefault(); navigate('/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CIRCLES.map((c) => (
@@ -227,7 +264,7 @@ export function Home() {
         {/* The design's "More" circle, now with somewhere real to go: the rail
             shows six, the page shows every collection there is. */}
         <button
-          onClick={() => navigate('/buyer/collections')}
+          onClick={() => navigate('/collections')}
           className="agx-circle"
           style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
         >
@@ -248,7 +285,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fresh off the loom</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>New arrivals</h2>
         </div>
-        <a href="/buyer/new-arrivals" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
+        <a href="/new-arrivals" onClick={(e) => { e.preventDefault(); navigate('/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {NEW_ARRIVALS.map((p) => (
@@ -286,7 +323,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Most-loved right now</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best sellers</h2>
         </div>
-        <a href="/buyer/best-sellers" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
+        <a href="/best-sellers" onClick={(e) => { e.preventDefault(); navigate('/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
       <div className="agx-rgrid">
         {BEST_SELLERS.map((p) => (
@@ -324,7 +361,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
-        <a href="/buyer/top-boutiques" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        <a href="/top-boutiques" onClick={(e) => { e.preventDefault(); navigate('/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {TOP_BOUTIQUES.map((b) => (

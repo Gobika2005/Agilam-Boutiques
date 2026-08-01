@@ -87,7 +87,7 @@ export function SignIn() {
       icon={roleIcon}
       heading="Welcome back"
       sub={`Sign in to continue to your ${roleWord} workspace.`}
-      onBack={() => navigate('/buyer/home')}
+      onBack={() => navigate('/')}
     >
       {/* A real form, so Enter submits and password managers recognise the pair. */}
       <form onSubmit={handleSignIn} style={css('display:flex;flex-direction:column;gap:15px;')}>

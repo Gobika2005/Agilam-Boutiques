@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { DiscoveryHeader, SectionLabel, EmptyState } from '@/components/buyer/DiscoveryPage';
@@ -25,7 +27,18 @@ import { fmt } from '@/data/demo';
  * Fabric comes last because it is the connoisseur's cut, not the beginner's.
  */
 export function Collections() {
-  usePageMeta({ title: 'Shop by collection', description: 'Every category, occasion, budget and colour our boutiques are listing right now.' });
+  usePageMeta({
+    title: 'Shop by Collection — Sarees, Kurta Sets & Ethnic Wear',
+    description: 'Browse every category, occasion, fabric, budget and colour Tamil Nadu boutiques are listing on MangaiMart right now.',
+    canonical: routes.collections(),
+    schema: graph(
+      organizationSchema(),
+      breadcrumbSchema([
+        { name: 'Home', path: '/' },
+        { name: 'Collections', path: routes.collections() },
+      ]),
+    ),
+  });
   const navigate = useNavigate();
   const { setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();
@@ -43,7 +56,7 @@ export function Collections() {
   const open = (patch: Partial<typeof DEFAULT_FILTERS>) => {
     setQuery('');
     setFilters({ ...DEFAULT_FILTERS, ...patch });
-    navigate('/buyer/results');
+    navigate('/shop');
   };
 
   if (!loading && PRODUCTS.length === 0) {
@@ -78,11 +91,12 @@ export function Collections() {
       <SectionLabel icon="checkroom" title="Shop by category" note={`${categories.length} categories`} />
       <div className="agx-coll-grid">
         {categories.map((c) => (
-          <button
+          <Link
             key={c.name}
-            onClick={() => open({ cats: [c.name] })}
+            to={routes.category(c.name)}
+            aria-label={`${c.name} — ${c.count} pieces from ${fmt(c.from)}`}
             className="agx-lift"
-            style={css(`position:relative;display:block;width:100%;padding:0;border:none;cursor:pointer;border-radius:22px;overflow:hidden;text-align:left;background:${c.toneHex};box-shadow:0 18px 40px -32px rgba(107,20,54,.55);`)}
+            style={css(`position:relative;display:block;width:100%;padding:0;border:none;cursor:pointer;border-radius:22px;overflow:hidden;text-align:left;text-decoration:none;background:${c.toneHex};box-shadow:0 18px 40px -32px rgba(107,20,54,.55);`)}
           >
             <div className="agx-zoom" style={css('position:relative;aspect-ratio:4/5;')}>
               <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
@@ -99,7 +113,7 @@ export function Collections() {
                 </span>
               </span>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -109,11 +123,11 @@ export function Collections() {
           <SectionLabel icon="celebration" title="Shop by occasion" note="what are you dressing for?" />
           <div className="agx-occ-grid">
             {occasions.map((o) => (
-              <button
+              <Link
                 key={o.name}
-                onClick={() => open({ occasions: [o.name] })}
+                to={routes.occasion(o.name)}
                 className="agx-lift"
-                style={css(`display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid var(--ag-surface-3);background:var(--ag-surface);border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);`)}
+                style={css(`display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid var(--ag-surface-3);background:var(--ag-surface);border-radius:18px;cursor:pointer;text-align:left;text-decoration:none;color:inherit;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);`)}
               >
                 <span style={css(`position:relative;width:44px;height:44px;flex:none;border-radius:14px;overflow:hidden;background:${o.toneHex};display:flex;align-items:center;justify-content:center;`)}>
                   {o.image ? (
@@ -127,7 +141,7 @@ export function Collections() {
                   <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;')}>{o.count} {o.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>chevron_right</span>
-              </button>
+              </Link>
             ))}
           </div>
         </>
@@ -183,19 +197,19 @@ export function Collections() {
       {fabrics.length > 0 && (
         <>
           <SectionLabel icon="texture" title="Shop by fabric" note="for the ones who ask first" />
-          {/* Fabric has no facet in the filter model, but Results matches the
-              search term against it — so a fabric tile searches rather than
-              filters, and lands on the same grid either way. */}
+          {/* Fabric used to have no facet in the filter model, so a tile ran a
+              free-text search and landed on the shared grid. Each fabric now has
+              its own indexable landing page, so the chip is a real link. */}
           <div style={css('display:flex;flex-wrap:wrap;gap:9px;')}>
             {fabrics.map((f) => (
-              <button
+              <Link
                 key={f.name}
-                onClick={() => { setQuery(f.name); setFilters(DEFAULT_FILTERS); navigate('/buyer/results'); }}
-                style={css('display:flex;align-items:center;gap:7px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);color:var(--ag-ink-3);cursor:pointer;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;')}
+                to={routes.fabric(f.name)}
+                style={css('display:flex;align-items:center;gap:7px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);color:var(--ag-ink-3);cursor:pointer;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;text-decoration:none;')}
               >
                 {f.name}
                 <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{f.count}</span>
-              </button>
+              </Link>
             ))}
           </div>
         </>

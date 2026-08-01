@@ -25,7 +25,7 @@ import { TONES, fmt } from '@/data/demo';
  * payment mid-flight.
  */
 
-const HIDE_ON = ['/buyer/cart', '/buyer/checkout', '/buyer/payment', '/buyer/order-confirmation', '/buyer/chat'];
+const HIDE_ON = ['/cart', '/checkout', '/payment', '/order-confirmation', '/chat'];
 
 /** How many garment thumbnails the capsule shows before it collapses to "+n". */
 const MAX_THUMBS = 3;
@@ -67,7 +67,7 @@ export function FloatingBag() {
 
   return (
     <button
-      onClick={() => navigate('/buyer/cart')}
+      onClick={() => navigate('/cart')}
       aria-label={`Open bag — ${cartCount} ${cartCount === 1 ? 'item' : 'items'}, ${fmt(subtotal)}`}
       className={`agx-fab-bag agx-bag-pill${bumped ? ' agx-bag-bump' : ''}`}
       style={css(

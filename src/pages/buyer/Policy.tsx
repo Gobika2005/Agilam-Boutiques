@@ -1,9 +1,10 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 import { POLICIES, POLICIES_UPDATED, findPolicy, legalPages } from '@/data/policies';
+import { articleSchema, breadcrumbSchema, faqSchema, graph, organizationSchema } from '@/lib/schema';
 
 /**
  * One component for every informational page — the seven legal policies plus
@@ -11,9 +12,48 @@ import { POLICIES, POLICIES_UPDATED, findPolicy, legalPages } from '@/data/polic
  */
 export function Policy() {
   const navigate = useNavigate();
-  const { slug } = useParams();
+  // These pages live at the root now — `/privacy-policy` rather than the old
+  // `/buyer/policy/privacy-policy` — so the slug is the path itself. One route
+  // is registered per known slug in App.tsx, so this always resolves.
+  const { pathname } = useLocation();
+  const slug = pathname.replace(/^\/+|\/+$/g, '');
   const page = findPolicy(slug);
-  usePageMeta({ title: page?.title ?? null, description: page?.summary ?? null });
+
+  /**
+   * Help is a genuine Q&A page, so it is marked up as one — an FAQ rich result
+   * is the difference between one blue link and a block of expandable answers.
+   * The other pages are documents, not storefront surfaces.
+   */
+  const faqs = page?.slug === 'help'
+    ? page.sections
+        .filter((s) => s.heading && s.blocks.length)
+        // One entry per section — repeating a heading once per paragraph would
+        // emit duplicate Questions, which the Rich Results test rejects.
+        .map((s) => ({ q: s.heading, a: s.blocks.join(' ') }))
+        .slice(0, 10)
+    : [];
+
+  usePageMeta({
+    title: page?.title ?? null,
+    description: page?.summary ?? null,
+    type: 'article',
+    schema: page
+      ? graph(
+          organizationSchema(),
+          articleSchema({
+            title: page.title,
+            description: page.summary,
+            path: `/${page.slug}`,
+            updated: '2026-07-22',
+          }),
+          breadcrumbSchema([
+            { name: 'Home', path: '/' },
+            { name: page.title, path: `/${page.slug}` },
+          ]),
+          faqs.length ? faqSchema(faqs) : null,
+        )
+      : null,
+  });
 
   if (!page) {
     return (
@@ -21,7 +61,7 @@ export function Policy() {
         <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>description</span>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Page not found</div>
         <div style={css('color:var(--ag-muted);font-size:14px;')}>That policy doesn’t exist (or has moved).</div>
-        <button onClick={() => navigate('/buyer/home')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 22px;font-weight:800;cursor:pointer;')}>
+        <button onClick={() => navigate('/')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 22px;font-weight:800;cursor:pointer;')}>
           Back to home
         </button>
       </div>
@@ -35,7 +75,7 @@ export function Policy() {
       <div style={css('max-width:1120px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 0;')}>
         {/* Breadcrumb */}
         <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);flex-wrap:wrap;')}>
-          <a href="/buyer/home" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:var(--ag-muted);')}>Home</a>
+          <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} style={css('color:var(--ag-muted);')}>Home</a>
           <span>/</span>
           <span style={css('color:var(--ag-ink);font-weight:700;')}>{page.title}</span>
         </div>
@@ -103,7 +143,7 @@ export function Policy() {
               {others.map((o, i) => (
                 <button
                   key={o.slug}
-                  onClick={() => navigate(`/buyer/policy/${o.slug}`)}
+                  onClick={() => navigate(`/${o.slug}`)}
                   style={css(`width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:none;background:none;cursor:pointer;text-align:left;${i < others.length - 1 ? 'border-bottom:1px solid #F7EBF1;' : ''}`)}
                 >
                   <span style={css('width:36px;height:36px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
@@ -123,8 +163,8 @@ export function Policy() {
                 {legalPages().map((p) => (
                   <a
                     key={p.slug}
-                    href={`/buyer/policy/${p.slug}`}
-                    onClick={(e) => { e.preventDefault(); navigate(`/buyer/policy/${p.slug}`); }}
+                    href={`/${p.slug}`}
+                    onClick={(e) => { e.preventDefault(); navigate(`/${p.slug}`); }}
                     style={css(`font-size:13px;font-weight:${p.slug === page.slug ? 800 : 600};color:${p.slug === page.slug ? 'var(--ag-crimson)' : 'var(--ag-label)'};`)}
                   >
                     {p.title}

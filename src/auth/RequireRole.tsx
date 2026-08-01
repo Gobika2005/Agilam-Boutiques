@@ -6,7 +6,7 @@ import type { Role } from '@/types/database';
 export function homeFor(role: Role | undefined) {
   if (role === 'seller') return '/seller/dashboard';
   if (role === 'admin') return '/admin/overview';
-  if (role === 'buyer') return '/buyer/home';
+  if (role === 'buyer') return '/';
   return '/';
 }
 

@@ -95,19 +95,19 @@ export function Profile() {
       : 'Add your details for a smoother checkout';
 
   const stats = [
-    { label: 'Orders', value: orderCount, icon: 'receipt_long', go: () => navigate('/buyer/orders') },
-    { label: 'Wishlist', value: wishCount, icon: 'favorite', go: () => navigate('/buyer/wishlist') },
-    { label: 'Bag', value: cartCount, icon: 'shopping_bag', go: () => navigate('/buyer/cart') },
+    { label: 'Orders', value: orderCount, icon: 'receipt_long', go: () => navigate('/orders') },
+    { label: 'Wishlist', value: wishCount, icon: 'favorite', go: () => navigate('/wishlist') },
+    { label: 'Bag', value: cartCount, icon: 'shopping_bag', go: () => navigate('/cart') },
   ];
 
   type Row = { label: string; sub: string; icon: string; go?: () => void; href?: string };
 
   /** Shopping — everything tied to this buyer's own activity. */
   const shoppingRows: Row[] = [
-    { label: 'My Orders', sub: 'Track & manage purchases', icon: 'receipt_long', go: () => navigate('/buyer/orders') },
-    { label: 'Wishlist', sub: wishCount ? `${wishCount} ${wishCount === 1 ? 'piece' : 'pieces'} saved` : 'Pieces you saved', icon: 'favorite', go: () => navigate('/buyer/wishlist') },
-    { label: 'Messages', sub: 'Chats with boutiques', icon: 'chat', go: () => navigate('/buyer/messages') },
-    { label: 'Coupons & Offers', sub: 'Deals ready to use', icon: 'confirmation_number', go: () => navigate('/buyer/coupons') },
+    { label: 'My Orders', sub: 'Track & manage purchases', icon: 'receipt_long', go: () => navigate('/orders') },
+    { label: 'Wishlist', sub: wishCount ? `${wishCount} ${wishCount === 1 ? 'piece' : 'pieces'} saved` : 'Pieces you saved', icon: 'favorite', go: () => navigate('/wishlist') },
+    { label: 'Messages', sub: 'Chats with boutiques', icon: 'chat', go: () => navigate('/messages') },
+    { label: 'Coupons & Offers', sub: 'Deals ready to use', icon: 'confirmation_number', go: () => navigate('/coupons') },
     { label: 'Delivery Address', sub: guest.address || 'Add where we ship', icon: 'location_on', go: () => setEditing(true) },
   ];
 
@@ -119,16 +119,16 @@ export function Profile() {
    * needs to tap.
    */
   const supportRows: Row[] = [
-    { label: 'Support Center', sub: `FAQs, ${COMPANY.supportEmail}, ${COMPANY.phone}`, icon: 'support_agent', go: () => navigate('/buyer/policy/help') },
+    { label: 'Support Center', sub: `FAQs, ${COMPANY.supportEmail}, ${COMPANY.phone}`, icon: 'support_agent', go: () => navigate('/help') },
   ];
 
   /** Legal — the policy pages, reachable from the account as required. */
   const legalRows: Row[] = [
-    { label: 'Delivery Policy', sub: 'Timelines & charges', icon: 'local_shipping', go: () => navigate('/buyer/policy/delivery-policy') },
-    { label: 'Return & Refund Policy', sub: 'How returns work', icon: 'autorenew', go: () => navigate('/buyer/policy/return-refund-policy') },
-    { label: 'Cancellation Policy', sub: 'Changing your mind', icon: 'cancel', go: () => navigate('/buyer/policy/cancellation-policy') },
-    { label: 'Privacy Policy', sub: 'How we handle your data', icon: 'shield_person', go: () => navigate('/buyer/policy/privacy-policy') },
-    { label: 'Terms & Conditions', sub: 'The agreement between us', icon: 'gavel', go: () => navigate('/buyer/policy/terms') },
+    { label: 'Delivery Policy', sub: 'Timelines & charges', icon: 'local_shipping', go: () => navigate('/delivery-policy') },
+    { label: 'Return & Refund Policy', sub: 'How returns work', icon: 'autorenew', go: () => navigate('/return-refund-policy') },
+    { label: 'Cancellation Policy', sub: 'Changing your mind', icon: 'cancel', go: () => navigate('/cancellation-policy') },
+    { label: 'Privacy Policy', sub: 'How we handle your data', icon: 'shield_person', go: () => navigate('/privacy-policy') },
+    { label: 'Terms & Conditions', sub: 'The agreement between us', icon: 'gavel', go: () => navigate('/terms') },
   ];
 
   const renderRows = (title: string, rows: Row[]) => (
@@ -169,7 +169,7 @@ export function Profile() {
   const logout = async () => {
     if (session) await signOut();
     clearGuest();
-    navigate('/buyer/home', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (

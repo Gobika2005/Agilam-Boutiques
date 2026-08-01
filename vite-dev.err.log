@@ -1,4 +1,67 @@
+[2m12:07:26 am[22m [31m[1m[vite][22m[39m [31mInternal server error: D:\Agilam\Agilam boutique\src\pages\buyer\Boutiques.tsx: Expected corresponding JSX closing tag for <Link>. (318:10)
 
-  ⚠  SUPABASE_SERVICE_ROLE_KEY is not set — /api checkout routes will fail. Add it to .env and restart.
-
-⚠️  Node.js 20 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 22 or later. For more information, visit: https://github.com/orgs/supabase/discussions/45715
+[0m [90m 316 |[31m               [33m<[31m[33mspan[31m style[33m=[31m{css([32m`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`[31m)}[33m>[31m{following[b[33m.[31mid] [33m?[31m [32m'how_to_reg'[31m [33m:[31m [32m'person_add'[31m}[33m<[31m[33m/[31m[33mspan[31m[33m>[31m
+ [90m 317 |[31m             [33m<[31m[33m/[31m[33mbutton[31m[33m>[31m
+[31m[1m>[22m[31m[90m 318 |[31m           [33m<[31m[33m/[31m[33mdiv[31m[33m>[31m
+ [90m     |[31m           [31m[1m^[22m[31m
+ [90m 319 |[31m           )[33m;[31m
+ [90m 320 |[31m           [36mreturn[31m adId [33m?[31m (
+ [90m 321 |[31m             [33m<[31m[33mAdImpression[31m key[33m=[31m{b[33m.[31mid} adId[33m=[31m{adId}[33m>[31m{row}[33m<[31m[33m/[31m[33mAdImpression[31m[33m>[31m[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mD:/Agilam/Agilam boutique/src/pages/buyer/Boutiques.tsx[39m:318:10
+[33m  316|                <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
+  317|              </button>
+  318|            </div>
+     |            ^
+  319|            );
+  320|            return adId ? ([39m
+      at constructor (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElement (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10848:21)
+      at D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9792:18)
+      at D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9803:20)
+      at D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseVar (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:13401:91)
+      at TypeScriptParserMixin.parseVarStatement (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:13247:10)
+      at TypeScriptParserMixin.parseVarStatement (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9425:31)
+      at TypeScriptParserMixin.parseStatementContent (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12868:23)
+      at TypeScriptParserMixin.parseStatementContent (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (D:\Agilam\Agilam boutique\node_modules\@babel\parser\lib\index.js:4776:20)

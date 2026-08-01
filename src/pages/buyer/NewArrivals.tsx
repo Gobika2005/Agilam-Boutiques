@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { breadcrumbSchema, collectionSchema, graph, organizationSchema } from '@/lib/schema';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import {
   DiscoveryHeader,
@@ -49,7 +51,6 @@ const bucketOf = (p: Product) => {
  * See `newArrivals` in @/lib/ranking.
  */
 export function NewArrivals() {
-  usePageMeta({ title: 'New arrivals', description: 'Everything our boutiques have listed in the last 30 days, newest first.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();
@@ -71,9 +72,26 @@ export function NewArrivals() {
     [arrivals, cat, inStockOnly],
   );
 
+  usePageMeta({
+    title: 'New Arrivals — Latest Ethnic Wear from Tamil Nadu Boutiques',
+    description: 'Every piece MangaiMart boutiques have listed in the last 30 days, newest first. Fresh sarees, kurta sets and kurtis from verified Tamil Nadu shops.',
+    canonical: routes.newArrivals(),
+    schema: graph(
+      organizationSchema(),
+      // The page *is* a ranked list, so it says so — an ItemList is what lets
+      // Google read it as an ordered set of products rather than a wall of links.
+      collectionSchema({
+        name: 'New arrivals',
+        description: 'Every piece MangaiMart boutiques have listed in the last 30 days, newest first.',
+        path: routes.newArrivals(),
+        items: list,
+      }),
+      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'New arrivals', path: routes.newArrivals() }]),
+    ),
+  });
+
   const page = list.slice(0, shown);
 
-  const openProduct = (id: string) => navigate(`/buyer/product/${id}`);
   const setCategory = (name: string | null) => { setCat(name); setShown(PAGE); };
 
   return (
@@ -114,7 +132,7 @@ export function NewArrivals() {
           In stock only
         </button>
         <button
-          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Latest' }); navigate('/buyer/results'); }}
+          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Latest' }); navigate('/shop'); }}
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Browse the full catalogue
@@ -132,7 +150,7 @@ export function NewArrivals() {
             body={cat ? 'Try another category, or browse everything our boutiques have in stock.' : 'New pieces land every week. Follow a boutique and its arrivals will show up in Inspire.'}
             action={
               <button
-                onClick={() => (cat ? setCategory(null) : navigate('/buyer/boutiques'))}
+                onClick={() => (cat ? setCategory(null) : navigate('/boutiques'))}
                 style={css('border:none;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);cursor:pointer;padding:11px 22px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;font-family:inherit;')}
               >
                 {cat ? 'Show all arrivals' : 'Find boutiques to follow'}
@@ -148,7 +166,6 @@ export function NewArrivals() {
             products={page}
             wishlist={wishlist}
             onToggleWish={toggleWish}
-            onOpen={openProduct}
           />
         )}
 
@@ -164,12 +181,10 @@ function BucketedGrid({
   products,
   wishlist,
   onToggleWish,
-  onOpen,
 }: {
   products: Product[];
   wishlist: Record<string, boolean>;
   onToggleWish: (id: string) => void;
-  onOpen: (id: string) => void;
 }) {
   // Group in order rather than sorting again — `products` is already newest
   // first, so a bucket change can only ever move forwards through the list.
@@ -195,7 +210,6 @@ function BucketedGrid({
               <CatalogCard
                 key={p.id}
                 product={p}
-                onOpen={() => onOpen(p.id)}
                 wished={!!wishlist[p.id]}
                 onToggleWish={(e) => { e.stopPropagation(); onToggleWish(p.id); }}
                 badge={{ icon: 'fiber_new', label: 'New' }}

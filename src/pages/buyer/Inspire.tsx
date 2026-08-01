@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { FeedPostCard } from '@/components/buyer/FeedPostCard';
 import { StoryRail } from '@/components/buyer/StoryRail';
 import { useInspireFeed } from '@/hooks/useInspireFeed';
@@ -27,7 +29,15 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 export function Inspire() {
-  usePageMeta({ title: 'Inspire', description: 'New pieces from the boutiques you follow on MangaiMart.' });
+  usePageMeta({
+    title: 'Inspire — New Pieces from Tamil Nadu Boutiques',
+    description: 'A live feed of what MangaiMart boutiques are listing right now. Follow the shops you like and see their new pieces first.',
+    canonical: routes.inspire(),
+    schema: graph(
+      organizationSchema(),
+      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Inspire', path: routes.inspire() }]),
+    ),
+  });
   const navigate = useNavigate();
   // A social-feed lens (For You / Following) as the primary filter.
   const [tab, setTab] = useState<TabKey>('foryou');
@@ -127,10 +137,10 @@ export function Inspire() {
           const followingEmpty = tab === 'following';
           const notFollowing = followingEmpty && !followsAnyone;
           const empty = notFollowing
-            ? { icon: 'favorite', title: 'Follow your favourite boutiques', sub: 'Pieces from the shops you follow show up here first. Find a few you love to fill this feed.', cta: 'Discover boutiques', act: () => navigate('/buyer/boutiques') }
+            ? { icon: 'favorite', title: 'Follow your favourite boutiques', sub: 'Pieces from the shops you follow show up here first. Find a few you love to fill this feed.', cta: 'Discover boutiques', act: () => navigate('/boutiques') }
             : followingEmpty
               ? { icon: 'auto_awesome', title: 'You’re all caught up', sub: 'No new pieces from the shops you follow right now — see what else is new in For You.', cta: 'Switch to For You', act: () => setTab('foryou') }
-              : { icon: 'auto_awesome', title: 'Nothing new yet', sub: 'Boutiques are just getting started. Check back soon for new arrivals.', cta: 'Browse boutiques', act: () => navigate('/buyer/boutiques') };
+              : { icon: 'auto_awesome', title: 'Nothing new yet', sub: 'Boutiques are just getting started. Check back soon for new arrivals.', cta: 'Browse boutiques', act: () => navigate('/boutiques') };
           return (
             <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
               <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>

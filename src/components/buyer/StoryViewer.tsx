@@ -126,7 +126,7 @@ export function StoryViewer({
 
   const openProduct = () => {
     onClose();
-    navigate(`/buyer/product/${current.productId}`);
+    navigate(`/products/${current.productId}`);
   };
 
   return createPortal(

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
+import { CardLink } from '@/components/buyer/CardLink';
+import { routes } from '@/lib/seo';
 import { TONES, fmt, type Product } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
 
@@ -40,7 +42,7 @@ export function DiscoveryHeader({
       {/* Breadcrumb — these pages are usually entered from a Home rail, and the
           buyer needs a way back that is not the browser button. */}
       <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>
-        <Link to="/buyer/home" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
+        <Link to="/" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
         <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
         <span style={css('color:var(--ag-muted);')}>{title}</span>
       </div>
@@ -113,12 +115,22 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
 
 // ── Section label ───────────────────────────────────────────────────────────
 
+/**
+ * A section heading.
+ *
+ * This was a styled `<div>`, which is why pages like Collections and New
+ * arrivals reported a document outline of exactly one heading: "Shop by
+ * category", "Shop by occasion" and "Shop by colour" all looked like ordinary
+ * text to a crawler and to a screen reader, so neither could tell the page had
+ * sections at all. It is an `<h2>` now — the visual design is unchanged, since
+ * the size and family were already set explicitly.
+ */
 export function SectionLabel({ icon, title, note }: { icon: string; title: string; note?: string }) {
   return (
     <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 2px 14px;')}>
       <div style={css('display:flex;align-items:center;gap:9px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
-        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:var(--ag-ink);")}>{title}</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
+        <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:var(--ag-ink);margin:0;")}>{title}</h2>
       </div>
       {note && (
         <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
@@ -140,7 +152,6 @@ export type CardBadge = { icon: string; label: string };
  */
 export function CatalogCard({
   product: p,
-  onOpen,
   wished,
   onToggleWish,
   badge,
@@ -148,7 +159,6 @@ export function CatalogCard({
   rank,
 }: {
   product: Product;
-  onOpen: () => void;
   wished: boolean;
   onToggleWish: (e: MouseEvent) => void;
   badge?: CardBadge | null;
@@ -157,10 +167,27 @@ export function CatalogCard({
 }) {
   const soldOut = p.stock === 0;
 
+  /**
+   * A real `<a href>`, not a `<div onClick>`.
+   *
+   * These four discovery pages — New arrivals, Best sellers, Collections and
+   * Best-selling boutiques — held every card in a click handler, so the entire
+   * ranked catalogue was invisible to anything reading the page rather than
+   * clicking it: a crawler found no links to follow, the cards could not be
+   * tabbed to, and none of them could be opened in a new tab or have their
+   * address copied. `CardLink` fixed exactly this for the Results grid; these
+   * pages were missed. They are the pages that link to the freshest and
+   * best-selling stock, so they are the ones crawl budget should be spent on.
+   */
   return (
-    <div onClick={onOpen} className="agx-lift" style={css('cursor:pointer;')}>
+    <CardLink to={routes.product(p)} label={p.title} className="agx-lift">
       <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
-        <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+        <ImageSlot
+          src={p.image}
+          alt={`${p.title} — ${p.cat} from ${p.boutique}, ${p.city}`}
+          placeholder={p.title}
+          className="agx-prod-fill"
+        />
 
         {/* Rank chip — only the top few carry one; past that a number is noise. */}
         {rank != null && rank <= 10 && (
@@ -206,7 +233,7 @@ export function CatalogCard({
           )}
         </div>
       </div>
-    </div>
+    </CardLink>
   );
 }
 

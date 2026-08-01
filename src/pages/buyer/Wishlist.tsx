@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton, WishHeart } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
@@ -36,7 +37,7 @@ export function Wishlist() {
       {items.length > 0 ? (
         <div className="agx-rgrid" style={css('margin-top:20px;')}>
           {items.map((p) => (
-            <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift">
+            <CardLink key={p.id} to={routes.product(p)} label={p.title} className="agx-lift">
               <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
                 <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
                 <WishButton
@@ -65,7 +66,7 @@ export function Wishlist() {
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>Your wishlist is empty</div>
           <div style={css('color:var(--ag-muted);font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>Tap the heart on any piece and it lands here — your personal edit, ready when you are.</div>
-          <button onClick={() => navigate('/buyer/home')} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>Browse collections</button>
+          <button onClick={() => navigate('/')} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>Browse collections</button>
         </div>
       )}
     </div>

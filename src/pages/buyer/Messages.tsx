@@ -47,5 +47,5 @@ export function Messages() {
     avatar: boutiqueById(c.boutique_id)?.logo || undefined,
   }));
 
-  return <ThreadList threads={threads} chatBase="/buyer/chat" />;
+  return <ThreadList threads={threads} chatBase="/chat" />;
 }

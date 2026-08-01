@@ -183,8 +183,8 @@ export function FeedPostCard({
   const following = !!boutique && isFollowing(boutique.id);
   const soldOut = product.stock === 0;
   const lowStock = !soldOut && product.stock <= 5;
-  const openProduct = () => navigate(`/buyer/product/${product.id}`);
-  const openBoutique = () => boutique && navigate(`/buyer/boutique/${boutique.id}`);
+  const openProduct = () => navigate(`/products/${product.id}`);
+  const openBoutique = () => boutique && navigate(`/boutique/${boutique.id}`);
 
   const onFollow = () => {
     if (!boutique) return;
@@ -225,7 +225,7 @@ export function FeedPostCard({
     const result = await shareProduct({
       title: product.title,
       price: fmt(price),
-      url: `${window.location.origin}/buyer/product/${product.id}`,
+      url: `${window.location.origin}/products/${product.id}`,
       image: images[slide] || images[0],
       boutique: boutique?.name,
     });
@@ -461,7 +461,7 @@ export function FeedPostCard({
                 <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
               </button>
               <button
-                onClick={() => navigate('/buyer/cart')}
+                onClick={() => navigate('/cart')}
                 aria-label="View bag"
                 style={css('flex:none;min-width:34px;padding:0 4px;height:34px;border:none;background:none;color:#fff;cursor:pointer;font-weight:800;font-size:15px;')}
               >

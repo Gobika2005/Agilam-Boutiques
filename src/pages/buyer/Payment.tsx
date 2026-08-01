@@ -43,7 +43,7 @@ export function Payment() {
     // Safety net if the buyer deep-linked past the checkout gate.
     if (!hasDeliveryDetails(guest)) {
       showToast('Please add your delivery details first', 'error');
-      navigate('/buyer/checkout');
+      navigate('/checkout');
       return;
     }
 
@@ -55,7 +55,7 @@ export function Payment() {
         // counted at the door. Nothing can be stranded, so there is no pending
         // payment to recover from if this fails.
         await placeCodOrder();
-        navigate('/buyer/order-confirmation');
+        navigate('/order-confirmation');
         return;
       }
 
@@ -75,7 +75,7 @@ export function Payment() {
         razorpay_payment_id: payment.paymentId,
         razorpay_signature: payment.signature,
       });
-      navigate('/buyer/order-confirmation');
+      navigate('/order-confirmation');
     } catch (err) {
       const msg = err instanceof Error ? err.message : payingCash ? 'Could not place the order' : 'Payment failed';
       // If the money left the buyer's account but the order didn't land, say so
@@ -97,14 +97,14 @@ export function Payment() {
     try {
       await retryPendingPayment();
       setPending(null);
-      navigate('/buyer/order-confirmation');
+      navigate('/order-confirmation');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not complete the order';
       // `retryPendingPayment` clears the record when the payment turns out to
       // have already been used, so re-read rather than assuming it survived.
       const still = readPendingPayment();
       setPending(still);
-      if (!still) navigate('/buyer/orders');
+      if (!still) navigate('/orders');
       showToast(msg, 'error');
     } finally {
       setProcessing(false);
@@ -112,7 +112,7 @@ export function Payment() {
     }
   };
 
-  const openCoupons = () => navigate('/buyer/coupons', { state: { from: '/buyer/payment' } });
+  const openCoupons = () => navigate('/coupons', { state: { from: '/payment' } });
 
   const onDismissPending = () => {
     clearPendingPayment();
@@ -124,7 +124,7 @@ export function Payment() {
 
   // A stranded payment still needs this screen even with an empty bag — that is
   // exactly the state after the bag was cleared but the order never landed.
-  if (bagIsEmpty && !pending) return <Navigate to="/buyer/cart" replace />;
+  if (bagIsEmpty && !pending) return <Navigate to="/cart" replace />;
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
@@ -238,7 +238,7 @@ export function Payment() {
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{payingCash ? 'local_shipping' : 'lock'}</span>
               {processing ? 'Processing…' : payingCash ? 'Place order' : `Pay ${fmt(total)}`}
             </button>
-            <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to delivery</button>
+            <button onClick={() => navigate('/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to delivery</button>
           </div>
         </div>
       </div>

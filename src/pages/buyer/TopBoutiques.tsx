@@ -2,6 +2,8 @@ import { useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
@@ -21,14 +23,22 @@ const PAGE = 12;
 /**
  * Best-selling boutiques — the shop leaderboard.
  *
- * Distinct from /buyer/boutiques, which is the directory: that page is for
+ * Distinct from /boutiques, which is the directory: that page is for
  * "find the shop I already know", this one is for "who should I trust with this
  * order". The ranking is in `scoreBoutiques` (@/lib/ranking) and the weights are
  * published on the page, for the same reason as Best sellers: a marketplace
  * that takes commission has to be able to show its leaderboard is not for sale.
  */
 export function TopBoutiques() {
-  usePageMeta({ title: 'Best-selling boutiques', description: 'The Tamil Nadu boutiques moving the most pieces, weighed against how well they are rated.' });
+  usePageMeta({
+    title: 'Best-Selling Boutiques in Tamil Nadu — Top Rated Shops',
+    description: 'The Tamil Nadu boutiques moving the most pieces on MangaiMart, weighed against how well they are rated by real buyers.',
+    canonical: routes.topBoutiques(),
+    schema: graph(
+      organizationSchema(),
+      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Best-selling boutiques', path: routes.topBoutiques() }]),
+    ),
+  });
   const navigate = useNavigate();
   const { follows, toggleFollow, showToast } = useShop();
   const { boutiques: BOUTIQUES, loading } = useCatalog();
@@ -109,7 +119,7 @@ export function TopBoutiques() {
           Verified only
         </button>
         <button
-          onClick={() => navigate('/buyer/boutiques')}
+          onClick={() => navigate('/boutiques')}
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Search the full directory
@@ -138,7 +148,7 @@ export function TopBoutiques() {
           {page.map(({ boutique: b }, i) => (
             <div
               key={b.id}
-              onClick={() => navigate(`/buyer/boutique/${b.id}`)}
+              onClick={() => navigate(`/boutique/${b.id}`)}
               className="agx-lift"
               style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}
             >

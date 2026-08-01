@@ -67,7 +67,7 @@ export function MyOrders() {
   // enquiry card. Mirrors the button on the order tracking screen.
   const chatWithBoutique = (o: PlacedOrder) => {
     const item = o.items[0];
-    navigate(`/buyer/chat/${o.boutiqueId}`, {
+    navigate(`/chat/${o.boutiqueId}`, {
       state: {
         order: {
           orderId: o.id,
@@ -148,7 +148,7 @@ export function MyOrders() {
                 ? 'When you place an order it shows up here — track every piece from checkout to your doorstep.'
                 : 'Try another tab to see the rest of your orders.'}
             </div>
-            <button onClick={() => (empty ? navigate('/buyer/home') : setTab('all'))} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
+            <button onClick={() => (empty ? navigate('/') : setTab('all'))} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
               {empty ? 'Start shopping' : 'Show all orders'}
             </button>
           </div>
@@ -180,7 +180,7 @@ export function MyOrders() {
             return (
               <div
                 key={o.id}
-                onClick={() => navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`)}
+                onClick={() => navigate(`/orders/${encodeURIComponent(o.id)}/track`)}
                 className="agx-lift"
                 style={css('cursor:pointer;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:15px;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}
               >
@@ -191,7 +191,7 @@ export function MyOrders() {
                   </span>
                 </div>
                 <div
-                  onClick={item?.pid ? (e) => { e.stopPropagation(); navigate(`/buyer/product/${item.pid}`); } : undefined}
+                  onClick={item?.pid ? (e) => { e.stopPropagation(); navigate(`/products/${item.pid}`); } : undefined}
                   style={css(`display:flex;gap:14px;margin-top:12px;${item?.pid ? 'cursor:pointer;' : ''}`)}
                 >
                   <div className="agx-thumb-media" style={css(`width:72px;background:${TONES[item?.tone ?? 0]};`)}>
@@ -252,7 +252,7 @@ export function MyOrders() {
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`); }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/orders/${encodeURIComponent(o.id)}/track`); }}
                     style={css('flex:1;min-width:140px;height:42px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>

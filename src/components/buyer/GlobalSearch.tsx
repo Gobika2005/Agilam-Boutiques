@@ -144,17 +144,17 @@ export function GlobalSearch({
     // grid can come back empty for a term that clearly has matches.
     setFilters({ ...DEFAULT_FILTERS });
     dismiss();
-    navigate('/buyer/results');
+    navigate('/shop');
   };
 
   const pick = (s: Suggestion) => {
     dismiss();
     if (s.kind === 'product') {
-      navigate(`/buyer/product/${s.id}`);
+      navigate(`/products/${s.id}`);
       return;
     }
     if (s.kind === 'boutique') {
-      navigate(`/buyer/boutique/${s.id}`);
+      navigate(`/boutique/${s.id}`);
       return;
     }
     // A facet term browses that edit rather than running a text search.
@@ -162,7 +162,7 @@ export function GlobalSearch({
     setQuery('');
     const isCat = products.some((p) => p.cat === s.title);
     setFilters({ ...DEFAULT_FILTERS, ...(isCat ? { cats: [s.title] } : { occasions: [s.title] }) });
-    navigate('/buyer/results');
+    navigate('/shop');
   };
 
   const onSubmit = (e: React.FormEvent) => {

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { breadcrumbSchema, collectionSchema, graph, organizationSchema } from '@/lib/schema';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import {
   DiscoveryHeader,
@@ -29,7 +31,6 @@ const PAGE = 20;
  *    marketplace, an unexplained top slot reads as a paid one.
  */
 export function BestSellers() {
-  usePageMeta({ title: 'Best sellers', description: 'The pieces MangaiMart buyers are actually taking home, ranked by sales and rating.' });
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();
@@ -55,6 +56,24 @@ export function BestSellers() {
     () => ranked.filter((r) => (!cat || r.product.cat === cat) && (!inStockOnly || r.product.stock > 0)),
     [ranked, cat, inStockOnly],
   );
+
+  usePageMeta({
+    title: 'Best Sellers — Most-Bought Ethnic Wear on MangaiMart',
+    description: 'The pieces MangaiMart buyers are actually taking home, ranked by units sold and how well they are rated. Updated as orders come in.',
+    canonical: routes.bestSellers(),
+    schema: graph(
+      organizationSchema(),
+      // The page *is* a ranked list, so it says so — an ItemList is what lets
+      // Google read it as an ordered set of products rather than a wall of links.
+      collectionSchema({
+        name: 'Best sellers',
+        description: 'The pieces MangaiMart buyers are actually taking home, ranked by units sold and rating.',
+        path: routes.bestSellers(),
+        items: list.map((r) => r.product),
+      }),
+      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Best sellers', path: routes.bestSellers() }]),
+    ),
+  });
 
   const page = list.slice(0, shown);
   const anySalesData = ranked.some((r) => (r.product.soldCount ?? 0) > 0);
@@ -112,7 +131,7 @@ export function BestSellers() {
           In stock only
         </button>
         <button
-          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Popularity' }); navigate('/buyer/results'); }}
+          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Popularity' }); navigate('/shop'); }}
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Filter by price, colour, size
@@ -130,7 +149,7 @@ export function BestSellers() {
             body={cat ? 'Try another category, or see what is selling across the whole catalogue.' : 'Once boutiques list and buyers order, the fastest movers appear here automatically.'}
             action={
               <button
-                onClick={() => (cat ? setCategory(null) : navigate('/buyer/collections'))}
+                onClick={() => (cat ? setCategory(null) : navigate('/collections'))}
                 style={css('border:none;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);cursor:pointer;padding:11px 22px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;font-family:inherit;')}
               >
                 {cat ? 'Show every best seller' : 'Browse collections'}
@@ -147,7 +166,6 @@ export function BestSellers() {
                 product={r.product}
                 rank={i + 1}
                 proof={salesProof(r.product)}
-                onOpen={() => navigate(`/buyer/product/${r.product.id}`)}
                 wished={!!wishlist[r.product.id]}
                 onToggleWish={(e) => { e.stopPropagation(); toggleWish(r.product.id); }}
               />

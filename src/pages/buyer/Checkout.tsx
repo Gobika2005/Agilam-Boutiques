@@ -66,12 +66,12 @@ export function Checkout() {
       showToast('Please fill in your delivery details', 'error');
       return;
     }
-    navigate('/buyer/payment');
+    navigate('/payment');
   };
 
   const errorRing = (bad: boolean) => (touched && bad ? '#E0748C' : 'var(--ag-border)');
 
-  if (bagIsEmpty) return <Navigate to="/buyer/cart" replace />;
+  if (bagIsEmpty) return <Navigate to="/cart" replace />;
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
@@ -153,11 +153,11 @@ export function Checkout() {
             </button>
             <div style={css('text-align:center;font-size:11.5px;line-height:1.5;color:var(--ag-muted);font-weight:600;margin-top:11px;')}>
               By placing your order you agree to our{' '}
-              <a href="/buyer/policy/terms" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Terms</a>,{' '}
-              <a href="/buyer/policy/return-refund-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Return &amp; Refund</a> and{' '}
-              <a href="/buyer/policy/cancellation-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Cancellation</a> policies.
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Terms</a>,{' '}
+              <a href="/return-refund-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Return &amp; Refund</a> and{' '}
+              <a href="/cancellation-policy" target="_blank" rel="noopener noreferrer" style={css('font-weight:800;color:var(--ag-crimson);text-decoration:underline;')}>Cancellation</a> policies.
             </div>
-            <button onClick={() => navigate('/buyer/cart')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to bag</button>
+            <button onClick={() => navigate('/cart')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to bag</button>
           </div>
         </div>
       </div>

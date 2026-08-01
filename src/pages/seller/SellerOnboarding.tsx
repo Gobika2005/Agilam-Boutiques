@@ -828,7 +828,7 @@ export function SellerOnboarding() {
               // Step 1 has no Back during first-time setup: the account above it
               // already exists and cannot be re-entered. In edit mode the button
               // instead leaves the wizard back to the profile hub.
-              onClick={() => (step === 0 ? navigate('/buyer/home') : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
+              onClick={() => (step === 0 ? navigate('/') : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
               disabled={busy}
               style={css('height:54px;padding:0 22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
             >

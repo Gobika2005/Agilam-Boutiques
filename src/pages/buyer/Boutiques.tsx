@@ -1,7 +1,9 @@
 import { Fragment, useMemo, useState, type MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { routes } from '@/lib/seo';
+import { boutiqueListSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
@@ -26,13 +28,28 @@ const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 export function Boutiques() {
-  usePageMeta({ title: 'Boutiques', description: 'Browse every verified boutique on MangaiMart by city, rating and speciality.' });
-  const navigate = useNavigate();
   // Follows are shared through the shop context: persisted to the buyer's
   // account when signed in, or to local storage as a guest — always in sync
   // with the boutique profile page.
   const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
   const { boutiques: BOUTIQUES } = useCatalog();
+
+  usePageMeta({
+    title: 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
+    description:
+      'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list.',
+    canonical: routes.boutiques(),
+    schema: graph(
+      organizationSchema(),
+      boutiqueListSchema({
+        name: 'Boutiques on MangaiMart',
+        description: 'Verified independent ethnic-wear boutiques across Tamil Nadu.',
+        path: routes.boutiques(),
+        boutiques: BOUTIQUES,
+      }),
+      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Boutiques', path: routes.boutiques() }]),
+    ),
+  });
   const { ads } = useLiveAds();
 
   // Promoted boutiques (paid boutique_promo campaigns) are boosted to the top of
@@ -251,15 +268,22 @@ export function Boutiques() {
       <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
         {display.map((b, i) => {
           const adId = adByBoutique.get(b.id);
-          const openBoutique = () => {
-            if (adId) void trackAdClick(adId);
-            navigate(`/buyer/boutique/${b.id}`);
-          };
           const row = (
-          <div
-            onClick={openBoutique}
+          /*
+           * A real link, not a click handler.
+           *
+           * The whole directory was `<div onClick>`, so the one page that lists
+           * every boutique offered a crawler no links to follow — the shops were
+           * reachable only by running the app. It also could not be tabbed to,
+           * middle-clicked or opened in a new tab. The ad click is still counted
+           * on the way through; the anchor does the navigating.
+           */
+          <Link
+            to={routes.boutique(b)}
+            onClick={() => { if (adId) void trackAdClick(adId); }}
+            aria-label={`${b.name} — boutique in ${b.city}`}
             className="agx-lift"
-            style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;${i > 0 ? 'border-top:1px solid var(--ag-surface-2);' : ''}`)}
+            style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;color:inherit;text-decoration:none;${i > 0 ? 'border-top:1px solid var(--ag-surface-2);' : ''}`)}
           >
             {/* The shop's own logo is the boutique's identity in the directory —
                 it falls back to the cover photo, then to a monogram. */}
@@ -290,7 +314,7 @@ export function Boutiques() {
             >
               <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
             </button>
-          </div>
+          </Link>
           );
           return adId ? (
             <AdImpression key={b.id} adId={adId}>{row}</AdImpression>

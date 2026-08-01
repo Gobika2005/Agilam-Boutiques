@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { clampDescription, routes } from '@/lib/seo';
+import { boutiqueSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
+import { shareBoutique } from '@/lib/share';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
@@ -37,23 +39,59 @@ function compact(n: number): string {
 
 export function BoutiqueProfile() {
   const navigate = useNavigate();
-  const { id, slug } = useParams();
+  /**
+   * One route, `/boutique/:slug`, which accepts either the boutique's real slug
+   * (migration 0003) or its id. Both `/b/:slug` and `/buyer/boutique/:id` 301
+   * here, and the effect below settles the address bar on the slug so a shop
+   * has exactly one canonical URL rather than three.
+   */
+  const { slug } = useParams();
   const { showToast, follows, toggleFollow: toggleFollowAccount, wishlist, toggleWish } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
-  const [shareOpen, setShareOpen] = useState(false);
   const [liveFollowers, setLiveFollowers] = useState(0);
 
-  // Resolved from either the in-app route (/buyer/boutique/:id) or the clean,
-  // shareable public link (/b/:slug).
-  const ab = BOUTIQUES.find((b) => (id ? b.id === id : b.slug === slug));
-  // A boutique link shared to WhatsApp or an Instagram bio should preview the
-  // shop, not the app's name.
+  // The slug is preferred; the id is accepted so legacy links keep working.
+  const ab = BOUTIQUES.find((b) => b.slug === slug || b.id === slug);
+
+  /**
+   * A boutique link shared to WhatsApp or an Instagram bio should preview the
+   * shop, not the app's name — and a boutique is a real shop in a real Tamil
+   * Nadu town, so it is marked up as a `ClothingStore`. That is what makes
+   * "boutiques in Coimbatore" a query this page can answer, and it is the one
+   * piece of local SEO the data model always supported and never emitted.
+   */
+  const shopProductCount = ab ? PRODUCTS.filter((p) => p.boutique === ab.name).length : 0;
   usePageMeta({
-    title: ab ? `${ab.name} — ${ab.city}` : null,
-    description: ab ? (ab.desc?.trim() || `Shop ${ab.name}, a verified boutique in ${ab.city}, on MangaiMart.`) : null,
+    title: ab ? `${ab.name} — Boutique in ${ab.city}` : null,
+    description: ab
+      ? clampDescription(
+          ab.desc?.trim() ||
+            `Shop ${ab.name}, a verified boutique in ${ab.city}, Tamil Nadu. ${shopProductCount} ${shopProductCount === 1 ? 'piece' : 'pieces'} listed, direct chat with the owner, delivery across India.`,
+        )
+      : null,
     image: ab?.logo ?? ab?.image ?? null,
+    canonical: ab ? routes.boutique(ab) : null,
+    type: 'profile',
+    schema: ab
+      ? graph(
+          organizationSchema(),
+          boutiqueSchema(ab, shopProductCount),
+          breadcrumbSchema([
+            { name: 'Home', path: '/' },
+            { name: 'Boutiques', path: routes.boutiques() },
+            { name: ab.name, path: routes.boutique(ab) },
+          ]),
+        )
+      : null,
   });
+
+  /** Settle on the slug URL — one shop, one address. */
+  useEffect(() => {
+    if (!ab) return;
+    const canonical = routes.boutique(ab);
+    if (`/boutique/${slug}` !== canonical) navigate(canonical, { replace: true });
+  }, [ab, slug, navigate]);
 
   // Follow state comes straight from the shared context (account- or
   // device-backed), so it stays in sync with the boutique directory.
@@ -104,7 +142,7 @@ export function BoutiqueProfile() {
           <>
             <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>storefront</span>
             <span style={css('font-size:15px;')}>Boutique not found.</span>
-            <button onClick={() => navigate('/buyer/boutiques')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;cursor:pointer;')}>
+            <button onClick={() => navigate('/boutiques')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;cursor:pointer;')}>
               Browse boutiques
             </button>
           </>
@@ -115,6 +153,28 @@ export function BoutiqueProfile() {
 
   const followerLabel = compact(liveFollowers);
   const shareLink = `${window.location.origin}/b/${ab.slug}`;
+
+  /**
+   * Straight to the device's own share sheet — no intermediate popup.
+   *
+   * There used to be a branded in-app sheet in between (a preview card, the
+   * link, and a row of WhatsApp/Instagram/Facebook/X buttons), so sharing took
+   * two steps and the second one was the real share sheet anyway. The logo and
+   * caption now travel with the share itself, which is what that preview was
+   * standing in for.
+   */
+  const onShare = async () => {
+    const result = await shareBoutique({
+      name: ab.name,
+      url: shareLink,
+      logo: ab.logo,
+      cover: ab.image,
+      city: ab.area && ab.area !== ab.city ? `${ab.area}, ${ab.city}` : ab.city,
+      desc: ab.desc,
+    });
+    if (result === 'copied') showToast('Boutique details copied — paste to share');
+    else if (result === 'failed') showToast("Couldn't share this boutique", 'error');
+  };
 
   // Quick-action destinations. The location opens the seller's Google Maps
   // link, or a maps search on the shop's address when they haven't added one.
@@ -131,7 +191,7 @@ export function BoutiqueProfile() {
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,.3) 0%,rgba(30,8,18,0) 30%,rgba(30,8,18,0) 62%,var(--ag-cover-fade) 100%);pointer-events:none;')} />
 
         <button
-          onClick={() => navigate('/buyer/boutiques')}
+          onClick={() => navigate('/boutiques')}
           aria-label="Back to boutiques"
           style={css('position:absolute;left:clamp(14px,3vw,28px);top:16px;width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
         >
@@ -219,7 +279,7 @@ export function BoutiqueProfile() {
               {following ? 'Following' : 'Follow'}
             </button>
             <button
-              onClick={() => navigate(`/buyer/chat/${ab.id}`)}
+              onClick={() => navigate(`/chat/${ab.id}`)}
               aria-label={`Chat with ${ab.name}`}
               style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ag-surface);color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;')}
             >
@@ -232,7 +292,7 @@ export function BoutiqueProfile() {
           <div style={css('display:flex;margin-top:18px;padding-top:18px;border-top:1px solid var(--ag-border-soft);')}>
             {[
               { icon: 'location_on', label: 'Shop Location', onClick: () => openExternal(mapUrl) },
-              { icon: 'share', label: 'Share', onClick: () => setShareOpen(true) },
+              { icon: 'share', label: 'Share', onClick: onShare },
             ].map((a) => (
               <button
                 key={a.label}
@@ -284,7 +344,7 @@ export function BoutiqueProfile() {
         {boutiqueProducts.length > 0 ? (
           <div className="agx-rgrid" style={css('margin-top:18px;')}>
             {boutiqueProducts.map((p) => (
-              <CardLink key={p.id} to={`/buyer/product/${p.id}`} label={p.title} className="agx-lift agx-reveal">
+              <CardLink key={p.id} to={routes.product(p)} label={p.title} className="agx-lift agx-reveal">
                 <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
                   <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
                   <WishButton
@@ -330,7 +390,6 @@ export function BoutiqueProfile() {
         )}
       </div>
 
-      {shareOpen && <ShareBoutiqueSheet boutique={ab} link={shareLink} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

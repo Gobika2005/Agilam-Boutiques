@@ -6,11 +6,11 @@ import { ScrollManager } from '@/components/layout/ScrollManager';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 import { PresenceTracker } from '@/components/layout/PresenceTracker';
+import { AnalyticsTracker } from '@/components/layout/AnalyticsTracker';
 import { LaunchNotice } from '@/components/layout/LaunchNotice';
 import { MaintenanceNotice } from '@/components/layout/MaintenanceNotice';
 import { EnvBadge } from '@/components/layout/EnvBadge';
 
-import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
 import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { SignUp } from '@/pages/auth/SignUp';
@@ -42,9 +42,12 @@ import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
 import { Policy } from '@/pages/buyer/Policy';
 import { Inspire } from '@/pages/buyer/Inspire';
 import { Collections } from '@/pages/buyer/Collections';
+import { CategoryLanding } from '@/pages/buyer/CategoryLanding';
 import { NewArrivals } from '@/pages/buyer/NewArrivals';
 import { BestSellers } from '@/pages/buyer/BestSellers';
 import { TopBoutiques } from '@/pages/buyer/TopBoutiques';
+import { NotFound } from '@/pages/buyer/NotFound';
+import { POLICIES } from '@/data/policies';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -101,6 +104,7 @@ const Refunds = lazyNamed(() => import('@/pages/admin/Refunds'), 'Refunds');
 const ReviewsAdmin = lazyNamed(() => import('@/pages/admin/ReviewsAdmin'), 'ReviewsAdmin');
 const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast');
 const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
+const Expenses = lazyNamed(() => import('@/pages/admin/Expenses'), 'Expenses');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
 
 export default function App() {
@@ -114,6 +118,8 @@ export default function App() {
       <LiveRefreshGate />
       {/* Broadcasts this tab's live presence so the admin console can see who's on the site. */}
       <PresenceTracker />
+      {/* GA4 / GTM page views on every route change. Inert until the IDs are set. */}
+      <AnalyticsTracker />
       {/* "Launching soon" preview notice for public visitors (hidden in the consoles). */}
       <LaunchNotice />
       {/* Buyer-facing banner while Platform Settings → Maintenance mode is on. */}
@@ -122,7 +128,6 @@ export default function App() {
           nothing in production. See ENVIRONMENTS.md. */}
       <EnvBadge />
       <Routes>
-      <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
@@ -147,32 +152,60 @@ export default function App() {
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/reset-password" element={<AdminResetPassword />} />
 
-      {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.
-          Renders the same profile the buyer app uses, so a link dropped in an
-          Instagram bio or WhatsApp status deep-links straight to the boutique. */}
-      <Route path="/b/:slug" element={<BoutiqueProfile />} />
+      {/*
+        ── The public storefront ───────────────────────────────────────────
+        Buyers browse without signing in, so this whole tree is the site's
+        indexable surface and it lives at the root.
 
-      {/* Buyers browse without signing in — the design treats the buyer app as
-          the public surface and only gates the seller/admin consoles. */}
-      <Route path="/buyer" element={<BuyerLayout />}>
-        <Route index element={<Navigate to="home" replace />} />
-        <Route path="home" element={<Home />} />
-        <Route path="results" element={<Results />} />
-        {/* The sheet is a fixed overlay, so keep the results grid behind it. */}
-        <Route path="filter" element={<><Results /><FilterSheet /></>} />
-        {/* Sort shares the results grid behind a lighter sort-only sheet. */}
-        <Route path="sort" element={<><Results /><SortSheet /></>} />
+        It used to sit under `/buyer/*`, with `/` serving a 2.5-second splash
+        that then redirected — which meant the homepage was not a page, every
+        product URL was a raw UUID, and browsing a category had no URL at all
+        (the filter lived in React state). Search engines had one address for
+        the entire catalogue.
+
+        Paths are now what a shopper would expect to see and a crawler can
+        make sense of: `/`, `/products/kanchipuram-silk-saree-1f2e3d4c`,
+        `/boutique/elegance-boutique`, `/collections/sarees`. Every former
+        path 301-redirects here from `vercel.json`, so no shared link, QR code
+        or Instagram bio ever breaks.
+      */}
+      <Route path="/" element={<BuyerLayout />}>
+        <Route index element={<Home />} />
+
+        {/* The full grid. `/shop` is the browsable everything-page; `/search`
+            is the same component in query mode and is deliberately noindex —
+            an infinite space of query URLs is crawl-budget poison. */}
+        <Route path="shop" element={<Results />} />
+        <Route path="search" element={<Results />} />
+        {/* The sheets are fixed overlays, so keep the results grid behind. */}
+        <Route path="shop/filter" element={<><Results /><FilterSheet /></>} />
+        <Route path="shop/sort" element={<><Results /><SortSheet /></>} />
+
+        {/* The collection hub, and the landing pages it links into. These are
+            the site's commercial keyword surface — one indexable page per
+            category, occasion and fabric the admin has approved. */}
+        <Route path="collections" element={<Collections />} />
+        <Route path="collections/:slug" element={<CategoryLanding kind="category" />} />
+        <Route path="occasions/:slug" element={<CategoryLanding kind="occasion" />} />
+        <Route path="fabrics/:slug" element={<CategoryLanding kind="fabric" />} />
+
         <Route path="boutiques" element={<Boutiques />} />
+        {/* Accepts the boutique's slug (migration 0003) or its id — legacy
+            `/b/:slug` and `/boutique/:id` links both land here. */}
+        <Route path="boutique/:slug" element={<BoutiqueProfile />} />
+        {/* Accepts `title-slug-idprefix` or a bare UUID; the page rewrites the
+            latter to the former so only one form is ever canonical. */}
+        <Route path="products/:slug" element={<ProductDetail />} />
+
         {/* The "See all" destinations behind the Home rails. Each one owns its
             own ranking rule (@/lib/ranking) and publishes it on the page. */}
-        <Route path="collections" element={<Collections />} />
         <Route path="new-arrivals" element={<NewArrivals />} />
         <Route path="best-sellers" element={<BestSellers />} />
         <Route path="top-boutiques" element={<TopBoutiques />} />
         {/* Inspire — the feed of posts from boutiques the buyer follows. */}
         <Route path="inspire" element={<Inspire />} />
-        <Route path="boutique/:id" element={<BoutiqueProfile />} />
-        <Route path="product/:id" element={<ProductDetail />} />
+
+        {/* Private to one buyer or a step in a transaction — all noindex. */}
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />
@@ -188,8 +221,18 @@ export default function App() {
         <Route path="messages" element={<BuyerMessages />} />
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
-        {/* Policies, About and Help — content lives in @/data/policies. */}
-        <Route path="policy/:slug" element={<Policy />} />
+
+        {/* Policies, About and Help sit at the root — `/privacy-policy`, not
+            `/privacy-policy`. Registered one route per known slug
+            rather than as a `/:slug` catch-all, so an unknown path still
+            reaches the 404 below instead of rendering an empty policy shell. */}
+        {POLICIES.map((p) => (
+          <Route key={p.slug} path={p.slug} element={<Policy />} />
+        ))}
+
+        {/* A real 404. Every unknown URL used to soft-redirect to the splash,
+            which returns HTTP 200 and tells a crawler the page exists. */}
+        <Route path="*" element={<NotFound />} />
       </Route>
 
       <Route
@@ -252,6 +295,8 @@ export default function App() {
         <Route path="orders" element={<OrdersAdmin />} />
         <Route path="reports" element={<Reports />} />
         <Route path="payments" element={<Payments />} />
+        {/* The outgoing side of the ledger — spends with their receipts (0056). */}
+        <Route path="expenses" element={<Expenses />} />
         <Route path="ads" element={<Ads />} />
         <Route path="coupons" element={<AdminCoupons />} />
         <Route path="notifications" element={<AdminNotifications />} />
@@ -264,7 +309,6 @@ export default function App() {
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <SpeedInsights />
     </>

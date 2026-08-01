@@ -34,8 +34,8 @@ export function OrderConfirmation() {
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:14px;")}>No recent order</div>
           <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;')}>Your placed orders live under My orders.</div>
           <div style={css('display:flex;gap:12px;margin-top:22px;justify-content:center;flex-wrap:wrap;')}>
-            <button onClick={() => navigate('/buyer/orders')} style={css('height:52px;padding:0 22px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My orders</button>
-            <button onClick={() => navigate('/buyer/home')} style={css('height:52px;padding:0 22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}>Continue shopping</button>
+            <button onClick={() => navigate('/orders')} style={css('height:52px;padding:0 22px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My orders</button>
+            <button onClick={() => navigate('/')} style={css('height:52px;padding:0 22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}>Continue shopping</button>
           </div>
         </div>
       </div>
@@ -62,7 +62,7 @@ export function OrderConfirmation() {
           {orders.map((o) => (
             <div
               key={o.id}
-              onClick={() => navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`)}
+              onClick={() => navigate(`/orders/${encodeURIComponent(o.id)}/track`)}
               style={css('cursor:pointer;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 16px 36px -28px rgba(107,20,54,.5);display:flex;align-items:center;gap:14px;text-align:left;')}
             >
               <span style={css('width:52px;height:52px;flex:none;border-radius:15px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
@@ -132,10 +132,10 @@ export function OrderConfirmation() {
         </div>
 
         <div style={css('display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;')}>
-          <button onClick={() => navigate(`/buyer/orders/${encodeURIComponent(primary.id)}/track`)} style={css('flex:1;min-width:150px;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
+          <button onClick={() => navigate(`/orders/${encodeURIComponent(primary.id)}/track`)} style={css('flex:1;min-width:150px;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>pin_drop</span>Track order
           </button>
-          <button onClick={() => navigate('/buyer/home')} style={css('flex:1;min-width:150px;height:54px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}>Continue shopping</button>
+          <button onClick={() => navigate('/')} style={css('flex:1;min-width:150px;height:54px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}>Continue shopping</button>
         </div>
       </div>
     </div>

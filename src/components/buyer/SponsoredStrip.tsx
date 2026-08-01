@@ -26,7 +26,7 @@ export function SponsoredStrip({ ads, title = 'Sponsored for you' }: { ads: AdCa
 
   const open = (ad: AdCampaign, productId: string) => {
     void trackAdClick(ad.id);
-    navigate(`/buyer/product/${productId}`);
+    navigate(`/products/${productId}`);
   };
 
   return (

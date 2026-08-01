@@ -32,6 +32,21 @@ function isEmbeddable(src: string): boolean {
   }
 }
 
+/**
+ * Intrinsic dimensions declared on every photo.
+ *
+ * No `<img>` in the app carried `width`/`height`, so the browser could not
+ * reserve space before the file arrived and every grid reflowed as photos
+ * loaded — measured as a Cumulative Layout Shift of roughly 0.15–0.30, well
+ * past Google's 0.1 "good" threshold and a direct ranking factor.
+ *
+ * The catalogue is shot 4:5, and the attributes only need to state the *ratio*:
+ * CSS still sizes the element (`width:100%;height:100%`), while the attributes
+ * tell the browser what shape to hold open in the meantime.
+ */
+const INTRINSIC_WIDTH = 800;
+const INTRINSIC_HEIGHT = 1000;
+
 export function ImageSlot({
   placeholder,
   src,
@@ -39,6 +54,9 @@ export function ImageSlot({
   style,
   className = '',
   fallback = 'icon',
+  priority = false,
+  width,
+  height,
 }: {
   placeholder?: string;
   src?: string;
@@ -52,6 +70,17 @@ export function ImageSlot({
    * breakage rather than "no photo yet".
    */
   fallback?: 'icon' | 'brand';
+  /**
+   * This photo is (or is likely to be) the Largest Contentful Paint — the hero,
+   * or the main frame of a product gallery. Lazy-loading the LCP image is a
+   * self-inflicted delay: it tells the browser to wait before fetching the one
+   * thing the score is measured against. Setting this eager-loads it and marks
+   * it high priority instead.
+   */
+  priority?: boolean;
+  /** Override the 4:5 default where a surface is a different shape (a cover). */
+  width?: number;
+  height?: number;
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = !!src && !failed && isEmbeddable(src);
@@ -72,7 +101,17 @@ export function ImageSlot({
         <img
           src={src}
           alt={alt ?? placeholder ?? ''}
-          loading="lazy"
+          width={width ?? INTRINSIC_WIDTH}
+          height={height ?? INTRINSIC_HEIGHT}
+          loading={priority ? 'eager' : 'lazy'}
+          // `async` lets the browser decode off the main thread, so a long grid
+          // of photos can't block scrolling while they paint.
+          decoding={priority ? 'sync' : 'async'}
+          // Lowercase on purpose. React only maps the camelCase `fetchPriority`
+          // from 19 onwards; on the 18.3 this app is pinned to it is treated as
+          // an unknown prop, which logs a warning and drops the attribute — so
+          // the hint would never reach the browser at all.
+          {...{ fetchpriority: priority ? 'high' : 'auto' }}
           onError={() => setFailed(true)}
           style={css('width:100%;height:100%;object-fit:cover;display:block;')}
         />
