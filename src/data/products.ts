@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { uploadImage } from '@/lib/uploadImage';
-import type { ProductWithBoutique } from './types';
+import type { ProductSpec, ProductWithBoutique } from './types';
 
 export type ProductFilters = {
   maxPrice?: number;
@@ -69,6 +69,13 @@ export async function createProduct(input: {
   wash_care?: string;
   image_url?: string;
   images?: string[];
+  // PDP detail sections (migration 0054).
+  badges?: string[];
+  feeding_friendly?: boolean;
+  feeding_note?: string;
+  shipping_info?: string;
+  color_disclaimer?: string;
+  specs?: ProductSpec[];
 }) {
   const { error } = await supabase.from('products').insert(input);
   if (error) throw error;
@@ -90,6 +97,12 @@ export async function updateProduct(
     wash_care: string;
     image_url: string;
     images: string[];
+    badges: string[];
+    feeding_friendly: boolean;
+    feeding_note: string;
+    shipping_info: string;
+    color_disclaimer: string;
+    specs: ProductSpec[];
   }>,
 ) {
   const { error } = await supabase.from('products').update(patch).eq('id', id);

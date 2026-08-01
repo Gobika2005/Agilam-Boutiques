@@ -39,6 +39,15 @@ export type Product = {
   sizes?: string[];
   washCare?: string;
   images?: string[];
+  /** Buyer PDP detail sections the seller fills in (migration 0054). Absent on
+   *  the demo records and on any product listed before the seller form grew
+   *  them — the product page hides whatever is empty. */
+  badges?: string[];
+  feedingFriendly?: boolean;
+  feedingNote?: string;
+  shippingInfo?: string;
+  colorDisclaimer?: string;
+  specs?: { label: string; value: string }[];
   /** When the piece was listed. Drives New arrivals and the freshness term in
    *  the best-seller score — see @/lib/ranking. Absent on the demo records. */
   createdAt?: string;

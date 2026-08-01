@@ -7,6 +7,9 @@ import { sortSizes } from '@/lib/sizes';
 import { dominantColorsHex, nearestColorName } from '@/lib/imageColor';
 import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
+import {
+  DEFAULT_COLOR_DISCLAIMER, MAX_PRODUCT_BADGES, MIN_PRODUCT_BADGES, PRODUCT_BADGES,
+} from '@/lib/productBadges';
 
 export type ProductFormValues = {
   title: string;
@@ -22,11 +25,19 @@ export type ProductFormValues = {
   washCare: string;
   imageUrl: string;
   images: string[];
+  /** The buyer's product page sections (migration 0054). */
+  badges: string[];
+  feedingFriendly: boolean;
+  feedingNote: string;
+  shippingInfo: string;
+  colorDisclaimer: string;
+  specs: { label: string; value: string }[];
 };
 
 export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   title: '', category: '', color: '', occasion: '', fabric: '', price: '', stock: '',
   description: '', mrp: '', sizes: [], washCare: '', imageUrl: '', images: [],
+  badges: [], feedingFriendly: false, feedingNote: '', shippingInfo: '', colorDisclaimer: '', specs: [],
 };
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
@@ -34,6 +45,7 @@ const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-bor
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
 const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
 const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
+const hintStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;';
 
 /**
  * Category, colour, occasion and fabric used to be four free-text boxes. They
@@ -45,6 +57,9 @@ const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;
  * because a colour needs a swatch hex to render on the buyer's filter and that
  * is the admin's to choose.
  */
+/** Enough room for the details buyers ask about, short of an unreadable table. */
+const MAX_SPEC_ROWS = 10;
+
 const PICKERS = [
   // All four are type-to-search comboboxes: the vocabularies are long and
   // managed, so filtering beats scrolling. Colour also shows swatches; the other
@@ -93,6 +108,25 @@ export function ProductForm({
 
   const toggleSize = (s: string) =>
     setForm((f) => ({ ...f, sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s] }));
+
+  // Badges keep the seller's pick order — that's the order the buyer's 3×2 grid
+  // renders them in, so the first three picks are the ones above the fold.
+  const toggleBadge = (id: string) => {
+    setForm((f) => {
+      if (f.badges.includes(id)) return { ...f, badges: f.badges.filter((x) => x !== id) };
+      if (f.badges.length >= MAX_PRODUCT_BADGES) {
+        showToast(`Up to ${MAX_PRODUCT_BADGES} badges — remove one first`);
+        return f;
+      }
+      return { ...f, badges: [...f.badges, id] };
+    });
+    setErrors((e) => ({ ...e, badges: undefined }));
+  };
+
+  const setSpec = (i: number, key: 'label' | 'value', v: string) =>
+    setForm((f) => ({ ...f, specs: f.specs.map((row, idx) => (idx === i ? { ...row, [key]: v } : row)) }));
+  const addSpec = () => setForm((f) => (f.specs.length >= MAX_SPEC_ROWS ? f : { ...f, specs: [...f.specs, { label: '', value: '' }] }));
+  const removeSpec = (i: number) => setForm((f) => ({ ...f, specs: f.specs.filter((_, idx) => idx !== i) }));
 
   // Fill the (up to 3) gallery slots from a list of picked files. Each photo is
   // framed in the cropper one after another; a cancelled crop is simply skipped.
@@ -161,6 +195,16 @@ export function ProductForm({
     if (form.stock.trim() === '' || Number(form.stock) < 0) next.stock = 'Enter valid stock';
     if (!form.imageUrl) next.imageUrl = 'Add a cover photo';
     if (form.mrp.trim() && Number(form.mrp) < Number(form.price || 0)) next.mrp = 'MRP must be ≥ price';
+    // The three the buyer page can't fake convincingly. Everything else in the
+    // detail section is an optional override with a sensible fallback.
+    if (!form.description.trim()) next.description = 'Buyers read this first — describe the piece';
+    if (!form.washCare.trim()) next.washCare = 'Required — tell buyers how to wash it';
+    if (form.badges.length < MIN_PRODUCT_BADGES) next.badges = `Pick at least ${MIN_PRODUCT_BADGES} badges`;
+    // A half-typed spec row would publish as "Blouse: " — make the seller finish
+    // it or drop it, rather than quietly discarding what they typed.
+    if (form.specs.some((s) => !!s.label.trim() !== !!s.value.trim())) {
+      next.specs = 'Fill both sides of every specification, or remove the row';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -170,7 +214,9 @@ export function ProductForm({
       showToast('Please fill all required fields');
       return;
     }
-    onSubmit(form);
+    // Blank rows are how an "Add specification" tap that changed its mind looks;
+    // they're dropped here so they never reach the database.
+    onSubmit({ ...form, specs: form.specs.filter((s) => s.label.trim() && s.value.trim()) });
   };
 
   const discountPct = form.mrp.trim() && Number(form.mrp) > Number(form.price || 0)
@@ -300,14 +346,148 @@ export function ProductForm({
         </div>
       </div>
 
+      {/* ── What the buyer's product page shows ──────────────────────────────
+          Everything below fills a section of the product page. The buyer app
+          hides any section left empty, so an optional box costs the seller
+          nothing but a filled one answers a question they'd otherwise be
+          messaged about. */}
+      <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;padding-top:16px;border-top:1px solid var(--ag-border);')}>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>list_alt</span>
+        <div>
+          <div style={css('font-size:14px;font-weight:800;color:var(--ag-ink);')}>Product page details</div>
+          <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>What buyers read before they decide</div>
+        </div>
+      </div>
+
+      <div>
+        <div style={css(labelStyle)}>Feature badges * — pick {MIN_PRODUCT_BADGES} to {MAX_PRODUCT_BADGES}</div>
+        <span style={css(hintStyle)}>The icon grid at the top of your product page. Only claim what's true of this piece.</span>
+        <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;')}>
+          {PRODUCT_BADGES.map((b) => {
+            const on = form.badges.includes(b.id);
+            const full = !on && form.badges.length >= MAX_PRODUCT_BADGES;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleBadge(b.id)}
+                style={css(`display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:12.5px;font-family:inherit;cursor:pointer;opacity:${full ? 0.45 : 1};`)}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{b.icon}</span>
+                {b.label}
+              </button>
+            );
+          })}
+        </div>
+        <span style={css(hintStyle)}>{form.badges.length} of {MAX_PRODUCT_BADGES} selected</span>
+        {errors.badges && <span style={css(errStyle)}>{errors.badges}</span>}
+      </div>
+
       <label style={css(labelStyle)}>
-        Description — optional
+        Description *
         <textarea value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Handcrafted with intricate zari work, tailored for a graceful drape…" style={css(textAreaStyle)} />
+        {errors.description && <span style={css(errStyle)}>{errors.description}</span>}
+      </label>
+
+      {/* Nursing access is a yes/no because it decides whether the section
+          appears at all — and because a flag can become a buyer filter, which
+          free text never could. */}
+      <div style={css('border:1.5px solid var(--ag-border);border-radius:13px;background:var(--ag-surface);padding:13px 14px;')}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={form.feedingFriendly}
+          onClick={() => set('feedingFriendly', !form.feedingFriendly)}
+          style={css('width:100%;display:flex;align-items:center;gap:11px;border:none;background:none;padding:0;cursor:pointer;text-align:left;font-family:inherit;')}
+        >
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D6336C;")}>child_care</span>
+          <span style={css('flex:1;')}>
+            <span style={css('display:block;font-size:13px;font-weight:700;color:var(--ag-label);')}>Feeding friendly</span>
+            <span style={css('display:block;font-size:11.5px;font-weight:600;color:var(--ag-muted);margin-top:2px;')}>Has nursing access — a concealed zip, side slit or overlap</span>
+          </span>
+          <span style={css(`flex:none;width:44px;height:26px;border-radius:999px;background:${form.feedingFriendly ? '#D6336C' : 'var(--ag-surface-3)'};position:relative;transition:background .18s;`)}>
+            <span style={css(`position:absolute;top:3px;left:${form.feedingFriendly ? 21 : 3}px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.3);`)} />
+          </span>
+        </button>
+        {form.feedingFriendly && (
+          <textarea
+            value={form.feedingNote}
+            onChange={(e) => set('feedingNote', e.target.value)}
+            placeholder="How it works — e.g. concealed zip under the yoke, opens from both sides"
+            style={css(`${textAreaStyle}min-height:64px;`)}
+          />
+        )}
+      </div>
+
+      <label style={css(labelStyle)}>
+        Wash care *
+        <textarea value={form.washCare} onChange={(e) => set('washCare', e.target.value)} placeholder="Dry clean only. Do not bleach. Iron on low heat with a cloth over the zari." style={css(textAreaStyle)} />
+        {errors.washCare && <span style={css(errStyle)}>{errors.washCare}</span>}
+      </label>
+
+      <div>
+        <div style={css(labelStyle)}>Extra specifications — optional</div>
+        <span style={css(hintStyle)}>
+          Category, colour, fabric, occasion and sizes already appear on their own. Add what's specific to this piece — blouse type, saree length, work, lining.
+        </span>
+        {form.specs.map((row, i) => (
+          <div key={i} style={css('display:flex;gap:8px;align-items:center;margin-top:8px;')}>
+            <input
+              value={row.label}
+              onChange={(e) => setSpec(i, 'label', e.target.value)}
+              placeholder="Blouse"
+              style={css(`${inputStyle}flex:0 0 36%;min-width:0;margin-top:0;height:46px;`)}
+            />
+            <input
+              value={row.value}
+              onChange={(e) => setSpec(i, 'value', e.target.value)}
+              placeholder="Unstitched · 0.8m"
+              style={css(`${inputStyle}flex:1;min-width:0;margin-top:0;height:46px;`)}
+            />
+            <button
+              type="button"
+              onClick={() => removeSpec(i)}
+              aria-label={`Remove specification ${i + 1}`}
+              style={css('flex:none;width:40px;height:46px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            >
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>close</span>
+            </button>
+          </div>
+        ))}
+        {errors.specs && <span style={css(errStyle)}>{errors.specs}</span>}
+        {form.specs.length < MAX_SPEC_ROWS && (
+          <button
+            type="button"
+            onClick={addSpec}
+            style={css('margin-top:9px;display:flex;align-items:center;gap:6px;height:44px;padding:0 15px;border:1.5px dashed var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;')}
+          >
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>
+            Add specification
+          </button>
+        )}
+      </div>
+
+      <label style={css(labelStyle)}>
+        Shipping information — optional
+        <textarea
+          value={form.shippingInfo}
+          onChange={(e) => set('shippingInfo', e.target.value)}
+          placeholder="e.g. Made to order — dispatched in 5–7 days"
+          style={css(textAreaStyle)}
+        />
+        <span style={css(hintStyle)}>Only for this piece. Leave blank and buyers see your shop's usual delivery details.</span>
       </label>
 
       <label style={css(labelStyle)}>
-        Wash care — optional
-        <textarea value={form.washCare} onChange={(e) => set('washCare', e.target.value)} placeholder="Dry clean only" style={css(textAreaStyle)} />
+        Colour disclaimer — optional
+        <textarea
+          value={form.colorDisclaimer}
+          onChange={(e) => set('colorDisclaimer', e.target.value)}
+          placeholder={DEFAULT_COLOR_DISCLAIMER}
+          style={css(textAreaStyle)}
+        />
+        <span style={css(hintStyle)}>Leave blank to use the standard note shown above.</span>
       </label>
 
       <button

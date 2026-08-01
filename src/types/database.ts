@@ -150,6 +150,13 @@ export interface Database {
           sizes: string[];
           wash_care: string;
           images: string[];
+          /** Buyer-facing detail sections (migration 0054). */
+          badges: string[];
+          feeding_friendly: boolean;
+          feeding_note: string;
+          shipping_info: string;
+          color_disclaimer: string;
+          specs: { label: string; value: string }[];
           /** Public hearts on the Inspire feed card (migration 0020). */
           likes_count: number;
           /** Buyer-side engagement counters (migration 0031) — RPC/trigger

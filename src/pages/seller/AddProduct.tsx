@@ -35,6 +35,14 @@ export function AddProduct() {
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,
         images: form.images,
+        badges: form.badges,
+        feeding_friendly: form.feedingFriendly,
+        // A note only means anything alongside the flag — clear it when the
+        // seller turns feeding-friendly off, so it can't resurface later.
+        feeding_note: form.feedingFriendly ? form.feedingNote.trim() : '',
+        shipping_info: form.shippingInfo.trim(),
+        color_disclaimer: form.colorDisclaimer.trim(),
+        specs: form.specs.map((s) => ({ label: s.label.trim(), value: s.value.trim() })),
       });
       showToast('Product published');
       navigate('/seller/products');

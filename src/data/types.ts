@@ -29,7 +29,21 @@ export interface ProductWithBoutique {
   sizes?: string[] | null;
   wash_care?: string | null;
   images?: string[] | null;
+  /** PDP detail sections (migration 0054). Optional so a project that hasn't
+   *  run it yet still reads products — the buyer page hides what's missing. */
+  badges?: string[] | null;
+  feeding_friendly?: boolean | null;
+  feeding_note?: string | null;
+  shipping_info?: string | null;
+  color_disclaimer?: string | null;
+  specs?: ProductSpec[] | null;
   boutique: { name: string; city: string; tone: number } | null;
+}
+
+/** One seller-written specification row, shown under the derived ones. */
+export interface ProductSpec {
+  label: string;
+  value: string;
 }
 
 // The lifecycle status is declared alongside the generated table types so the

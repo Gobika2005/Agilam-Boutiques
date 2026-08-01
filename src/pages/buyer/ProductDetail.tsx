@@ -16,6 +16,7 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { TONES, fmt } from '@/data/demo';
 import { useSettings } from '@/data/settings';
 import { POLICY_TERMS } from '@/data/company';
+import { badgesFor, DEFAULT_COLOR_DISCLAIMER } from '@/lib/productBadges';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
@@ -62,14 +63,14 @@ export function ProductDetail() {
   // Delivery copy must quote the fee checkout actually charges, so it reads the
   // live admin settings rather than a compile-time constant.
   const terms = useSettings();
-  const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast } = useShop();
+  const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast, coupons } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   // Null until the buyer picks one, so the shown size can fall back to what the
   // bag already holds for this piece (see `selectedSize` below).
   const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
-  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ details: true });
+  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ description: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
 
   // Gallery: the main frame is a horizontal snap-scroller so the photo can be
@@ -134,6 +135,21 @@ export function ProductDetail() {
     if (!el || !el.clientWidth) return;
     const i = Math.round(el.scrollLeft / el.clientWidth);
     setActiveImg((prev) => (prev === i ? prev : i));
+  };
+
+  /**
+   * Tapping a slide opens the full-screen viewer — but a swipe to the next
+   * photo starts as a press on the same slide, and a short one still ends in a
+   * click. Remember where the press began and treat anything that travelled as
+   * a swipe, so browsing the gallery no longer throws the viewer open.
+   */
+  const slidePress = useRef<{ x: number; y: number } | null>(null);
+  const onSlidePointerDown = (e: React.PointerEvent) => { slidePress.current = { x: e.clientX, y: e.clientY }; };
+  const onSlideClick = (e: React.MouseEvent) => {
+    const p = slidePress.current;
+    slidePress.current = null;
+    if (p && (Math.abs(e.clientX - p.x) > 10 || Math.abs(e.clientY - p.y) > 10)) return;
+    setZoomOpen(true);
   };
 
   const ap = PRODUCTS.find((p) => p.id === id);
@@ -221,15 +237,27 @@ export function ProductDetail() {
     ...(ap.occasion ? [{ icon: 'event_available', label: `${ap.occasion} wear` }] : []),
   ];
 
+  // Derived from what the piece already is, then whatever else the seller chose
+  // to spell out. Wash care used to sit in this table; it now has a section of
+  // its own, so it isn't repeated here.
   const specs = [
     { label: 'Fabric', value: ap.fabric || 'Premium fabric' },
     { label: 'Category', value: ap.cat },
     { label: 'Occasion', value: `${ap.occasion} wear` },
     { label: 'Colour', value: ap.color || '—' },
-    { label: 'Wash care', value: ap.washCare || 'Dry clean only' },
+    ...(ap.sizes?.length ? [{ label: 'Sizes', value: sortSizes(ap.sizes).join(', ') }] : []),
     { label: 'Crafted in', value: ap.city },
     { label: 'SKU', value: ap.id.toUpperCase() },
+    ...(ap.specs ?? []),
   ];
+
+  const badges = badgesFor(ap.badges);
+
+  // Codes a buyer could actually use on this piece: the platform's own, plus
+  // this boutique's. Another shop's coupon is real but irrelevant here.
+  const offers = coupons.filter((c) => c.boutique_id === null || c.boutique_id === boutiqueId);
+  const offerLine = (c: (typeof offers)[number]) =>
+    c.type === 'ship' ? 'Free delivery' : c.type === 'flat' ? `${fmt(c.off)} off` : `${c.off}% off${c.max_discount ? ` up to ${fmt(c.max_discount)}` : ''}`;
 
   const thumbs = gallery.map((src, i) => ({
     id: `prod-${ap.id}-t${i}`,
@@ -426,7 +454,8 @@ export function ProductDetail() {
               {gallery.map((src, i) => (
                 <div
                   key={`${ap.id}-g${i}`}
-                  onClick={() => setZoomOpen(true)}
+                  onPointerDown={onSlidePointerDown}
+                  onClick={onSlideClick}
                   style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in;')}
                 >
                   <ImageSlot src={src} placeholder={ap.title} alt={`${ap.title} — photo ${i + 1}`} style={css('position:absolute;inset:0;')} />
@@ -595,25 +624,77 @@ export function ProductDetail() {
             {renderBagControl(56)}
           </div>
 
+          {/* FEATURE BADGES — the seller's own picks (migration 0054), never a
+              claim the app invented. A product listed before the seller form
+              grew this simply has no grid. */}
+          {badges.length > 0 && (
+            <div style={css('display:grid;grid-template-columns:repeat(3,1fr);margin-top:24px;border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;background:var(--ag-surface);')}>
+              {badges.map((b, i) => (
+                <div
+                  key={b.id}
+                  style={css(`display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;text-align:center;padding:18px 8px;border-left:${i % 3 === 0 ? 'none' : '1px solid var(--ag-surface-3)'};border-top:${i < 3 ? 'none' : '1px solid var(--ag-surface-3)'};`)}
+                >
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-ink);")}>{b.icon}</span>
+                  <span style={css('font-size:12.5px;font-weight:700;color:var(--ag-ink-2);line-height:1.3;')}>{b.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ACCORDION PANELS */}
           <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:24px;')}>
-            {renderPanel('details', 'description', 'Product details', '', (
-              <>
-                <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;')}>
-                  {ap.description || `${ap.fabric} · ${ap.occasion} wear. Handcrafted with intricate zari work and tailored for a graceful drape.`}
-                </div>
-                <div style={css('margin-top:12px;border:1px solid var(--ag-surface-3);border-radius:14px;overflow:hidden;')}>
-                  {specs.map((s, i) => (
-                    <div key={s.label} style={css(`display:flex;align-items:center;gap:12px;padding:11px 14px;font-size:13.5px;background:${i % 2 === 0 ? 'var(--ag-bg)' : 'var(--ag-surface)'};`)}>
-                      <span style={css('flex:none;width:104px;color:var(--ag-muted);font-weight:600;')}>{s.label}</span>
-                      <span style={css('flex:1;color:var(--ag-ink);font-weight:700;')}>{s.value}</span>
+            {offers.length > 0 && renderPanel('offers', 'sell', 'Offers', `${offers.length}`, (
+              <div style={css('display:flex;flex-direction:column;gap:9px;')}>
+                {offers.map((c) => (
+                  <div key={c.id} style={css('display:flex;gap:11px;padding:12px 13px;background:var(--ag-bg);border:1px dashed var(--ag-border);border-radius:13px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);flex:none;")}>local_activity</span>
+                    <div style={css('min-width:0;')}>
+                      <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>
+                        {offerLine(c)} <span style={css('color:var(--ag-crimson);')}>· {c.code}</span>
+                      </div>
+                      {c.description && <div style={css('font-size:12px;color:var(--ag-ink-2);margin-top:3px;line-height:1.5;')}>{c.description}</div>}
+                      {c.min_subtotal > 0 && (
+                        <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;font-weight:600;')}>On orders above {fmt(c.min_subtotal)}</div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </>
+                  </div>
+                ))}
+                <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>Apply the code at checkout.</div>
+              </div>
             ))}
 
-            {renderPanel('delivery', 'local_shipping', 'Delivery & returns', '', (
+            {renderPanel('specs', 'checklist', 'Specifications', '', (
+              <div style={css('border:1px solid var(--ag-surface-3);border-radius:14px;overflow:hidden;')}>
+                {specs.map((s, i) => (
+                  <div key={`${s.label}-${i}`} style={css(`display:flex;align-items:center;gap:12px;padding:11px 14px;font-size:13.5px;background:${i % 2 === 0 ? 'var(--ag-bg)' : 'var(--ag-surface)'};`)}>
+                    <span style={css('flex:none;width:104px;color:var(--ag-muted);font-weight:600;')}>{s.label}</span>
+                    <span style={css('flex:1;color:var(--ag-ink);font-weight:700;')}>{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            {/* No invented copy here any more: the description is the seller's
+                or the section doesn't appear. It used to print "Handcrafted with
+                intricate zari work" over any piece whose seller left it blank —
+                a claim the platform had no basis for. New listings must fill it. */}
+            {ap.description && renderPanel('description', 'description', 'Description', '', (
+              <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>{ap.description}</div>
+            ))}
+
+            {ap.feedingFriendly && renderPanel('feeding', 'child_care', 'Feeding Friendly', '', (
+              <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>
+                {ap.feedingNote?.trim()
+                  ? ap.feedingNote
+                  : 'This piece is designed with nursing access, so it can be worn comfortably while feeding.'}
+              </div>
+            ))}
+
+            {ap.washCare && renderPanel('wash', 'local_laundry_service', 'Wash Care', '', (
+              <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>{ap.washCare}</div>
+            ))}
+
+            {renderPanel('delivery', 'local_shipping', 'Shipping Information', '', (
               <>
                 <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
@@ -648,7 +729,27 @@ export function ProductDetail() {
                     </div>
                   </div>
                 )}
+                {/* Anything true of this piece alone — made to order, ships
+                    rolled, longer dispatch. Sits under the shop-wide rules
+                    rather than replacing them, so the two can't contradict. */}
+                {ap.shippingInfo?.trim() && (
+                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
+                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;white-space:pre-line;')}>
+                      <span style={css('font-weight:700;')}>About this piece:</span> {ap.shippingInfo}
+                    </div>
+                  </div>
+                )}
               </>
+            ))}
+
+            {/* Always shown, seller's wording or the platform's — a buyer judging
+                a shade off a photo deserves the caveat on every product, not only
+                the ones whose seller thought to write it. */}
+            {renderPanel('colour', 'palette', 'Colour Disclaimer', '', (
+              <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>
+                {ap.colorDisclaimer?.trim() || DEFAULT_COLOR_DISCLAIMER}
+              </div>
             ))}
 
             {/* Ratings and reviews are one thing to the buyer — the score, the

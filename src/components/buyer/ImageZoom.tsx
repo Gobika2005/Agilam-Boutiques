@@ -6,18 +6,32 @@ import { css } from '@/lib/css';
  *
  * Buyers judge fabric, zari and embroidery from the photo, so the product page
  * needs a real close-up rather than a card-sized crop. This opens over the page
- * and supports every gesture people try:
+ * and follows the gestures every phone gallery already trains people on:
  *
- *  - tap the photo to zoom in, tap again to zoom back out
- *  - the +/− buttons, and the keyboard's `+` / `-`
- *  - the scroll wheel (and trackpad pinch, which browsers report as ctrl+wheel)
- *  - drag to pan once zoomed in; arrows / swipe to change photo when zoomed out
- *  - Escape, the close button, or clicking the backdrop to leave
+ *  - double-tap (or double-click) the photo to zoom in on the spot you tapped,
+ *    double-tap again to fit it back
+ *  - pinch with two fingers, the scroll wheel, the +/− buttons, or `+` / `-`
+ *  - drag to pan once zoomed; swipe or use the arrows to change photo when fit
+ *  - Escape, the close button, or a tap on the empty space around the photo
+ *
+ * A *single* tap deliberately does nothing. It used to toggle the zoom, which
+ * meant a half-committed swipe or a tap on the next-photo arrow (the arrows sit
+ * inside the stage, so their clicks bubbled here) threw the buyer into a random
+ * 250% corner of the picture. Zoom is now only ever asked for explicitly.
  */
 
 const MIN = 1;
 const MAX = 4;
 const STEP = 0.5;
+/** A second tap later than this, or further than TAP_SLOP away, is a new tap. */
+const DOUBLE_TAP_MS = 320;
+const TAP_SLOP = 24;
+/** Travel past this and the press is a drag/swipe, not a tap. */
+const MOVE_SLOP = 10;
+/** Horizontal travel that counts as "next photo, please". */
+const SWIPE_MIN = 48;
+
+type Pt = { x: number; y: number };
 
 export function ImageZoom({
   images,
@@ -33,30 +47,73 @@ export function ImageZoom({
   onIndexChange: (i: number) => void;
 }) {
   const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [offset, setOffset] = useState<Pt>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const [hint, setHint] = useState(true);
   const stageRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const zoomed = scale > 1;
 
-  // Keeps a pan from dragging the photo past the point where it's still
-  // visible — without this a big drag at high zoom could push the image
-  // entirely off the stage with no way back short of the 100% button.
-  const clampOffset = useCallback((off: { x: number; y: number }, s: number) => {
+  // The gesture handlers fire faster than React re-renders, so a pinch that
+  // read `scale` from the closure would compute every step off a stale value.
+  // The refs are the live view; state only mirrors them for rendering.
+  const scaleRef = useRef(1);
+  const offsetRef = useRef<Pt>({ x: 0, y: 0 });
+
+  /** Live pointers on the stage, so one finger pans and two pinch. */
+  const pointers = useRef(new Map<number, Pt>());
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const pressRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+
+  // Keeps a pan from dragging the photo past its own edge. The bound is built
+  // from the *image's* laid-out box, not the stage: a tall portrait saree is
+  // letterboxed with empty stage either side, and measuring the stage would let
+  // it be dragged into that emptiness.
+  const clampOffset = useCallback((off: Pt, s: number): Pt => {
     const el = stageRef.current;
     if (!el || s <= 1) return { x: 0, y: 0 };
-    const maxX = (el.clientWidth * (s - 1)) / 2;
-    const maxY = (el.clientHeight * (s - 1)) / 2;
+    const iw = imgRef.current?.offsetWidth || el.clientWidth;
+    const ih = imgRef.current?.offsetHeight || el.clientHeight;
+    const maxX = Math.max(0, (iw * s - el.clientWidth) / 2);
+    const maxY = Math.max(0, (ih * s - el.clientHeight) / 2);
     return {
       x: Math.min(maxX, Math.max(-maxX, off.x)),
       y: Math.min(maxY, Math.max(-maxY, off.y)),
     };
   }, []);
 
-  const reset = useCallback(() => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
+  const setView = useCallback((s: number, o: Pt) => {
+    scaleRef.current = s;
+    offsetRef.current = o;
+    setScale(s);
+    setOffset(o);
   }, []);
+
+  const reset = useCallback(() => setView(1, { x: 0, y: 0 }), [setView]);
+
+  /**
+   * Zoom to `next`, keeping whatever is under `anchor` (a client point — the
+   * tapped spot, the cursor, the middle of a pinch) pinned in place. Zooming
+   * about the centre instead would slide the detail you asked about away.
+   */
+  const zoomTo = useCallback(
+    (next: number, anchor?: Pt) => {
+      const s0 = scaleRef.current;
+      const s = Math.min(MAX, Math.max(MIN, next));
+      const el = stageRef.current;
+      if (s <= MIN || !el) return setView(s, { x: 0, y: 0 });
+      const r = el.getBoundingClientRect();
+      const ax = anchor ? anchor.x - (r.left + r.width / 2) : 0;
+      const ay = anchor ? anchor.y - (r.top + r.height / 2) : 0;
+      const k = s / s0;
+      const o0 = offsetRef.current;
+      setView(s, clampOffset({ x: ax - k * (ax - o0.x), y: ay - k * (ay - o0.y) }, s));
+      setHint(false);
+    },
+    [clampOffset, setView],
+  );
 
   // Changing photo always returns to a fit view — staying zoomed would drop the
   // buyer into a random corner of the next image.
@@ -69,15 +126,6 @@ export function ImageZoom({
     [images.length, onIndexChange, reset],
   );
 
-  const zoomTo = useCallback((next: number) => {
-    const clamped = Math.min(MAX, Math.max(MIN, Math.round(next * 10) / 10));
-    setScale(clamped);
-    // Re-clamp rather than only resetting at 1×: zooming *out* while panned
-    // shrinks the valid pan range too, so the old offset can now be out of
-    // bounds even though it wasn't a moment ago.
-    setOffset((o) => clampOffset(o, clamped));
-  }, [clampOffset]);
-
   // Lock the page behind the viewer so scrolling zooms/pans here, not there.
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -85,57 +133,129 @@ export function ImageZoom({
     return () => { document.body.style.overflow = previous; };
   }, []);
 
+  // The gesture hint has done its job after a few seconds; leaving it up just
+  // covers the photo the buyer came to look at.
+  useEffect(() => {
+    const t = window.setTimeout(() => setHint(false), 3200);
+    return () => window.clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      else if (e.key === '+' || e.key === '=') zoomTo(scale + STEP);
-      else if (e.key === '-' || e.key === '_') zoomTo(scale - STEP);
+      else if (e.key === '+' || e.key === '=') zoomTo(scaleRef.current + STEP);
+      else if (e.key === '-' || e.key === '_') zoomTo(scaleRef.current - STEP);
       else if (e.key === '0') reset();
       else if (e.key === 'ArrowLeft' && !zoomed) go(index - 1);
       else if (e.key === 'ArrowRight' && !zoomed) go(index + 1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, zoomTo, scale, reset, zoomed, go, index]);
+  }, [onClose, zoomTo, reset, zoomed, go, index]);
 
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    zoomTo(scale + (e.deltaY < 0 ? STEP : -STEP));
+    // Browsers report a trackpad pinch as ctrl+wheel, with a delta proportional
+    // to the pinch, so it gets a continuous factor; a notched mouse wheel gets
+    // a fixed step per notch.
+    const factor = e.ctrlKey
+      ? Math.exp(-e.deltaY * 0.01)
+      : e.deltaY < 0 ? 1.2 : 1 / 1.2;
+    zoomTo(scaleRef.current * factor, { x: e.clientX, y: e.clientY });
   };
 
-  // Where the press started, so a pan can be told apart from a tap on release.
-  const pressRef = useRef<{ x: number; y: number } | null>(null);
-  const movedRef = useRef(false);
+  const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+  const mid = (a: Pt, b: Pt): Pt => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const twoPointers = () => Array.from(pointers.current.values()) as [Pt, Pt];
 
   const onPointerDown = (e: React.PointerEvent) => {
-    pressRef.current = { x: e.clientX, y: e.clientY };
-    movedRef.current = false;
+    if (pointers.current.size >= 2) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Capture on the stage, not the target: the finger routinely slides off the
+    // photo onto the backdrop mid-pan, and without this the move events stop.
+    stageRef.current?.setPointerCapture?.(e.pointerId);
+
+    if (pointers.current.size === 2) {
+      const [a, b] = twoPointers();
+      pinchRef.current = { dist: dist(a, b) || 1, scale: scaleRef.current };
+      // A pinch is neither a tap nor a pan.
+      pressRef.current = null;
+      dragRef.current = null;
+      setDragging(false);
+      return;
+    }
+
+    pressRef.current = { x: e.clientX, y: e.clientY, moved: false };
     if (!zoomed) return;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    dragRef.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
+    dragRef.current = { x: e.clientX, y: e.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y };
     setDragging(true);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const pinch = pinchRef.current;
+    if (pinch && pointers.current.size === 2) {
+      const [a, b] = twoPointers();
+      zoomTo(pinch.scale * (dist(a, b) / pinch.dist), mid(a, b));
+      return;
+    }
+
     const p = pressRef.current;
-    // A few pixels of travel is a shaky finger, not a drag — anything more and
-    // the release is a pan, so it must not also toggle the zoom.
-    if (p && (Math.abs(e.clientX - p.x) > 6 || Math.abs(e.clientY - p.y) > 6)) movedRef.current = true;
+    if (p && (Math.abs(e.clientX - p.x) > MOVE_SLOP || Math.abs(e.clientY - p.y) > MOVE_SLOP)) p.moved = true;
+
     const d = dragRef.current;
     if (!d) return;
-    setOffset(clampOffset({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) }, scale));
+    const next = clampOffset({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) }, scaleRef.current);
+    offsetRef.current = next;
+    setOffset(next);
   };
 
-  const onPointerUp = () => {
-    dragRef.current = null;
+  const endPress = (e: React.PointerEvent, cancelled: boolean) => {
+    pointers.current.delete(e.pointerId);
+    const wasPinching = !!pinchRef.current;
+
+    if (wasPinching) {
+      pinchRef.current = null;
+      // Hand the gesture over to the finger still down so the pan continues
+      // instead of freezing until they lift and press again.
+      const [rest] = Array.from(pointers.current.values());
+      dragRef.current = rest && zoomed
+        ? { x: rest.x, y: rest.y, ox: offsetRef.current.x, oy: offsetRef.current.y }
+        : null;
+      setDragging(!!dragRef.current);
+      pressRef.current = null;
+      return;
+    }
+
+    const p = pressRef.current;
     pressRef.current = null;
+    dragRef.current = null;
     setDragging(false);
-  };
+    if (!p || cancelled) return;
 
-  /** Tap the photo: in when it's fit, back out when it's already zoomed. */
-  const onStageClick = () => {
-    if (movedRef.current) return;
-    zoomTo(zoomed ? MIN : 2.5);
+    if (p.moved) {
+      // A flick across a fit photo browses the set, the way the product page's
+      // own gallery does. While zoomed the same drag is a pan, handled above.
+      if (zoomed) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      if (Math.abs(dx) > SWIPE_MIN && Math.abs(dx) > Math.abs(dy)) go(index + (dx < 0 ? 1 : -1));
+      return;
+    }
+
+    // A clean tap. Only the second one within the double-tap window zooms;
+    // a lone tap is left alone so half-swipes and stray taps stay harmless.
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && now - last.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - last.x, e.clientY - last.y) < TAP_SLOP) {
+      lastTapRef.current = null;
+      if (zoomed) reset();
+      else zoomTo(2.5, { x: e.clientX, y: e.clientY });
+      return;
+    }
+    lastTapRef.current = { t: now, x: e.clientX, y: e.clientY };
   };
 
   const src = images[index] ?? images[0];
@@ -147,6 +267,15 @@ export function ImageZoom({
         `color:#fff;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? 0.35 : 1};` +
         'display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);',
     );
+
+  // The arrows live inside the stage for positioning, so every pointer event on
+  // them has to be stopped here or the stage reads them as taps on the photo —
+  // two quick presses of "next" would otherwise register as a double-tap zoom.
+  const swallow = {
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onPointerMove: (e: React.PointerEvent) => e.stopPropagation(),
+    onPointerUp: (e: React.PointerEvent) => e.stopPropagation(),
+  };
 
   return (
     <div
@@ -175,27 +304,32 @@ export function ImageZoom({
       {/* Stage */}
       <div
         ref={stageRef}
-        onClick={(e) => { e.stopPropagation(); onStageClick(); }}
+        // Only the empty space around the photo closes the viewer; clicks on the
+        // photo and on the arrows are theirs to handle.
+        onClick={(e) => { e.stopPropagation(); if (e.target === stageRef.current) onClose(); }}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerUp={(e) => endPress(e, false)}
+        onPointerCancel={(e) => endPress(e, true)}
         style={css(
           `flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;` +
-            `touch-action:${zoomed ? 'none' : 'pan-y'};cursor:${zoomed ? (dragging ? 'grabbing' : 'grab') : 'zoom-in'};`,
+            // `none`, not `pan-y`: the swipe and the pinch are ours to read, and
+            // the page behind is locked anyway so there is nothing to scroll.
+            `touch-action:none;cursor:${zoomed ? (dragging ? 'grabbing' : 'grab') : 'zoom-in'};`,
         )}
       >
         <img
+          ref={imgRef}
           src={src}
           alt={`${title} — photo ${index + 1}`}
           draggable={false}
           style={css(
             `max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;` +
               `transform:translate(${offset.x}px,${offset.y}px) scale(${scale});transform-origin:center center;` +
-              // Easing a zoom step looks good; easing a drag makes the photo
-              // lag behind the finger, so the transition is dropped while panning.
-              `transition:${dragging ? 'none' : 'transform .18s cubic-bezier(.2,.7,.2,1)'};`,
+              // Easing a zoom step looks good; easing a drag or a pinch makes the
+              // photo lag behind the finger, so live gestures drop the transition.
+              `transition:${dragging || pinchRef.current ? 'none' : 'transform .18s cubic-bezier(.2,.7,.2,1)'};`,
           )}
         />
 
@@ -203,16 +337,32 @@ export function ImageZoom({
         {images.length > 1 && !zoomed && (
           <>
             {index > 0 && (
-              <button onClick={() => go(index - 1)} aria-label="Previous photo" style={{ ...ctlStyle(), ...css('position:absolute;left:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
+              <button {...swallow} onClick={(e) => { e.stopPropagation(); go(index - 1); }} aria-label="Previous photo" style={{ ...ctlStyle(), ...css('position:absolute;left:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_left</span>
               </button>
             )}
             {index < images.length - 1 && (
-              <button onClick={() => go(index + 1)} aria-label="Next photo" style={{ ...ctlStyle(), ...css('position:absolute;right:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
+              <button {...swallow} onClick={(e) => { e.stopPropagation(); go(index + 1); }} aria-label="Next photo" style={{ ...ctlStyle(), ...css('position:absolute;right:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_right</span>
               </button>
             )}
           </>
+        )}
+
+        {/* Gesture hint. Nothing here is discoverable by looking at a photo, so
+            it is said once and then gets out of the way. */}
+        {hint && !zoomed && (
+          <div
+            aria-hidden="true"
+            style={css(
+              'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);pointer-events:none;' +
+                "font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;white-space:nowrap;" +
+                'color:rgba(255,255,255,.82);background:rgba(0,0,0,.42);backdrop-filter:blur(6px);' +
+                'padding:7px 13px;border-radius:999px;animation:agx-fade .25s ease;',
+            )}
+          >
+            Double-tap to zoom{images.length > 1 ? ' · swipe for more photos' : ''}
+          </div>
         )}
       </div>
 
@@ -227,6 +377,7 @@ export function ImageZoom({
         <button
           onClick={reset}
           disabled={!zoomed}
+          aria-label={zoomed ? 'Fit photo to screen' : 'Photo is fit to screen'}
           style={css(`height:44px;padding:0 18px;border:none;border-radius:14px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:13px;cursor:${zoomed ? 'pointer' : 'default'};opacity:${zoomed ? 1 : 0.5};backdrop-filter:blur(8px);`)}
         >
           {pct}%

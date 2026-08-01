@@ -54,6 +54,19 @@ function toProduct(p: ProductWithBoutique): Product {
     sizes: p.sizes ?? [],
     washCare: p.wash_care ?? '',
     images: p.images ?? [],
+    badges: p.badges ?? [],
+    feedingFriendly: p.feeding_friendly ?? false,
+    feedingNote: p.feeding_note ?? '',
+    shippingInfo: p.shipping_info ?? '',
+    colorDisclaimer: p.color_disclaimer ?? '',
+    // `specs` is jsonb, so a hand-edited row could hold anything — keep only
+    // well-formed { label, value } pairs rather than rendering `undefined`.
+    specs: Array.isArray(p.specs)
+      ? p.specs
+          .filter((s): s is { label: string; value: string } => !!s && typeof s === 'object')
+          .map((s) => ({ label: String(s.label ?? ''), value: String(s.value ?? '') }))
+          .filter((s) => s.label && s.value)
+      : [],
     createdAt: p.created_at,
     soldCount: p.sold_count ?? 0,
   };

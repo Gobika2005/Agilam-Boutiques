@@ -56,6 +56,12 @@ export function MyProducts() {
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,
         images: form.images,
+        badges: form.badges,
+        feeding_friendly: form.feedingFriendly,
+        feeding_note: form.feedingFriendly ? form.feedingNote.trim() : '',
+        shipping_info: form.shippingInfo.trim(),
+        color_disclaimer: form.colorDisclaimer.trim(),
+        specs: form.specs.map((s) => ({ label: s.label.trim(), value: s.value.trim() })),
       });
       showToast('Product updated');
       setEditing(null);
@@ -207,6 +213,12 @@ export function MyProducts() {
                   washCare: editing.wash_care ?? '',
                   imageUrl: editing.image_url ?? '',
                   images: editing.images ?? [],
+                  badges: editing.badges ?? [],
+                  feedingFriendly: editing.feeding_friendly ?? false,
+                  feedingNote: editing.feeding_note ?? '',
+                  shippingInfo: editing.shipping_info ?? '',
+                  colorDisclaimer: editing.color_disclaimer ?? '',
+                  specs: editing.specs ?? [],
                 }}
               />
             </div>
