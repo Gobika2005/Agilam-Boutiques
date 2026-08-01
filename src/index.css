@@ -217,40 +217,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
 .agx-shimmer { background:linear-gradient(100deg,var(--ag-shimmer-1) 30%,var(--ag-shimmer-2) 50%,var(--ag-shimmer-1) 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
-/* responsive nav: horizontal top nav on desktop, floating dock on mobile */
-.agx-topnav { display:none; }
+/* responsive nav: the floating dock is the primary navigation at EVERY width.
+   A horizontal top nav was briefly added for desktop and then removed by
+   request — the floating dock is the app's navigation, phone and desktop
+   alike, so there is one nav to learn and one place to look for it. */
 .agx-only-desktop { display:none !important; }
 .agx-only-mobile { display:flex !important; }
 @media (min-width:960px){
   .agx-only-desktop{ display:flex !important; }
-  /* The horizontal top nav that replaces the floating dock from here up. This
-     rule was missing: `.agx-topnav` had a base `display:none` and a
-     max-width:959px hide, but nothing ever turned it back ON — and no component
-     rendered it — so every viewport ≥960px had no primary navigation at all. */
-  .agx-topnav{ display:flex !important; }
-  .agx-app-main{ padding-left:44px !important; padding-right:44px !important; padding-bottom:96px !important; }
+  .agx-app-main{ padding-left:44px !important; padding-right:44px !important; }
   .agx-app-header{ padding-left:44px !important; padding-right:44px !important; }
   .agx-only-mobile{ display:none !important; }
 }
-/* The wordmark is 240px; below ~1180px the nav, search field and avatar stop
-   fitting on one row beside it. Tighten the mark rather than wrap the header. */
-@media (min-width:960px) and (max-width:1180px){
-  .agx-topnav button{ padding:0 9px !important; font-size:13.5px !important; }
-  .agx-brand-mark{ width:150px !important; }
-  .agx-brand-mark-btn{ height:64px !important; }
-}
-/* 960–1099px is the tightest desktop band: wordmark + five nav items + search +
-   bell + avatar needed 1051px and the page scrolled sideways. The nav icons are
-   the cheapest thing to give up — the labels carry the meaning — and the header
-   gutter tightens to match. */
-@media (min-width:960px) and (max-width:1099px){
-  .agx-topnav button span[aria-hidden="true"]:first-child{ display:none !important; }
-  .agx-topnav button{ padding:0 8px !important; gap:0 !important; }
-  .agx-topnav{ gap:0 !important; }
-  .agx-app-header{ gap:10px !important; padding-left:20px !important; padding-right:20px !important; }
-  .agx-app-main{ padding-left:20px !important; padding-right:20px !important; }
-}
-@media (max-width:959px){ .agx-topnav{ display:none !important; } }
 @media (max-width:640px){
   /* The dock is kept as slim as it can be without shrinking what people
      actually read: icons and labels hold their size, and the height comes off
@@ -332,26 +310,25 @@ body.agx-photo-open .agx-dock,
 body.agx-photo-open .agx-pdp-sticky { display: none !important; }
 body.agx-photo-open { overflow: hidden; }
 
-/* The floating dock is the phone navigation. From 960px the header carries the
-   horizontal top nav and a search field (`.agx-topnav`, same breakpoint), and
-   the dock only floated over the content — covering the collection rail on Home
-   and the description on a product page. Hide it there; the header does the job.
-   The breakpoint has to match `.agx-topnav`'s exactly, or a window between the
-   two would have no navigation at all. */
-/* Below 960px the floating dock IS the navigation, and it sits at bottom:14px
-   with a 73px height. The launch notice's own bottom:16px put it straight on
-   top of the dock, hiding Home/Boutiques/Inspire/Orders/Messages behind a
-   notice — covering navigation is worse than covering content. Lift it clear.
-   From 960px the dock is gone, so the notice keeps its natural corner. */
-@media (max-width:959px){
-  .agx-launch-notice { bottom: 104px !important; }
-}
+/* The floating dock is the navigation at EVERY width — phone and desktop alike.
+   It used to be hidden from 960px up, on the assumption that a horizontal top
+   nav took over there; no such nav existed, so desktop had no navigation at all.
+   Rather than build one, the dock now simply stays (owner's call: one nav, one
+   place to look for it).
+   The reason it was hidden still has to be answered: it floats, so it covered
+   the collection rail on Home and the description on a product page. The fix is
+   to reserve bottom space for it at every width instead of taking it away — the
+   dock is ~87px tall including its offset, so 128px keeps content clear of it. */
+.agx-dock { display: flex; }
 @media (min-width:960px){
-  .agx-dock { display: none !important; }
-  /* The bottom reserve only existed to clear the dock. */
-  .agx-app-main { padding-bottom: 40px !important; }
-  .agx-pdp-root { padding-bottom: 40px !important; }
+  .agx-app-main { padding-bottom: 128px !important; }
+  .agx-pdp-root { padding-bottom: 128px !important; }
 }
+/* The dock sits at bottom:14px and is 73px tall. The launch notice's own
+   bottom:16px put it straight on top, hiding Home/Boutiques/Inspire/Orders/
+   Messages behind a notice — covering navigation is worse than covering
+   content. Lift it clear at every width, since the dock is now everywhere. */
+.agx-launch-notice { bottom: 104px !important; }
 .agx-chat-root { padding-bottom: env(safe-area-inset-bottom); }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls

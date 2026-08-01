@@ -69,57 +69,6 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
 }
 
 /**
- * Desktop primary navigation.
- *
- * The floating dock is a phone pattern and `index.css` hides it from 960px up,
- * on the stated assumption that "the header carries the horizontal top nav
- * (`.agx-topnav`)". That nav was never built: `.agx-topnav` existed only as a
- * `display:none` rule and a comment, so from 960px the buyer app had **no
- * navigation at all** — Boutiques, Inspire, Orders and Messages were reachable
- * only by typing a URL. This is that missing nav.
- *
- * It reads the same `TabDef[]` as the dock, so the two can never drift on
- * destinations, active-route matching or unread badges. `Inspire`'s `raised`
- * flag is deliberately ignored here — the floating orb is a dock affordance;
- * in a horizontal bar it would just be a misaligned circle.
- */
-function TopNavItem({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
-      style={css(
-        'position:relative;display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;' +
-          'border:none;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;' +
-          `font-size:14px;font-weight:${active ? 800 : 700};color:${active ? 'var(--ag-crimson)' : 'var(--ag-muted)'};` +
-          'border-radius:12px;transition:color .2s ease;',
-      )}
-    >
-      <span
-        aria-hidden="true"
-        style={css(`font-family:'Material Symbols Outlined';font-size:20px;font-variation-settings:'FILL' ${active ? 1 : 0};`)}
-      >
-        {tab.icon}
-      </span>
-      {tab.label}
-      {!!tab.badge && (
-        <span style={css('min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ag-crimson);color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;')}>
-          {tab.badge}
-        </span>
-      )}
-      {/* The active marker is an underline rather than a filled pill: the header
-          is already a busy band, and a pill competed with the search field. */}
-      {active && (
-        <span
-          aria-hidden="true"
-          style={css('position:absolute;left:14px;right:14px;bottom:4px;height:2.5px;border-radius:2px;background:var(--ag-crimson);')}
-        />
-      )}
-    </button>
-  );
-}
-
-/**
  * The centre tab breaks out of the dock's top edge as a floating orb, so the
  * app's signature destination reads as a hero action rather than one of five
  * equals. It keeps the jewelled gradient whether or not it is the current
@@ -208,20 +157,6 @@ export function AppShell({
                 style={css('width:240px;height:84px;object-fit:contain;object-position:left center;')}
               />
             </button>
-
-            {/* Desktop primary nav. Hidden below 960px by `.agx-topnav`, which is
-                the exact breakpoint at which the floating dock takes over, so
-                there is never a width with neither. */}
-            <nav aria-label="Primary" className="agx-topnav" style={css('align-items:center;gap:2px;flex:none;')}>
-              {tabs.map((t) => (
-                <TopNavItem
-                  key={t.label}
-                  tab={t}
-                  active={t.match.some((m) => pathname.startsWith(m))}
-                  onClick={() => navigate(t.to)}
-                />
-              ))}
-            </nav>
 
             <div style={css('flex:1;min-width:8px;')} />
 
