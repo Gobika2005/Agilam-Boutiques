@@ -1,0 +1,30 @@
+{
+  // Vercel Edge Middleware (`middleware.ts`).
+  //
+  // It needs its own project because it belongs to neither of the others: it is
+  // not app code (tsconfig.app.json covers `src` only, and pulls in React/JSX
+  // it must never import), and it is not build tooling (tsconfig.node.json is
+  // the Vite config, and targets Node rather than the web-standard runtime).
+  //
+  // Without this the file was included nowhere, which meant `tsc -b` never
+  // checked it and the editor had no project for it — so VS Code fell back to
+  // an inferred project with different settings from the real build.
+  //
+  // The edge runtime is web-standard (`Request`, `Response`, `fetch`,
+  // `AbortController`, `URL`), so it takes the DOM lib rather than Node's —
+  // with `types: ["node"]` only for `process.env`, which Vercel does expose.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true
+  },
+  "include": ["middleware.ts"]
+}
