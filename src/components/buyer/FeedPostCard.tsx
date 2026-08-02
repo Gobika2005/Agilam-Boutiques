@@ -120,7 +120,7 @@ function SizeSheet({
           onClick={() => picked && onConfirm(picked)}
           style={css(`width:100%;height:54px;margin-top:22px;border:none;border-radius:16px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:${picked ? 'pointer' : 'not-allowed'};color:#fff;background:${picked ? 'linear-gradient(135deg,#D6336C,#B02454)' : 'var(--ag-border)'};box-shadow:${picked ? '0 16px 34px -16px rgba(214,51,108,.85)' : 'none'};transition:background .2s ease;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>
           {picked ? `Add ${picked} to bag` : 'Select a size'}
         </button>
       </div>
@@ -267,7 +267,7 @@ export function FeedPostCard({
               {boutique?.name ?? 'Boutique'}
             </span>
             {boutique?.verified && (
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>
             )}
           </span>
           <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;')}>
@@ -284,7 +284,7 @@ export function FeedPostCard({
               aria-label={`Following ${boutique.name}`}
               style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 13px;border:1.5px solid var(--ag-border);border-radius:999px;background:var(--ag-surface-2);color:var(--ag-ink-2);font-size:12.5px;font-weight:800;cursor:pointer;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-crimson);font-variation-settings:'FILL' 1;")}>check_circle</span>Following
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-crimson);font-variation-settings:'FILL' 1;")}>check_circle</span>Following
             </button>
           ) : (
             <button
@@ -292,7 +292,7 @@ export function FeedPostCard({
               aria-label={`Follow ${boutique.name}`}
               style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:var(--ag-surface);color:var(--ag-crimson);font-size:12.5px;font-weight:800;cursor:pointer;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
             </button>
           )
         )}
@@ -365,7 +365,7 @@ export function FeedPostCard({
       <div style={css('display:flex;align-items:center;gap:14px;padding:11px 16px 4px;')}>
         {/* How many have seen this piece — sits first, ahead of the like. */}
         <span style={css('display:flex;align-items:center;gap:7px;padding:6px 2px;color:var(--ag-ink-2);')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>visibility</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>visibility</span>
           <span style={css('font-size:13.5px;font-weight:800;')}>{compact(product.views_count ?? 0)}</span>
         </span>
 
@@ -375,7 +375,7 @@ export function FeedPostCard({
           aria-pressed={liked}
           style={css('display:flex;align-items:center;gap:7px;border:none;background:none;padding:6px 2px;cursor:pointer;')}
         >
-          <span className={`agx-heart${liked ? ' agx-heart-on' : ''}`} style={css(`font-size:24px;color:${liked ? '#E11D48' : 'var(--ag-ink-2)'};`)}>
+          <span aria-hidden="true" className={`agx-heart${liked ? ' agx-heart-on' : ''}`} style={css(`font-size:24px;color:${liked ? '#E11D48' : 'var(--ag-ink-2)'};`)}>
             favorite
           </span>
           <span style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink-2);')}>{compact(likes)}</span>
@@ -386,7 +386,7 @@ export function FeedPostCard({
           aria-label="Share this piece"
           style={css('display:flex;align-items:center;border:none;background:none;padding:6px 2px;cursor:pointer;')}
         >
-          <span className="agx-heart" style={css('font-size:23px;color:var(--ag-ink-2);')}>send</span>
+          <span aria-hidden="true" className="agx-heart" style={css('font-size:23px;color:var(--ag-ink-2);')}>send</span>
         </button>
 
         <div style={css('flex:1;')} />
@@ -396,7 +396,7 @@ export function FeedPostCard({
           style={css('display:flex;align-items:center;gap:4px;border:none;background:none;padding:6px 2px;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:800;')}
         >
           View details
-          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>chevron_right</span>
         </button>
       </div>
 
@@ -432,7 +432,7 @@ export function FeedPostCard({
           <div style={css('flex:1;min-width:0;display:flex;align-items:center;gap:9px;')}>
             <span style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);color:#B8892B;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:9px;')}>
               {product.rating}
-              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);font-variation-settings:'FILL' 1;")}>star</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);font-variation-settings:'FILL' 1;")}>star</span>
             </span>
             {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:var(--ag-gold-text);')}>Only {product.stock} left</span>}
           </div>
@@ -449,7 +449,7 @@ export function FeedPostCard({
               onClick={onAddToBag}
               style={css('flex:none;height:44px;padding:0 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);white-space:nowrap;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>shopping_bag</span>Add to Bag
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>shopping_bag</span>Add to Bag
             </button>
           ) : (
             <div style={css('flex:none;height:44px;display:flex;align-items:center;gap:5px;padding:5px;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 14px 30px -16px rgba(214,51,108,.85);')}>
@@ -458,7 +458,7 @@ export function FeedPostCard({
                 aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
                 style={css('width:34px;height:34px;flex:none;padding:0;border:none;border-radius:10px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
               >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
               </button>
               <button
                 onClick={() => navigate('/cart')}
@@ -472,7 +472,7 @@ export function FeedPostCard({
                 aria-label="Increase quantity"
                 style={css(`width:34px;height:34px;flex:none;padding:0;border:none;border-radius:10px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${bagQty >= product.stock ? '.45' : '1'};`)}
               >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>add</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#fff;")}>add</span>
               </button>
             </div>
           )}

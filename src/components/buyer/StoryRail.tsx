@@ -30,9 +30,16 @@ const MAX_STORIES = 12;
 /** How many of the newest listings count as "this shop just posted". */
 const NEW_WINDOW = 12;
 
+/**
+ * The rail's own height, hard-coded so it can be reserved before the catalogue
+ * arrives: a 70px ring plus its 2.5px+2.5px gradient border, the 8px gap and two
+ * lines of 11px/1.2 label, over the 2px/10px padding below.
+ */
+const RAIL_HEIGHT = 122;
+
 export function StoryRail() {
   const { follows } = useShop();
-  const { products, boutiques } = useCatalog();
+  const { products, boutiques, loading } = useCatalog();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const stories = useMemo<Story[]>(() => {
@@ -95,7 +102,21 @@ export function StoryRail() {
       .slice(0, MAX_STORIES);
   }, [products, boutiques, follows]);
 
-  if (stories.length === 0) return null;
+  /*
+   * Hold the rail's height while the catalogue is still loading.
+   *
+   * The rail is the first thing on Inspire, and it builds from the same
+   * catalogue query the feed does — so it rendered as nothing, then as 122px of
+   * rings, pushing the tabs and the whole feed down mid-read. Measured at 0.12
+   * CLS, on the one screen people scroll without looking away.
+   *
+   * `loading` distinguishes "not yet" from "genuinely nothing to show": once the
+   * catalogue has landed and produced no stories, the rail collapses as before
+   * rather than leaving an empty band.
+   */
+  if (stories.length === 0) {
+    return loading ? <div aria-hidden="true" style={css(`height:${RAIL_HEIGHT}px;`)} /> : null;
+  }
 
   const badgeColor = (badge: Story['badge']) =>
     badge === 'NEW' ? '#D6336C' : badge === 'OFFERS' ? 'var(--ag-bad-text)' : '#B0863B';

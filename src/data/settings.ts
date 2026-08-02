@@ -102,12 +102,55 @@ export async function saveSettings(patch: Partial<PlatformSettings>, updatedBy?:
  * numbers the policy pages quote, so a slow load can never price a bag at zero.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-let current: PlatformSettings = DEFAULT_SETTINGS;
+/**
+ * Last known settings, kept in localStorage and read back synchronously on the
+ * very first render.
+ *
+ * Without it the app spends the first second or two of every visit on the
+ * compile-time defaults and then swaps to the real row when the fetch lands.
+ * That is visible in two ways:
+ *
+ *   • the maintenance banner is absent from the first paint and then inserted
+ *     at the top of the document, pushing the whole page down ~53px mid-read —
+ *     measured as a layout shift of 0.06 on every screen while it is switched on
+ *   • the delivery fee and free-delivery threshold render at their defaults
+ *     first, so a cart can visibly re-price itself under the buyer
+ *
+ * A stale cached value is harmless: it is one render old at worst, the network
+ * row overwrites it a moment later, and every number it can supply is one the
+ * defaults would have supplied anyway. Pricing that matters is still re-derived
+ * server-side at checkout (`api/_settings.js`), so this can never decide what
+ * someone is actually charged.
+ */
+const CACHE_KEY = 'agx:platform-settings';
+
+function readCache(): PlatformSettings {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    return merge(JSON.parse(raw) as Partial<PlatformSettings>);
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function writeCache(s: PlatformSettings) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(s));
+  } catch {
+    /* private mode / quota — the app just loads from the network as before */
+  }
+}
+
+let current: PlatformSettings = readCache();
+/** Whether `current` is still only a guess (defaults or cache), not the live row. */
+let loadedFromNetwork = false;
 let inflight: Promise<PlatformSettings> | null = null;
 const listeners = new Set<() => void>();
 
 function publish(next: PlatformSettings) {
   current = next;
+  writeCache(next);
   listeners.forEach((l) => l());
 }
 
@@ -119,9 +162,12 @@ export function currentSettings(): PlatformSettings {
 /** Load (once) and cache the platform settings. Safe to call repeatedly. */
 export function loadSettings(force = false): Promise<PlatformSettings> {
   if (inflight) return inflight;
-  if (!force && current !== DEFAULT_SETTINGS) return Promise.resolve(current);
+  // `loadedFromNetwork`, not `current !== DEFAULT_SETTINGS`: with the cache in
+  // place `current` is already populated on the first call, and the old check
+  // would have taken that as "loaded" and never fetched the live row at all.
+  if (!force && loadedFromNetwork) return Promise.resolve(current);
   inflight = fetchSettings()
-    .then((s) => { publish(s); return s; })
+    .then((s) => { loadedFromNetwork = true; publish(s); return s; })
     .finally(() => { inflight = null; });
   return inflight;
 }

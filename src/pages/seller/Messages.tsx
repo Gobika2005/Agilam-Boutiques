@@ -71,7 +71,7 @@ export function Messages() {
       {/* Search */}
       <div style={css('padding:0 20px 10px;')}>
         <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations" style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ag-ink);')} />
         </div>
       </div>
@@ -94,7 +94,7 @@ export function Messages() {
       {rows.length === 0 && (
         <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
           <div style={css('width:78px;height:78px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-crimson);")}>forum</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-crimson);")}>forum</span>
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin-top:16px;")}>
             {search || tab !== 'All' ? 'Nothing here' : 'No messages yet'}
@@ -113,8 +113,8 @@ export function Messages() {
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('display:flex;justify-content:space-between;align-items:center;gap:8px;')}>
                   <span style={css('display:flex;align-items:center;gap:5px;min-width:0;')}>
-                    {m.pinned && <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>push_pin</span>}
-                    {m.fav && <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>}
+                    {m.pinned && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>push_pin</span>}
+                    {m.fav && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>}
                     <span style={css('font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{m.name}</span>
                   </span>
                   <span style={css('font-size:11.5px;color:var(--ag-muted-soft);flex:none;')}>{m.time}</span>
@@ -133,7 +133,7 @@ export function Messages() {
               aria-label="Conversation options"
               style={css('width:34px;height:34px;flex:none;border-radius:10px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);")}>more_vert</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);")}>more_vert</span>
             </button>
 
             {menu === m.id && (
@@ -144,7 +144,7 @@ export function Messages() {
                   { icon: m.unread > 0 ? 'mark_chat_read' : 'mark_chat_unread', label: m.unread > 0 ? 'Mark as read' : 'Mark as unread', fn: () => setPrefs(setReadState(m.id, m.at, m.unread > 0)) },
                 ].map((o) => (
                   <button key={o.label} onClick={() => act(o.fn)} style={css('width:100%;display:flex;align-items:center;gap:10px;padding:10px 11px;border:none;background:none;cursor:pointer;text-align:left;font-family:inherit;border-radius:10px;font-size:13px;font-weight:700;color:var(--ag-ink-2);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>{o.icon}</span>{o.label}
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>{o.icon}</span>{o.label}
                   </button>
                 ))}
               </div>

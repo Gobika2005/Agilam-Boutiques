@@ -278,7 +278,7 @@ export function ChatView({
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
           </button>
           <div style={css('position:relative;flex:none;')}>
             <BoutiqueLogo name={name} src={avatar} size={44} radius={14} />
@@ -291,7 +291,7 @@ export function ChatView({
             </div>
           </div>
           <div style={css('flex:none;display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:11px;padding:6px 10px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:15px;")}>lock</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:15px;")}>lock</span>
             <span className="agx-hide-sm" style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>Secure</span>
           </div>
         </div>
@@ -300,12 +300,12 @@ export function ChatView({
         <div ref={scrollRef} className="agx-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:9px;')}>
           {pending && thread.length === 0 && (
             <div style={css('margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--ag-muted-soft);font-size:13px;font-weight:600;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>chat</span>Starting your chat…
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>chat</span>Starting your chat…
             </div>
           )}
           {live && thread.length === 0 && !pending && (
             <div style={css('margin:auto;text-align:center;color:var(--ag-muted-soft);font-size:13px;font-weight:600;max-width:240px;display:flex;flex-direction:column;align-items:center;gap:10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>waving_hand</span>No messages yet. Say hello 👋
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>waving_hand</span>No messages yet. Say hello 👋
             </div>
           )}
           {thread.length > 0 && (
@@ -322,7 +322,7 @@ export function ChatView({
                 style={css(`max-width:78%;width:250px;align-self:${me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onOrderClick ? 'pointer' : 'default'};`)}
               >
                 <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>receipt_long</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>receipt_long</span>
                   <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:var(--ag-crimson);')}>Enquiry about this order · {order.orderId}</span>
                 </div>
                 <div style={css('display:flex;gap:11px;padding:11px 12px;')}>
@@ -351,7 +351,7 @@ export function ChatView({
                 style={css(`max-width:78%;width:250px;align-self:${me ? 'flex-end' : 'flex-start'};background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onProductClick ? 'pointer' : 'default'};`)}
               >
                 <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ag-border);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>sell</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>sell</span>
                   <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:var(--ag-crimson);')}>Enquiry about this product</span>
                 </div>
                 <div style={css('display:flex;gap:11px;padding:11px 12px;')}>
@@ -377,7 +377,7 @@ export function ChatView({
               <div style={css('display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:3px;')}>
                 <span style={css(`font-size:9.5px;color:${me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</span>
                 {me && (
-                  <span
+                  <span aria-hidden="true"
                     aria-label={peerReadAt && c.createdAt <= peerReadAt ? 'Read' : 'Sent'}
                     style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${peerReadAt && c.createdAt <= peerReadAt ? '#7FE0FF' : 'rgba(255,255,255,.75)'};`)}
                   >
@@ -416,7 +416,7 @@ export function ChatView({
             className="agx-chat-attach"
             style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:var(--ag-surface-2);cursor:${live ? 'pointer' : 'not-allowed'};opacity:${live ? 1 : 0.5};align-items:center;justify-content:center;`)}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:21px;")}>add_photo_alternate</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:21px;")}>add_photo_alternate</span>
           </button>
           <textarea
             ref={inputRef}
@@ -440,7 +440,7 @@ export function ChatView({
             aria-label="Send message"
             style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:linear-gradient(135deg,#E14A7E,#B02454 75%,#8E1C44);cursor:${canSend ? 'pointer' : 'not-allowed'};opacity:${canSend ? 1 : 0.5};display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px -12px rgba(176,36,84,.9);transition:opacity .2s ease;`)}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:20px;")}>send</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:20px;")}>send</span>
           </button>
         </div>
       </div>

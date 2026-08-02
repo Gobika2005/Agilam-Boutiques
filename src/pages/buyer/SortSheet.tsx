@@ -28,7 +28,7 @@ export function SortSheet() {
                 onClick={() => { setSort(s); close(); }}
                 style={css(`display:flex;align-items:center;justify-content:space-between;border:none;background:none;padding:15px 4px;cursor:pointer;font-size:15px;font-weight:${on ? 800 : 600};color:${on ? 'var(--ag-ink)' : 'var(--ag-label)'};border-bottom:1px solid var(--ag-border-soft);`)}
               >
-                {s}<span style={css(`font-family:'Material Symbols Outlined';color:#D6336C;opacity:${on ? 1 : 0};`)}>check_circle</span>
+                {s}<span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:#D6336C;opacity:${on ? 1 : 0};`)}>check_circle</span>
               </button>
             );
           })}

@@ -106,7 +106,7 @@ export function BestSellers() {
           otherwise would be dishonest — say so instead. */}
       {!loading && !anySalesData && PRODUCTS.length > 0 && (
         <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:13px 15px;margin-top:14px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
           <span style={css('font-size:12.5px;color:#7A5C1E;line-height:1.55;')}>
             Not enough orders yet to rank by sales, so this list is ordered by ratings and reviews for now. It will start moving as soon as buyers do.
           </span>
@@ -127,7 +127,7 @@ export function BestSellers() {
           onClick={() => { setInStockOnly((v) => !v); setShown(PAGE); }}
           style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${inStockOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
           In stock only
         </button>
         <button
@@ -135,7 +135,7 @@ export function BestSellers() {
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Filter by price, colour, size
-          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>tune</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>tune</span>
         </button>
       </div>
 

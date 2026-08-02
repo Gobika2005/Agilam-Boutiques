@@ -38,7 +38,7 @@ export function Home() {
   const navigate = useNavigate();
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
-  const { ads } = useLiveAds();
+  const { ads, heroPending } = useLiveAds();
   const { data: topReviews } = useAsync(() => fetchTopReviews(3), []);
   const REVIEWS = topReviews ?? [];
 
@@ -152,6 +152,16 @@ export function Home() {
       <h1 className="agx-sr-only">
         MangaiMart — boutique ethnic wear from across Tamil Nadu
       </h1>
+      {/* The hero's space, held open while we find out whether an ad is live.
+          Same box, same gradient, no creative and no impression — see
+          `heroPending` in useLiveAds for why the ad itself is never restored
+          from storage. */}
+      {heroPending && SLIDES.length === 0 && (
+        <div aria-hidden="true" style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
+          <div style={css('height:clamp(340px,42vw,560px);background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')} />
+        </div>
+      )}
+
       {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
       {SLIDES.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
@@ -175,6 +185,7 @@ export function Home() {
                     priority={i === 0}
                     width={1600}
                     height={900}
+                    sizes="100vw"
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>
@@ -185,7 +196,7 @@ export function Home() {
                       {/* The seller's editable eyebrow tag. */}
                       {h.eyebrow && (
                         <div style={css('display:inline-flex;align-items:center;gap:7px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:6px 13px;border-radius:999px;backdrop-filter:blur(4px);')}>
-                          <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
+                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
                           <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
                         </div>
                       )}
@@ -202,7 +213,7 @@ export function Home() {
                       </h2>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
                       <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
-                        {h.cta}<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+                        {h.cta}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -253,7 +264,7 @@ export function Home() {
                 <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
                   <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
                   <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
-                  <span style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
+                  <span aria-hidden="true" style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
                 </span>
               </span>
             </span>
@@ -271,7 +282,7 @@ export function Home() {
           <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
             <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
               <span style={css('display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:linear-gradient(140deg,var(--ag-surface-2),var(--ag-surface-3));')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-crimson);")}>grid_view</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-crimson);")}>grid_view</span>
               </span>
             </span>
           </span>
@@ -293,7 +304,7 @@ export function Home() {
             <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
               <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
               <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
                 <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>New</span>
               </div>
               <WishButton
@@ -309,7 +320,7 @@ export function Home() {
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
                 <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
                 </span>
               </div>
             </div>
@@ -346,7 +357,7 @@ export function Home() {
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
                 <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
                   <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {reviewsF(p.reviews)}</span>
                 </span>
               </div>
@@ -377,17 +388,17 @@ export function Home() {
                 <div style={css('min-width:0;flex:1;')}>
                   <div style={css('display:flex;align-items:center;gap:5px;')}>
                     <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
-                    {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
+                    {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                   </div>
                   <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{b.city}
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{b.city}
                   </div>
                 </div>
               </div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
                 <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>{b.products} styles</div>
                 <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
                 </div>
               </div>
             </div>
@@ -431,10 +442,14 @@ export function Home() {
                   </blockquote>
 
                   {/* Stars as glyphs rather than characters, so the row lines up. */}
-                  <div style={css('display:flex;align-items:center;gap:2px;margin-top:18px;')} aria-label={`${r.rating} out of 5 stars`}>
+                  {/* role="img" so the label is actually announced — ARIA
+                      ignores aria-label on a generic <div>, so the rating was
+                      read as five repetitions of the word "star". */}
+                  <div role="img" style={css('display:flex;align-items:center;gap:2px;margin-top:18px;')} aria-label={`${r.rating} out of 5 stars`}>
                     {[1, 2, 3, 4, 5].map((i) => (
                       <span
                         key={i}
+                        aria-hidden="true"
                         className={i <= r.rating ? 'agx-heart agx-heart-on' : 'agx-heart'}
                         style={css(`font-size:17px;color:${i <= r.rating ? 'var(--ag-star)' : '#E8D7DF'};`)}
                       >
@@ -457,7 +472,7 @@ export function Home() {
                     </span>
                     {r.verified_purchase && (
                       <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
                       </span>
                     )}
                   </figcaption>

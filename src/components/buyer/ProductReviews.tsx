@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { imageUrl } from '@/lib/imageUrl';
 import { useAuth } from '@/auth/AuthContext';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchReviews, submitReview, uploadReviewImage, type ReviewRow } from '@/data/reviews';
@@ -134,7 +135,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             {summary.bars.map((r) => (
               <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
                 <span style={css('font-size:11px;font-weight:700;color:var(--ag-muted);width:10px;')}>{r.stars}</span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
                 <span style={css('flex:1;height:7px;border-radius:4px;background:var(--ag-border-soft);overflow:hidden;')}>
                   <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
                 </span>
@@ -149,7 +150,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
         onClick={onWriteClick}
         style={css('height:44px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>
         {myReview ? 'Edit your review' : signedIn ? 'Write a review' : 'Sign in to write a review'}
       </button>
 
@@ -187,7 +188,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                     aria-label="Remove photo"
                     style={css('position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(36,16,25,.72);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;')}
                   >
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>close</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>close</span>
                   </button>
                 </div>
               ))}
@@ -197,7 +198,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                   disabled={uploadingCount > 0}
                   style={css(`width:56px;height:56px;flex:none;border:1.5px dashed var(--ag-border);border-radius:10px;background:var(--ag-surface);color:var(--ag-muted);cursor:${uploadingCount > 0 ? 'wait' : 'pointer'};display:flex;align-items:center;justify-content:center;`)}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>{uploadingCount > 0 ? 'hourglass_top' : 'add_a_photo'}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>{uploadingCount > 0 ? 'hourglass_top' : 'add_a_photo'}</span>
                 </button>
               )}
             </div>
@@ -249,7 +250,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                     <span style={css('font-weight:700;font-size:14px;')}>{name}</span>
                     {rv.verified_purchase && (
                       <span style={css('display:inline-flex;align-items:center;gap:3px;background:var(--ag-good-bg);color:var(--ag-good);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>verified</span>Verified
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>verified</span>Verified
                       </span>
                     )}
                     {rv.buyer_id === buyerId && (
@@ -265,7 +266,9 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                 <div style={css('display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;')}>
                   {rv.images.map((src) => (
                     <a key={src} href={src} target="_blank" rel="noreferrer noopener" style={css('display:block;width:64px;height:64px;border-radius:11px;overflow:hidden;flex:none;')}>
-                      <img src={src} alt="Photo from a buyer's review" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
+                      {/* The link still points at the full upload — only the
+                          64px thumbnail is downscaled. */}
+                      <img src={imageUrl(src, 192)} alt="Photo from a buyer's review" width={64} height={64} loading="lazy" decoding="async" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
                     </a>
                   ))}
                 </div>
@@ -273,7 +276,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
               {rv.seller_reply && (
                 <div style={css('margin-top:12px;margin-left:14px;padding:12px 14px;background:var(--ag-surface-2);border-left:3px solid #D6336C;border-radius:0 12px 12px 0;')}>
                   <div style={css('display:flex;align-items:center;gap:6px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>storefront</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-crimson);")}>storefront</span>
                     <span style={css('font-weight:800;font-size:12px;color:var(--ag-crimson);')}>Reply from the boutique</span>
                     {rv.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:11px;')}>· {timeAgo(rv.seller_reply_at)}</span>}
                   </div>

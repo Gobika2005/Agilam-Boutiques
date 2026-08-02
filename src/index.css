@@ -209,6 +209,21 @@ select:-webkit-autofill {
 /* ---------- v2 elevation system ---------- */
 .agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
+/* `#main-content` is the target of the skip link in AppShell. It carries
+   tabIndex={-1} so the jump actually moves focus rather than only scrolling —
+   without that, the next Tab would continue from the header again. */
+#main-content:focus, #main-content:focus-visible { outline:none; }
+.agx-skip-link {
+  /* fixed, not absolute: the link has to appear at the top of the *viewport*
+     when it takes focus, and a page scrolled past the header would leave an
+     absolutely-positioned one off screen. */
+  position:fixed; left:12px; top:-100px; z-index:100;
+  padding:12px 18px; border-radius:0 0 14px 14px;
+  background:#B02454; color:#fff; font-weight:800; font-size:14px;
+  text-decoration:none; box-shadow:0 12px 30px -12px rgba(0,0,0,.6);
+  transition:top .18s ease;
+}
+.agx-skip-link:focus { top:0; }
 .agx-lift { transition: transform .4s cubic-bezier(.2,.7,.2,1), box-shadow .4s ease; }
 .agx-lift:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -34px rgba(107,20,54,.55) !important; }
 /* Home "Shop by collection": ringed circles. The ring lifts and brightens on
@@ -366,6 +381,10 @@ body.agx-photo-open { overflow: hidden; }
    Messages behind a notice — covering navigation is worse than covering
    content. Lift it clear at every width, since the dock is now everywhere. */
 .agx-launch-notice { bottom: 104px !important; }
+/* The product page stacks a Chat / Add to Bag bar under the dock, so 104px lands
+   the notice on top of the piece's own title and its carousel dots — the two
+   things a buyer is looking at. The toast already steps up here; match it. */
+@media (max-width: 899px) { body:has(.agx-pdp-root) .agx-launch-notice { bottom: 174px !important; } }
 /* The chat is `position:fixed; inset:0`, so it is sized to the *layout* viewport
    — which iOS Safari does not shrink when the on-screen keyboard opens. The
    composer therefore stayed at the bottom of the page, underneath the keyboard,
@@ -489,6 +508,15 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   .agx-app-header { gap: 10px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
   .agx-brand-mark, .agx-brand-mark-btn { height: 46px !important; }
   .agx-brand-mark { width: 150px !important; }
+}
+/* 320px phones (an SE-class screen, still a real share of Indian Android). The
+   150px wordmark plus a 16px gap, the bell, the search icon and the avatar —
+   three 44px targets and their gaps — came to 346px, so the account button hung
+   26px past the right edge and the whole page scrolled sideways. Trimming the
+   wordmark and the gaps is enough; the tap targets stay 44px. */
+@media (max-width: 359px) {
+  .agx-app-header { gap: 6px !important; padding-left: 10px !important; padding-right: 10px !important; }
+  .agx-brand-mark { width: 116px !important; }
 }
 
 /* Dark mode: the wordmark art is dark lettering on transparency, which
@@ -679,6 +707,42 @@ img {
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
+}
+
+/* ---------- Icon boxes: hold the glyph's space before the font arrives -------
+ *
+ * An icon here is *ligature text*: the span contains the literal word
+ * "shopping_bag" and the font draws a picture over it. Until that font lands the
+ * browser lays the word out in whatever it falls back to — 155px of text where a
+ * 24px glyph belongs — and when the font swaps in, every one of them snaps to a
+ * square and the page re-flows around it. Measured on a throttled 4G profile
+ * that was the single largest source of layout shift on the site: the home
+ * screen's header alone lost 28px of height mid-load, moving the entire page up
+ * under the reader, for a CLS of 0.34 on one shift.
+ *
+ * `display=block` on the Google Fonts URL already stops the *word* being
+ * painted; it cannot stop the word being measured.
+ *
+ * The attribute selector is what makes this reach every icon: the design writes
+ * `font-family:'Material Symbols Outlined'` into ~450 inline `style` strings
+ * rather than a shared class, so matching on that substring is the only handle
+ * that covers all of them without touching every call site. A Material Symbols
+ * glyph is exactly 1em square, so a 1em box is the right reservation, and
+ * `overflow:hidden` clips the fallback word inside it in the meantime.
+ *
+ * Only box geometry is set — no colour, size or position — so an icon that
+ * positions itself inline (absolutely-placed badges, the carousel arrows) keeps
+ * doing so; those properties are on the element's own inline style, which wins.
+ */
+.msymbol,
+span[style*="Material Symbols Outlined"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  overflow: hidden;
 }
 
 /* Visually hidden, still announced. Used where a screen needs a heading or a

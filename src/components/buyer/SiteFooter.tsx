@@ -75,19 +75,19 @@ export function SiteFooter() {
 
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:18px;font-size:13px;opacity:.9;')}>
               <a href={CONTACT_LINKS.mail} style={css('color:#fff;display:flex;align-items:flex-start;gap:9px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>mail</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>mail</span>
                 {COMPANY.email}
               </a>
               <a href={CONTACT_LINKS.call} style={css('color:#fff;display:flex;align-items:flex-start;gap:9px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>call</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>call</span>
                 {COMPANY.phone}
               </a>
               <div style={css('display:flex;align-items:flex-start;gap:9px;line-height:1.55;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>location_on</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>location_on</span>
                 {COMPANY_ADDRESS_LINE}
               </div>
               <div style={css('display:flex;align-items:flex-start;gap:9px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>schedule</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>schedule</span>
                 {COMPANY.supportHours}
               </div>
             </div>
@@ -104,7 +104,7 @@ export function SiteFooter() {
                     title={s.label}
                     style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;')}
                   >
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#F4D9A6;")}>{s.icon}</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#F4D9A6;")}>{s.icon}</span>
                   </a>
                 ))}
               </div>

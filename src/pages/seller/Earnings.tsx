@@ -184,7 +184,7 @@ export function Earnings() {
           </div>
           {deltaPct != null && (
             <div style={css('display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px;font-weight:700;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{deltaPct >= 0 ? 'trending_up' : 'trending_down'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{deltaPct >= 0 ? 'trending_up' : 'trending_down'}</span>
               {deltaPct >= 0 ? '+' : ''}{deltaPct}% vs last month
             </div>
           )}
@@ -205,7 +205,7 @@ export function Earnings() {
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery</div>
           </div>
 
@@ -243,7 +243,7 @@ export function Earnings() {
       {/* Offline takings — collected by the seller, not settled by MangaiMart --- */}
       {offline.length > 0 && (
         <div style={css('margin-top:14px;background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>storefront</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>storefront</span>
           <span style={css('flex:1;min-width:200px;font-size:13px;font-weight:600;color:#2C6249;line-height:1.5;')}>
             You also collected <strong>{fmt(offlineCollected)}</strong> from {offline.length} walk-in bill{offline.length > 1 ? 's' : ''} this month. MangaiMart charges no commission on offline sales, so this is yours in full and is not part of the payout above.
           </span>
@@ -285,12 +285,12 @@ export function Earnings() {
               onClick={() => navigate('/seller/onboarding')}
               style={css('align-self:flex-start;margin-top:4px;border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Change payout details
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Change payout details
             </button>
           </div>
         ) : (
           <div style={css('display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);")}>account_balance</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);")}>account_balance</span>
             <span style={css('flex:1;min-width:180px;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
               No bank account on file — MangaiMart settles earnings by bank transfer only, so we cannot pay you until you add one.
             </span>

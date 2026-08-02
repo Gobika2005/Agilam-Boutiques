@@ -350,7 +350,7 @@ export function ImageZoom({
           </div>
         </div>
         <button onClick={onClose} aria-label="Close viewer" style={ctlStyle()}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>close</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>close</span>
         </button>
       </div>
 
@@ -427,12 +427,12 @@ export function ImageZoom({
           <>
             {index > 0 && (
               <button {...swallow} onClick={(e) => { e.stopPropagation(); go(index - 1); }} aria-label="Previous photo" style={{ ...ctlStyle(), ...css('position:absolute;left:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_left</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_left</span>
               </button>
             )}
             {index < images.length - 1 && (
               <button {...swallow} onClick={(e) => { e.stopPropagation(); go(index + 1); }} aria-label="Next photo" style={{ ...ctlStyle(), ...css('position:absolute;right:clamp(8px,2vw,20px);top:50%;transform:translateY(-50%);') }}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>chevron_right</span>
               </button>
             )}
           </>
@@ -461,7 +461,7 @@ export function ImageZoom({
         style={css('flex:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px clamp(12px,3vw,24px) calc(18px + env(safe-area-inset-bottom));')}
       >
         <button onClick={() => zoomTo(scale - STEP)} disabled={scale <= MIN} aria-label="Zoom out" style={ctlStyle(scale <= MIN)}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>zoom_out</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>zoom_out</span>
         </button>
         <button
           onClick={reset}
@@ -472,7 +472,7 @@ export function ImageZoom({
           {pct}%
         </button>
         <button onClick={() => zoomTo(scale + STEP)} disabled={scale >= MAX} aria-label="Zoom in" style={ctlStyle(scale >= MAX)}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>zoom_in</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>zoom_in</span>
         </button>
       </div>
     </div>

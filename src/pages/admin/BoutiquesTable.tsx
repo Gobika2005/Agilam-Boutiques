@@ -121,7 +121,7 @@ export function BoutiquesTable() {
                       title={b.status === 'approved' ? 'Suspend boutique' : 'Activate boutique'}
                       style={css(`width:34px;height:34px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:none;background:${b.status === 'approved' ? 'var(--ag-bad-bg)' : 'var(--ag-good-bg)'};color:${b.status === 'approved' ? 'var(--ag-danger-text)' : 'var(--ag-good-text)'};`)}
                     >
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{b.status === 'approved' ? 'pause' : 'check'}</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{b.status === 'approved' ? 'pause' : 'check'}</span>
                     </button>
                   </div>
                 </div>

@@ -224,7 +224,7 @@ function ReviewDrawer({
               onClick={onClose}
               style={css('width:36px;height:36px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>close</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>close</span>
             </button>
           </div>
         </div>

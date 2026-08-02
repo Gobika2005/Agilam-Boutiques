@@ -88,7 +88,7 @@ export function FloatingBag() {
                 (i === 0 ? '' : 'margin-left:-15px;'),
             )}
           >
-            <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+            <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" sizes="56px" />
           </span>
         ))}
         {hidden > 0 && (
@@ -123,7 +123,7 @@ export function FloatingBag() {
             'box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 20px -10px rgba(176,36,84,.95);',
         )}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </span>
     </button>
   );

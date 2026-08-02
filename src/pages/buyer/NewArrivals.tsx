@@ -128,7 +128,7 @@ export function NewArrivals() {
           onClick={() => { setInStockOnly((v) => !v); setShown(PAGE); }}
           style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${inStockOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${inStockOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${inStockOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>inventory_2</span>
           In stock only
         </button>
         <button
@@ -136,7 +136,7 @@ export function NewArrivals() {
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Browse the full catalogue
-          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
         </button>
       </div>
 

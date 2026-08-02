@@ -195,7 +195,7 @@ export function Billing() {
 
           <div className="agx-no-print" style={css('display:flex;flex-direction:column;gap:10px;margin-top:16px;width:100%;max-width:420px;')}>
             <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:15px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:8px;`)}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>share</span>{sharing ? 'Preparing…' : 'Share Bill on WhatsApp'}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>share</span>{sharing ? 'Preparing…' : 'Share Bill on WhatsApp'}
             </button>
             <button onClick={downloadPdf} style={css('width:100%;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;')}>Download PDF</button>
             <button onClick={() => navigate(`/seller/orders/${encodeURIComponent(receipt.id)}`)} style={css('width:100%;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;')}>View in Orders</button>
@@ -229,7 +229,7 @@ export function Billing() {
                   <div style={css('font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
                   <div style={css('font-size:11.5px;color:var(--ag-muted);')}>{fmt(Number(p.price))} · {p.stock} in stock</div>
                 </div>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>add_circle</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>add_circle</span>
               </div>
             ))}
             {filtered.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;padding:6px 2px;')}>No products found.</div>}
@@ -263,7 +263,7 @@ export function Billing() {
                   </div>
                   <span style={css('font-weight:800;font-size:13.5px;color:var(--ag-crimson);width:74px;text-align:right;')}>{fmt(l.price * l.qty)}</span>
                   <button onClick={() => removeLine(l.key)} style={css('width:28px;height:28px;border:none;background:none;cursor:pointer;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-danger-text);")}>close</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-danger-text);")}>close</span>
                   </button>
                 </div>
               ))}

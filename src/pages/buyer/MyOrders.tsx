@@ -94,7 +94,7 @@ export function MyOrders() {
           disabled={refreshing}
           style={css(`display:flex;align-items:center;gap:7px;height:40px;padding:0 15px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:${refreshing ? 'wait' : 'pointer'};opacity:${refreshing ? 0.65 : 1};`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{refreshing ? 'sync' : 'refresh'}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{refreshing ? 'sync' : 'refresh'}</span>
           {refreshing ? 'Refreshing' : 'Refresh'}
         </button>
       </div>
@@ -103,7 +103,7 @@ export function MyOrders() {
           might be behind what the boutique has already done. */}
       {error && (
         <div style={css('display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:12px 14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:14px;color:#7A6450;font-size:12.5px;line-height:1.5;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:19px;flex:none;")}>cloud_off</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:19px;flex:none;")}>cloud_off</span>
           {error}
         </div>
       )}
@@ -138,7 +138,7 @@ export function MyOrders() {
           {header}
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 30px;')}>
             <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-crimson);")}>receipt_long</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-crimson);")}>receipt_long</span>
             </div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>
               {empty ? 'No orders yet' : `Nothing ${tab === 'active' ? 'in progress' : tab}`}
@@ -195,7 +195,7 @@ export function MyOrders() {
                   style={css(`display:flex;gap:14px;margin-top:12px;${item?.pid ? 'cursor:pointer;' : ''}`)}
                 >
                   <div className="agx-thumb-media" style={css(`width:72px;background:${TONES[item?.tone ?? 0]};`)}>
-                    <ImageSlot src={item ? productById(item.pid)?.image : undefined} placeholder={item?.title} className="agx-prod-fill" />
+                    <ImageSlot src={item ? productById(item.pid)?.image : undefined} placeholder={item?.title} className="agx-prod-fill" sizes="72px" />
                   </div>
                   <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;')}>
                     <div style={css('font-weight:800;font-size:15px;line-height:1.2;')}>
@@ -205,7 +205,7 @@ export function MyOrders() {
                     {/* What the buyer actually wants to know at a glance: when
                         it should arrive, or when it did. */}
                     <div style={css(`display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:6px;color:${delivered ? 'var(--ag-good)' : rejected ? '#C0455E' : 'var(--ag-crimson)'};`)}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>
                         {delivered ? 'check_circle' : rejected ? 'cancel' : 'schedule'}
                       </span>
                       {delivered
@@ -220,14 +220,14 @@ export function MyOrders() {
                     </div>
                     {owes && (
                       <div style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:5px;color:#B0862B;')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>payments</span>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>payments</span>
                         Pay {fmt(o.total)} in cash on delivery
                       </div>
                     )}
                     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:8px;')}>
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(o.total)}</span>
                       <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ag-muted);')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>event</span>{formatOrderDate(o.placedAt)}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>event</span>{formatOrderDate(o.placedAt)}
                       </span>
                     </div>
                   </div>
@@ -241,7 +241,7 @@ export function MyOrders() {
                       disabled={cancelling === o.orderNumber}
                       style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
                     >
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
                       {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}
                     </button>
                   )}
@@ -249,13 +249,13 @@ export function MyOrders() {
                     onClick={(e) => { e.stopPropagation(); chatWithBoutique(o); }}
                     style={css('flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/orders/${encodeURIComponent(o.id)}/track`); }}
                     style={css('flex:1;min-width:140px;height:42px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>
                     {delivered || rejected ? 'Order details' : 'Track order'}
                   </button>
                 </div>

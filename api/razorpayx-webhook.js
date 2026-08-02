@@ -41,7 +41,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!webhookSecret) return res.status(200).json({ ok: true, skipped: 'webhook not configured' });
+  /*
+   * No secret configured means we cannot authenticate a caller, so there is no
+   * caller we should answer in detail. This used to reply
+   * `200 {"skipped":"webhook not configured"}` to anyone who asked, publishing
+   * the payout integration's configuration state to the internet. RazorpayX
+   * itself only ever reaches this endpoint once the secret exists, so the
+   * friendly body was read by nobody but a prober. 401 is both the honest
+   * status and the quiet one; the reason still goes to the function log, where
+   * an operator debugging the wiring will actually look.
+   */
+  if (!webhookSecret) {
+    console.warn('razorpayx-webhook: RAZORPAYX_WEBHOOK_SECRET is not set; rejecting delivery');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   let raw;
   try {

@@ -1,4 +1,5 @@
 import { css } from '@/lib/css';
+import { imageUrl } from '@/lib/imageUrl';
 
 /**
  * A boutique's shop logo, with a graceful monogram fallback.
@@ -40,9 +41,15 @@ export function BoutiqueLogo({
     >
       {src ? (
         <img
-          src={src}
+          // A logo never paints larger than `size`, so ask for exactly that at
+          // 3× for the densest phone screens rather than pulling the seller's
+          // original upload — these render several to a row in the directory.
+          src={imageUrl(src, size * 3)}
           alt={`${name} logo`}
+          width={size}
+          height={size}
           loading="lazy"
+          decoding="async"
           style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--ag-surface);')}
         />
       ) : (

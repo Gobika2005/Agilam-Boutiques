@@ -576,7 +576,7 @@ export function SellerOnboarding() {
                     onClick={() => reachable && goTo(s.n)}
                     style={css(`width:30px;height:30px;flex:none;border-radius:50%;border:1.5px solid ${on ? '#fff' : 'rgba(255,255,255,.4)'};background:${on ? '#fff' : done ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.1)'};color:${on ? '#B02454' : '#fff'};font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;cursor:${reachable ? 'pointer' : 'default'};opacity:${reachable ? 1 : 0.55};font-family:inherit;`)}
                   >
-                    {done && !on ? <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>check</span> : i + 1}
+                    {done && !on ? <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>check</span> : i + 1}
                   </button>
                   {i < ALL_STEPS.length - 1 && <span style={css(`width:18px;height:2px;border-radius:2px;background:${done ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.2)'};`)} />}
                 </div>
@@ -590,7 +590,7 @@ export function SellerOnboarding() {
       <div style={css('max-width:900px;margin:0 auto;padding:22px clamp(16px,4vw,32px) 0;')}>
         {isResubmission && step === 1 && (
           <div style={css('background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:14px 16px;margin-bottom:16px;display:flex;gap:11px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#B9862F;")}>edit_note</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#B9862F;")}>edit_note</span>
             <div style={css('font-size:13px;color:var(--ag-gold-text);font-weight:600;line-height:1.5;')}>
               Our team asked for a few changes. Update the details below and submit again — everything you already entered is filled in.
             </div>
@@ -599,7 +599,7 @@ export function SellerOnboarding() {
 
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:16px;')}>
           <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:23px;")}>{active.icon}</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:23px;")}>{active.icon}</span>
           </span>
           <div>
             <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
@@ -665,7 +665,7 @@ export function SellerOnboarding() {
                     <img src={form.logoUrl} alt="Boutique logo" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
-                      <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'logo' ? 'progress_activity' : 'add_a_photo'}</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'logo' ? 'progress_activity' : 'add_a_photo'}</span>
                       <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Logo *</span>
                     </>
                   )}
@@ -679,7 +679,7 @@ export function SellerOnboarding() {
                     <img src={form.coverUrl} alt="Boutique cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
-                      <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'cover' ? 'progress_activity' : 'wallpaper'}</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'cover' ? 'progress_activity' : 'wallpaper'}</span>
                       <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Cover image</span>
                     </>
                   )}
@@ -846,7 +846,7 @@ export function SellerOnboarding() {
               : busy
                 ? step === 0 ? 'Creating account…' : 'Saving…'
                 : step === 0 ? 'Create account & continue' : step === 7 ? (editMode ? 'Save changes' : 'Submit for verification') : 'Save & continue'}
-            {!busy && !uploading && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? (editMode ? 'check' : 'send') : 'arrow_forward'}</span>}
+            {!busy && !uploading && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? (editMode ? 'check' : 'send') : 'arrow_forward'}</span>}
           </button>
         </div>
       </div>
@@ -946,7 +946,7 @@ function ReviewStep({
     <div style={css('display:flex;flex-direction:column;gap:14px;')}>
       {incomplete.length > 0 && (
         <div style={css('background:var(--ag-surface-2);border:1px solid #F2C9D3;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);")}>error</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);")}>error</span>
           <div style={css('font-size:13px;color:#8E2B3C;font-weight:600;line-height:1.5;')}>
             {incomplete.length} step{incomplete.length > 1 ? 's are' : ' is'} still incomplete:{' '}
             {incomplete.map((s) => s.title).join(', ')}. Fix {incomplete.length > 1 ? 'them' : 'it'} before submitting.
@@ -963,7 +963,7 @@ function ReviewStep({
               onClick={() => onEdit(g.step)}
               style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
             </button>
           </div>
           <div style={css('margin-top:10px;display:flex;flex-direction:column;gap:8px;')}>
@@ -978,7 +978,7 @@ function ReviewStep({
       ))}
 
       <div style={css('background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
         <div style={css('font-size:13px;color:#2C6249;font-weight:600;line-height:1.5;')}>
           {editMode
             ? 'Edit any section above, then Save changes. Your boutique stays live and your listings are unaffected — no re-approval needed.'

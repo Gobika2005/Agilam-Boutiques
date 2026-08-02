@@ -24,7 +24,7 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { err
     return (
       <div style={css('max-width:560px;margin:40px auto;background:var(--ag-surface);border-radius:18px;padding:28px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
         <div style={css('width:52px;height:52px;border-radius:15px;background:var(--ag-bad-bg);display:flex;align-items:center;justify-content:center;')}>
-          <span translate="no" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-bad-text);")}>error</span>
+          <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-bad-text);")}>error</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin-top:14px;")}>This page hit an error</div>
         <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;line-height:1.5;')}>

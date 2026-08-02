@@ -66,7 +66,7 @@ function SellerHeaderActions() {
         title="Search"
         style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>search</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>search</span>
       </button>
       <NotificationBellMenu viewAllTo="/seller/notifications" orderBasePath="/seller" />
     </>
@@ -88,7 +88,7 @@ function VerificationBanner() {
 
   return (
     <div style={css(`background:${b.bg};border:1px solid ${b.border};border-radius:16px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;`)}>
-      <span style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${b.accent};`)}>{b.icon}</span>
+      <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${b.accent};`)}>{b.icon}</span>
       <span style={css(`flex:1;min-width:200px;font-size:13px;font-weight:600;line-height:1.5;color:${b.fg};`)}>{b.text}</span>
       <button
         onClick={() => navigate(b.to)}

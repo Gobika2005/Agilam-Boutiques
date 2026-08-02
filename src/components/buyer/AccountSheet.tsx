@@ -133,7 +133,7 @@ export function AccountSheet({
         style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>{view === 'code' ? 'mark_email_read' : 'account_circle'}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>{view === 'code' ? 'mark_email_read' : 'account_circle'}</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>
           {view === 'code' ? 'Enter the code' : mode === 'create' ? 'Create your account' : title ?? 'Sign in to sync'}
@@ -190,7 +190,7 @@ export function AccountSheet({
               style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;opacity:${busy ? 0.7 : 1};`)}
             >
               {busy ? 'Please wait…' : password ? (mode === 'create' ? 'Create account' : 'Sign in') : 'Email me a code'}
-              {!busy && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{password ? 'arrow_forward' : 'mail'}</span>}
+              {!busy && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{password ? 'arrow_forward' : 'mail'}</span>}
             </button>
 
             <div style={css('text-align:center;font-size:13.5px;color:var(--ag-muted);margin-top:14px;')}>

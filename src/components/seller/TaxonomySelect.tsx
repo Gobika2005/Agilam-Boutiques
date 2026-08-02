@@ -173,7 +173,7 @@ export function TaxonomySelect({
                 <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>Select {kindLabel}…</span>
               )}
             </span>
-            <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;transition:transform .15s;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+            <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;transition:transform .15s;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
           </button>
 
           {open && (
@@ -212,7 +212,7 @@ export function TaxonomySelect({
                         <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ag-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
                           {o.name}{o.note ? ` · ${o.note}` : ''}
                         </span>
-                        {o.name === value && <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#D6336C;")}>check</span>}
+                        {o.name === value && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#D6336C;")}>check</span>}
                       </button>
                     ))
                   )}
@@ -227,7 +227,7 @@ export function TaxonomySelect({
                     onClick={() => { setAdding(true); setDraft(query.trim()); setOpen(false); setQuery(''); }}
                     style={css('width:100%;display:flex;align-items:center;gap:9px;padding:12px;border:none;border-top:1px solid var(--ag-border-soft);background:none;cursor:pointer;font-family:inherit;text-align:left;')}
                   >
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>add_circle</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>add_circle</span>
                     <span style={css('font-size:13px;font-weight:800;color:var(--ag-crimson);')}>
                       {query.trim() ? `Request “${query.trim()}”` : `Add a new ${kindLabel}`}
                     </span>
@@ -296,7 +296,7 @@ export function TaxonomySelect({
               onClick={() => { setAdding(false); setDraft(''); }}
               style={css('flex:none;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:11px;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-muted-soft);")}>close</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-muted-soft);")}>close</span>
             </button>
           </div>
           <span style={css(HINT)}>
@@ -307,14 +307,14 @@ export function TaxonomySelect({
 
       {isPending && !adding && (
         <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.5;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>schedule</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>schedule</span>
           Awaiting approval — your product still sells under this name; buyers will be able to browse by it once we approve.
         </span>
       )}
 
       {rejected && !adding && (
         <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-bad-text);line-height:1.5;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>cancel</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>cancel</span>
           Not approved{rejected.review_note ? ` — ${rejected.review_note}` : ''}. Please pick the closest option instead.
         </span>
       )}

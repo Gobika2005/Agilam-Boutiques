@@ -288,7 +288,7 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
             </div>
 
             <div style={css('display:flex;align-items:center;gap:12px;margin-top:14px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>image</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>image</span>
               <input
                 type="range"
                 min={1}
@@ -299,7 +299,7 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
                 onChange={(e) => setZoom(Number(e.target.value))}
                 style={css('flex:1;accent-color:#D6336C;height:24px;')}
               />
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>image</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>image</span>
             </div>
             <div style={css('text-align:center;color:var(--ag-muted-soft);font-size:11.5px;font-weight:700;margin-top:2px;')}>
               Drag to reposition · pinch or slide to zoom

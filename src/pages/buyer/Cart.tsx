@@ -48,7 +48,7 @@ export function Cart() {
               {items.map((c) => (
                 <div key={c.id} style={css('display:flex;gap:14px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.5);')}>
                   <div className="agx-thumb-media agx-zoom" style={css(`width:96px;border-radius:14px;background:${TONES[c.tone]};`)}>
-                    <ImageSlot src={c.image} placeholder={c.title} className="agx-prod-fill" />
+                    <ImageSlot src={c.image} placeholder={c.title} className="agx-prod-fill" sizes="96px" />
                   </div>
                   <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;')}>
                     <div style={css('display:flex;justify-content:space-between;gap:10px;')}>
@@ -62,7 +62,7 @@ export function Cart() {
                         )}
                       </div>
                       <button onClick={() => removeCart(c.id)} aria-label={`Remove ${c.title} from bag`} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted-soft);padding:0;height:fit-content;')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>delete</span>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>delete</span>
                       </button>
                     </div>
                     <div style={css('flex:1;min-height:12px;')} />
@@ -83,7 +83,7 @@ export function Cart() {
                 </div>
               ))}
               <button onClick={() => navigate('/')} style={css('align-self:flex-start;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:4px 0;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>Continue shopping
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>Continue shopping
               </button>
             </div>
 
@@ -92,16 +92,16 @@ export function Cart() {
 
               {coupon && (
                 <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:var(--ag-good-bg);border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified</span>
                   <div style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-good-text);')}>{appliedCoupon} applied</div>
                   <button onClick={removeCoupon} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted);font-size:12px;font-weight:700;')}>Remove</button>
                 </div>
               )}
 
               <button onClick={() => navigate('/coupons', { state: { from: '/cart' } })} style={css('width:100%;margin-top:13px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
                 <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>{coupon ? 'Change coupon' : 'View coupons & offers'}</span>
-                <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
               </button>
 
               <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:18px;font-size:14px;')}>
@@ -119,14 +119,14 @@ export function Cart() {
               </div>
 
               <button onClick={() => navigate('/checkout')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-                Proceed to checkout<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+                Proceed to checkout<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
               </button>
             </div>
           </div>
         ) : (
           <div style={css('text-align:center;padding:60px 20px;')}>
             <div style={css('width:88px;height:88px;margin:0 auto;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>shopping_bag</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>shopping_bag</span>
             </div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:20px;")}>Your bag is empty</div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;')}>Discover beautiful pieces from India&apos;s finest boutiques.</div>

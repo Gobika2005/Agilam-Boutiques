@@ -170,7 +170,7 @@ export function StoryViewer({
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('display:flex;align-items:center;gap:5px;')}>
               <span style={css('font-weight:800;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{story.name}</span>
-              {story.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#7FC4F5;flex:none;")}>verified</span>}
+              {story.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#7FC4F5;flex:none;")}>verified</span>}
               {story.badge && (
                 <span className="agx-eyebrow" style={css('font-size:7.5px;color:#F4D9A6;border:1px solid rgba(244,217,166,.5);border-radius:999px;padding:2px 7px;flex:none;')}>
                   {story.badge}
@@ -186,7 +186,7 @@ export function StoryViewer({
             aria-label="Close stories"
             style={css('width:38px;height:38px;flex:none;border:none;border-radius:12px;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>close</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>close</span>
           </button>
         </div>
       </div>
@@ -210,7 +210,7 @@ export function StoryViewer({
           </span>
           <span style={css('flex:none;display:flex;align-items:center;gap:6px;height:42px;padding:0 16px;border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13.5px;')}>
             View
-            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_forward</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_forward</span>
           </span>
         </button>
       </div>

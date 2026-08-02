@@ -51,10 +51,25 @@ export type CouponInput = {
   active?: boolean;
 };
 
+/**
+ * What a buyer may read.
+ *
+ * Migration 0058 revokes the blanket SELECT on `coupons` and grants exactly
+ * this list to `anon` and `authenticated`, so asking for anything else here
+ * fails the whole query with 42501 rather than quietly over-fetching. The three
+ * withheld columns are `created_by` (an internal auth user id), `usage_limit`
+ * and `used_count` (which together tell a stranger how many redemptions of a
+ * limited offer are left to race for).
+ */
 const BASE_COLUMNS =
-  'id, code, boutique_id, type, off, min_subtotal, max_discount, description, expires_at, active, created_by, created_at, updated_at';
-/** Adds the redemption-limit columns from migration 0049. */
-const COLUMNS = `${BASE_COLUMNS}, usage_limit, used_count`;
+  'id, code, boutique_id, type, off, min_subtotal, max_discount, description, expires_at, active, created_at, updated_at';
+/**
+ * Adds the operator-only columns: the redemption limits from 0049 and the
+ * author from 0036. Only the seller and admin consoles select these, and only
+ * they are granted them (0058) — a buyer query that used this list would be
+ * rejected outright.
+ */
+const COLUMNS = `${BASE_COLUMNS}, created_by, usage_limit, used_count`;
 
 /**
  * True when PostgREST rejected the query because migration 0049 has not been
@@ -122,8 +137,10 @@ const todayUTC = () => new Date().toISOString().slice(0, 10);
  * inactive rows out of the buyer-facing list.
  */
 export async function fetchActiveCoupons(): Promise<CouponRow[]> {
-  return selectCoupons((cols) =>
-    supabase.from('coupons').select(cols).eq('active', true).gte('expires_at', todayUTC()));
+  // BASE_COLUMNS, not the console list: this runs as an anonymous buyer, and
+  // 0058 grants that role only these columns.
+  return selectCoupons(() =>
+    supabase.from('coupons').select(BASE_COLUMNS).eq('active', true).gte('expires_at', todayUTC()));
 }
 
 /** Admin console: every coupon, newest first (RLS "admin all" returns them). */

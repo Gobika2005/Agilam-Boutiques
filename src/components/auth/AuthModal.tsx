@@ -48,7 +48,7 @@ export function AuthModal({
         )}
 
         <div style={css('width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:14px auto 0;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>{icon}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>{icon}</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;text-align:center;margin-top:16px;line-height:1.1;")}>{heading}</div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:14px;margin-top:9px;line-height:1.55;max-width:340px;margin-left:auto;margin-right:auto;')}>{sub}</div>
@@ -75,7 +75,7 @@ export function PasswordField({ value, onChange, label = 'Password', autoComplet
           onChange={(e) => onChange(e.target.value)}
           style={css('border:none;background:none;flex:1;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')}
         />
-        <span onClick={() => setShow((s) => !s)} style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);cursor:pointer;")}>
+        <span aria-hidden="true" onClick={() => setShow((s) => !s)} style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);cursor:pointer;")}>
           {show ? 'visibility' : 'visibility_off'}
         </span>
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { writeSearchParams } from '@/lib/searchParams';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
@@ -144,7 +145,10 @@ export function GlobalSearch({
     // grid can come back empty for a term that clearly has matches.
     setFilters({ ...DEFAULT_FILTERS });
     dismiss();
-    navigate('/shop');
+    // The term goes in the URL, not just in context: this is the link a buyer
+    // may reload, bookmark or send to someone, and `/search?q=…` is the endpoint
+    // our WebSite schema tells search engines to use.
+    navigate(`/search${writeSearchParams({ query: term, filters: DEFAULT_FILTERS })}`);
   };
 
   const pick = (s: Suggestion) => {
@@ -161,8 +165,9 @@ export function GlobalSearch({
     setText(s.title);
     setQuery('');
     const isCat = products.some((p) => p.cat === s.title);
-    setFilters({ ...DEFAULT_FILTERS, ...(isCat ? { cats: [s.title] } : { occasions: [s.title] }) });
-    navigate('/shop');
+    const filters = { ...DEFAULT_FILTERS, ...(isCat ? { cats: [s.title] } : { occasions: [s.title] }) };
+    setFilters(filters);
+    navigate(`/shop${writeSearchParams({ query: '', filters })}`);
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -192,7 +197,7 @@ export function GlobalSearch({
       role="search"
       style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:14px;padding:0 8px 0 14px;height:44px;width:100%;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
     >
-      <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;flex:none;")}>search</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;flex:none;")}>search</span>
       <input
         ref={inputRef}
         value={text}
@@ -216,7 +221,7 @@ export function GlobalSearch({
           aria-label="Clear search"
           style={css('width:30px;height:30px;flex:none;border-radius:9px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:18px;")}>close</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:18px;")}>close</span>
         </button>
       )}
     </form>
@@ -248,13 +253,13 @@ export function GlobalSearch({
             >
               {s.kind === 'product' && (
                 <span className="agx-thumb-media" style={css(`width:38px;background:${TONES[s.tone]};`)}>
-                  <ImageSlot src={s.image} placeholder={s.title} className="agx-prod-fill" />
+                  <ImageSlot src={s.image} placeholder={s.title} className="agx-prod-fill" sizes="38px" />
                 </span>
               )}
               {s.kind === 'boutique' && <BoutiqueLogo name={s.title} src={s.logo} size={38} radius={12} />}
               {s.kind === 'term' && (
                 <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>category</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>category</span>
                 </span>
               )}
               <span style={css('flex:1;min-width:0;')}>
@@ -271,7 +276,7 @@ export function GlobalSearch({
             style={css('width:100%;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:4px;padding:12px;border:none;border-top:1px solid var(--ag-surface-2);background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:12.5px;')}
           >
             See all results for “{term}”
-            <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
           </button>
         </>
       )}
@@ -289,7 +294,7 @@ export function GlobalSearch({
           className={className}
           style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);position:relative;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>search</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>search</span>
           {/* A live search stays visible as a dot, so the buyer can tell the
               grid is filtered without opening the sheet. */}
           {query.trim() && (
@@ -312,7 +317,7 @@ export function GlobalSearch({
                   aria-label="Close search"
                   style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>arrow_back</span>
                 </button>
                 <div style={css('flex:1;min-width:0;')}>{field}</div>
               </div>
@@ -325,7 +330,7 @@ export function GlobalSearch({
                   results
                 ) : (
                   <div style={css('padding:38px 24px;text-align:center;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-border);")}>search</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-border);")}>search</span>
                     <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:10px;line-height:1.55;')}>
                       Search for a saree, a boutique, or an occasion like “bridal”.
                     </div>

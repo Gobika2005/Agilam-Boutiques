@@ -140,7 +140,7 @@ export function BoutiqueProfile() {
           </>
         ) : (
           <>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>storefront</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>storefront</span>
             <span style={css('font-size:15px;')}>Boutique not found.</span>
             <button onClick={() => navigate('/boutiques')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;cursor:pointer;')}>
               Browse boutiques
@@ -216,20 +216,20 @@ export function BoutiqueProfile() {
           <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;')}>
             <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em;margin:0;")}>{ab.name}</h1>
             {ab.verified && (
-              <span title="Verified boutique" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#3A9BE0;")}>verified</span>
+              <span aria-hidden="true" title="Verified boutique" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#3A9BE0;")}>verified</span>
             )}
           </div>
 
           {/* Rating */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:15px;font-weight:700;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-star);")}>star</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-star);")}>star</span>
             {ab.rating}
             <span style={css('color:var(--ag-muted);font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
           </div>
 
           {/* Location */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;color:var(--ag-muted);font-size:14px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>location_on</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>location_on</span>
             {ab.area && ab.area !== ab.city ? `${ab.area}, ${ab.city}` : ab.city}
           </div>
 
@@ -275,7 +275,7 @@ export function BoutiqueProfile() {
                   : 'flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.9);',
               )}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{following ? 'check' : 'add'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{following ? 'check' : 'add'}</span>
               {following ? 'Following' : 'Follow'}
             </button>
             <button
@@ -283,7 +283,7 @@ export function BoutiqueProfile() {
               aria-label={`Chat with ${ab.name}`}
               style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ag-surface);color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
               Chat
             </button>
           </div>
@@ -300,7 +300,7 @@ export function BoutiqueProfile() {
                 aria-label={a.label}
                 style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:none;cursor:pointer;padding:4px;')}
               >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>{a.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>{a.icon}</span>
                 <span style={css('font-size:11.5px;color:var(--ag-label);font-weight:700;')}>{a.label}</span>
               </button>
             ))}
@@ -376,7 +376,7 @@ export function BoutiqueProfile() {
           </div>
         ) : (
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:54px 24px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>checkroom</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>checkroom</span>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-top:12px;")}>Nothing here yet</div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:5px;')}>
               {bqFilter === 'All' ? 'This boutique hasn’t listed any styles yet.' : `No ${bqFilter.toLowerCase()} in this collection.`}

@@ -66,7 +66,7 @@ export function Search() {
   const Row = ({ icon, tone, image, title, sub, right, onClick }: { icon?: string; tone?: number; image?: string | null; title: string; sub: string; right?: string; onClick: () => void }) => (
     <div onClick={onClick} style={css('display:flex;align-items:center;gap:11px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:10px;cursor:pointer;box-shadow:0 10px 26px -24px rgba(107,20,54,.6);')}>
       <div style={css(`width:44px;height:44px;flex:none;border-radius:12px;background:${TONES[(tone ?? 0) % TONES.length]};display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;`)}>
-        {image !== undefined ? <ImageSlot src={image ?? undefined} placeholder={title} style={css('position:absolute;inset:0;')} /> : <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>{icon}</span>}
+        {image !== undefined ? <ImageSlot src={image ?? undefined} placeholder={title} style={css('position:absolute;inset:0;')} /> : <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>{icon}</span>}
       </div>
       <div style={css('flex:1;min-width:0;')}>
         <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{title}</div>
@@ -83,7 +83,7 @@ export function Search() {
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div style={css('flex:1;display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input
             autoFocus
             value={q}
@@ -97,7 +97,7 @@ export function Search() {
       <div style={css('padding:0 20px;')}>
         {!results && (
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 20px;color:var(--ag-muted);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-border);")}>search</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-border);")}>search</span>
             <div style={css('font-size:14px;margin-top:10px;max-width:280px;line-height:1.5;')}>Search across your products, orders, customers and conversations.</div>
           </div>
         )}

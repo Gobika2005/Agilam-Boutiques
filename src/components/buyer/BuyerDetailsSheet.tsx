@@ -52,7 +52,7 @@ export function BuyerDetailsSheet({
         style={css('width:100%;max-width:440px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 26px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>badge</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>badge</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>{title}</div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>{subtitle}</div>
@@ -94,7 +94,7 @@ export function BuyerDetailsSheet({
             onClick={submit}
             style={css('height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
-            {cta}<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+            {cta}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
           </button>
           <button onClick={onClose} style={css('height:44px;border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:14px;cursor:pointer;')}>
             Not now

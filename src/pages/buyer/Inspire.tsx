@@ -94,7 +94,7 @@ export function Inspire() {
                   };`,
                 )}
               >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{t.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{t.icon}</span>
                 {t.label}
               </button>
             );
@@ -125,7 +125,7 @@ export function Inspire() {
 
         {!loading && error && (
           <div style={css('display:flex;gap:12px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>cloud_off</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>cloud_off</span>
             <div style={css('font-size:13px;color:#7A6450;line-height:1.55;')}>{error}</div>
           </div>
         )}
@@ -144,7 +144,7 @@ export function Inspire() {
           return (
             <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
               <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>{empty.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>{empty.icon}</span>
               </div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:18px;")}>{empty.title}</div>
               <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:330px;line-height:1.55;')}>
@@ -188,7 +188,7 @@ export function Inspire() {
 
         {loadingMore && (
           <div style={css('display:flex;align-items:center;justify-content:center;gap:9px;padding:14px;color:var(--ag-muted-soft);font-size:13px;font-weight:700;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>sync</span>Loading more…
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>sync</span>Loading more…
           </div>
         )}
 

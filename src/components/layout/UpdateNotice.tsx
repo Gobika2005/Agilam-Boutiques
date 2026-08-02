@@ -89,7 +89,7 @@ export function UpdateNotice() {
         'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:9px 10px 9px 16px;border-radius:999px;background:rgba(42,26,32,.94);backdrop-filter:blur(12px);color:#fff;font-size:13px;font-weight:600;box-shadow:0 18px 40px -16px rgba(0,0,0,.6);animation:agx-fade .3s ease;',
       )}
     >
-      <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#F7B7CF;")}>auto_awesome</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#F7B7CF;")}>auto_awesome</span>
       <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>A new version of MangaiMart is ready</span>
       <button
         type="button"
@@ -104,7 +104,7 @@ export function UpdateNotice() {
         onClick={() => setSnoozed(true)}
         style={css('flex:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:none;cursor:pointer;border-radius:50%;background:transparent;color:rgba(255,255,255,.65);')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
       </button>
     </div>
   );

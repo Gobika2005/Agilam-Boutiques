@@ -133,21 +133,21 @@ export function OrderDetail() {
                       style={css('display:inline-flex;align-items:center;gap:3px;color:var(--ag-good);font-weight:700;text-decoration:none;')}
                     >
                       {o.phone}
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>open_in_new</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>open_in_new</span>
                     </a>
                   </>
                 )}
               </div>
             </div>
             <button onClick={() => navigate('/seller/messages')} style={css('width:38px;height:38px;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
             </button>
           </div>
           {/* The delivery address lives on the order (guest checkout keeps no
               account), so this card is the only place the seller can read it. */}
           {(o.address || o.city || o.pincode) && (
             <div style={css('margin-top:12px;padding:11px 12px;border-radius:12px;background:var(--ag-bg);display:flex;gap:9px;align-items:flex-start;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>home_pin</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>home_pin</span>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('font-size:11px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>DELIVER TO</div>
                 <div style={css('font-size:13px;color:var(--ag-ink);margin-top:3px;line-height:1.45;')}>
@@ -158,7 +158,7 @@ export function OrderDetail() {
           )}
 
           <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:7px;`)}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>share</span>{sharing ? 'Preparing…' : 'Share bill via WhatsApp'}
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>share</span>{sharing ? 'Preparing…' : 'Share bill via WhatsApp'}
           </button>
         </div>
 
@@ -212,7 +212,7 @@ export function OrderDetail() {
                 </div>
                 <div style={css('display:flex;align-items:center;gap:2px;')}>
                   <span style={css('font-weight:800;color:var(--ag-crimson);')}>{fmt(Number(it.price) * it.qty)}</span>
-                  {open && <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-muted-soft);")}>chevron_right</span>}
+                  {open && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-muted-soft);")}>chevron_right</span>}
                 </div>
               </div>
             );
@@ -266,7 +266,7 @@ export function OrderDetail() {
           <div style={css(`margin-top:12px;border-radius:16px;padding:16px;border:1.5px solid ${settled ? '#CFE6D9' : 'var(--ag-gold-border)'};background:${settled ? '#F3F9F5' : 'var(--ag-gold-bg)'};`)}>
             <div style={css('display:flex;align-items:center;gap:11px;')}>
               <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;`)}>
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)}>{settled ? 'task_alt' : 'payments'}</span>
+                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)}>{settled ? 'task_alt' : 'payments'}</span>
               </span>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css(`font-size:11.5px;font-weight:800;letter-spacing:.05em;color:${settled ? '#2C6249' : '#B0862B'};`)}>
@@ -287,7 +287,7 @@ export function OrderDetail() {
                   onClick={collectCash}
                   style={css('width:100%;margin-top:12px;height:46px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>check_circle</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>check_circle</span>
                   I collected {fmt(o.grandTotal)}
                 </button>
               </>
@@ -297,7 +297,7 @@ export function OrderDetail() {
 
         {o.rawStatus === 'cancelled' && (
           <div style={css('margin-top:12px;border-radius:16px;padding:14px 16px;border:1px solid var(--ag-border);background:var(--ag-surface-2);display:flex;gap:11px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);")}>cancel</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);")}>cancel</span>
             <div style={css('font-size:13px;color:var(--ag-label);font-weight:600;line-height:1.55;')}>
               The customer cancelled this order before dispatch{o.cancelReason ? ` — “${o.cancelReason}”` : ''}. The stock has been returned to your catalogue.
             </div>

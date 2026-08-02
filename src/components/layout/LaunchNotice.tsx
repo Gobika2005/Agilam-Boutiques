@@ -39,25 +39,36 @@ export function LaunchNotice() {
   const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
   const hidden = dismissed || onOperatorSurface;
 
+  /**
+   * Going away — for good, however it went away.
+   *
+   * The auto-hide used to set state only, leaving `SEEN_KEY` unwritten. State
+   * dies with the page, so a buyer who simply let the card time out (which is
+   * almost everyone — it is a notice, not a prompt) met it again on the next
+   * full page load, and the next: on the home screen, then the shop grid, then
+   * the product page, covering content for nine seconds each time. "Dismissed
+   * for good" was true only of the × .
+   */
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(SEEN_KEY, '1');
+    } catch {
+      /* private mode — it will simply auto-hide again next time */
+    }
+  };
+
   // Retire on its own. Without this the card is a permanent overlay for anyone
   // who never presses the ×, which is how it ended up covering "Shop by
   // collection" on Home and the image-carousel dots on a product page.
   useEffect(() => {
     if (hidden) return;
-    const t = window.setTimeout(() => setDismissed(true), AUTO_HIDE_MS);
+    const t = window.setTimeout(dismiss, AUTO_HIDE_MS);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hidden]);
 
   if (hidden) return null;
-
-  const close = () => {
-    setDismissed(true);
-    try {
-      localStorage.setItem(SEEN_KEY, '1');
-    } catch {
-      /* private mode — it will simply auto-hide instead */
-    }
-  };
 
   return (
     <div
@@ -70,7 +81,7 @@ export function LaunchNotice() {
           'box-shadow:0 22px 48px -18px rgba(0,0,0,.65);animation:agx-fade .35s ease;',
       )}
     >
-      <span
+      <span aria-hidden="true"
         style={css(
           "font-family:'Material Symbols Outlined';font-size:24px;color:#F7B7CF;flex:none;line-height:1.1;",
         )}
@@ -87,7 +98,7 @@ export function LaunchNotice() {
       <button
         type="button"
         aria-label="Dismiss this notice"
-        onClick={close}
+        onClick={dismiss}
         style={css(
           'flex:none;align-self:flex-start;display:flex;align-items:center;justify-content:center;' +
             'width:44px;height:44px;margin:-8px 0 0;border:none;cursor:pointer;border-radius:50%;' +

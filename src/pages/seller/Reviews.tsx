@@ -134,7 +134,7 @@ export function Reviews() {
 
         {!loading && shown.length === 0 && (
           <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:18px;padding:30px 22px;text-align:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:32px;color:var(--ag-border);")}>reviews</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:32px;color:var(--ag-border);")}>reviews</span>
             <div style={css('font-weight:700;font-size:14.5px;margin-top:8px;color:var(--ag-ink);')}>
               {filter === 'Needs reply' && summary.count > 0 ? 'All caught up' : reviews.length === 0 ? 'No reviews yet' : 'Nothing here'}
             </div>
@@ -164,7 +164,7 @@ export function Reviews() {
                   {r.product_image && <img src={r.product_image} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
                 </span>
                 <span style={css('flex:1;min-width:0;font-weight:700;font-size:12.5px;color:var(--ag-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.product_title ?? 'Product'}</span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#CBB0BC;")}>chevron_right</span>
               </button>
 
               {/* The review itself. */}
@@ -175,7 +175,7 @@ export function Reviews() {
                     <span style={css('font-weight:700;font-size:13.5px;')}>{name}</span>
                     {r.verified_purchase && (
                       <span style={css('display:inline-flex;align-items:center;gap:3px;background:var(--ag-good-bg);color:var(--ag-good);border-radius:7px;padding:2px 6px;font-size:9.5px;font-weight:800;')}>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>verified</span>Verified
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>verified</span>Verified
                       </span>
                     )}
                   </div>
@@ -198,7 +198,7 @@ export function Reviews() {
               {r.seller_reply && !editing && (
                 <div style={css('margin-top:12px;padding:11px 13px;background:var(--ag-surface-2);border-left:3px solid #D6336C;border-radius:0 12px 12px 0;')}>
                   <div style={css('display:flex;align-items:center;gap:6px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>storefront</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>storefront</span>
                     <span style={css('font-weight:800;font-size:11.5px;color:var(--ag-crimson);')}>Your reply</span>
                     {r.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:11px;')}>· {timeAgo(r.seller_reply_at)}</span>}
                   </div>
@@ -236,7 +236,7 @@ export function Reviews() {
                   onClick={() => openReply(r)}
                   style={css(`margin-top:12px;height:40px;width:100%;border:1.5px solid ${r.seller_reply ? 'var(--ag-border)' : '#D6336C'};background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;`)}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{r.seller_reply ? 'edit' : 'reply'}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{r.seller_reply ? 'edit' : 'reply'}</span>
                   {r.seller_reply ? 'Edit reply' : 'Reply'}
                 </button>
               )}

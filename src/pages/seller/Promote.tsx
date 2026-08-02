@@ -95,7 +95,7 @@ export function Promote() {
           disabled={!boutiqueId}
           style={css('margin-top:16px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:13px;padding:12px 20px;font-weight:800;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;opacity:' + (boutiqueId ? '1' : '.6') + ';')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>add</span>Create an ad
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>add</span>Create an ad
         </button>
       </div>
 
@@ -322,7 +322,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);color:#fff;padding:16px 18px 14px;')}>
         <div style={css('display:flex;align-items:center;gap:12px;')}>
           <button onClick={onClose} disabled={busy} style={css('width:36px;height:36px;border-radius:11px;border:none;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>close</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>close</span>
           </button>
           <div>
             <div style={css('font-weight:800;font-size:16px;')}>{title}</div>
@@ -368,7 +368,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
         {(paidEdit || step === 1) && placementCode && (
           <div>
             <div style={css('display:flex;align-items:center;gap:7px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>visibility</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>visibility</span>
               <SectionTitle>Live preview</SectionTitle>
             </div>
             <div style={css('font-size:12px;color:var(--ag-muted);margin-top:3px;margin-bottom:12px;')}>This is exactly how buyers will see your ad.</div>
@@ -413,7 +413,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                         </div>
                         {active && (
                           <span style={css('position:absolute;top:7px;right:7px;width:24px;height:24px;border-radius:50%;background:#D6336C;display:flex;align-items:center;justify-content:center;')}>
-                            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#fff;")}>check</span>
+                            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#fff;")}>check</span>
                           </span>
                         )}
                         <div style={css('padding:8px 9px;')}>
@@ -464,7 +464,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <input ref={fileInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickHeroImage(f); e.target.value = ''; }} />
                 <div style={css('display:flex;gap:10px;margin-top:6px;')}>
                   <button onClick={() => fileInput.current?.click()} disabled={uploading} style={css('flex:1;height:46px;border-radius:12px;border:1.5px dashed #D9A9BE;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{uploading ? 'progress_activity' : 'add_photo_alternate'}</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{uploading ? 'progress_activity' : 'add_photo_alternate'}</span>
                     {uploading ? 'Uploading…' : heroImage ? 'Change image' : 'Upload image'}
                   </button>
                   {heroImage && (
@@ -575,7 +575,7 @@ function AdPreview({
     if (!product) {
       return (
         <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
           Choose a product below to preview your ad.
         </div>
       );
@@ -584,12 +584,12 @@ function AdPreview({
       <div style={css(frame)}>
         <div style={css('width:172px;')}>
           <div style={css('font-size:11px;font-weight:800;color:var(--ag-crimson);letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>bolt</span>Sponsored for you
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>bolt</span>Sponsored for you
           </div>
           <div style={css('border-radius:14px;overflow:hidden;background:var(--ag-surface-2);aspect-ratio:3/4;position:relative;')}>
             {product.image_url && <img src={product.image_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
             <span style={css('position:absolute;left:9px;top:9px;' + PROMOTED_PILL)}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Sponsored
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Sponsored
             </span>
           </div>
           <div style={css('padding:9px 2px 0;')}>
@@ -607,7 +607,7 @@ function AdPreview({
     if (subjectType === 'product' && !product) {
       return (
         <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
           Choose a product below to preview your ad.
         </div>
       );
@@ -625,7 +625,7 @@ function AdPreview({
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
             <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:5px;')}>
-              {ctaLabel}<span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>arrow_forward</span>
+              {ctaLabel}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>arrow_forward</span>
             </span>
           </div>
         </div>
@@ -644,13 +644,13 @@ function AdPreview({
         <div style={css('min-width:0;flex:1;')}>
           <div style={css('display:flex;align-items:center;gap:6px;')}>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{boutique.name}</span>
-            {boutique.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#3E9BE0;flex:none;")}>verified</span>}
+            {boutique.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#3E9BE0;flex:none;")}>verified</span>}
             <span style={css('flex:none;' + PROMOTED_PILL)}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Promoted
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Promoted
             </span>
           </div>
           <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12.5px;color:var(--ag-muted);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
             {(boutique.rating ?? 0).toFixed(1)}
             {boutique.city && <span>· {boutique.city}</span>}
           </div>

@@ -81,7 +81,7 @@ export function AdminLayout() {
                 onClick={() => navigate(a.to)}
                 style={css(`width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:${on ? 700 : 600};text-align:left;margin-top:3px;background:${on ? 'var(--ag-surface)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};box-shadow:${on ? '0 6px 16px -10px var(--ag-shadow)' : 'none'};font-family:inherit;`)}
               >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{a.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{a.icon}</span>
                 <span>{a.label}</span>
               </button>
             );
@@ -94,7 +94,7 @@ export function AdminLayout() {
               non-production ribbon. */}
           <div style={css('flex:none;height:10px;')} />
           <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:var(--ag-danger-text);font-family:inherit;margin-bottom:6px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>logout</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>logout</span>
             <span>Log out</span>
           </button>
         </div>
@@ -108,7 +108,7 @@ export function AdminLayout() {
             </div>
             <div style={css('display:flex;align-items:center;gap:14px;flex:none;')}>
               <div className="agx-admin-search" style={css('display:flex;align-items:center;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:0 12px;height:40px;width:220px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
                 <input placeholder="Search…" style={css('border:none;background:none;flex:1;font-size:13px;min-width:0;color:var(--ag-ink);')} />
               </div>
               <button
@@ -117,7 +117,7 @@ export function AdminLayout() {
                 aria-label="Toggle theme"
                 style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;')}
               >
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
               </button>
               <NotificationBellMenu viewAllTo="/admin/notifications" />
               <button onClick={logout} title="Log out" style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}>
@@ -147,7 +147,7 @@ export function AdminLayout() {
               aria-label={a.label}
               style={css(`flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}
             >
-              <span translate="no" style={css(`font-family:'Material Symbols Outlined';font-size:22px;font-variation-settings:'FILL' ${on ? 1 : 0};`)}>{a.icon}</span>
+              <span aria-hidden="true" translate="no" style={css(`font-family:'Material Symbols Outlined';font-size:22px;font-variation-settings:'FILL' ${on ? 1 : 0};`)}>{a.icon}</span>
               <span style={css('font-size:10px;font-weight:700;white-space:nowrap;')}>{a.label}</span>
             </button>
           );
@@ -157,7 +157,7 @@ export function AdminLayout() {
           aria-label="Log out"
           style={css("flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:transparent;color:var(--ag-danger-text);")}
         >
-          <span translate="no" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>logout</span>
+          <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>logout</span>
           <span style={css('font-size:10px;font-weight:700;white-space:nowrap;')}>Log out</span>
         </button>
       </nav>
@@ -168,7 +168,7 @@ export function AdminLayout() {
           aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
           style={css('position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1400;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;max-width:calc(100vw - 32px);text-align:center;')}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
+          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
             {toast.tone === 'error' ? 'error' : 'info'}
           </span>
           {toast.msg}

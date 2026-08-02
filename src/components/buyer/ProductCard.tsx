@@ -1,5 +1,6 @@
 import { Icon } from '@/components/ui/Icon';
 import { WishButton } from '@/components/buyer/WishButton';
+import { imageFallback, imageSrcSet } from '@/lib/imageUrl';
 import { fmtInr, toneHex } from '@/lib/tokens';
 import type { ProductWithBoutique } from '@/data/types';
 
@@ -23,7 +24,17 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
     <div onClick={onOpen} className="cursor-pointer" style={width ? { flex: 'none', width } : undefined}>
       <div className="agx-prod-media shadow-soft" style={{ background: toneHex(p.tone) }}>
         {p.image_url ? (
-          <img src={p.image_url} alt={p.title} className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={imageFallback(p.image_url)}
+            srcSet={imageSrcSet(p.image_url)}
+            sizes={width ? `${width}px` : '(min-width: 768px) 320px, 50vw'}
+            alt={p.title}
+            width={800}
+            height={1000}
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-3 text-center text-xs font-semibold text-black/40">{p.title}</div>
         )}

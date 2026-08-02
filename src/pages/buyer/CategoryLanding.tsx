@@ -9,6 +9,7 @@ import { EmptyState, CardSkeletons, SectionLabel } from '@/components/buyer/Disc
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { occasionLabel, occasionNoun, titleCase } from '@/lib/vocabulary';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { TONES, fmt } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
@@ -111,7 +112,7 @@ function faqsFor(kind: LandingKind, term: string, items: Product[]): { q: string
   const to = Math.max(...items.map((p) => p.price));
   const cities = Array.from(new Set(items.map((p) => p.city).filter(Boolean))).slice(0, 4);
   const lower = term.toLowerCase();
-  const noun = kind === 'occasion' ? `${lower} wear` : lower;
+  const noun = kind === 'occasion' ? occasionNoun(term) : lower;
 
   return [
     {
@@ -188,11 +189,11 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
   const faqs = faqsFor(kind, term || '', items);
   const hub = HUB[kind];
 
-  const heading = kind === 'occasion' ? `${term} wear` : String(term);
+  const heading = kind === 'occasion' ? occasionLabel(term ?? '') : titleCase(String(term ?? ''));
   const title = term
     ? kind === 'occasion'
-      ? `${term} Wear Online — ${items.length} Pieces from Tamil Nadu Boutiques`
-      : `${term} Online — Buy from ${new Set(items.map((p) => p.boutique)).size} Verified Tamil Nadu Boutiques`
+      ? `${occasionLabel(term)} Online — ${items.length} Pieces from Tamil Nadu Boutiques`
+      : `${titleCase(term)} Online — Buy from ${new Set(items.map((p) => p.boutique)).size} Verified Tamil Nadu Boutiques`
     : null;
 
   usePageMeta({

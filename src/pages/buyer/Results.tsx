@@ -1,9 +1,13 @@
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { readSearchParams, sameSearchState, writeSearchParams } from '@/lib/searchParams';
+import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
 import { routes } from '@/lib/seo';
 import { breadcrumbSchema, collectionSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { CatalogError } from '@/components/buyer/CatalogError';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
@@ -21,9 +25,46 @@ const searchable = (p: { title: string; cat: string; occasion: string; fabric: s
 
 export function Results() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
-  const { products: PRODUCTS } = useCatalog();
+  const { products: PRODUCTS, error: catalogError, reload } = useCatalog();
+
+  /**
+   * Keep the address bar and the grid saying the same thing.
+   *
+   * Two effects, deliberately not one. The first is URL → state: it runs when
+   * the location changes for a reason that did not come from us — a fresh load
+   * of `/search?q=saree`, a pasted link, Back/Forward — and adopts whatever the
+   * URL asks for. The second is state → URL: it runs when the buyer changes
+   * something on the page and rewrites the query string to match.
+   *
+   * `appliedRef` is what stops them fighting. Each effect records the string it
+   * just acted on, so the echo it provokes in the other is recognised and
+   * ignored; without it the pair would ping-pong a new history entry per render.
+   * The state → URL write is a `replace`, not a `push`, so tightening a filter
+   * four times doesn't bury the previous page under four Back presses.
+   */
+  const appliedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (appliedRef.current === search) return;
+    appliedRef.current = search;
+    const next = readSearchParams(search);
+    if (sameSearchState(next, { query, filters })) return;
+    setQuery(next.query);
+    setFilters(next.filters);
+    // Only `search` drives this: including the state it *writes* would make it
+    // re-run on its own result.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  useEffect(() => {
+    const next = writeSearchParams({ query, filters });
+    if (next === search) return;
+    appliedRef.current = next;
+    navigate({ pathname, search: next }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, filters]);
   const { ads } = useLiveAds();
   // Facets are the admin's approved vocabulary (migration 0024), so a category
   // approved today is filterable today and a seller's typo never becomes a chip.
@@ -62,7 +103,7 @@ export function Results() {
     : filters.cats.length === 1 && filters.occasions.length === 0
       ? filters.cats[0]
       : filters.occasions.length === 1 && filters.cats.length === 0
-        ? `${filters.occasions[0]} wear`
+        ? occasionLabel(filters.occasions[0])
         : filters.cats.length > 1
           ? 'Selected categories'
           : filterCount > 0
@@ -105,10 +146,16 @@ export function Results() {
       : null,
   });
 
-  /** Back to the unfiltered grid — the "Collections" breadcrumb and empty state. */
+  /**
+   * Back to the unfiltered grid — the "Collections" breadcrumb and empty state.
+   * Clearing everything also returns to `/shop`: a bare `/search` is a robots-
+   * disallowed surface with nothing to search, and `/shop` is the canonical home
+   * of the full catalogue.
+   */
   const resetCollection = () => {
     setQuery('');
     setFilters(DEFAULT_FILTERS);
+    navigate('/shop');
   };
 
   const activeChips: { key: string; label: string; remove: () => void }[] = [];
@@ -176,7 +223,7 @@ export function Results() {
               <span className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);')}>Filtering by</span>
               {activeChips.map((c) => (
                 <button key={c.key} onClick={c.remove} style={css('display:flex;align-items:center;gap:6px;background:var(--ag-surface-2);border:1px solid var(--ag-border);color:var(--ag-crimson);border-radius:999px;padding:7px 10px 7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;')}>
-                  {c.label}<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>close</span>
+                  {c.label}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>close</span>
                 </button>
               ))}
               <button onClick={resetCollection} style={css('border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;')}>Clear all</button>
@@ -208,7 +255,7 @@ export function Results() {
                     return (
                       <label key={c} onClick={() => toggleFilter('cats', c)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--ag-ink-2);cursor:pointer;')}>
                         <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : 'var(--ag-surface)'};display:flex;align-items:center;justify-content:center;`)}>
-                          <span style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
+                          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
                         </span>{c}
                       </label>
                     );
@@ -248,7 +295,7 @@ export function Results() {
                     return (
                       <label key={o} onClick={() => toggleFilter('occasions', o)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--ag-ink-2);cursor:pointer;')}>
                         <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : 'var(--ag-surface)'};display:flex;align-items:center;justify-content:center;`)}>
-                          <span style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
+                          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
                         </span>{o}
                       </label>
                     );
@@ -292,10 +339,13 @@ export function Results() {
               ))}
             </div>
 
-            {results.length === 0 && (
+            {/* A failed load is not an empty catalogue — say which one it is. */}
+            {results.length === 0 && catalogError && <CatalogError what="the collection" onRetry={reload} />}
+
+            {results.length === 0 && !catalogError && (
               <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 30px;')}>
                 <div style={css('width:74px;height:74px;border-radius:24px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#D6336C;")}>search_off</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#D6336C;")}>search_off</span>
                 </div>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>No matches found</div>
                 <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;max-width:320px;line-height:1.55;')}>
@@ -317,7 +367,7 @@ export function Results() {
             onClick={() => navigate('/shop/filter')}
             style={css('pointer-events:auto;flex:1;max-width:200px;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 16px 34px -14px rgba(107,20,54,.55);')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>tune</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>tune</span>
             Filter
             {activeChips.length > 0 && (
               <span style={css('min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>{activeChips.length}</span>
@@ -327,7 +377,7 @@ export function Results() {
             onClick={() => navigate('/shop/sort')}
             style={css('pointer-events:auto;flex:1;max-width:200px;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 16px 34px -14px rgba(214,51,108,.75);')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>swap_vert</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>swap_vert</span>
             Sort
           </button>
         </div>

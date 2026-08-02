@@ -234,7 +234,7 @@ export function ProductForm({
             <img src={form.imageUrl} alt="Cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
           ) : (
             <>
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>
                 {uploading === 'cover' ? 'progress_activity' : 'add_a_photo'}
               </span>
               <span style={css('font-size:10px;color:var(--ag-muted-soft);font-weight:700;')}>Cover *</span>
@@ -255,10 +255,10 @@ export function ProductForm({
               {url ? (
                 <>
                   <img src={url} alt="Gallery" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
-                  <span style={css("position:absolute;top:3px;right:3px;font-family:'Material Symbols Outlined';font-size:16px;color:#fff;background:rgba(0,0,0,.45);border-radius:6px;")}>close</span>
+                  <span aria-hidden="true" style={css("position:absolute;top:3px;right:3px;font-family:'Material Symbols Outlined';font-size:16px;color:#fff;background:rgba(0,0,0,.45);border-radius:6px;")}>close</span>
                 </>
               ) : (
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6A9BC;font-size:20px;")}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6A9BC;font-size:20px;")}>
                   {uploading === 'gallery' && !form.images[i] ? 'progress_activity' : 'add'}
                 </span>
               )}
@@ -352,7 +352,7 @@ export function ProductForm({
           nothing but a filled one answers a question they'd otherwise be
           messaged about. */}
       <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;padding-top:16px;border-top:1px solid var(--ag-border);')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>list_alt</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>list_alt</span>
         <div>
           <div style={css('font-size:14px;font-weight:800;color:var(--ag-ink);')}>Product page details</div>
           <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>What buyers read before they decide</div>

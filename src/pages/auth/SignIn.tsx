@@ -119,7 +119,7 @@ export function SignIn() {
         style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;')}
       >
         {sending ? 'Signing in…' : 'Login'}
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </button>
       </form>
 

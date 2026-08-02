@@ -45,11 +45,18 @@ export function Checkout() {
    * seller's own `delivery_charge` instead, so a buyer read "lilium · ₹150
    * delivery" immediately above a summary that said FREE and a total that had
    * added nothing. It now states the fee the summary is actually charging.
+   *
+   * It also no longer reports `boutiques.delivery_available` as "Store pickup
+   * only". That flag records whether the *seller* runs their own delivery; it
+   * has no bearing on the buyer, because MangaiMart ships every order through
+   * its logistics partners regardless (delivery policy, "Where we deliver").
+   * Surfacing it here put "Store pickup only" under the heading "Where should we
+   * deliver?", beside an address form, above a ₹79 delivery charge — three
+   * statements the buyer cannot reconcile, on the screen where they are deciding
+   * whether to trust us with money. The flag still shows to sellers and admins,
+   * where it means something.
    */
-  const deliveryLine = (b: { deliveryAvailable?: boolean }) => {
-    if (b.deliveryAvailable === false) return 'Store pickup only';
-    return shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`;
-  };
+  const deliveryLine = () => (shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`);
 
   const errors = {
     name: !nameOk(guest.name),
@@ -113,13 +120,13 @@ export function Checkout() {
               <div style={css('display:flex;flex-direction:column;gap:8px;margin-top:9px;')}>
                 {cartBoutiques.map((b) => (
                   <div key={b.id} style={css('display:flex;align-items:center;gap:12px;border:1.5px solid #D6336C;background:var(--ag-surface-2);border-radius:15px;padding:13px 15px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>local_shipping</span>
                     <div style={css('flex:1;min-width:0;')}>
                       <div style={css('font-weight:800;font-size:14px;color:var(--ag-crimson);')}>
-                        {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + deliveryLine(b)}
+                        {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + deliveryLine()}
                       </div>
                       <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>
-                        {cartBoutiques.length > 1 && `${b.deliveryAvailable === false ? 'Store pickup only' : 'Delivery included in the one fee below'} · `}
+                        {cartBoutiques.length > 1 && 'Delivery included in the one fee below · '}
                         {POLICY_TERMS.deliveryEstimate} from dispatch{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
                       </div>
                     </div>
@@ -149,7 +156,7 @@ export function Checkout() {
               </div>
             )}
             <button onClick={continueToPayment} style={css(`width:100%;height:54px;margin-top:${touched && invalid ? '10px' : '18px'};border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
-              Continue to payment<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+              Continue to payment<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
             </button>
             <div style={css('text-align:center;font-size:11.5px;line-height:1.5;color:var(--ag-muted);font-weight:600;margin-top:11px;')}>
               By placing your order you agree to our{' '}

@@ -38,7 +38,7 @@ export function ProductAnalytics() {
   if (!loading && !product) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ag-muted);')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>search_off</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>search_off</span>
         <div style={css('font-size:15px;')}>Product not found.</div>
         <button onClick={() => navigate('/seller/products')} style={css('height:44px;padding:0 18px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;cursor:pointer;')}>
           Back to products
@@ -106,7 +106,7 @@ export function ProductAnalytics() {
               <span style={css(`display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${stockTag.bg};color:${stockTag.fg};`)}>{stockTag.label}</span>
             </div>
             <button onClick={() => navigate('/seller/products')} aria-label="Edit" style={css('width:38px;height:38px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>edit</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>edit</span>
             </button>
           </div>
 
@@ -115,7 +115,7 @@ export function ProductAnalytics() {
             {tiles.map((t) => (
               <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
                 <span style={css(`width:38px;height:38px;border-radius:12px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}>
-                  <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${t.ic};`)}>{t.icon}</span>
+                  <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${t.ic};`)}>{t.icon}</span>
                 </span>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:11px;color:var(--ag-ink);word-break:break-word;")}>{t.value}</div>
                 <div style={css('color:var(--ag-muted);font-size:12px;font-weight:700;margin-top:3px;')}>{t.label}</div>
@@ -126,17 +126,17 @@ export function ProductAnalytics() {
           {/* Footnotes */}
           <div style={css('margin-top:14px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px 16px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);display:flex;flex-direction:column;gap:10px;')}>
             <div style={css('display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ag-ink-2);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-info-text);")}>schedule</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-info-text);")}>schedule</span>
               <span style={css('flex:1;')}>Last viewed</span>
               <span style={css('font-weight:800;color:var(--ag-ink);')}>{fmtDate(p.last_viewed_at)}</span>
             </div>
             <div style={css('display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ag-ink-2);border-top:1px solid var(--ag-border-soft);padding-top:10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-good);")}>sell</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-good);")}>sell</span>
               <span style={css('flex:1;')}>Units sold</span>
               <span style={css('font-weight:800;color:var(--ag-ink);')}>{units}</span>
             </div>
             <div style={css('display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ag-ink-2);border-top:1px solid var(--ag-border-soft);padding-top:10px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-purple);")}>event</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-purple);")}>event</span>
               <span style={css('flex:1;')}>Listed on</span>
               <span style={css('font-weight:800;color:var(--ag-ink);')}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>

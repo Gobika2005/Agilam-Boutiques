@@ -139,13 +139,13 @@ export function Profile() {
           const inner = (
             <>
               <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{r.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{r.icon}</span>
               </span>
               <span style={css('flex:1;min-width:0;')}>
                 <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>{r.label}</span>
                 <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
               </span>
-              <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
             </>
           );
           const rowCss = css(
@@ -186,7 +186,7 @@ export function Profile() {
               allowed two lines before it truncates. */}
           <div className="agx-profile-id" style={css('display:flex;align-items:center;gap:15px;margin-top:12px;position:relative;flex-wrap:wrap;')}>
             <div style={css("width:66px;height:66px;flex:none;border-radius:20px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:30px;backdrop-filter:blur(4px);")}>
-              {initial || <span style={css("font-family:'Material Symbols Outlined';font-size:34px;opacity:.9;")}>person</span>}
+              {initial || <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:34px;opacity:.9;")}>person</span>}
             </div>
             <div style={css('flex:1 1 150px;min-width:0;')}>
               <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,5.5vw,24px);line-height:1.12;margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>{name}</h1>
@@ -196,7 +196,7 @@ export function Profile() {
               onClick={() => (guestNoAccount ? setAccountOpen(true) : setEditing(true))}
               style={css('flex:none;height:38px;padding:0 15px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{guestNoAccount ? 'login' : 'edit'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{guestNoAccount ? 'login' : 'edit'}</span>
               {guestNoAccount ? 'Sign in' : 'Edit'}
             </button>
           </div>
@@ -210,7 +210,7 @@ export function Profile() {
               onClick={s.go}
               style={css(`flex:1;background:none;border:none;cursor:pointer;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;${i < stats.length - 1 ? 'border-right:1px solid var(--ag-border-soft);' : ''}`)}
             >
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>{s.icon}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>{s.icon}</span>
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
               <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);')}>{s.label}</span>
             </button>
@@ -222,26 +222,26 @@ export function Profile() {
         {authLoading ? null : signedIn ? (
           <div style={css('margin:16px 20px 0;display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-good-bg);border:1px solid var(--ag-good-bg);border-radius:18px;')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-good-bg);display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:22px;")}>verified</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:22px;")}>verified</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-good-text);')}>Synced across devices</span>
               <span style={css('display:block;font-size:12px;color:var(--ag-good-text);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{accountEmail || 'Orders & profile backed up'}</span>
             </span>
             <button onClick={() => void doSync()} disabled={syncing} style={css('flex:none;height:34px;padding:0 13px;border:1px solid var(--ag-good-bg);background:var(--ag-surface);color:var(--ag-good-text);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{syncing ? 'sync' : 'refresh'}</span>{syncing ? 'Syncing' : 'Refresh'}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{syncing ? 'sync' : 'refresh'}</span>{syncing ? 'Syncing' : 'Refresh'}
             </button>
           </div>
         ) : (
           <button onClick={() => setAccountOpen(true)} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:18px;cursor:pointer;text-align:left;box-shadow:0 12px 30px -24px rgba(107,20,54,.55);')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>cloud_sync</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>cloud_sync</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>Sign in to sync</span>
               <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:1px;')}>Google or email to back up orders &amp; details</span>
             </span>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);flex:none;")}>chevron_right</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);flex:none;")}>chevron_right</span>
           </button>
         )}
 
@@ -255,22 +255,22 @@ export function Profile() {
         {/* Sell CTA */}
         <button onClick={openSellModal} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:15px;border:none;border-radius:18px;background:linear-gradient(135deg,#8E1C44,#B02454);color:#fff;cursor:pointer;box-shadow:0 16px 34px -18px rgba(142,28,68,.9);text-align:left;')}>
           <span style={css('width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>storefront</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>storefront</span>
           </span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-weight:800;font-size:15px;')}>Sell on MangaiMart</span>
             <span style={css('display:block;font-size:12.5px;opacity:.85;margin-top:2px;')}>Open your boutique &amp; start selling</span>
           </span>
-          <span style={css("font-family:'Material Symbols Outlined';opacity:.8;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';opacity:.8;")}>chevron_right</span>
         </button>
 
         <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>
           {signedIn ? 'Log out' : 'Clear my details'}
         </button>
 
         <button onClick={() => navigate('/admin/login')} style={css('margin:12px 20px 0;width:calc(100% - 40px);height:42px;border:none;background:none;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>shield_person</span>Admin login · internal use
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>shield_person</span>Admin login · internal use
         </button>
 
         {/* Build stamp — the first thing support asks for. Injected from

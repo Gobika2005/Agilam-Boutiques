@@ -25,7 +25,7 @@ function Segment({ value, label, icon }: { value: ThemePreference; label: string
         };`,
       )}
     >
-      <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>{icon}</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>{icon}</span>
       {label}
     </button>
   );
@@ -49,7 +49,7 @@ export function ThemeToggle({ variant = 'card' }: { variant?: 'card' | 'inline' 
       <div style={css('margin:0 20px;background:var(--ag-surface);border-radius:20px;padding:14px;box-shadow:0 12px 30px -22px var(--ag-shadow);')}>
         <div style={css('display:flex;align-items:center;gap:13px;margin-bottom:12px;')}>
           <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>contrast</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>contrast</span>
           </span>
           <span style={css('flex:1;min-width:0;')}>
             <span style={css('display:block;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>Theme</span>

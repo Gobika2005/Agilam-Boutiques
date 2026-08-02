@@ -66,9 +66,9 @@ export function Help() {
                   aria-expanded={isOpen}
                   style={css('width:100%;display:flex;align-items:center;gap:11px;padding:15px 14px;border:none;background:none;cursor:pointer;text-align:left;font-family:inherit;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;flex:none;")}>help</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;flex:none;")}>help</span>
                   <span style={css('flex:1;font-weight:700;font-size:13.5px;color:var(--ag-ink);')}>{f.q}</span>
-                  <span style={css(`font-family:'Material Symbols Outlined';color:#CBB0BC;transition:transform .18s ease;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
+                  <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:#CBB0BC;transition:transform .18s ease;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
                 </button>
                 {isOpen && (
                   <div style={css('padding:0 14px 15px 45px;font-size:13px;font-weight:500;line-height:1.65;color:#6A545E;')}>{f.a}</div>
@@ -92,13 +92,13 @@ export function Help() {
               style={css(`display:flex;align-items:center;gap:13px;padding:14px 14px;text-decoration:none;color:inherit;border-bottom:${i === arr.length - 1 ? 'none' : '1px solid var(--ag-border-soft)'};`)}
             >
               <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{c.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{c.icon}</span>
               </span>
               <span style={css('flex:1;min-width:0;')}>
                 <span style={css('display:block;font-weight:800;font-size:14.5px;')}>{c.label}</span>
                 <span style={css('display:block;font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{c.sub}</span>
               </span>
-              <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
             </a>
           ))}
         </div>

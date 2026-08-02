@@ -69,11 +69,17 @@ export function MaintenanceNotice() {
       role="status"
       className="agx-maintenance-notice"
       style={css(
+        // min-height, because the sentence sits right on the wrap boundary: it
+        // takes two lines in the fallback font and one once the webfont swaps
+        // in, so the banner used to shrink ~28px mid-load and drag the whole
+        // page up with it. Two lines' worth is reserved either way; the
+        // published --ag-banner-h then stays put too.
         'position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:center;gap:9px;' +
+          'min-height:53px;box-sizing:border-box;' +
           'padding:9px 14px;background:#8A5A00;color:#fff;font-size:12.5px;font-weight:700;line-height:1.4;text-align:center;',
       )}
     >
-      <span style={css("font-family:'Material Symbols Outlined';font-size:18px;flex:none;")}>engineering</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;flex:none;")}>engineering</span>
       <span>We’re carrying out maintenance right now — some things may be slower or unavailable.</span>
     </div>
   );

@@ -55,6 +55,7 @@ export function WishButton({
     >
       <span
         key={wished ? 'on' : 'off'}
+        aria-hidden="true"
         className={`agx-heart${wished ? ' agx-heart-on' : ''}`}
         style={css(`font-size:${Math.round(size * 0.53)}px;color:${wished ? WISH_RED : WISH_IDLE};`)}
       >
@@ -72,6 +73,7 @@ export function WishHeart({ wished, size = 22 }: { wished: boolean; size?: numbe
   return (
     <span
       key={wished ? 'on' : 'off'}
+      aria-hidden="true"
       className={`agx-heart${wished ? ' agx-heart-on' : ''}`}
       style={css(`font-size:${size}px;color:${wished ? WISH_RED : WISH_IDLE};`)}
     >

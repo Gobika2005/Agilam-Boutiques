@@ -32,7 +32,7 @@ export function SellModal() {
         style={css('width:100%;max-width:460px;margin:auto;background:var(--ag-surface);border-radius:28px;padding:24px 24px 28px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
         <div style={css('width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>storefront</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>storefront</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;text-align:center;margin-top:16px;line-height:1.1;")}>
           Are you a Boutique Owner?
@@ -45,13 +45,13 @@ export function SellModal() {
             onClick={goLogin}
             style={css('height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>login</span>Login
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>login</span>Login
           </button>
           <button
             onClick={goCreate}
             style={css('height:54px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>add_business</span>Create Boutique
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>add_business</span>Create Boutique
           </button>
           <button
             onClick={closeSellModal}

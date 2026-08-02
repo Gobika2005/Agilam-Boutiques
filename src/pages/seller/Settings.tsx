@@ -188,13 +188,13 @@ export function Settings() {
           style={css('width:100%;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--ag-surface-3);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);text-align:left;font-family:inherit;')}
         >
           <span style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;flex:none;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
           </span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
             <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>Shop on MangaiMart as a customer</span>
           </span>
-          <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
         </button>
       </div>
     </div>

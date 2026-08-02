@@ -83,7 +83,7 @@ export function Orders() {
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</h1>
         {all.length > 0 && (
           <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export
           </button>
         )}
       </div>
@@ -91,7 +91,7 @@ export function Orders() {
       {/* Search */}
       <div style={css('padding:2px 20px 10px;')}>
         <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -100,7 +100,7 @@ export function Orders() {
           />
           {search && (
             <button onClick={() => setSearch('')} aria-label="Clear search" style={css('border:none;background:none;cursor:pointer;display:flex;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>close</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>close</span>
             </button>
           )}
         </div>
@@ -111,11 +111,11 @@ export function Orders() {
           onClick={() => setTab('To collect')}
           style={css('margin:2px 20px 10px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:21px;")}>payments</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:21px;")}>payments</span>
           <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
             <strong>{fmt(outstanding)}</strong> still to collect in cash across your open COD orders.
           </span>
-          <span style={css("font-family:'Material Symbols Outlined';color:#C9AE7F;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#C9AE7F;")}>chevron_right</span>
         </div>
       )}
 
@@ -149,7 +149,7 @@ export function Orders() {
               onClick={() => setPeriod(p)}
               style={css(`flex:none;display:flex;align-items:center;gap:5px;font-family:inherit;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};cursor:pointer;`)}
             >
-              {on && <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>event</span>}
+              {on && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>event</span>}
               {p}
             </button>
           );
@@ -213,7 +213,7 @@ export function Orders() {
                   onClick={() => printInvoice(o, boutique?.name ?? 'Your boutique')}
                   style={css('display:flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>print</span>Invoice
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>print</span>Invoice
                 </button>
               </div>
             </div>

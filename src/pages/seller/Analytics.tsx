@@ -157,7 +157,7 @@ export function Analytics() {
         <div className="agx-rgrid" style={css('margin-top:14px;')}>
           {tiles.map((t) => (
             <div key={t.label} className="agx-lift" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 18px 40px -28px rgba(107,20,54,.55);')}>
-              <div style={css(`width:42px;height:42px;border-radius:13px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}><span style={css(`font-family:'Material Symbols Outlined';color:${t.ic};`)}>{t.icon}</span></div>
+              <div style={css(`width:42px;height:42px;border-radius:13px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}><span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${t.ic};`)}>{t.icon}</span></div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:12px;")}>{t.value}</div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;font-weight:700;')}>{t.label}</div>
               <div style={css('font-size:11.5px;font-weight:800;color:var(--ag-muted);margin-top:6px;')}>{t.sub}</div>
@@ -220,10 +220,10 @@ export function Analytics() {
                   </div>
                   <div style={css('text-align:right;flex:none;')}>
                     <div style={css('display:flex;align-items:center;gap:4px;font-weight:800;color:var(--ag-info-text);font-size:13px;')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>{p.views_count ?? 0}
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>{p.views_count ?? 0}
                     </div>
                     <div style={css('display:flex;align-items:center;gap:4px;font-size:11px;color:#D6336C;font-weight:700;margin-top:2px;justify-content:flex-end;')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>favorite</span>{p.likes_count ?? 0}
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>favorite</span>{p.likes_count ?? 0}
                     </div>
                   </div>
                 </div>

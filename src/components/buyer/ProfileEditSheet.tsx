@@ -59,7 +59,7 @@ export function ProfileEditSheet({
       >
         <div style={css('display:flex;align-items:center;gap:12px;')}>
           <div style={css('width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 14px 30px -16px rgba(214,51,108,.8);')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:24px;")}>person_edit</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:24px;")}>person_edit</span>
           </div>
           <div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.1;")}>Your details</div>
@@ -128,7 +128,7 @@ export function ProfileEditSheet({
             onClick={save}
             style={css('height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>check</span>Save details
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>check</span>Save details
           </button>
           <button onClick={onClose} style={css('height:44px;border:none;background:none;color:var(--ag-muted);font-weight:700;font-size:14px;cursor:pointer;')}>
             Cancel

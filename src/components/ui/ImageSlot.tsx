@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { css } from '@/lib/css';
+import { imageFallback, imageSrcSet } from '@/lib/imageUrl';
 
 /**
  * Stand-in for the design's `<x-import component="image-slot">` elements.
@@ -57,6 +58,7 @@ export function ImageSlot({
   priority = false,
   width,
   height,
+  sizes,
 }: {
   placeholder?: string;
   src?: string;
@@ -81,9 +83,20 @@ export function ImageSlot({
   /** Override the 4:5 default where a surface is a different shape (a cover). */
   width?: number;
   height?: number;
+  /**
+   * How wide this slot actually paints, as a CSS `sizes` value — the browser
+   * needs it to pick a `srcset` candidate, and without it assumes `100vw` and
+   * downloads the largest one for every thumbnail.
+   *
+   * The default describes the app's dominant shape: a phone laying cards two to
+   * a row, opening out to a fixed tile on desktop. Any surface that isn't that
+   * (a hero, a 3-across strip, a 56 px avatar) should pass its own.
+   */
+  sizes?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = !!src && !failed && isEmbeddable(src);
+  const srcSet = showImage ? imageSrcSet(src!) : undefined;
 
   return (
     <div
@@ -99,7 +112,9 @@ export function ImageSlot({
     >
       {showImage ? (
         <img
-          src={src}
+          src={imageFallback(src!)}
+          srcSet={srcSet}
+          sizes={srcSet ? (sizes ?? '(min-width: 768px) 320px, 50vw') : undefined}
           alt={alt ?? placeholder ?? ''}
           width={width ?? INTRINSIC_WIDTH}
           height={height ?? INTRINSIC_HEIGHT}
@@ -123,7 +138,7 @@ export function ImageSlot({
           {placeholder ?? 'MangaiMart'}
         </span>
       ) : (
-        <span
+        <span aria-hidden="true"
           style={css(
             "font-family:'Material Symbols Outlined';font-size:34px;color:rgba(107,20,54,.16);",
           )}

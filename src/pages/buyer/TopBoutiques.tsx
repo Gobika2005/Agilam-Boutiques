@@ -94,7 +94,7 @@ export function TopBoutiques() {
 
       {!loading && !anySalesData && BOUTIQUES.length > 0 && (
         <div style={css('display:flex;gap:10px;align-items:flex-start;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:13px 15px;margin-top:14px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#B8892B;flex:none;")}>hourglass_top</span>
           <span style={css('font-size:12.5px;color:#7A5C1E;line-height:1.55;')}>
             Too early to rank by sales, so these are ordered by rating, following and catalogue size for now.
           </span>
@@ -115,7 +115,7 @@ export function TopBoutiques() {
           onClick={() => { setVerifiedOnly((v) => !v); setShown(PAGE); }}
           style={css(`display:flex;align-items:center;gap:7px;border:1px solid ${verifiedOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${verifiedOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>
           Verified only
         </button>
         <button
@@ -123,7 +123,7 @@ export function TopBoutiques() {
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Search the full directory
-          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>search</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>search</span>
         </button>
       </div>
 
@@ -165,10 +165,10 @@ export function TopBoutiques() {
                   <div style={css('min-width:0;flex:1;')}>
                     <div style={css('display:flex;align-items:center;gap:5px;')}>
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
-                      {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
+                      {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                     </div>
                     <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>
                       {b.area && b.area !== b.city ? `${b.area}, ${b.city}` : b.city}
                     </div>
                   </div>
@@ -178,7 +178,7 @@ export function TopBoutiques() {
                     aria-pressed={!!follows[b.id]}
                     style={css(`width:38px;height:38px;flex:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${follows[b.id] ? 'transparent' : 'var(--ag-border-soft)'};background:${follows[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};`)}
                   >
-                    <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${follows[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>
+                    <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${follows[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>
                       {follows[b.id] ? 'how_to_reg' : 'person_add'}
                     </span>
                   </button>
@@ -212,7 +212,7 @@ export function TopBoutiques() {
 function Stat({ icon, tint, value, sub }: { icon: string; tint: string; value: string; sub: string }) {
   return (
     <span style={css('display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--ag-ink);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 9px;white-space:nowrap;')}>
-      <span style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${tint};`)}>{icon}</span>
+      <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${tint};`)}>{icon}</span>
       {value}
       <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>{sub}</span>
     </span>

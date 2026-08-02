@@ -69,7 +69,7 @@ export function Customers() {
       {groups.length > 0 && (
         <div style={css('padding:0 20px 10px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customer name" style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ag-ink);')} />
           </div>
         </div>
@@ -93,7 +93,7 @@ export function Customers() {
                   <div style={css('font-weight:800;color:var(--ag-crimson);font-size:14px;')}>{fmt(c.spent)}</div>
                   <div style={css('font-size:11px;color:var(--ag-muted-soft);')}>lifetime</div>
                 </div>
-                <span style={css(`font-family:'Material Symbols Outlined';color:#CBB0BC;transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
+                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:#CBB0BC;transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
               </div>
 
               {isOpen && (

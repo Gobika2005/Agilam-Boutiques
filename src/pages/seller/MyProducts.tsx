@@ -111,7 +111,7 @@ export function MyProducts() {
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;justify-content:space-between;')}>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>My Products</h1>
         <button onClick={() => navigate('/seller/add-product')} style={css('background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
         </button>
       </div>
 
@@ -122,13 +122,13 @@ export function MyProducts() {
             style={css('width:100%;text-align:left;background:var(--ag-info-bg);border:1px solid #CFDDF0;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px;cursor:pointer;font-family:inherit;')}
           >
             <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-info-text);")}>visibility_off</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-info-text);")}>visibility_off</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:13px;color:var(--ag-info-text);')}>Not visible to buyers yet</span>
               <span style={css('display:block;font-size:11.5px;font-weight:600;color:#4E688F;margin-top:2px;line-height:1.45;')}>Your shop is {BOUTIQUE_STATUS_LABEL[boutique!.status].toLowerCase()}. These products publish to buyers the moment your boutique is approved.</span>
             </span>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-info-text);")}>chevron_right</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-info-text);")}>chevron_right</span>
           </button>
         </div>
       )}
@@ -159,7 +159,7 @@ export function MyProducts() {
                   aria-label={`Edit ${p.title}`}
                   style={css('width:36px;height:36px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
                 >
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>edit</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>edit</span>
                 </button>
               </div>
 
@@ -167,7 +167,7 @@ export function MyProducts() {
               <div style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);')}>
                 {metricsOf(p).map((m) => (
                   <span key={m.label} title={m.label} style={css('display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;color:var(--ag-ink-2);')}>
-                    <span style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${m.ic};`)}>{m.icon}</span>
+                    <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${m.ic};`)}>{m.icon}</span>
                     {m.value}
                   </span>
                 ))}
@@ -187,7 +187,7 @@ export function MyProducts() {
             <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>
               <button onClick={closeEdit} style={css('width:36px;height:36px;border-radius:11px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>
             </div>
 
@@ -233,7 +233,7 @@ export function MyProducts() {
               </div>
             ) : (
               <button onClick={() => setConfirmDelete(true)} disabled={busy} style={css('width:100%;height:48px;margin-top:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>delete</span>Delete product
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>delete</span>Delete product
               </button>
             )}
             </div>

@@ -136,7 +136,7 @@ export function Payment() {
 
         {pending && (
           <div style={css('margin-top:16px;background:var(--ag-gold-bg);border:1.5px solid var(--ag-gold-border);border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:24px;")}>error</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:24px;")}>error</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:14.5px;')}>We received your {fmt(pending.total)} payment</div>
               <div style={css('color:#7A6450;font-size:12.5px;margin-top:3px;line-height:1.5;')}>
@@ -169,7 +169,7 @@ export function Payment() {
                   style={css(`display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:16px;cursor:${blocked ? 'default' : 'pointer'};border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};opacity:${blocked ? 0.55 : 1};`)}
                 >
                   <span style={css(`width:46px;height:46px;flex:none;border-radius:13px;background:${on ? '#D6336C' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;`)}>
-                    <span style={css(`font-family:'Material Symbols Outlined';color:${on ? '#fff' : '#D6336C'};`)}>{m.icon}</span>
+                    <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${on ? '#fff' : '#D6336C'};`)}>{m.icon}</span>
                   </span>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{m.label}</div>
@@ -182,13 +182,13 @@ export function Payment() {
                     </div>
                   </div>
                   {!blocked && (
-                    <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{on ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{on ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
                   )}
                 </div>
               );
             })}
             <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;color:var(--ag-muted);font-size:12.5px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-good);")}>lock</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-good);")}>lock</span>
               {payingCash ? 'Keep the exact amount ready — our partner may not carry change.' : '100% secure payments · encrypted end-to-end'}
             </div>
           </div>
@@ -199,15 +199,15 @@ export function Payment() {
                 the buyer is looking hardest at the number they're about to pay. */}
             {coupon ? (
               <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:var(--ag-good-bg);border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified</span>
                 <div style={css('flex:1;min-width:0;font-weight:800;font-size:13px;color:var(--ag-good-text);')}>{coupon.code} applied</div>
                 <button onClick={openCoupons} style={css('border:none;background:none;cursor:pointer;color:#4B7A61;font-size:12px;font-weight:800;')}>Change</button>
               </div>
             ) : (
               <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed var(--ag-border);background:var(--ag-surface-2);border-radius:13px;cursor:pointer;text-align:left;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
                 <span style={css('flex:1;font-weight:800;font-size:13px;color:var(--ag-crimson);')}>Have a coupon?</span>
-                <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
               </button>
             )}
 
@@ -235,7 +235,7 @@ export function Payment() {
               </div>
             )}
             <button onClick={onPlaceOrder} disabled={processing} style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{payingCash ? 'local_shipping' : 'lock'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{payingCash ? 'local_shipping' : 'lock'}</span>
               {processing ? 'Processing…' : payingCash ? 'Place order' : `Pay ${fmt(total)}`}
             </button>
             <button onClick={() => navigate('/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to delivery</button>

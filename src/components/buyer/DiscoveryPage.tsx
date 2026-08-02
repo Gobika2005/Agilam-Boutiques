@@ -4,6 +4,8 @@ import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
+import { CatalogError } from '@/components/buyer/CatalogError';
+import { useCatalog } from '@/state/CatalogContext';
 import { routes } from '@/lib/seo';
 import { TONES, fmt, type Product } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
@@ -43,7 +45,7 @@ export function DiscoveryHeader({
           buyer needs a way back that is not the browser button. */}
       <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>
         <Link to="/" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
         <span style={css('color:var(--ag-muted);')}>{title}</span>
       </div>
 
@@ -83,9 +85,9 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
         aria-expanded={open}
         style={css('width:100%;display:flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:14px 16px;text-align:left;font-family:inherit;')}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>insights</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>insights</span>
         <span style={css('flex:1;font-size:13.5px;font-weight:700;color:var(--ag-ink);')}>How this list is ordered</span>
-        <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-muted-soft);transition:transform .25s ease;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+        <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-muted-soft);transition:transform .25s ease;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
       </button>
       {open && (
         <div style={css('padding:0 16px 16px;')}>
@@ -104,7 +106,7 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
             ))}
           </div>
           <div style={css('margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-surface-2);display:flex;gap:8px;align-items:flex-start;color:var(--ag-good);font-size:12.5px;font-weight:600;line-height:1.5;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>verified_user</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>verified_user</span>
             <span>No boutique can pay for a place in this list. Ads are sold separately and always labelled.</span>
           </div>
         </div>
@@ -198,7 +200,7 @@ export function CatalogCard({
 
         {badge && rank == null && (
           <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>{badge.icon}</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>{badge.icon}</span>
             <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>{badge.label}</span>
           </div>
         )}
@@ -213,7 +215,7 @@ export function CatalogCard({
 
         {proof && !soldOut && (
           <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>local_fire_department</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-good);")}>local_fire_department</span>
             {proof}
           </div>
         )}
@@ -226,7 +228,7 @@ export function CatalogCard({
           <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
           {p.reviews > 0 && (
             <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
               {p.rating}
               <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>({compactCount(p.reviews)})</span>
             </span>
@@ -239,10 +241,25 @@ export function CatalogCard({
 
 // ── States ──────────────────────────────────────────────────────────────────
 
+/**
+ * "Nothing here" — but only once we know that for a fact.
+ *
+ * Every catalogue surface reached this component whenever its list came back
+ * short, including when the list was short because the database never answered.
+ * The result was a shop that told buyers on a patchy connection there were no
+ * new arrivals, no best sellers and no boutiques, with no way to retry.
+ *
+ * Reading `CatalogContext` here rather than threading `error` through all five
+ * callers keeps the check impossible to forget: this component is only ever
+ * rendered by catalogue pages, and none of them can honestly claim emptiness
+ * while the load is failing.
+ */
 export function EmptyState({ icon, title, body, action }: { icon: string; title: string; body: string; action?: ReactNode }) {
+  const { error, reload } = useCatalog();
+  if (error) return <CatalogError onRetry={reload} />;
   return (
     <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:48px 24px;text-align:center;margin-top:20px;')}>
-      <span style={css(`font-family:'Material Symbols Outlined';font-size:44px;color:rgba(176,36,84,.28);`)}>{icon}</span>
+      <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:44px;color:rgba(176,36,84,.28);`)}>{icon}</span>
       <div style={css('color:var(--ag-ink);font-size:16px;font-weight:700;margin-top:12px;')}>{title}</div>
       <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;')}>{body}</div>
       {action && <div style={css('margin-top:18px;')}>{action}</div>}

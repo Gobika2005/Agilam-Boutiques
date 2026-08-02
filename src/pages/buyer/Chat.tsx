@@ -128,7 +128,7 @@ export function Chat() {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
         <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>storefront</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>storefront</span>
         </div>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>Boutique not found</h1>
         <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>

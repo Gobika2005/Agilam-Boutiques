@@ -116,7 +116,7 @@ export function Coupons() {
             </div>
           </div>
           <button onClick={openNew} disabled={!boutiqueId} style={css(`flex:none;height:44px;padding:0 16px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:6px;opacity:${boutiqueId ? 1 : 0.6};`)}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>add</span>New
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>add</span>New
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export function Coupons() {
           )}
           {!loading && rows.length === 0 && (
             <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:18px;padding:28px 18px;text-align:center;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>local_offer</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>local_offer</span>
               <div style={css('font-weight:800;font-size:14.5px;color:var(--ag-ink-2);margin-top:8px;')}>No coupons yet</div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Create a code to bring buyers back to your boutique.</div>
             </div>
@@ -165,7 +165,7 @@ export function Coupons() {
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:10px;')}>
               {platformOffers.map((c) => (
                 <div key={c.id} style={css('display:flex;align-items:center;gap:12px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>redeem</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>redeem</span>
                   <div style={css('flex:1;min-width:0;')}>
                     <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:var(--ag-crimson);")}>{c.code}</span>
                     <div style={css('font-size:12px;color:var(--ag-label);font-weight:600;margin-top:1px;')}>{describeCoupon(c)}</div>
@@ -188,7 +188,7 @@ export function Coupons() {
             <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{editing.id ? 'Edit coupon' : 'New coupon'}</div>
               <button onClick={() => setEditing(null)} style={css('width:36px;height:36px;border-radius:11px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';")}>close</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';")}>close</span>
               </button>
             </div>
 
@@ -225,7 +225,7 @@ function IconBtn({ icon, onClick, danger }: { icon: string; onClick: () => void;
       onClick={onClick}
       style={css(`width:34px;height:34px;border-radius:10px;border:1.5px solid ${danger ? 'var(--ag-border)' : 'var(--ag-border)'};background:var(--ag-surface);color:${danger ? 'var(--ag-danger-text)' : 'var(--ag-crimson)'};cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
     >
-      <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{icon}</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{icon}</span>
     </button>
   );
 }

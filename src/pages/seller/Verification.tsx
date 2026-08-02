@@ -109,7 +109,7 @@ export function Verification() {
         <div style={css(`background:${tone.bg};border:1px solid ${tone.border};border-radius:22px;padding:22px;`)}>
           <div style={css('display:flex;align-items:center;gap:13px;')}>
             <span style={css(`width:52px;height:52px;flex:none;border-radius:16px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -18px rgba(0,0,0,.5);`)}>
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:27px;color:${tone.accent};`)}>{tone.icon}</span>
+              <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:27px;color:${tone.accent};`)}>{tone.icon}</span>
             </span>
             <div>
               <div className="agx-eyebrow" style={css(`font-size:9.5px;color:${tone.accent};`)}>{copy.eyebrow}</div>
@@ -131,7 +131,7 @@ export function Verification() {
               style={css('margin-top:16px;height:50px;padding:0 24px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);font-family:inherit;')}
             >
               {copy.cta}
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
             </button>
           )}
         </div>
@@ -140,7 +140,7 @@ export function Verification() {
         {note && (
           <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
             <div style={css('display:flex;align-items:center;gap:8px;')}>
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${tone.accent};`)}>feedback</span>
+              <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${tone.accent};`)}>feedback</span>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;")}>
                 {status === 'rejected' ? 'Reason' : 'What needs changing'}
               </div>
@@ -156,10 +156,10 @@ export function Verification() {
             {CHECKS.map((c) => (
               <div key={c.label} style={css('display:flex;align-items:center;gap:11px;')}>
                 <span style={css('width:34px;height:34px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:18px;")}>{c.icon}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:18px;")}>{c.icon}</span>
                 </span>
                 <span style={css('flex:1;font-weight:700;font-size:13.5px;color:var(--ag-ink);')}>{c.label}</span>
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${status === 'pending' ? '#C7B2BC' : tone.accent};`)}>
+                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${status === 'pending' ? '#C7B2BC' : tone.accent};`)}>
                   {status === 'pending' ? 'pending' : status === 'rejected' ? 'close' : 'edit'}
                 </span>
               </div>

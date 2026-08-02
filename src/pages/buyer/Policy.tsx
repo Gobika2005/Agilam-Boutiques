@@ -58,7 +58,7 @@ export function Policy() {
   if (!page) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;')}>
-        <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>description</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-border);")}>description</span>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Page not found</div>
         <div style={css('color:var(--ag-muted);font-size:14px;')}>That policy doesn’t exist (or has moved).</div>
         <button onClick={() => navigate('/')} style={css('margin-top:4px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 22px;font-weight:800;cursor:pointer;')}>
@@ -83,7 +83,7 @@ export function Policy() {
         {/* Title block */}
         <div style={css('display:flex;align-items:flex-start;gap:16px;margin-top:18px;')}>
           <div style={css('width:56px;height:56px;flex:none;border-radius:18px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);display:flex;align-items:center;justify-content:center;box-shadow:0 16px 30px -16px rgba(176,36,84,.9);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:27px;color:#fff;")}>{page.icon}</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:27px;color:#fff;")}>{page.icon}</span>
           </div>
           <div style={css('flex:1;min-width:0;')}>
             <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>{page.eyebrow}</div>
@@ -128,10 +128,10 @@ export function Policy() {
             {/* Direct contact actions — every policy ends by pointing at a human. */}
             <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;padding-top:24px;border-top:1px solid var(--ag-border-soft);')}>
               <a href={CONTACT_LINKS.support} style={css('display:flex;align-items:center;gap:8px;height:46px;padding:0 18px;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;box-shadow:0 14px 28px -16px rgba(214,51,108,.85);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>mail</span>Email support
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>mail</span>Email support
               </a>
               <a href={CONTACT_LINKS.call} style={css('display:flex;align-items:center;gap:8px;height:46px;padding:0 18px;border-radius:14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13.5px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>call</span>{COMPANY.phone}
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>call</span>{COMPANY.phone}
               </a>
             </div>
           </article>
@@ -147,10 +147,10 @@ export function Policy() {
                   style={css(`width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:none;background:none;cursor:pointer;text-align:left;${i < others.length - 1 ? 'border-bottom:1px solid #F7EBF1;' : ''}`)}
                 >
                   <span style={css('width:36px;height:36px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:19px;")}>{o.icon}</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:19px;")}>{o.icon}</span>
                   </span>
                   <span style={css('flex:1;min-width:0;font-weight:800;font-size:13.5px;color:var(--ag-ink);')}>{o.title}</span>
-                  <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;font-size:20px;flex:none;")}>chevron_right</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;font-size:20px;flex:none;")}>chevron_right</span>
                 </button>
               ))}
             </div>

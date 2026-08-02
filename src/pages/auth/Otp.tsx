@@ -38,7 +38,11 @@ export function Otp() {
       sub="Enter the 6-digit code sent to +91 98765 43210"
       onBack={() => navigate(`/auth/signin/${role}`)}
     >
-      <div style={css('display:flex;gap:10px;justify-content:center;')}>
+      {/* Six boxes are one field to a sighted user and six anonymous text inputs
+          to a screen reader, which announced each as "edit, blank" with nothing
+          to say which of the six it was. The group carries the instruction; each
+          box says its own position. */}
+      <div role="group" aria-label="6-digit verification code" style={css('display:flex;gap:10px;justify-content:center;')}>
         {digits.map((d, i) => (
           <input
             key={i}
@@ -48,6 +52,8 @@ export function Otp() {
             onKeyDown={(e) => onKeyDown(i, e)}
             maxLength={1}
             inputMode="numeric"
+            autoComplete={i === 0 ? 'one-time-code' : 'off'}
+            aria-label={`Digit ${i + 1} of 6`}
             style={css(`width:48px;height:58px;text-align:center;font-size:24px;font-weight:800;border:1.5px solid ${d ? '#D6336C' : 'var(--ag-border)'};background:var(--ag-surface);border-radius:14px;color:var(--ag-ink);`)}
           />
         ))}

@@ -6,6 +6,7 @@ import { routes } from '@/lib/seo';
 import { boutiqueListSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { CatalogError } from '@/components/buyer/CatalogError';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { AdImpression } from '@/components/buyer/AdImpression';
 import { PromotedBadge } from '@/components/buyer/PromotedBadge';
@@ -32,7 +33,7 @@ export function Boutiques() {
   // account when signed in, or to local storage as a guest — always in sync
   // with the boutique profile page.
   const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
-  const { boutiques: BOUTIQUES } = useCatalog();
+  const { boutiques: BOUTIQUES, error: catalogError, reload } = useCatalog();
 
   usePageMeta({
     title: 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
@@ -140,7 +141,7 @@ export function Boutiques() {
 
       {/* Search bar with a filter action on the right, per the design */}
       <div style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
-        <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:21px;")}>search</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:21px;")}>search</span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -153,7 +154,7 @@ export function Boutiques() {
             onClick={() => setQuery('')}
             style={css('width:38px;height:38px;flex:none;border-radius:12px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:20px;")}>close</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:20px;")}>close</span>
           </button>
         )}
         <button
@@ -183,7 +184,7 @@ export function Boutiques() {
           onClick={() => setFollowingOnly(true)}
           style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${followingOnly ? 'var(--ag-surface)' : 'transparent'};color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};box-shadow:${followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>how_to_reg</span>
+          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>how_to_reg</span>
           Following
           <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? 'var(--ag-surface-2)' : 'var(--ag-border)'};color:var(--ag-crimson);`)}>{followingCount}</span>
         </button>
@@ -247,7 +248,7 @@ export function Boutiques() {
               onClick={() => setVerifiedOnly((v) => !v)}
               style={css(`display:flex;align-items:center;gap:6px;border:1px solid ${verifiedOnly ? 'transparent' : 'var(--ag-border-soft)'};background:${verifiedOnly ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${verifiedOnly ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
             >
-              <span style={css('font-family:\'Material Symbols Outlined\';font-size:16px;')}>verified</span>
+              <span aria-hidden="true" style={css('font-family:\'Material Symbols Outlined\';font-size:16px;')}>verified</span>
               Verified only
             </button>
           </div>
@@ -292,16 +293,16 @@ export function Boutiques() {
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('display:flex;align-items:center;gap:6px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.15;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
-                {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3E9BE0;flex:none;")}>verified</span>}
+                {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3E9BE0;flex:none;")}>verified</span>}
                 {adId && <PromotedBadge label="Promoted" style={{ flex: 'none' }} />}
               </div>
               <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>
                 <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{b.rating}</span>
                 <span style={css('font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>({formatCount(b.reviews)})</span>
               </div>
               <div style={css('display:flex;align-items:center;gap:4px;margin-top:5px;color:var(--ag-muted);font-size:12.5px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>location_on</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>location_on</span>
                 <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{b.area && b.area !== b.city ? `${b.area}, ${b.city}` : b.city}</span>
               </div>
             </div>
@@ -312,7 +313,7 @@ export function Boutiques() {
               aria-pressed={following[b.id]}
               style={css(`width:42px;height:42px;flex:none;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${following[b.id] ? 'transparent' : 'var(--ag-border-soft)'};background:${following[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};box-shadow:${following[b.id] ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
             >
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
+              <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : 'var(--ag-crimson)'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
             </button>
           </Link>
           );
@@ -325,7 +326,7 @@ export function Boutiques() {
 
         {filtered.length === 0 && followingOnly && followingCount === 0 && (
           <div style={css('padding:40px 20px;text-align:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(176,36,84,.3);")}>person_add</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(176,36,84,.3);")}>person_add</span>
             <div style={css('color:var(--ag-ink);font-size:15px;font-weight:700;margin-top:10px;')}>No boutiques followed yet</div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:4px;')}>Tap the follow button on any boutique to find it here.</div>
             <button
@@ -337,9 +338,12 @@ export function Boutiques() {
           </div>
         )}
 
-        {filtered.length === 0 && !(followingOnly && followingCount === 0) && (
+        {/* A failed load is not "no boutiques match your filters". */}
+        {filtered.length === 0 && catalogError && <CatalogError what="the boutiques" onRetry={reload} />}
+
+        {filtered.length === 0 && !catalogError && !(followingOnly && followingCount === 0) && (
           <div style={css('padding:40px 20px;text-align:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(107,20,54,.2);")}>storefront</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(107,20,54,.2);")}>storefront</span>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;')}>No boutiques match your filters.</div>
             {(query || activeFilters) && (
               <button

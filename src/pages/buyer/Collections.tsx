@@ -103,7 +103,7 @@ export function Collections() {
               <span style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,0) 38%,rgba(30,8,18,.78) 100%);')} />
               <span style={css('position:absolute;left:14px;right:14px;bottom:14px;color:#fff;')}>
                 <span style={css('display:flex;align-items:center;gap:6px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;")}>{c.icon}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;")}>{c.icon}</span>
                   <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.1;")}>{c.name}</span>
                 </span>
                 <span style={css('display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;font-weight:600;opacity:.92;')}>
@@ -133,14 +133,14 @@ export function Collections() {
                   {o.image ? (
                     <ImageSlot src={o.image} placeholder={o.name} style={css('position:absolute;inset:0;')} />
                   ) : (
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-deep);")}>{o.icon}</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-deep);")}>{o.icon}</span>
                   )}
                 </span>
                 <span style={css('min-width:0;flex:1;')}>
                   <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{o.name}</span>
                   <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;')}>{o.count} {o.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>chevron_right</span>
               </Link>
             ))}
           </div>
@@ -165,7 +165,7 @@ export function Collections() {
                   <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-crimson);line-height:1.1;")}>{b.label}</span>
                   <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:4px;')}>{b.count} {b.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>arrow_forward</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>arrow_forward</span>
               </button>
             ))}
           </div>

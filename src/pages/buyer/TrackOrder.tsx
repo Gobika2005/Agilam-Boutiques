@@ -35,10 +35,10 @@ export function TrackOrder() {
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
         <div style={css('max-width:720px;margin:0 auto;')}>
           <button onClick={() => navigate('/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
           </button>
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 30px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:48px;color:#CBB0BC;")}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:48px;color:#CBB0BC;")}>
               {refreshing ? 'sync' : 'search_off'}
             </span>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:14px;")}>
@@ -117,7 +117,7 @@ export function TrackOrder() {
       <div style={css('max-width:720px;margin:0 auto;')}>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
           <button onClick={() => navigate('/orders')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;padding:6px 0;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>arrow_back</span>My orders
           </button>
           <button
             onClick={() => void refresh()}
@@ -125,7 +125,7 @@ export function TrackOrder() {
             aria-label="Refresh order status"
             style={css(`display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12px;cursor:${refreshing ? 'wait' : 'pointer'};opacity:${refreshing ? 0.65 : 1};`)}
           >
-            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{refreshing ? 'sync' : 'refresh'}</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{refreshing ? 'sync' : 'refresh'}</span>
             {refreshing ? 'Updating' : 'Update'}
           </button>
         </div>
@@ -144,7 +144,7 @@ export function TrackOrder() {
               </div>
               <div style={css('opacity:.85;font-size:12.5px;margin-top:4px;')}>{order.boutique} · Qty {totalQty} · {fmt(order.total)}</div>
               <div style={css('display:inline-flex;align-items:center;gap:6px;margin-top:11px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:800;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#F4D9A6;")}>{rejected ? 'cancel' : delivered ? 'check_circle' : 'local_shipping'}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#F4D9A6;")}>{rejected ? 'cancel' : delivered ? 'check_circle' : 'local_shipping'}</span>
                 {rejected ? 'Order cancelled' : TRACK_STAGES[stage].label}
               </div>
             </div>
@@ -153,7 +153,7 @@ export function TrackOrder() {
           {/* The single most-asked question, answered up front. */}
           {!rejected && (
             <div style={css('position:relative;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.2);display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;")}>{delivered ? 'task_alt' : 'schedule'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;")}>{delivered ? 'task_alt' : 'schedule'}</span>
               {delivered ? 'Delivered — enjoy your piece!' : `Estimated delivery ${deliveryEstimate(order.placedAt)}`}
             </div>
           )}
@@ -162,7 +162,7 @@ export function TrackOrder() {
         {/* ---------- Cash on delivery ---------- */}
         {owes && (
           <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>payments</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>payments</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-gold-text);")}>
                 Keep {fmt(order.total)} ready
@@ -177,7 +177,7 @@ export function TrackOrder() {
         {/* ---------- Cancelled notice ---------- */}
         {rejected && (
           <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:18px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';color:#C0455E;font-size:22px;flex:none;")}>info</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#C0455E;font-size:22px;flex:none;")}>info</span>
             <div style={css('font-size:13px;color:#7A4652;line-height:1.55;')}>
               {/* Promising a refund on an order that was never paid for would be
                   a lie the buyer would chase support about. */}
@@ -203,7 +203,7 @@ export function TrackOrder() {
             <div key={st.label} style={css('display:flex;gap:14px;')}>
               <div style={css('display:flex;flex-direction:column;align-items:center;')}>
                 <div style={css(`width:38px;height:38px;flex:none;border-radius:50%;background:${st.done ? '#D6336C' : 'var(--ag-surface)'};border:2px solid ${st.done ? '#D6336C' : 'var(--ag-border)'};display:flex;align-items:center;justify-content:center;${st.current ? 'box-shadow:0 0 0 4px rgba(214,51,108,.16);' : ''}`)}>
-                  <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${st.done ? '#fff' : '#CBB0BC'};`)}>{st.icon}</span>
+                  <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${st.done ? '#fff' : '#CBB0BC'};`)}>{st.icon}</span>
                 </div>
                 {st.showLine && <span style={css(`width:2.5px;flex:1;min-height:26px;background:${st.done && !st.current ? '#D6336C' : 'var(--ag-border)'};margin:3px 0;`)} />}
               </div>
@@ -265,7 +265,7 @@ export function TrackOrder() {
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:22px;")}>{fmt(order.total)}</span>
             </div>
             <div style={css(`display:flex;align-items:center;gap:7px;color:${owes ? '#B0862B' : 'var(--ag-good)'};font-size:12px;font-weight:700;margin-top:2px;`)}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{owes ? 'payments' : 'verified'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{owes ? 'payments' : 'verified'}</span>
               {order.paymentMethod === 'COD'
                 ? owes ? 'Cash on delivery · pay when it arrives' : 'Cash on delivery · payment received'
                 : 'Paid online · payment verified'}
@@ -278,7 +278,7 @@ export function TrackOrder() {
           <div style={css(`${sectionTitle}`)}>Delivery address</div>
           <div style={css('display:flex;gap:12px;margin-top:13px;')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>location_on</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>location_on</span>
             </span>
             <div style={css('flex:1;min-width:0;font-size:13.5px;line-height:1.6;color:var(--ag-ink-2);')}>
               {guest.name && <div style={css('font-weight:800;color:var(--ag-ink);')}>{guest.name}</div>}
@@ -295,10 +295,10 @@ export function TrackOrder() {
         {/* ---------- Help ---------- */}
         <div style={css('display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;')}>
           <button onClick={chatWithBoutique} style={css('flex:1;min-width:150px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);border-radius:15px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#25B04A;")}>chat</span>Chat with boutique
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#25B04A;")}>chat</span>Chat with boutique
           </button>
           <a href={CONTACT_LINKS.support} style={css('flex:1;min-width:150px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);border-radius:15px;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>support_agent</span>Need help?
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>support_agent</span>Need help?
           </a>
         </div>
 

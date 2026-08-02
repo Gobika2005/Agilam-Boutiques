@@ -123,7 +123,7 @@ export function BoutiqueProfileEdit() {
           </div>
           {boutique?.verified && (
             <div style={css('display:flex;align-items:center;gap:5px;background:var(--ag-good-bg);color:var(--ag-good);padding:5px 11px;border-radius:9px;font-weight:800;font-size:12px;margin-top:24px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>Verified
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>Verified
             </div>
           )}
         </div>

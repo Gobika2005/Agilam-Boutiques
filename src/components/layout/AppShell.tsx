@@ -56,7 +56,7 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
       )}
     >
       <span style={css('position:relative;display:inline-flex;')}>
-        <span style={css(`font-family:'Material Symbols Outlined';font-size:23px;font-variation-settings:'FILL' ${active ? 1 : 0};`)}>{tab.icon}</span>
+        <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:23px;font-variation-settings:'FILL' ${active ? 1 : 0};`)}>{tab.icon}</span>
         {hasBadge && (
           <span style={css('position:absolute;top:-6px;right:-10px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D6336C;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;')}>
             {tab.badge}
@@ -88,7 +88,7 @@ function RaisedTab({ tab, active, onClick }: { tab: TabDef; active: boolean; onC
           `display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:linear-gradient(140deg,#F06A96,#B02454 62%,#7E1A3E);border:4px solid rgba(255,255,255,.92);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.45) inset,0 14px 30px -10px rgba(176,36,84,${active ? '.95' : '.7'}),0 0 0 ${active ? '7px' : '0px'} rgba(224,74,126,.15);transform:translateY(${active ? '-3px' : '0'}) scale(${active ? '1.05' : '1'});transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease;`,
         )}
       >
-        <span style={css("font-family:'Material Symbols Outlined';font-size:26px;")}>{tab.icon}</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;")}>{tab.icon}</span>
       </span>
       <span style={css(`font-size:11px;font-weight:800;color:${active ? 'var(--ag-crimson)' : '#9A8189'};transition:color .28s ease;`)}>
         {tab.label}
@@ -140,6 +140,12 @@ export function AppShell({
       {sellModal && <SellModal />}
 
       <div style={css('min-height:100vh;display:flex;flex-direction:column;background:var(--ag-bg);')}>
+        {/* Skip link. Every screen puts the wordmark, the search field, the bell
+            and the avatar ahead of the content, so a keyboard or screen-reader
+            user tabbed through the same five controls before reaching the page
+            they asked for — on every navigation. Off-screen until focused. */}
+        <a href="#main-content" className="agx-skip-link">Skip to main content</a>
+
         <header style={css('position:sticky;top:0;z-index:30;background:var(--ag-frost);backdrop-filter:blur(14px);border-bottom:1px solid var(--ag-border-soft);')}>
           <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:5px 16px;')}>
             {/* The wordmark is the way home from anywhere in the app. */}
@@ -192,7 +198,7 @@ export function AppShell({
           </>
         )}
 
-        <main className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
+        <main id="main-content" tabIndex={-1} className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
           {banner}
           <Outlet />
         </main>
@@ -230,7 +236,7 @@ export function AppShell({
           aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
           style={css('position:fixed;left:50%;transform:translateX(-50%);max-width:min(420px,calc(100vw - 32px));background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1400;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;')}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
+          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
             {toast.tone === 'error' ? 'error' : 'check_circle'}
           </span>
           {toast.msg}

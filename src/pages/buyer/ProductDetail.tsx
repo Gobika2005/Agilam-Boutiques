@@ -12,6 +12,7 @@ import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/share';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
+import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
 import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
@@ -206,6 +207,11 @@ export function ProductDetail() {
       : null,
     image: ap?.image ?? null,
     canonical: ap ? routes.product(ap) : null,
+    // A slug that resolves to nothing renders the "isn't available" screen, and
+    // that is a 404 in everything but the status line the SPA cannot set. Mark
+    // it, or every dead or taken-down product URL stays an indexable page. Only
+    // once loading has settled — mid-load `ap` is legitimately undefined.
+    noindex: !ap && !loading,
     type: 'product',
     product: ap ? { price: ap.price, currency: 'INR', availability: ap.stock === 0 ? 'oos' : 'instock' } : null,
     schema: ap
@@ -229,7 +235,7 @@ export function ProductDetail() {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
         <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>
             {loading ? 'hourglass_top' : 'search_off'}
           </span>
         </div>
@@ -292,7 +298,7 @@ export function ProductDetail() {
   // "Handcrafted" claim, and no fallback text standing in for a blank field.
   const highlights = [
     ...(ap.fabric ? [{ icon: 'diamond', label: ap.fabric }] : []),
-    ...(ap.occasion ? [{ icon: 'event_available', label: `${ap.occasion} wear` }] : []),
+    ...(ap.occasion ? [{ icon: 'event_available', label: occasionLabel(ap.occasion) }] : []),
   ];
 
   // Derived from what the piece already is, then whatever else the seller chose
@@ -301,7 +307,7 @@ export function ProductDetail() {
   const specs = [
     { label: 'Fabric', value: ap.fabric || 'Premium fabric' },
     { label: 'Category', value: ap.cat },
-    { label: 'Occasion', value: `${ap.occasion} wear` },
+    { label: 'Occasion', value: occasionLabel(ap.occasion) },
     { label: 'Colour', value: ap.color || '—' },
     ...(ap.sizes?.length ? [{ label: 'Sizes', value: sortSizes(ap.sizes).join(', ') }] : []),
     { label: 'Crafted in', value: ap.city },
@@ -404,14 +410,14 @@ export function ProductDetail() {
           aria-disabled="true"
           style={css(`flex:1;min-width:160px;height:${height}px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface-2);color:var(--ag-muted);font-weight:800;font-size:15px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>remove_shopping_cart</span>Out of stock
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>remove_shopping_cart</span>Out of stock
         </button>
       );
     }
     if (bagQty === 0) {
       return (
         <button onClick={onAddToBag} style={css(`flex:1;min-width:160px;height:${height}px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
         </button>
       );
     }
@@ -423,7 +429,7 @@ export function ProductDetail() {
           aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
           style={css(`width:${step}px;height:${step}px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
         </button>
         <button
           onClick={() => navigate('/cart')}
@@ -437,7 +443,7 @@ export function ProductDetail() {
           aria-label="Increase quantity"
           style={css(`width:${step}px;height:${step}px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${atStockCap ? '.45' : '1'};`)}
         >
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
         </button>
       </div>
     );
@@ -448,10 +454,10 @@ export function ProductDetail() {
     return (
       <div style={css('border:1px solid var(--ag-surface-3);border-radius:16px;overflow:hidden;background:var(--ag-surface);')}>
         <button onClick={() => togglePanel(id)} style={css('width:100%;display:flex;align-items:center;gap:12px;padding:16px 16px;border:none;background:none;cursor:pointer;text-align:left;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
           <span style={css('flex:1;font-weight:800;font-size:14.5px;color:var(--ag-ink);')}>{title}</span>
           {meta && <span style={css('font-size:12px;color:var(--ag-muted);font-weight:600;')}>{meta}</span>}
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
+          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
         </button>
         {isOpen && <div style={css('padding:0 16px 18px;')}>{body}</div>}
       </div>
@@ -482,7 +488,7 @@ export function ProductDetail() {
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:6px;')}>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
             <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
             </span>
           </div>
         </div>
@@ -546,7 +552,7 @@ export function ProductDetail() {
                 title="Share"
                 style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}
               >
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>share</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>share</span>
               </button>
               <WishButton
                 wished={!!wishlist[ap.id]}
@@ -560,12 +566,12 @@ export function ProductDetail() {
               <>
                 {imgIndex > 0 && (
                   <button aria-label="Previous photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex - 1)} style={css('position:absolute;left:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_left</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_left</span>
                   </button>
                 )}
                 {imgIndex < gallery.length - 1 && (
                   <button aria-label="Next photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex + 1)} style={css('position:absolute;right:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
-                    <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_right</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chevron_right</span>
                   </button>
                 )}
                 {/* The dot stays 7px; the BUTTON around it is 44px tall and
@@ -580,7 +586,7 @@ export function ProductDetail() {
                       aria-label={`Go to photo ${i + 1}`}
                       aria-current={i === imgIndex}
                       onClick={() => goToImage(i)}
-                      style={css('display:flex;align-items:center;justify-content:center;width:22px;height:44px;margin:-18px -7px;padding:0;border:none;background:none;cursor:pointer;')}
+                      style={css('display:flex;align-items:center;justify-content:center;width:26px;height:44px;margin:-18px -9px;padding:0;border:none;background:none;cursor:pointer;')}
                     >
                       <span
                         aria-hidden="true"
@@ -601,7 +607,11 @@ export function ProductDetail() {
                   aria-label={`Show photo ${i + 1}`}
                   style={css(`width:64px;height:64px;flex:none;padding:0;border:none;border-radius:12px;overflow:hidden;background:${TONES[ap.tone]};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;opacity:${i === imgIndex ? 1 : 0.72};transition:opacity .2s ease,box-shadow .2s ease;`)}
                 >
-                  <ImageSlot src={t.src} style={css('position:absolute;inset:0;')} />
+                  {/* Decorative: the button already announces "Show photo 3",
+                      so an alt here would make a screen reader say it twice.
+                      Passing "" is the explicit mark — omitting it entirely
+                      makes ImageSlot fall back to the placeholder text. */}
+                  <ImageSlot src={t.src} alt="" sizes="64px" style={css('position:absolute;inset:0;')} />
                 </button>
               ))}
             </div>
@@ -623,7 +633,7 @@ export function ProductDetail() {
               onClick={jumpToReviews}
               style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;cursor:pointer;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
             </button>
             <span style={css(`font-size:12.5px;font-weight:800;color:${stockFg};`)}>{stockLabel}</span>
           </div>
@@ -631,7 +641,7 @@ export function ProductDetail() {
           <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:20px;')}>
             {highlights.map((h) => (
               <span key={h.label} style={css('display:flex;align-items:center;gap:7px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;padding:9px 13px;font-size:12.5px;font-weight:700;color:var(--ag-ink-2);')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>{h.icon}</span>{h.label}
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>{h.icon}</span>{h.label}
               </span>
             ))}
           </div>
@@ -641,7 +651,7 @@ export function ProductDetail() {
             <div style={css('flex:1;')}>
               <div style={css('display:flex;align-items:center;gap:5px;')}>
                 <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
               </div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
             </div>
@@ -652,8 +662,12 @@ export function ProductDetail() {
             <div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
                 <span id="agx-size-label" className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size{selectedSize ? ` · ${selectedSize}` : ' · Select a size'}</span>
-                <button type="button" onClick={() => setShowSizeChart(true)} style={css('display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--ag-crimson);border:none;background:none;padding:0;cursor:pointer;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
+                {/* 21px tall with no padding was under WCAG 2.5.8's 24px floor,
+                    on a control a buyer reaches for precisely when they are
+                    unsure of their size. Padded out, with negative margins so
+                    the row's spacing is unchanged. */}
+                <button type="button" onClick={() => setShowSizeChart(true)} style={css('display:flex;align-items:center;gap:4px;min-height:32px;font-size:11px;font-weight:700;color:var(--ag-crimson);border:none;background:none;padding:0 6px;margin:0 -6px;cursor:pointer;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
                 </button>
               </div>
               {/* Real buttons in a radiogroup, not styled spans: the chips were
@@ -687,7 +701,7 @@ export function ProductDetail() {
 
           <div className="agx-pdp-actions" style={css('display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;')}>
             <button onClick={openChat} style={css('flex:1;min-width:160px;height:56px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>chat</span>Chat
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>chat</span>Chat
             </button>
             {renderBagControl(56)}
           </div>
@@ -715,7 +729,7 @@ export function ProductDetail() {
               <div style={css('display:flex;flex-direction:column;gap:9px;')}>
                 {offers.map((c) => (
                   <div key={c.id} style={css('display:flex;gap:11px;padding:12px 13px;background:var(--ag-bg);border:1px dashed var(--ag-border);border-radius:13px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);flex:none;")}>local_activity</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);flex:none;")}>local_activity</span>
                     <div style={css('min-width:0;')}>
                       <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>
                         {offerLine(c)} <span style={css('color:var(--ag-crimson);')}>· {c.code}</span>
@@ -766,23 +780,26 @@ export function ProductDetail() {
               <>
                 <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
                     <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
                       {/* The platform's delivery rule, which is what the buyer
                           is charged. This used to print the seller's private
                           `delivery_charge` — a figure the checkout total never
-                          used, so the two contradicted each other. */}
-                      {boutique?.deliveryAvailable === false
-                        ? 'Store pickup only'
-                        : `${fmt(terms.standard_shipping)} delivery · free over ${fmt(terms.free_delivery_over)}`}
+                          used, so the two contradicted each other. Nor does it
+                          branch on the seller's `delivery_available` any more:
+                          MangaiMart ships every order itself, so "Store pickup
+                          only" was telling buyers they could not have a piece
+                          delivered that the checkout then charged them ₹79 to
+                          deliver. See the note on `deliveryLine` in Checkout. */}
+                      {`${fmt(terms.standard_shipping)} delivery · free over ${fmt(terms.free_delivery_over)}`}
                     </div>
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
                     <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{boutique?.verified ? 'Verified boutique' : 'Independent boutique'}</div>
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
                     <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{POLICY_TERMS.returnWindowDays}-day easy returns</div>
                   </div>
                 </div>
@@ -791,7 +808,7 @@ export function ProductDetail() {
                     that says so before checkout. */}
                 {boutique?.deliveryAvailable !== false && boutique?.deliveryAreas && (
                   <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>near_me</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>near_me</span>
                     <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
                       <span style={css('font-weight:700;')}>Delivers to:</span> {boutique.deliveryAreas}
                     </div>
@@ -802,7 +819,7 @@ export function ProductDetail() {
                     rather than replacing them, so the two can't contradict. */}
                 {ap.shippingInfo?.trim() && (
                   <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
                     <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;white-space:pre-line;')}>
                       <span style={css('font-weight:700;')}>About this piece:</span> {ap.shippingInfo}
                     </div>
@@ -841,7 +858,7 @@ export function ProductDetail() {
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(22px,2.6vw,32px);line-height:1.08;margin-top:2px;")}>More from {ap.boutique}</div>
             </div>
             <a href="#" onClick={(e) => { e.preventDefault(); openBoutique(); }} style={css('display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:999px;padding:9px 15px;')}>
-              Visit shop<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
+              Visit shop<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
             </a>
           </div>
           <div className="agx-pgrid" style={css('gap:clamp(12px,1.8vw,20px);margin-top:20px;')}>
@@ -867,7 +884,7 @@ export function ProductDetail() {
       {/* STICKY MOBILE ACTION BAR */}
       <div className="agx-pdp-sticky">
         <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
         </button>
         {renderBagControl(52)}
       </div>
@@ -894,7 +911,7 @@ export function ProductDetail() {
                 <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>{isSaree ? 'Blouse measurements in inches' : 'Body measurements in inches'}</div>
               </div>
               <button onClick={() => setShowSizeChart(false)} style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>
             </div>
 
@@ -924,7 +941,7 @@ export function ProductDetail() {
             </div>
 
             <div style={css('display:flex;gap:10px;margin-top:16px;padding:14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>info</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>info</span>
               <div style={css('color:var(--ag-ink-2);font-size:12.5px;line-height:1.5;')}>
                 Measure around the fullest part of your bust and natural waistline. If you fall between two sizes, we recommend sizing up. Need a custom fit? <a href="#" onClick={(e) => { e.preventDefault(); setShowSizeChart(false); openChat(); }} style={css('color:var(--ag-crimson);font-weight:700;')}>Chat with the boutique</a>.
               </div>

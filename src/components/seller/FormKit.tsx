@@ -130,7 +130,7 @@ export function Toggle({
     >
       {icon && (
         <span style={css('width:36px;height:36px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:19px;")}>{icon}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:19px;")}>{icon}</span>
         </span>
       )}
       <span style={css('flex:1;min-width:0;')}>

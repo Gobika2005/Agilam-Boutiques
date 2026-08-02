@@ -72,6 +72,41 @@ function isNoIndex(pathname) {
   const p = pathname.toLowerCase();
   return NOINDEX_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
 }
+// Sellers type their own vocabulary, so a term arrives however they left it \u2014
+// "office wear", "SAREES", "raw silk". Titles and headings are rendered from it
+// verbatim, so it gets cased here rather than in five call sites.
+function titleCase(term) {
+  return String(term || "").replace(/\S+/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
+}
+/**
+ * An occasion reads as "<occasion> wear" \u2014 "Casual wear", "Office wear".
+ *
+ * Blindly appending produced "office wear wear" on every `/occasions/*` page,
+ * in the title, the H1, the breadcrumb and the meta description, because the
+ * seller had already written the word into the term. Only add what is missing.
+ */
+function occasionHeading(term) {
+  const cased = titleCase(term);
+  return /\bwear$/i.test(cased) ? cased : `${cased} Wear`;
+}
+/**
+ * Meta for a URL whose subject does not exist \u2014 a deleted product, a mistyped
+ * boutique handle, a category with nothing in it.
+ *
+ * These paths return the SPA shell with HTTP 200 (there is no origin that could
+ * return a 404 for them), so without this they were served as indexable pages
+ * with a self-referencing canonical: a soft 404, and an unbounded supply of
+ * them. `noindex` is what actually keeps them out, and the `x-robots-tag` set
+ * alongside it covers crawlers that never parse the head.
+ */
+function notFoundMeta() {
+  return {
+    title: "Page Not Found",
+    description: "That page isn\u2019t available. Browse the full catalogue of verified Tamil Nadu boutiques on MangaiMart instead.",
+    type: "website",
+    noindex: true
+  };
+}
 /**
  * One PostgREST read, reporting whether it actually succeeded.
  *
@@ -142,20 +177,31 @@ function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
 }
 
-/** Runs a products query, retrying without `slug` if the column is absent. */
-async function dbProducts(build) {
+/**
+ * Runs a products query, retrying without `slug` if the column is absent.
+ *
+ * Returns `{ ok, rows }` rather than bare rows because the callers that decide
+ * whether a page is `noindex` must not treat "the database timed out" as "this
+ * product does not exist" — that would quietly de-index the live catalogue for
+ * the length of a Supabase blip.
+ */
+async function dbProductsTry(build) {
   if (productSlugAvailable) {
     const attempt = await dbTry(build(PRODUCT_COLUMNS));
     // Succeeded — including a legitimate zero-row answer. Nothing to retry.
-    if (attempt.ok) return attempt.rows;
+    if (attempt.ok) return attempt;
     // Rejected. Almost always "column products.slug does not exist", i.e. 0057
     // is not applied. Drop to the legacy list and remember, so this costs one
     // extra round trip per cold edge instance rather than one per request.
     const legacy = await dbTry(build(PRODUCT_COLUMNS_LEGACY));
     if (legacy.ok) productSlugAvailable = false;
-    return legacy.rows;
+    return legacy;
   }
-  return db(build(PRODUCT_COLUMNS_LEGACY));
+  return dbTry(build(PRODUCT_COLUMNS_LEGACY));
+}
+
+async function dbProducts(build) {
+  return (await dbProductsTry(build)).rows;
 }
 
 async function metaForProduct(slug, origin) {
@@ -176,11 +222,13 @@ async function metaForProduct(slug, origin) {
   const filter = isUuid(slug)
     ? `id=eq.${slug}`
     : `slug=eq.${encodeURIComponent(slug)}`;
-  const rows = await dbProducts(
+  const attempt = await dbProductsTry(
     (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=1&${filter}`
   );
-  const p = rows[0];
-  if (!p) return null;
+  const p = attempt.rows[0];
+  // A failed read means "we don't know" — serve the generic shell and leave the
+  // page indexable. Only a successful read that found nothing is a real 404.
+  if (!p) return attempt.ok ? notFoundMeta() : null;
   const shop = p.boutiques?.name || SITE_NAME;
   const city = p.boutiques?.city || "Tamil Nadu";
   const canonicalPath = productPath(p);
@@ -251,11 +299,12 @@ async function metaForBoutique(slug, origin) {
   const filter = isUuid(slug)
     ? `id=eq.${slug}`
     : `slug=eq.${encodeURIComponent(slug)}`;
-  const rows = await db(
+  const attempt = await dbTry(
     `boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=1&${filter}`
   );
-  const b = rows[0];
-  if (!b) return null;
+  const b = attempt.rows[0];
+  // As in metaForProduct: only a successful empty answer means "no such shop".
+  if (!b) return attempt.ok ? notFoundMeta() : null;
   // Falls back to the id where migration 0057 has not been applied yet.
   const boutiquePath = `/boutique/${b.slug || b.id}`;
   const url = `${origin}${boutiquePath}`;
@@ -332,19 +381,62 @@ const STATIC_META = {
   "/inspire": {
     title: "Inspire \u2014 New Pieces from Tamil Nadu Boutiques",
     description: "A live feed of what MangaiMart boutiques are listing right now."
+  },
+  // \u2500\u2500 The written pages \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // These are in the sitemap, so crawlers ask for them \u2014 but they had no entry
+  // here, which meant all nine shared one title ("MangaiMart") and one generic
+  // description. Nine indexable URLs competing as duplicates of each other, and
+  // the policy pages in particular are what a cautious buyer (and a payment
+  // gateway's review) actually reads before trusting a new marketplace.
+  "/about": {
+    title: "About MangaiMart \u2014 One Place for Tamil Nadu\u2019s Boutiques",
+    description: "Why MangaiMart exists, who runs it, and how we verify every boutique before it can list a single piece."
+  },
+  "/help": {
+    title: "Help & Support \u2014 Orders, Delivery, Returns",
+    description: "Answers on ordering, delivery timelines, returns, refunds and payments \u2014 plus how to reach a person if you still need one."
+  },
+  "/privacy-policy": {
+    title: "Privacy Policy \u2014 What We Collect and Why",
+    description: "What personal data MangaiMart collects, how it is used and stored, who it is shared with, and how to have it removed."
+  },
+  "/terms": {
+    title: "Terms & Conditions",
+    description: "The terms you agree to when you buy on MangaiMart, and the terms boutiques agree to when they sell here."
+  },
+  "/shipping-policy": {
+    title: "Shipping Policy \u2014 Charges and Coverage",
+    description: "What delivery costs on MangaiMart, when it is free, where we ship, and who handles the parcel."
+  },
+  "/delivery-policy": {
+    title: "Delivery Policy \u2014 Timelines and Tracking",
+    description: "How long a MangaiMart order takes to reach you, how dispatch works across boutiques, and how to track it."
+  },
+  "/return-refund-policy": {
+    title: "Return & Refund Policy",
+    description: "How to return a piece bought on MangaiMart, what qualifies, how long a refund takes and how it reaches you."
+  },
+  "/cancellation-policy": {
+    title: "Cancellation Policy",
+    description: "When a MangaiMart order can be cancelled, how to do it, and what happens to a payment already made."
+  },
+  "/product-policy": {
+    title: "Product Policy \u2014 What Boutiques May List",
+    description: "The listing standards every MangaiMart boutique agrees to: accurate photos, honest sizing, real stock and lawful goods."
   }
 };
 async function metaForCategory(kind, slug, origin) {
-  const rows = await dbProducts(
+  const attempt = await dbProductsTry(
     (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=40`
   );
-  const items = rows.filter((p) => {
+  if (!attempt.ok) return null;
+  const items = attempt.rows.filter((p) => {
     const value = kind === "category" ? p.category : kind === "occasion" ? p.occasion : p.fabric;
     return value && slugify(value) === slug;
   });
-  if (!items.length) return null;
+  if (!items.length) return notFoundMeta();
   const term = (kind === "category" ? items[0].category : kind === "occasion" ? items[0].occasion : items[0].fabric) || slug;
-  const heading = kind === "occasion" ? `${term} wear` : term;
+  const heading = kind === "occasion" ? occasionHeading(term) : titleCase(term);
   const shops = new Set(items.map((p) => p.boutiques?.name).filter(Boolean)).size;
   const from = Math.min(...items.map((p) => p.price));
   const path = `/${kind === "category" ? "collections" : kind === "occasion" ? "occasions" : "fabrics"}/${slug}`;
@@ -426,13 +518,16 @@ async function resolveMeta(pathname, origin) {
   if (occasion) return metaForCategory("occasion", decodeURIComponent(occasion[1]), origin);
   const fabric = pathname.match(/^\/fabrics\/([^/]+)$/);
   if (fabric) return metaForCategory("fabric", decodeURIComponent(fabric[1]), origin);
-  return null;
+  // Nothing recognised the path, and it is not one of the private prefixes that
+  // `isNoIndex` already covers — so the router will land on the 404 screen.
+  // Say so in the head rather than serving it as another indexable page.
+  return isNoIndex(pathname) ? null : notFoundMeta();
 }
 function headFor(meta, canonical, origin, pathname) {
   const title = meta ? `${meta.title} \xB7 ${SITE_NAME}` : SITE_NAME;
   const description = meta?.description || DEFAULT_DESCRIPTION;
   const image = meta?.image ? meta.image.startsWith("http") ? meta.image : `${origin}${meta.image}` : `${origin}${DEFAULT_OG_IMAGE}`;
-  const robots = isNoIndex(pathname) ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+  const robots = isNoIndex(pathname) || meta?.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta name="robots" content="${robots}" />`,
@@ -704,7 +799,7 @@ export default async function middleware(request) {
       "content-type": "text/html; charset=utf-8",
       "cache-control": `public, max-age=0, s-maxage=${PAGE_CACHE_SECONDS}, stale-while-revalidate=86400`
     });
-    if (isNoIndex(pathname)) headers.set("x-robots-tag", "noindex, nofollow");
+    if (isNoIndex(pathname) || meta?.noindex) headers.set("x-robots-tag", "noindex, nofollow");
     return new Response(injected, { headers });
   } catch {
     return void 0;

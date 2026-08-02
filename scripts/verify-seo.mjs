@@ -102,6 +102,42 @@ await check('checkout is noindex', '/checkout', [
 ]);
 await check('admin is noindex', '/admin/overview', [is('noindex', (o) => (o.robots || '').includes('noindex'))]);
 
+/*
+ * Soft 404s.
+ *
+ * A path whose subject does not exist still returns the SPA shell with HTTP
+ * 200 — there is no origin that could 404 it. Left alone, that is an indexable
+ * page with a self-referencing canonical, and the supply of them is unbounded
+ * (any string after /products/ is one). `noindex` is what actually keeps them
+ * out; the header covers crawlers that never parse the head.
+ */
+for (const [label, p] of [
+  ['unknown product', '/products/definitely-not-a-real-product-slug-zz99'],
+  ['unknown boutique', '/boutique/definitely-not-a-real-boutique-zz99'],
+  ['unknown category', '/collections/definitely-not-a-category-zz99'],
+  ['unknown route', '/definitely-not-a-route-zz99'],
+]) {
+  await check(`soft 404: ${label}`, p, [
+    is('noindex meta', (o) => (o.robots || '').includes('noindex')),
+    is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
+    is('not the generic title', (o) => o.title !== 'MangaiMart'),
+  ]);
+}
+
+/*
+ * The written pages. They are in the sitemap, so they are crawled; without a
+ * STATIC_META entry all nine served one shared title and description and
+ * competed as duplicates of each other.
+ */
+for (const p of ['/about', '/help', '/privacy-policy', '/terms', '/shipping-policy',
+                 '/delivery-policy', '/return-refund-policy', '/cancellation-policy', '/product-policy']) {
+  await check(`static meta ${p}`, p, [
+    is('own title', (o) => !!o.title && o.title !== 'MangaiMart'),
+    is('indexable', (o) => (o.robots || '').startsWith('index')),
+    is('canonical', (o) => !!o.canonical),
+  ]);
+}
+
 // Legacy 301s
 for (const [from, to] of [
   ['/buyer/home', '/'],
@@ -144,6 +180,18 @@ if (boutiqueUrl) {
     is('ClothingStore schema', (o) => (o.schema || '').includes('ClothingStore')),
   ]);
 } else results.push({ label: 'boutique page', FAIL: 'no boutique in sitemap' });
+
+/*
+ * Occasion headings. Sellers type the vocabulary, so a term can already end in
+ * "wear" — appending unconditionally published "office wear wear" in the title,
+ * the H1, the breadcrumb and the description of every such page.
+ */
+for (const occasionUrl of [...xml.matchAll(/<loc>[^<]*(\/occasions\/[^<]+)<\/loc>/g)].map((m) => m[1])) {
+  await check(`occasion heading ${occasionUrl}`, occasionUrl, [
+    is('no doubled "wear"', (o) => !/wear\s+wear/i.test(o.title || '')),
+    is('title-cased', (o) => !/^[a-z]/.test(o.title || '')),
+  ]);
+}
 
 /*
  * Guard: no JSDoc inside `export const config`.

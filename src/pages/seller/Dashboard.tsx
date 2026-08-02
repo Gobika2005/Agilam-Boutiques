@@ -185,13 +185,13 @@ export function Dashboard() {
             <span style={css('flex:1;min-width:0;')}>
               <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.8vw,28px);line-height:1.15;")}>
                 <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{boutiqueName}</span>
-                {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:19px;flex:none;opacity:.9;")}>verified</span>}
+                {boutique?.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;flex:none;opacity:.9;")}>verified</span>}
               </span>
               <span style={css('display:block;font-size:12.5px;opacity:.85;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>
                 {[boutique?.category, boutique?.area || boutique?.city].filter(Boolean).join(' · ') || 'Complete your boutique profile'}
               </span>
             </span>
-            <span style={css("font-family:'Material Symbols Outlined';flex:none;opacity:.75;")}>chevron_right</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';flex:none;opacity:.75;")}>chevron_right</span>
           </button>
 
           {/* Standing and the small facts, as one wrapped row of translucent
@@ -203,7 +203,7 @@ export function Dashboard() {
             </span>
             {facts.map((f) => (
               <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:11px;font-weight:800;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:13px;opacity:.9;")}>{f.icon}</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;opacity:.9;")}>{f.icon}</span>
                 {f.text}
               </span>
             ))}
@@ -217,7 +217,7 @@ export function Dashboard() {
               style={css('width:100%;margin-top:14px;text-align:left;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:15px;padding:12px 14px;cursor:pointer;font-family:inherit;color:inherit;')}
             >
               <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;line-height:1.5;')}>{nudge.text}</span>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;flex:none;opacity:.8;")}>chevron_right</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;flex:none;opacity:.8;")}>chevron_right</span>
             </button>
           ) : (
             <div style={css('margin-top:14px;font-size:13.5px;opacity:.9;line-height:1.55;max-width:520px;')}>{nudge.text}</div>
@@ -235,14 +235,14 @@ export function Dashboard() {
           onClick={() => navigate('/seller/onboarding')}
           style={css('width:100%;margin-top:14px;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--ag-warn-border,var(--ag-surface-3));background:var(--ag-warn-bg);border-radius:18px;padding:14px 16px;cursor:pointer;font-family:inherit;')}
         >
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>account_balance</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>account_balance</span>
           <span style={css('flex:1;min-width:0;')}>
             <span style={css('display:block;font-size:13.5px;font-weight:800;color:var(--ag-warn-text);')}>Add your bank account to get paid</span>
             <span style={css('display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--ag-warn-text);opacity:.9;line-height:1.5;')}>
               MangaiMart settles earnings by bank transfer only. We can’t send your money until you add an account.
             </span>
           </span>
-          <span style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);flex:none;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);flex:none;")}>chevron_right</span>
         </button>
       )}
 
@@ -256,7 +256,7 @@ export function Dashboard() {
             style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;display:flex;align-items:center;gap:11px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
           >
             <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${q.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${q.ic};`)}>{q.icon}</span>
+              <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${q.ic};`)}>{q.icon}</span>
               {q.badge > 0 && (
                 <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
                   {q.badge > 99 ? '99+' : q.badge}
@@ -282,7 +282,7 @@ export function Dashboard() {
         style={css('width:100%;margin-top:12px;text-align:left;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;display:flex;align-items:center;gap:11px;cursor:pointer;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
       >
         <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-gold-bg);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-gold-text);")}>reviews</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-gold-text);")}>reviews</span>
         </span>
         <span style={css('flex:1;min-width:0;')}>
           <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>Reviews</span>
@@ -299,7 +299,7 @@ export function Dashboard() {
             {reviewsNeedingReply > 99 ? '99+' : reviewsNeedingReply}
           </span>
         )}
-        <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
       </button>
 
       {/* Promote CTA — an upsell, so it follows the seller's own numbers
@@ -310,13 +310,13 @@ export function Dashboard() {
         style={css('width:100%;text-align:left;margin-top:16px;background:linear-gradient(135deg,#D6336C,#B02454);border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
       >
         <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
         </span>
         <span style={css('flex:1;min-width:0;')}>
           <span style={css('display:block;font-weight:800;font-size:14.5px;')}>Promote your boutique</span>
           <span style={css('display:block;font-size:12px;opacity:.85;margin-top:1px;')}>Book an ad slot and reach more buyers</span>
         </span>
-        <span style={css("font-family:'Material Symbols Outlined';")}>chevron_right</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';")}>chevron_right</span>
       </button>
 
       {/* Business overview -------------------------------------------------- */}
@@ -339,12 +339,12 @@ export function Dashboard() {
             style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);cursor:pointer;text-align:left;font-family:inherit;')}
           >
             <span style={css(`width:40px;height:40px;border-radius:13px;background:${st.tint};display:flex;align-items:center;justify-content:center;`)}>
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${st.ic};`)}>{st.icon}</span>
+              <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${st.ic};`)}>{st.icon}</span>
             </span>
             <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:var(--ag-ink);word-break:break-word;")}>{st.value}</span>
             <span style={css('display:block;color:var(--ag-muted);font-size:12.5px;font-weight:600;margin-top:5px;')}>{st.label}</span>
             <span style={css('display:flex;align-items:center;gap:3px;color:var(--ag-crimson);font-size:11.5px;font-weight:800;margin-top:8px;')}>
-              View all<span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
+              View all<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
             </span>
           </button>
         ))}
@@ -369,7 +369,7 @@ export function Dashboard() {
               onClick={() => navigate('/seller/orders')}
               style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
             >
-              View all<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
+              View all<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
             </button>
           </div>
 
@@ -377,7 +377,7 @@ export function Dashboard() {
             {ordersLoading && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Loading orders…</div>}
             {!ordersLoading && recentOrders.length === 0 && (
               <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:22px;text-align:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>receipt_long</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>receipt_long</span>
                 <div style={css('font-weight:700;font-size:14px;margin-top:6px;color:var(--ag-ink);')}>No orders yet</div>
                 <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>
                   Orders from buyers and your offline bills both show up here.
@@ -418,14 +418,14 @@ export function Dashboard() {
               onClick={() => navigate('/seller/products')}
               style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
             >
-              Restock<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
+              Restock<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>chevron_right</span>
             </button>
           </div>
 
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:8px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {lowStock.length === 0 && (
               <div style={css('padding:18px 12px;text-align:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#B6DCC6;")}>check_circle</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#B6DCC6;")}>check_circle</span>
                 <div style={css('font-size:13px;color:var(--ag-muted);font-weight:700;margin-top:5px;')}>
                   {products.length === 0 ? 'No products listed yet' : 'Everything is well stocked'}
                 </div>

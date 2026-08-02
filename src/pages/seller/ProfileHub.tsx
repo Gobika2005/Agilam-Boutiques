@@ -112,14 +112,14 @@ export function ProfileHub() {
             <span style={css('min-width:0;')}>
               <span style={css('display:flex;align-items:center;gap:5px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{boutiqueName || '…'}</span>
-                {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
+                {boutique?.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
               </span>
               {subline && <span style={css('display:block;opacity:.85;font-size:13px;')}>{subline}</span>}
               {session?.user?.email && <span style={css('display:block;opacity:.7;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{session.user.email}</span>}
             </span>
           </button>
           <span style={css('flex:none;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:7px 12px;border-radius:11px;font-size:12px;font-weight:800;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
           </span>
         </div>
 
@@ -131,16 +131,16 @@ export function ProfileHub() {
               onClick={() => status !== 'approved' && navigate('/seller/verification')}
               style={css(`display:inline-flex;align-items:center;gap:6px;background:var(--ag-surface);color:${tone.fg};border:none;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:${status === 'approved' ? 'default' : 'pointer'};font-family:inherit;`)}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{tone.icon}</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{tone.icon}</span>
               {status === 'approved' ? 'Live on MangaiMart' : BOUTIQUE_STATUS_LABEL[status]}
             </button>
             {storefrontPath && (
               <>
                 <button onClick={() => navigate(storefrontPath)} style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>View shop
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>View shop
                 </button>
                 <button onClick={shareStorefront} style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>ios_share</span>Share
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>ios_share</span>Share
                 </button>
               </>
             )}
@@ -155,13 +155,13 @@ export function ProfileHub() {
             {sec.rows.map((r, i) => (
               <button key={r.label} onClick={() => navigate(r.to)} style={css(`width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;border-bottom:${i < sec.rows.length - 1 ? '1px solid var(--ag-border-soft)' : 'none'};text-align:left;`)}>
                 <span style={css('width:38px;height:38px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>{r.icon}</span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>{r.icon}</span>
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
                   <span style={css('display:block;font-weight:700;font-size:14.5px;')}>{r.label}</span>
                   {r.sub && <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>{r.sub}</span>}
                 </span>
-                <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
               </button>
             ))}
           </div>

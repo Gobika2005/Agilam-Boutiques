@@ -13,7 +13,7 @@ const BASE = css(
 export function PromotedBadge({ label = 'Sponsored', style }: { label?: string; style?: CSSProperties }) {
   return (
     <span style={{ ...BASE, ...style }}>
-      <span style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>bolt</span>
+      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>bolt</span>
       {label}
     </span>
   );
