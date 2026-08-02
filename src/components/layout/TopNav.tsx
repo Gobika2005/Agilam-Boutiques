@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
+import { isTabActive } from '@/lib/navMatch';
 import type { TabDef } from './BottomTabBar';
 
 export function TopNav({ tabs, brand }: { tabs: TabDef[]; brand: string }) {
@@ -19,7 +20,7 @@ export function TopNav({ tabs, brand }: { tabs: TabDef[]; brand: string }) {
       </div>
       <div className="flex items-center gap-1.5">
         {tabs.map((t) => {
-          const active = t.match.some((m) => location.pathname.startsWith(m));
+          const active = isTabActive(location.pathname, t.match);
           return (
             <button
               key={t.to}

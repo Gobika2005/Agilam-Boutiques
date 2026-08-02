@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { isTabActive } from '@/lib/navMatch';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { SellModal } from '@/components/SellModal';
@@ -51,6 +52,10 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
   return (
     <button
       onClick={onClick}
+      // The current tab is signalled only by colour, which says nothing to a
+      // screen reader — and the crimson on its own does not meet contrast
+      // against the dock either. `aria-current` is the part that carries.
+      aria-current={active ? 'page' : undefined}
       style={css(
         `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:68px;border:none;cursor:pointer;padding:10px 16px;border-radius:20px;font-family:inherit;white-space:nowrap;background:transparent;color:${tint};transition:color .28s ease;`,
       )}
@@ -80,6 +85,7 @@ function RaisedTab({ tab, active, onClick }: { tab: TabDef; active: boolean; onC
       onClick={onClick}
       className="agx-dock-fab"
       aria-label={tab.label}
+      aria-current={active ? 'page' : undefined}
       style={css('align-self:flex-start;margin-top:-26px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:68px;padding:0 8px;border:none;background:none;cursor:pointer;font-family:inherit;white-space:nowrap;')}
     >
       <span
@@ -216,7 +222,7 @@ export function AppShell({
               <Item
                 key={t.label}
                 tab={t}
-                active={t.match.some((m) => pathname.startsWith(m))}
+                active={isTabActive(pathname, t.match)}
                 onClick={() => navigate(t.to)}
               />
             );

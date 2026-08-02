@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
+import { isTabActive } from '@/lib/navMatch';
 
 export type TabDef = { label: string; icon: string; to: string; match: string[] };
 
@@ -13,7 +14,7 @@ export function BottomTabBar({ tabs }: { tabs: TabDef[] }) {
       style={{ boxShadow: '0 -8px 24px -18px rgba(107,20,54,.4)' }}
     >
       {tabs.map((t) => {
-        const active = t.match.some((m) => location.pathname.startsWith(m));
+        const active = isTabActive(location.pathname, t.match);
         return (
           <button
             key={t.to}
