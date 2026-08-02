@@ -2,6 +2,7 @@
 
 **Implemented:** 1–2 August 2026
 **Baseline:** `SEO_AUDIT_REPORT.md` (commit `3471cae`)
+**Status:** deploying green · migration 0057 applied · `npm run verify:seo` → ALL CHECKS PASSED
 **Verification:** `tsc -b` clean · `eslint` 0 errors · `vite build` passes · 14-route headless-browser audit, 0 console errors · `npm run verify:seo` executes the edge middleware against the live database (see §11)
 
 ---
@@ -173,8 +174,9 @@ All three are real `<a href>` now, keyboard-reachable and middle-clickable. `Car
 
 ### P0 — before launch
 
-0. **Apply `supabase/migrations/0057_seo_slugs.sql`.** Until it is applied,
-   every product page serves crawlers a generic shell. See §11.
+0. ~~Apply `supabase/migrations/0057_seo_slugs.sql`.~~ **Done** — verified live:
+   `products.slug` and `boutiques.slug` are populated, and `npm run verify:seo`
+   reports `ALL CHECKS PASSED`. See §11.
 
 
 1. **Set `VITE_SITE_URL`** in Vercel. Until it is set the app falls back to the browser's origin, which means **preview deploys would declare themselves canonical** and could be indexed instead of production.
@@ -270,4 +272,43 @@ the `product by uuid` check, which reads the database and 301s to
 `/products/unstitched-striped-organza-suit-4c5c667b`.
 
 Re-run `npm run verify:seo` after applying the migration; it should print
-`ALL CHECKS PASSED`.
+`ALL CHECKS PASSED`. **It now does** — with `products.slug` and `boutiques.slug`
+populated in the live database and the product page returning
+`Organization, Product, BreadcrumbList`.
+
+---
+
+## 12. The deploy-only build failure — `Unhandled type: "ColonToken" :`
+
+Vercel failed the production build with that one line, five seconds after Vite
+reported success. It named no file, and `npm run build` passed locally in both
+Bash and PowerShell, so nothing local could see it.
+
+**Cause — mine.** Vercel reads `export const config` out of `middleware.js`
+statically, with `@vercel/static-config`. Its object reader does:
+
+```js
+const [nameNode, _colon, valueNode] = prop.getChildren();
+```
+
+A property with a `/** JSDoc */` comment gets that comment as an extra *leading*
+child, so the destructuring shifts by one and `valueNode` becomes the `:` token
+itself — `Unhandled type: "ColonToken" :`. I had documented the `matcher`
+property with a JSDoc block.
+
+Reproduced exactly against the real package, and confirmed the boundary:
+
+| Comment style on a `config` property | Result |
+|---|---|
+| `/** JSDoc */` | **fails the deploy** |
+| `// line comment` | fine |
+| `/* plain block */` | fine |
+| JSDoc above `export const config` | fine |
+
+**Fix:** the prose moved above the export; the object is now bare. Verified by
+running Vercel's own parser over the real file — it returns the matcher intact.
+
+**Guard:** `npm run verify:seo` now fails if any `/**` appears inside the
+`config` object. It is a plain string scan, so it costs no dependency, and it
+closes a failure mode whose feedback loop was a two-hour round trip to a red
+deployment.

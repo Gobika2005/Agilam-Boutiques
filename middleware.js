@@ -1,10 +1,23 @@
+/**
+ * Which requests reach this middleware.
+ *
+ * Skips anything that is not an HTML page request. `index.html` is excluded
+ * specifically: the injector fetches it to get the shell, and matching it here
+ * would make that fetch re-enter the middleware.
+ *
+ * ── Do not put a `/** … *\/` comment on a property below ──────────────────
+ * Vercel reads this object statically with `@vercel/static-config`, which does
+ * `const [name, colon, value] = prop.getChildren()`. A JSDoc comment attached
+ * to a property becomes an extra leading child, so that destructuring shifts by
+ * one and `value` ends up being the `:` itself. The build then dies with
+ *
+ *     Error: Unhandled type: "ColonToken" :
+ *
+ * which is emitted after Vite reports success, names no file, and does not
+ * reproduce locally — `npm run build` passes and only the deploy fails. Line
+ * comments and plain block comments are safe; JSDoc is not. Keep prose up here.
+ */
 export const config = {
-  /**
-   * Skip anything that is not an HTML page request.
-   *
-   * `index.html` is excluded specifically: the injector fetches it to get the
-   * shell, and matching it here would make that fetch re-enter the middleware.
-   */
   matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/sitemap.xml"]
 };
 const SITE_NAME = "MangaiMart";

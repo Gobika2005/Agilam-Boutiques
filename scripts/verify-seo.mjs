@@ -145,6 +145,34 @@ if (boutiqueUrl) {
   ]);
 } else results.push({ label: 'boutique page', FAIL: 'no boutique in sitemap' });
 
+/*
+ * Guard: no JSDoc inside `export const config`.
+ *
+ * Vercel reads that object with @vercel/static-config, which destructures
+ * `prop.getChildren()` as [name, colon, value]. A JSDoc comment attached to a
+ * property adds a leading child, so `value` becomes the `:` token and the
+ * deploy dies with `Unhandled type: "ColonToken" :` — after Vite reports
+ * success, naming no file, and never reproducing locally. Checked with a plain
+ * string scan so this costs no dependency.
+ */
+{
+  const src = fs.readFileSync('middleware.js', 'utf8');
+  const start = src.indexOf('export const config');
+  const open = src.indexOf('{', start);
+  const close = src.indexOf('\n};', open);
+  const objectBody = start === -1 ? '' : src.slice(open, close);
+  if (start === -1) {
+    results.push({ label: 'config export', FAIL: 'no `export const config` in middleware.js' });
+  } else if (objectBody.includes('/**')) {
+    results.push({
+      label: 'config has no JSDoc',
+      FAIL: 'JSDoc comment inside `export const config` — Vercel will fail the build with `Unhandled type: "ColonToken"`. Use // or move the prose above the export.',
+    });
+  } else {
+    results.push({ label: 'config has no JSDoc', status: 200, title: 'safe for @vercel/static-config' });
+  }
+}
+
 console.log('matcher:', JSON.stringify(config.matcher));
 console.log('sitemap urls:', (xml.match(/<loc>/g) || []).length);
 for (const r of results) {
