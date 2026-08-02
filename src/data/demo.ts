@@ -23,6 +23,9 @@ export const img = (id: string, w = 640): string =>
 
 export type Product = {
   id: string;
+  /** URL slug, generated and indexed by the database (migration 0057). The
+   *  authority for the product's public address — see @/lib/seo. */
+  slug?: string | null;
   title: string;
   price: number;
   cat: string;

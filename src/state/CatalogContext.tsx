@@ -38,6 +38,7 @@ function toProduct(p: ProductWithBoutique): Product {
     price: Number(p.price),
     cat: p.category,
     boutique: p.boutique?.name ?? '',
+    slug: p.slug ?? null,
     boutiqueId: p.boutique_id,
     city: p.boutique?.city ?? '',
     color: p.color ?? '',

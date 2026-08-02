@@ -40,15 +40,12 @@ function slugify(input, maxLength = 60) {
   return (input || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, maxLength).replace(/-+$/g, "");
 }
 function productPath(row) {
+  // The database slug (migration 0057) is the authority; the computed form is
+  // only a fallback for a database where it has not been applied.
+  if (row.slug) return `/products/${row.slug}`;
   const base = slugify(row.title);
   const suffix = row.id.replace(/-/g, "").slice(0, 8);
   return `/products/${base ? `${base}-${suffix}` : suffix}`;
-}
-function idFromSlug(slug) {
-  if (!slug) return null;
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) return slug;
-  const m = slug.match(/-([0-9a-f]{6,})$/i);
-  return m ? m[1].toLowerCase() : null;
 }
 function clamp(text, max = 158) {
   const clean = (text || "").replace(/\s+/g, " ").trim();
@@ -62,8 +59,17 @@ function isNoIndex(pathname) {
   const p = pathname.toLowerCase();
   return NOINDEX_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
 }
-async function db(path) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+/**
+ * One PostgREST read, reporting whether it actually succeeded.
+ *
+ * `ok` matters: an empty array is ambiguous — it means both "nothing matched"
+ * and "that query was rejected". The products reader has to tell those apart to
+ * know whether migration 0057 has been applied, and guessing by re-running the
+ * query doubled the latency of the 5000-row sitemap read until it blew the
+ * timeout and returned an empty sitemap.
+ */
+async function dbTry(path) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, rows: [] };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DB_TIMEOUT_MS);
   try {
@@ -75,15 +81,31 @@ async function db(path) {
       },
       signal: controller.signal
     });
-    if (!res.ok) return [];
-    return await res.json();
+    if (!res.ok) return { ok: false, rows: [] };
+    const rows = await res.json();
+    return { ok: Array.isArray(rows), rows: Array.isArray(rows) ? rows : [] };
   } catch {
-    return [];
+    // Timeout, network error, malformed JSON — all mean "serve the shell".
+    return { ok: false, rows: [] };
   } finally {
     clearTimeout(timer);
   }
 }
-const PRODUCT_COLUMNS = "id,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
+
+async function db(path) {
+  return (await dbTry(path)).rows;
+}
+/*
+ * Migration 0057 adds `products.slug`. Naming a column PostgREST does not know
+ * fails the ENTIRE query, not just that field — so on a deployment where 0057
+ * has not been applied yet, asking for it would empty the sitemap and blank
+ * every product page's metadata. The query falls back once to the legacy column
+ * list and remembers, mirroring how src/data/boutiques.ts handles the migration
+ * 0023 counter columns.
+ */
+let productSlugAvailable = true;
+const PRODUCT_COLUMNS_LEGACY = "id,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
+const PRODUCT_COLUMNS = "id,slug,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
 const BOUTIQUE_COLUMNS = "id,name,slug,city,area,description,logo_url,cover_url,phone,rating,reviews_count,created_at";
 function orgNode(origin) {
   return {
@@ -101,11 +123,48 @@ function orgNode(origin) {
     }
   };
 }
+
+/** A full UUID, as opposed to a title slug. Decides which column to filter on. */
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
+}
+
+/** Runs a products query, retrying without `slug` if the column is absent. */
+async function dbProducts(build) {
+  if (productSlugAvailable) {
+    const attempt = await dbTry(build(PRODUCT_COLUMNS));
+    // Succeeded — including a legitimate zero-row answer. Nothing to retry.
+    if (attempt.ok) return attempt.rows;
+    // Rejected. Almost always "column products.slug does not exist", i.e. 0057
+    // is not applied. Drop to the legacy list and remember, so this costs one
+    // extra round trip per cold edge instance rather than one per request.
+    const legacy = await dbTry(build(PRODUCT_COLUMNS_LEGACY));
+    if (legacy.ok) productSlugAvailable = false;
+    return legacy.rows;
+  }
+  return db(build(PRODUCT_COLUMNS_LEGACY));
+}
+
 async function metaForProduct(slug, origin) {
-  const id = idFromSlug(slug);
-  if (!id) return null;
-  const rows = await db(
-    `products?select=${PRODUCT_COLUMNS}&status=eq.active&deleted_at=is.null&limit=1&or=(id.eq.${id},id.like.${id.slice(0, 8)}*)`
+  if (!slug) return null;
+  /*
+   * Filter on `slug`, not on a prefix of `id`.
+   *
+   * The URL carries only the first 8 characters of the uuid, and Postgres will
+   * not compare a uuid to a text pattern at all — `id=like.4c5c667b*` fails with
+   * "operator does not exist: uuid ~~ unknown", which took the WHOLE query down
+   * and silently returned every product page as the generic shell. Migration
+   * 0057 stores and uniquely indexes the slug precisely so this is one indexed
+   * equality lookup.
+   *
+   * A bare uuid still arrives here from legacy `/buyer/product/:id` links, and
+   * that one *can* be matched on the id column.
+   */
+  const filter = isUuid(slug)
+    ? `id=eq.${slug}`
+    : `slug=eq.${encodeURIComponent(slug)}`;
+  const rows = await dbProducts(
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=1&${filter}`
   );
   const p = rows[0];
   if (!p) return null;
@@ -171,12 +230,22 @@ async function metaForProduct(slug, origin) {
   };
 }
 async function metaForBoutique(slug, origin) {
+  /*
+   * Same trap as products: `or=(slug.eq.X,id.eq.X)` asks Postgres to compare a
+   * uuid column against a title slug, which is an invalid-input error that
+   * fails the entire query rather than just that branch. Pick the column.
+   */
+  const filter = isUuid(slug)
+    ? `id=eq.${slug}`
+    : `slug=eq.${encodeURIComponent(slug)}`;
   const rows = await db(
-    `boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=1&or=(slug.eq.${slug},id.eq.${slug})`
+    `boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=1&${filter}`
   );
   const b = rows[0];
   if (!b) return null;
-  const url = `${origin}/boutique/${b.slug}`;
+  // Falls back to the id where migration 0057 has not been applied yet.
+  const boutiquePath = `/boutique/${b.slug || b.id}`;
+  const url = `${origin}${boutiquePath}`;
   return {
     title: `${b.name} \u2014 Boutique in ${b.city || "Tamil Nadu"}`,
     description: clamp(
@@ -184,7 +253,7 @@ async function metaForBoutique(slug, origin) {
     ),
     image: b.logo_url || b.cover_url || void 0,
     type: "profile",
-    redirectTo: slug !== b.slug ? `/boutique/${b.slug}` : void 0,
+    redirectTo: `/boutique/${slug}` !== boutiquePath ? boutiquePath : void 0,
     schema: {
       "@context": "https://schema.org",
       "@graph": [
@@ -253,8 +322,8 @@ const STATIC_META = {
   }
 };
 async function metaForCategory(kind, slug, origin) {
-  const rows = await db(
-    `products?select=${PRODUCT_COLUMNS}&status=eq.active&deleted_at=is.null&limit=40`
+  const rows = await dbProducts(
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=40`
   );
   const items = rows.filter((p) => {
     const value = kind === "category" ? p.category : kind === "occasion" ? p.occasion : p.fabric;
@@ -509,7 +578,7 @@ function legacyRedirectPath(pathname) {
 }
 async function sitemapXml(origin) {
   const [products, boutiques] = await Promise.all([
-    db(`products?select=${PRODUCT_COLUMNS}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
+    dbProducts((cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
     db(`boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=2000`)
   ]);
   const entries = [
@@ -539,9 +608,8 @@ async function sitemapXml(origin) {
     }
   }
   for (const b of boutiques) {
-    if (!b.slug) continue;
     entries.push(
-      urlEntry(`${origin}/boutique/${b.slug}`, {
+      urlEntry(`${origin}/boutique/${b.slug || b.id}`, {
         lastmod: b.created_at || void 0,
         changefreq: "weekly",
         priority: "0.8",

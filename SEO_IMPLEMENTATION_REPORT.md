@@ -2,7 +2,7 @@
 
 **Implemented:** 1–2 August 2026
 **Baseline:** `SEO_AUDIT_REPORT.md` (commit `3471cae`)
-**Verification:** `tsc -b` clean · `eslint` 0 errors · `vite build` passes · 14-route headless-browser audit, 0 console errors
+**Verification:** `tsc -b` clean · `eslint` 0 errors · `vite build` passes · 14-route headless-browser audit, 0 console errors · `npm run verify:seo` executes the edge middleware against the live database (see §11)
 
 ---
 
@@ -37,7 +37,7 @@ Two Phase 1 findings were wrong and are withdrawn:
 
 ## 1. Rendering — the root cause
 
-**`middleware.ts`** (new, 700 lines) runs at Vercel's edge before the static file is served and rewrites the `<head>` for the URL actually requested: real `<title>`, description, canonical, Open Graph, Twitter card, `geo.*`, and a full JSON-LD `@graph`. Product, boutique, category, occasion and fabric pages are resolved from Supabase over REST; static pages come from a table with no round-trip.
+**`middleware.js`** (new) runs at Vercel's edge before the static file is served and rewrites the `<head>` for the URL actually requested: real `<title>`, description, canonical, Open Graph, Twitter card, `geo.*`, and a full JSON-LD `@graph`. Product, boutique, category, occasion and fabric pages are resolved from Supabase over REST; static pages come from a table with no round-trip.
 
 It also serves `/robots.txt` and a live `/sitemap.xml` built from the database.
 
@@ -67,15 +67,17 @@ Approved before implementation. Nothing was indexed (no production `APP_URL`, `L
 | `/buyer/policy/privacy-policy` | `/privacy-policy` |
 | `*` → `<Navigate to="/">` (HTTP 200) | real 404 page, `noindex` |
 
-**Nothing breaks.** 29 permanent redirects in `vercel.json` cover every former path. Product and boutique routes accept a bare UUID as well as a slug, so a legacy link resolves even before the redirect applies, and the page then rewrites the address bar to the canonical form.
+**Nothing breaks.** Every former path is permanently redirected — the mappings live in `legacyRedirectPath()` in `middleware.js`, which also covers the old `/b/<slug>` share links. Product and boutique routes accept a bare UUID as well as a slug, so a legacy link resolves even before the redirect applies, and the page then rewrites the address bar to the canonical form.
 
 ### One deviation from the approved plan
 
 The preview mapped `/buyer/results → /collections`. That collides: `/buyer/collections` (the tile hub) also wanted `/collections`. Resolved as `/collections` = the hub, `/shop` = the full grid. Better for SEO too — the hub is a keyword-rich internal-linking page, and the two are genuinely different pages.
 
-### Product slugs need no migration
+### Product slugs
 
-`/products/<title-slug>-<id-prefix>` carries the first 8 hex characters of the UUID, and `productIdFromSlug()` reads them back out. No slug column, no migration, no backfill — and a retitled product can never 404 its own URL. Boutiques already had real slugs (migration 0003) and use them directly.
+`/products/<title-slug>-<id-prefix>` carries the first 8 hex characters of the UUID. The browser resolves that by matching the prefix against the catalogue it already holds in memory, so a retitled product can never 404 its own URL.
+
+The edge cannot: PostgREST filters in SQL and Postgres refuses to pattern-match a `uuid`. Migration `0057_seo_slugs.sql` therefore stores exactly this string as a `NOT NULL`, uniquely indexed, trigger-maintained `products.slug`, so the middleware resolves a page with one indexed lookup. **The URL format is unchanged** — 0057 generates byte-identical strings to what was already being produced. See §11.
 
 **Files:** `src/App.tsx`, `vercel.json`, `src/lib/seo.ts`, plus a sweep of **307 internal links across 49 files**.
 
@@ -171,6 +173,10 @@ All three are real `<a href>` now, keyboard-reachable and middle-clickable. `Car
 
 ### P0 — before launch
 
+0. **Apply `supabase/migrations/0057_seo_slugs.sql`.** Until it is applied,
+   every product page serves crawlers a generic shell. See §11.
+
+
 1. **Set `VITE_SITE_URL`** in Vercel. Until it is set the app falls back to the browser's origin, which means **preview deploys would declare themselves canonical** and could be indexed instead of production.
 2. **Confirm `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are set in the Vercel project environment**, not only baked into the build. The middleware reads them at runtime; without them it silently degrades to the static shell — the shop works, the metadata is generic. Check `/sitemap.xml` returns products after the first deploy.
 3. **Fill in `src/data/company.ts`.** Nine values are still `TODO` placeholders and they are published verbatim in `Organization` schema and the legal pages. Wrong registered details in structured data is a trust and compliance problem, not an SEO one.
@@ -186,7 +192,7 @@ All three are real `<a href>` now, keyboard-reachable and middle-clickable. `Car
 7. **Responsive images.** The single largest remaining performance item: full-resolution originals are still served to 360 px phones. Supabase Storage can transform on the fly (`?width=&format=webp`) — a `srcset` in `ImageSlot` would likely be worth +10 on Performance and +20 on Image SEO on its own.
 8. **`src/pages/Loading.tsx` is now unused** — nothing routes to it since `/` became the homepage. Left in place deliberately rather than deleted, in case you want the splash back somewhere; delete it if not.
 9. Compress `public/mangaimart-logo.png` (93 kB) and add a dedicated 1200×630 OG image. Link previews currently use the logo, which is square.
-10. `NOINDEX_PREFIXES` is duplicated in `src/lib/seo.ts` and `middleware.ts` — the edge runtime cannot import from the app bundle. Both files say so; **change both together**.
+10. `NOINDEX_PREFIXES` is duplicated in `src/lib/seo.ts` and `middleware.js` — the edge runtime cannot import from the app bundle. Both files say so; **change both together**.
 
 ---
 
@@ -216,8 +222,52 @@ Headless Chromium against the running app, 14 routes plus deep links discovered 
 
 ## Files
 
-**New (7):** `middleware.ts` · `src/lib/seo.ts` · `src/lib/schema.ts` · `src/lib/analytics.ts` · `src/components/layout/AnalyticsTracker.tsx` · `src/pages/buyer/CategoryLanding.tsx` · `src/pages/buyer/NotFound.tsx`
+**New (9):** `supabase/migrations/0057_seo_slugs.sql` · `scripts/verify-seo.mjs` · `middleware.js` · `src/lib/seo.ts` · `src/lib/schema.ts` · `src/lib/analytics.ts` · `src/components/layout/AnalyticsTracker.tsx` · `src/pages/buyer/CategoryLanding.tsx` · `src/pages/buyer/NotFound.tsx`
 
 **Modified (key):** `src/App.tsx` · `vercel.json` · `index.html` · `.env.example` · `src/lib/pageMeta.ts` · `src/components/ui/ImageSlot.tsx` · `src/components/buyer/DiscoveryPage.tsx` · all buyer pages · 49 files swept for internal links
 
-**No database migration required. No existing functionality removed.**
+**Requires migration `0057_seo_slugs.sql`. No existing functionality removed.**
+
+---
+
+## 11. Post-implementation: three bugs found by executing the middleware
+
+The browser smoke test in §10 could not see these, because the client-side app
+renders correctly whether or not the edge works. Vercel middleware does not run
+under `vite dev`, and it fails open by design — so a broken query looks exactly
+like a healthy site while every crawler silently gets a blank shell.
+
+`npm run verify:seo` (new) executes `middleware.js` the way the edge will:
+real built `index.html`, real database, real `Request` objects. It found:
+
+| # | Bug | Impact |
+|---|---|---|
+| 1 | `id=like.<prefix>` on a `uuid` column | Postgres rejects it outright — *"operator does not exist: uuid ~~ unknown"* — which failed the **whole** query. **Every product page** served crawlers a generic shell |
+| 2 | `or=(slug.eq.X,id.eq.X)` | Comparing a `uuid` column against a title slug is an invalid-input error that fails the whole query, not just that branch |
+| 3 | `boutiques.slug` NULL on every row | 0003 added and backfilled it; the 0021 onboarding wizard never populates it and nothing maintained it. The sitemap skipped **every shop**, and the app's share link produced `/b/null` |
+
+**Root cause of 1 and 2:** the URL carries only an 8-character id prefix. That
+works in the browser, which holds the whole catalogue in memory, but PostgREST
+must filter in SQL and Postgres cannot pattern-match a `uuid` at all. The prefix
+was never resolvable server-side.
+
+**Fix:** migration `0057_seo_slugs.sql` adds `products.slug` — generated,
+`NOT NULL`, uniquely indexed, trigger-maintained — holding exactly the string
+`productSlug()` already produced, so **no URL changes**. It also backfills every
+NULL `boutiques.slug` and adds the trigger 0021 was missing. The middleware now
+does one indexed equality lookup, and branches to `id=eq.` for the bare UUIDs
+that legacy links still carry.
+
+**Graceful degradation:** naming a column PostgREST doesn't know fails the whole
+query, so on a database without 0057 the products read falls back once to the
+legacy column list and remembers — mirroring how `src/data/boutiques.ts` handles
+the 0023 counter columns. Without that, deploying this code before running the
+migration would have emptied the sitemap.
+
+**Current state:** every check passes except the product page, which is expected
+until 0057 is applied. That the resolve-and-render path is correct is proved by
+the `product by uuid` check, which reads the database and 301s to
+`/products/unstitched-striped-organza-suit-4c5c667b`.
+
+Re-run `npm run verify:seo` after applying the migration; it should print
+`ALL CHECKS PASSED`.

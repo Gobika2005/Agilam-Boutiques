@@ -10,12 +10,20 @@
  *
  * ── Slugs ────────────────────────────────────────────────────────────────
  * A product URL is `/products/<title-slug>-<id-prefix>`. The title carries the
- * keywords a shopper actually searches for; the id prefix keeps it unique and,
- * crucially, keeps the URL *resolvable without a database lookup of the slug* —
- * `productIdFromSlug()` reads the id straight back out. That means no slug
- * column, no migration, and no risk of a renamed product 404ing its own URL.
- * Boutiques already carry a real unique slug (migration 0003), so they use it
- * directly.
+ * keywords a shopper actually searches for; the id prefix makes it unique and
+ * lets a renamed product keep resolving its old URL.
+ *
+ * That string is generated and uniquely indexed as `products.slug` by migration
+ * 0057, and the column is the authority. It has to be: the browser can match an
+ * id prefix because it holds the whole catalogue in memory, but the edge
+ * middleware has to filter in SQL, and Postgres rejects `uuid LIKE 'text%'`
+ * outright. Without the column every product page served crawlers a generic
+ * shell. The locally computed form survives as a fallback so the app still
+ * builds correct URLs before 0057 is applied.
+ *
+ * Boutiques carry their own unique slug — added by 0003, but left NULL on every
+ * shop created by the 0021 onboarding wizard until 0057 backfilled them and
+ * added the trigger that maintains them.
  */
 
 /** How much of the UUID rides along in a product URL. 8 hex chars ≈ 4.3bn. */
@@ -57,8 +65,21 @@ export function slugify(input: string, maxLength = 60): string {
     .replace(/-+$/g, '');
 }
 
-/** `"Kanchipuram Silk Saree"` + `"1f2e3d4c-…"` → `kanchipuram-silk-saree-1f2e3d4c`. */
-export function productSlug(product: { id: string; title: string }): string {
+/**
+ * `"Kanchipuram Silk Saree"` + `"1f2e3d4c-…"` → `kanchipuram-silk-saree-1f2e3d4c`.
+ *
+ * Migration 0057 generates and indexes exactly this string as `products.slug`,
+ * and that column is the authority: the edge middleware resolves a product page
+ * with a single `slug=eq.…` lookup, which is the only thing PostgREST can do
+ * (Postgres refuses `uuid LIKE 'text%'`, so the id prefix cannot be matched in
+ * SQL at all).
+ *
+ * The locally computed form is kept as the fallback so the app still produces
+ * correct URLs on a database where 0057 has not been applied yet — it just
+ * loses the server-rendered metadata until it is.
+ */
+export function productSlug(product: { id: string; title: string; slug?: string | null }): string {
+  if (product.slug) return product.slug;
   const base = slugify(product.title);
   const suffix = product.id.replace(/-/g, '').slice(0, ID_PREFIX_LEN);
   return base ? `${base}-${suffix}` : suffix;
@@ -79,7 +100,10 @@ export function productIdFromSlug(slug: string | undefined): string | null {
 }
 
 /** Does this product own this slug? Compares on the id prefix, not the title. */
-export function matchesProductSlug(product: { id: string }, slug: string | undefined): boolean {
+export function matchesProductSlug(product: { id: string; slug?: string | null }, slug: string | undefined): boolean {
+  if (!slug) return false;
+  // The database slug is the authority once migration 0057 is applied.
+  if (product.slug && product.slug.toLowerCase() === slug.toLowerCase()) return true;
   const wanted = productIdFromSlug(slug);
   if (!wanted) return false;
   const flat = product.id.replace(/-/g, '').toLowerCase();
@@ -94,7 +118,7 @@ export const routes = {
   category: (name: string) => `/collections/${slugify(name)}`,
   occasion: (name: string) => `/occasions/${slugify(name)}`,
   fabric: (name: string) => `/fabrics/${slugify(name)}`,
-  product: (p: { id: string; title: string }) => `/products/${productSlug(p)}`,
+  product: (p: { id: string; title: string; slug?: string | null }) => `/products/${productSlug(p)}`,
   boutique: (b: { slug?: string; id: string }) => `/boutique/${b.slug || b.id}`,
   boutiques: () => '/boutiques',
   newArrivals: () => '/new-arrivals',
