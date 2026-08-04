@@ -591,6 +591,12 @@ function SummaryTile({ label, value, icon, highlight }: { label: string; value: 
   );
 }
 
+/**
+ * Razorpay cannot take less than one rupee, and `api/_ads.js` enforces that
+ * (`priced.paise < 100` → 400). Keep the two in step.
+ */
+const MIN_DAILY_RATE = 1;
+
 function RateCard({ placements, onSaved }: { placements: AdPlacement[]; onSaved: () => void }) {
   const { showToast } = useShop();
   const [busy, setBusy] = useState<AdPlacementCode | null>(null);
@@ -603,6 +609,16 @@ function RateCard({ placements, onSaved }: { placements: AdPlacement[]; onSaved:
 
   const save = async (p: AdPlacement) => {
     const d = draft[p.code];
+    // An active placement priced under ₹1 is a trap: the wizard happily offers
+    // the slot, then `api/_ads.js` rejects the Razorpay order because the amount
+    // is below the one-rupee minimum, so every seller who picks it dead-ends at
+    // payment with no way to tell what went wrong. Production shipped with the
+    // home hero — the most valuable slot on the site — set to ₹0 for exactly
+    // this reason. To take a placement off sale, untick Active.
+    if (d.active && Number(d.daily_rate) < MIN_DAILY_RATE) {
+      showToast(`${p.name}: an active placement must cost at least ₹${MIN_DAILY_RATE}/day. Untick Active to take it off sale.`);
+      return;
+    }
     setBusy(p.code);
     try {
       await updatePlacement(p.code, { daily_rate: Number(d.daily_rate), max_active: Number(d.max_active), active: d.active });

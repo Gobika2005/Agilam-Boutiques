@@ -35,7 +35,7 @@ type Editing = { id: string | null; input: CouponInput; errors: CouponFieldError
 export function Coupons() {
   const { showToast } = useShop();
   const { boutiques } = useCatalog();
-  const { data, loading, reload } = useAsync(() => fetchAllCoupons(), []);
+  const { data, loading, error, reload } = useAsync(() => fetchAllCoupons(), []);
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState<'all' | 'platform' | 'seller'>('all');
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -193,7 +193,15 @@ export function Coupons() {
         rows={rows}
         loading={loading}
         getId={(c) => c.id}
-        empty={<EmptyState icon="local_offer" title="No coupons yet" sub="Create a platform coupon, or wait for sellers to add their own." />}
+        empty={
+          // Distinguish "none exist" from "we couldn't read them". Migration
+          // 0058 made this query 403 for every role, and because the table fell
+          // back to the empty state the console reported an empty coupon list
+          // rather than a failure. See 0059.
+          error
+            ? <EmptyState icon="error_outline" title="Couldn’t load coupons" sub={`The coupon list failed to load. ${error}`} />
+            : <EmptyState icon="local_offer" title="No coupons yet" sub="Create a platform coupon, or wait for sellers to add their own." />
+        }
       />
 
       <Drawer

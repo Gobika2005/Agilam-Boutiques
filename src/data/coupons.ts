@@ -64,12 +64,19 @@ export type CouponInput = {
 const BASE_COLUMNS =
   'id, code, boutique_id, type, off, min_subtotal, max_discount, description, expires_at, active, created_at, updated_at';
 /**
- * Adds the operator-only columns: the redemption limits from 0049 and the
- * author from 0036. Only the seller and admin consoles select these, and only
- * they are granted them (0058) — a buyer query that used this list would be
- * rejected outright.
+ * The operator-only columns: the redemption limits from 0049 and the author
+ * from 0036.
+ *
+ * These are NOT selectable from `coupons` by anyone — migration 0058 revoked
+ * the column privilege from `authenticated` as well as `anon`, and a column
+ * privilege is checked before RLS, so being the boutique's owner or an admin
+ * does not help. Asking for them in a normal select is a hard 42501, which is
+ * exactly what killed both consoles until 0059.
+ *
+ * They come from `coupon_private_all()` instead (0059) — SECURITY DEFINER, one
+ * round trip, entitlement enforced in its WHERE clause.
  */
-const COLUMNS = `${BASE_COLUMNS}, created_by, usage_limit, used_count`;
+type PrivateFields = { created_by: string | null; usage_limit: number | null; used_count: number };
 
 /**
  * True when PostgREST rejected the query because migration 0049 has not been
@@ -83,27 +90,60 @@ function isMissingUsageColumns(error: { code?: string; message?: string } | null
 }
 
 /**
- * Whether this Supabase project has migration 0049. Latched on the first 42703
- * so an un-migrated project pays for exactly one failed request per page load
- * instead of one per query — the buyer app loads the active coupon list on every
- * screen, so retrying blindly meant a 400 everywhere, forever.
+ * Whether this Supabase project has migration 0059. Latched off on the first
+ * failure so a project that hasn't run it pays for one failed RPC per page load
+ * rather than one per query — the consoles still work, just without the
+ * redemption counters, instead of showing a false empty list.
  */
-let hasUsageColumns = true;
+let hasPrivateFn = true;
 
-/** Run a coupons query, retrying without the 0049 columns if they aren't there. */
-async function selectCoupons(
-  build: (columns: string) => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }>,
-): Promise<CouponRow[]> {
-  if (hasUsageColumns) {
-    const first = await build(COLUMNS);
-    if (!first.error) return (first.data ?? []).map((r) => normalize(r as Record<string, unknown>));
-    if (!isMissingUsageColumns(first.error)) throw first.error;
-    hasUsageColumns = false;
+/**
+ * The withheld columns for every coupon this user may manage, keyed by id.
+ *
+ * Returns an empty map rather than throwing: the counters are decoration on a
+ * list that must render regardless, and a buyer calling this legitimately gets
+ * nothing back.
+ */
+async function fetchPrivateFields(): Promise<Map<string, PrivateFields>> {
+  const out = new Map<string, PrivateFields>();
+  if (!hasPrivateFn) return out;
+
+  const { data, error } = await supabase.rpc('coupon_private_all');
+  if (error) {
+    // PGRST202 is what PostgREST actually returns when the function isn't in its
+    // schema cache — i.e. 0059 hasn't been applied to this project. (42883 is
+    // the Postgres-level equivalent; 42703 means 0049 is missing.) Latch on all
+    // three, or every coupon page load repeats a request that cannot succeed and
+    // logs a console error each time.
+    if (error.code === 'PGRST202' || error.code === '42883' || isMissingUsageColumns(error)) hasPrivateFn = false;
+    return out;
   }
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    out.set(String(r.id), {
+      created_by: (r.created_by as string | null) ?? null,
+      usage_limit: r.usage_limit == null ? null : Number(r.usage_limit),
+      used_count: Number(r.used_count ?? 0),
+    });
+  }
+  return out;
+}
 
-  const legacy = await build(BASE_COLUMNS);
-  if (legacy.error) throw legacy.error;
-  return (legacy.data ?? []).map((r) => normalize(r as Record<string, unknown>));
+/**
+ * Run a console coupons query and graft the operator-only columns on.
+ *
+ * Errors from the row query propagate — a console that cannot read its own
+ * coupons must say so, not render an empty list. That silent failure is how the
+ * 0058 breakage stayed invisible in production.
+ */
+async function selectCoupons(
+  build: () => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }>,
+): Promise<CouponRow[]> {
+  const [rows, priv] = await Promise.all([build(), fetchPrivateFields()]);
+  if (rows.error) throw rows.error;
+  return (rows.data ?? []).map((r) => {
+    const row = r as Record<string, unknown>;
+    return normalize({ ...row, ...(priv.get(String(row.id)) ?? {}) });
+  });
 }
 
 // PostgREST can hand a numeric column back as a string; coerce so the pricing
@@ -137,22 +177,26 @@ const todayUTC = () => new Date().toISOString().slice(0, 10);
  * inactive rows out of the buyer-facing list.
  */
 export async function fetchActiveCoupons(): Promise<CouponRow[]> {
-  // BASE_COLUMNS, not the console list: this runs as an anonymous buyer, and
-  // 0058 grants that role only these columns.
-  return selectCoupons(() =>
-    supabase.from('coupons').select(BASE_COLUMNS).eq('active', true).gte('expires_at', todayUTC()));
+  // Deliberately NOT routed through selectCoupons: the buyer app loads this on
+  // every screen, and it has no use for the operator-only columns. Pairing it
+  // with the `coupon_private_all()` call would put a second round trip — one
+  // that returns nothing to a buyer — on every page load.
+  const { data, error } = await supabase
+    .from('coupons').select(BASE_COLUMNS).eq('active', true).gte('expires_at', todayUTC());
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 
 /** Admin console: every coupon, newest first (RLS "admin all" returns them). */
 export async function fetchAllCoupons(): Promise<CouponRow[]> {
-  return selectCoupons((cols) =>
-    supabase.from('coupons').select(cols).order('created_at', { ascending: false }));
+  return selectCoupons(() =>
+    supabase.from('coupons').select(BASE_COLUMNS).order('created_at', { ascending: false }));
 }
 
 /** Seller app: this boutique's own coupons, newest first. */
 export async function fetchBoutiqueCoupons(boutiqueId: string): Promise<CouponRow[]> {
-  return selectCoupons((cols) =>
-    supabase.from('coupons').select(cols).eq('boutique_id', boutiqueId).order('created_at', { ascending: false }));
+  return selectCoupons(() =>
+    supabase.from('coupons').select(BASE_COLUMNS).eq('boutique_id', boutiqueId).order('created_at', { ascending: false }));
 }
 
 function toDbFields(input: CouponInput) {
@@ -171,49 +215,49 @@ function toDbFields(input: CouponInput) {
   };
 }
 
-/** Drops the 0049-only fields, for a project that hasn't run that migration. */
-function withoutUsageFields<T extends { usage_limit: number | null }>(fields: T): Omit<T, 'usage_limit'> {
-  const { usage_limit: _drop, ...rest } = fields;
-  return rest;
+/**
+ * Run a coupon write and hand back the saved row.
+ *
+ * `RETURNING` is where the 0058 breakage actually bit: the INSERT/UPDATE itself
+ * was always permitted (only SELECT was revoked), but asking for the withheld
+ * columns back aborted the whole statement, so the coupon was never written and
+ * the form reported nothing. The returning clause is BASE_COLUMNS only, and the
+ * operator columns are grafted on afterwards.
+ *
+ * The one retry left is for a project without migration 0049, where
+ * `usage_limit` does not exist as a column to write at all.
+ */
+async function writeCoupon<T extends { usage_limit: number | null }>(
+  fields: T,
+  send: (payload: T | Omit<T, 'usage_limit'>) => PromiseLike<{
+    data: Record<string, unknown> | null;
+    error: { code?: string; message?: string } | null;
+  }>,
+): Promise<CouponRow> {
+  let { data, error } = await send(fields);
+  if (error && isMissingUsageColumns(error)) {
+    const { usage_limit: _drop, ...rest } = fields;
+    ({ data, error } = await send(rest));
+  }
+  if (error) throw error;
+
+  const saved = normalize(data ?? {});
+  const priv = (await fetchPrivateFields()).get(saved.id);
+  return priv ? { ...saved, ...priv } : saved;
 }
 
 export async function createCoupon(input: CouponInput): Promise<CouponRow> {
   const { data: userData } = await supabase.auth.getUser();
   const fields = { ...toDbFields(input), created_by: userData.user?.id ?? null };
-  const write = (payload: typeof fields | Omit<typeof fields, 'usage_limit'>, cols: string) =>
-    supabase.from('coupons').insert(payload).select(cols).single() as unknown as
-      PromiseLike<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>;
-
-  let data: Record<string, unknown> | null = null;
-  let error: { code?: string; message?: string } | null = null;
-  if (hasUsageColumns) {
-    ({ data, error } = await write(fields, COLUMNS));
-    if (error && isMissingUsageColumns(error)) hasUsageColumns = false;
-  }
-  if (!hasUsageColumns) {
-    ({ data, error } = await write(withoutUsageFields(fields), BASE_COLUMNS));
-  }
-  if (error) throw error;
-  return normalize(data ?? {});
+  return writeCoupon(fields, (payload) =>
+    supabase.from('coupons').insert(payload).select(BASE_COLUMNS).single() as unknown as
+      PromiseLike<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>);
 }
 
 export async function updateCoupon(id: string, input: CouponInput): Promise<CouponRow> {
-  const fields = toDbFields(input);
-  const write = (payload: typeof fields | Omit<typeof fields, 'usage_limit'>, cols: string) =>
-    supabase.from('coupons').update(payload).eq('id', id).select(cols).single() as unknown as
-      PromiseLike<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>;
-
-  let data: Record<string, unknown> | null = null;
-  let error: { code?: string; message?: string } | null = null;
-  if (hasUsageColumns) {
-    ({ data, error } = await write(fields, COLUMNS));
-    if (error && isMissingUsageColumns(error)) hasUsageColumns = false;
-  }
-  if (!hasUsageColumns) {
-    ({ data, error } = await write(withoutUsageFields(fields), BASE_COLUMNS));
-  }
-  if (error) throw error;
-  return normalize(data ?? {});
+  return writeCoupon(toDbFields(input), (payload) =>
+    supabase.from('coupons').update(payload).eq('id', id).select(BASE_COLUMNS).single() as unknown as
+      PromiseLike<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>);
 }
 
 /** Flip a coupon on/off without opening the full editor. */

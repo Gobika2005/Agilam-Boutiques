@@ -508,6 +508,15 @@ export interface Database {
         Args: { pid: string; do_like: boolean };
         Returns: number;
       };
+      /**
+       * The coupon columns migration 0058 withheld from `authenticated`, for
+       * every coupon the caller may manage (migration 0059). An admin gets all
+       * of them, a seller their own boutiques', a buyer none.
+       */
+      coupon_private_all: {
+        Args: Record<string, never>;
+        Returns: { id: string; created_by: string | null; usage_limit: number | null; used_count: number }[];
+      };
       /** Post/edit/clear the boutique's public reply to a review (migration 0045). */
       reply_to_review: {
         Args: { p_review_id: string; p_reply: string };

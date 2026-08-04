@@ -68,7 +68,16 @@ export function Analytics() {
   // Everything below the header respects the selected window, except the
   // engagement counters (views/likes) which are lifetime totals — the schema
   // keeps a running count, not a dated event log.
-  const inRange = orders.filter((o) => new Date(o.created_at).getTime() >= rangeStart);
+  //
+  // Cancelled and rejected orders are excluded for the same reason Earnings
+  // excludes them (`Earnings.tsx`: "they are not money"): the goods went back on
+  // the shelf and nobody paid. Filtering here rather than at each call site
+  // keeps revenue, order count, the trend bars, the top-categories table and the
+  // returning-customer count all telling the same story — a cancelled order
+  // shouldn't make a buyer look like a repeat customer either.
+  const inRange = orders.filter(
+    (o) => o.status !== 'cancelled' && o.status !== 'rejected' && new Date(o.created_at).getTime() >= rangeStart,
+  );
   const totalOrders = inRange.length;
   const totalRevenue = inRange.reduce((s, o) => s + Number(o.total), 0);
 
