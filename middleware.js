@@ -689,15 +689,36 @@ async function sitemapXml(origin) {
     dbProducts((cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
     db(`boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=2000`)
   ]);
+  /*
+   * Every URL gets a `lastmod`.
+   *
+   * Products and boutiques already carried one from their own `created_at`; the
+   * hubs, the category/occasion/fabric landings and the written pages did not —
+   * 33 of 58 URLs, including the home page. Google states plainly that it
+   * ignores `<changefreq>` and `<priority>` and uses `<lastmod>` (when it is
+   * consistently accurate) to decide what is worth re-crawling, so those 33 were
+   * offering the one signal it discards and withholding the one it reads.
+   *
+   * A hub is only as fresh as the newest thing in it, which for every one of
+   * these is the newest live product — so that date is both honest and exactly
+   * what "has this page changed?" means here. Static prose pages get the same
+   * date rather than a fabricated one: they genuinely do change when the
+   * catalogue behind their examples does, and an invented daily timestamp is the
+   * thing that teaches Google to stop trusting the field.
+   */
+  const newest = products.reduce(
+    (latest, p) => (p.created_at && p.created_at > latest ? p.created_at : latest),
+    ""
+  ) || void 0;
   const entries = [
-    urlEntry(`${origin}/`, { changefreq: "daily", priority: "1.0" }),
-    urlEntry(`${origin}/collections`, { changefreq: "daily", priority: "0.9" }),
-    urlEntry(`${origin}/shop`, { changefreq: "daily", priority: "0.8" }),
-    urlEntry(`${origin}/boutiques`, { changefreq: "daily", priority: "0.9" }),
-    urlEntry(`${origin}/new-arrivals`, { changefreq: "daily", priority: "0.8" }),
-    urlEntry(`${origin}/best-sellers`, { changefreq: "daily", priority: "0.8" }),
-    urlEntry(`${origin}/top-boutiques`, { changefreq: "weekly", priority: "0.7" }),
-    urlEntry(`${origin}/inspire`, { changefreq: "daily", priority: "0.6" })
+    urlEntry(`${origin}/`, { lastmod: newest, changefreq: "daily", priority: "1.0" }),
+    urlEntry(`${origin}/collections`, { lastmod: newest, changefreq: "daily", priority: "0.9" }),
+    urlEntry(`${origin}/shop`, { lastmod: newest, changefreq: "daily", priority: "0.8" }),
+    urlEntry(`${origin}/boutiques`, { lastmod: newest, changefreq: "daily", priority: "0.9" }),
+    urlEntry(`${origin}/new-arrivals`, { lastmod: newest, changefreq: "daily", priority: "0.8" }),
+    urlEntry(`${origin}/best-sellers`, { lastmod: newest, changefreq: "daily", priority: "0.8" }),
+    urlEntry(`${origin}/top-boutiques`, { lastmod: newest, changefreq: "weekly", priority: "0.7" }),
+    urlEntry(`${origin}/inspire`, { lastmod: newest, changefreq: "daily", priority: "0.6" })
   ];
   const facets = {
     collections: /* @__PURE__ */ new Set(),
@@ -712,7 +733,7 @@ async function sitemapXml(origin) {
   }
   for (const [prefix, values] of Object.entries(facets)) {
     for (const slug of values) {
-      if (slug) entries.push(urlEntry(`${origin}/${prefix}/${slug}`, { changefreq: "daily", priority: "0.85" }));
+      if (slug) entries.push(urlEntry(`${origin}/${prefix}/${slug}`, { lastmod: newest, changefreq: "daily", priority: "0.85" }));
     }
   }
   for (const b of boutiques) {
@@ -738,7 +759,7 @@ async function sitemapXml(origin) {
     );
   }
   for (const slug of POLICY_SLUGS) {
-    entries.push(urlEntry(`${origin}/${slug}`, { changefreq: "monthly", priority: "0.3" }));
+    entries.push(urlEntry(`${origin}/${slug}`, { lastmod: newest, changefreq: "monthly", priority: "0.3" }));
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">

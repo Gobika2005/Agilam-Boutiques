@@ -36,7 +36,7 @@ export function Coupons() {
   const { boutique, loading: boutiqueLoading } = useMyBoutique();
   const boutiqueId = boutique?.id;
 
-  const { data: mine, loading, reload } = useAsync(
+  const { data: mine, loading, error, reload } = useAsync(
     () => (boutiqueId ? fetchBoutiqueCoupons(boutiqueId) : Promise.resolve([] as CouponRow[])),
     [boutiqueId],
   );
@@ -125,7 +125,21 @@ export function Coupons() {
           {loading && rows.length === 0 && (
             <div style={css('padding:30px;text-align:center;color:var(--ag-muted-soft);font-weight:700;font-size:13px;')}>Loading…</div>
           )}
-          {!loading && rows.length === 0 && (
+          {/* A load that failed must say so. This list used to render `mine ?? []`,
+              so when migration 0058 made the query 403 for sellers, every seller
+              was told "No coupons yet" — a confident lie about their own data,
+              and the reason the breakage went unnoticed in production. */}
+          {!loading && error && (
+            <div style={css('background:var(--ag-bad-bg);border:1.5px solid var(--ag-bad-text);border-radius:18px;padding:20px 18px;text-align:center;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-bad-text);")}>error_outline</span>
+              <div style={css('font-weight:800;font-size:14.5px;color:var(--ag-bad-text);margin-top:6px;')}>Couldn’t load your coupons</div>
+              <div style={css('color:var(--ag-label);font-size:12.5px;margin-top:4px;line-height:1.5;')}>
+                Your codes are safe — we just can’t show them right now. Try again in a moment.
+              </div>
+              <button onClick={reload} style={css('margin-top:12px;height:40px;padding:0 18px;border:1.5px solid var(--ag-bad-text);background:var(--ag-surface);color:var(--ag-bad-text);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}>Retry</button>
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && (
             <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:18px;padding:28px 18px;text-align:center;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:34px;color:var(--ag-border);")}>local_offer</span>
               <div style={css('font-weight:800;font-size:14.5px;color:var(--ag-ink-2);margin-top:8px;')}>No coupons yet</div>
