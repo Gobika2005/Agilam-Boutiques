@@ -4,9 +4,22 @@ import { css } from '@/lib/css';
 import { messagePreview } from '@/data/chat';
 import { useNotifications } from '@/state/NotificationContext';
 
-const TABS = ['All', 'Orders', 'Messages', 'Wishlist', 'Updates'];
-/** The admin console has no wishlist, so that filter is dropped there. */
-const ADMIN_TABS = ['All', 'Orders', 'Messages', 'Updates'];
+/**
+ * One tab set for all three consoles.
+ *
+ * There used to be a fourth filter, "Wishlist", on the buyer and seller inboxes.
+ * It is gone by request. Note that the notifications themselves are unaffected:
+ * `notify_wishlist_price_drop` (migration 0044) still writes a `type:'Wishlist'`
+ * row when a saved product's price drops, and those rows still render here under
+ * "All" with their own icon — see STYLE below, which is why it keeps a Wishlist
+ * entry. Only the filter chip is withdrawn.
+ *
+ * Dropping it for the seller too is not scope creep: that trigger inserts
+ * `select w.buyer_id … from wishlist w`, so a seller has never been able to
+ * receive this type, and their chip filtered a list that was empty by
+ * construction. The admin console never showed it.
+ */
+const TABS = ['All', 'Orders', 'Messages', 'Updates'];
 
 const STYLE: Record<string, { icon: string; tint: string; ic: string }> = {
   Orders: { icon: 'shopping_bag', tint: 'var(--ag-surface-2)', ic: '#D6336C' },
@@ -44,7 +57,6 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
   const { items, loading, markRead, markAllRead, unreadCount } = useNotifications();
   const [tab, setTab] = useState('All');
 
-  const tabs = embedded ? ADMIN_TABS : TABS;
   const notifs = items.filter((n) => tab === 'All' || n.type === tab);
 
   const open = async (n: (typeof items)[number]) => {
@@ -71,7 +83,7 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
       </div>
 
       <div className="agx-scroll" style={css('display:flex;gap:8px;overflow-x:auto;padding:4px 20px 10px;')}>
-        {tabs.map((t) => {
+        {TABS.map((t) => {
           const on = tab === t;
           return (
             <button key={t} onClick={() => setTab(t)} style={css(`flex:none;padding:7px 15px;border:none;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};`)}>
