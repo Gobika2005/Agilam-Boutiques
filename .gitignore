@@ -10,3 +10,4 @@ dist
 .DS_Store
 *.tsbuildinfo
 supabase/_bundle.sql
+daily-report.log
