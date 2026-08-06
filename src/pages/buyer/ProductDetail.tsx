@@ -265,6 +265,15 @@ export function ProductDetail() {
   // opening a chat with it made conversation creation fail ("Could not start
   // chat"). The real boutique_id the product carries can't miss.
   const boutiqueId = ap.boutiqueId || boutique?.id || '';
+  /*
+   * The shop's canonical address, for the link below the price.
+   *
+   * `boutique` is matched by name and can be missing from the loaded list, in
+   * which case the id the product carries still gives a working URL — the edge
+   * redirects it to the slug. Empty only when there is no id either, and then
+   * there is nothing to link to.
+   */
+  const boutiqueLink = boutique ? routes.boutique(boutique) : boutiqueId ? `/boutique/${boutiqueId}` : '';
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -333,6 +342,20 @@ export function ProductDetail() {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/boutique/${boutiqueId}`);
   };
+  /** The shop row's contents, shared by its link and its no-destination form. */
+  const shopRow = (
+    <>
+      <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
+      <div style={css('flex:1;')}>
+        <div style={css('display:flex;align-items:center;gap:5px;')}>
+          <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
+        </div>
+        <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+      </div>
+      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
+    </>
+  );
   const openChat = () => {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/chat/${boutiqueId}`, {
@@ -646,17 +669,33 @@ export function ProductDetail() {
             ))}
           </div>
 
-          <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;cursor:pointer;')}>
-            <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
-            <div style={css('flex:1;')}>
-              <div style={css('display:flex;align-items:center;gap:5px;')}>
-                <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
-              </div>
-              <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+          {/* The one link on the site that says a shop's name and points at that
+              shop's page — repeated across every piece it lists.
+
+              It was a `<div onClick={navigate}>`, so it was not a link at all:
+              nothing crawling the catalogue could get from a product to the shop
+              that sells it, and the shop's own name — the exact words someone
+              types into Google to find it — was anchor text on nothing. It also
+              navigated to `/boutique/<uuid>`, which the edge answers with a 301
+              to the slug, so every visit paid for a redirect.
+
+              `boutiqueLink` prefers the slug and falls back to the id; where
+              neither resolves the row stays a button, because a link with no
+              destination is worse than the toast. */}
+          {boutiqueLink ? (
+            <CardLink
+              to={boutiqueLink}
+              label={`Visit ${ap.boutique}`}
+              className="agx-lift"
+              style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;')}
+            >
+              {shopRow}
+            </CardLink>
+          ) : (
+            <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;cursor:pointer;')}>
+              {shopRow}
             </div>
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
-          </div>
+          )}
 
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>

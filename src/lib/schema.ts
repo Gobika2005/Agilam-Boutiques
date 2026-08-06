@@ -281,7 +281,18 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
             worstRating: 1,
           }
         : undefined,
-    makesOffer: productCount ? { '@type': 'Offer', itemOffered: { '@type': 'Product', name: `${productCount} pieces` } } : undefined,
+    /*
+     * The count only, as a count.
+     *
+     * This used to be `makesOffer` with `itemOffered: { Product, name: "12
+     * pieces" }` — which asserts that the shop sells a product called "12
+     * pieces". The edge middleware emits the real catalogue (an `OfferCatalog`
+     * of actual titles and URLs) on the same `@id`, so the two graphs merge and
+     * that phantom product merged in with them.
+     */
+    hasOfferCatalog: productCount
+      ? { '@type': 'OfferCatalog', name: `${boutique.name} catalogue`, numberOfItems: productCount }
+      : undefined,
   });
 }
 

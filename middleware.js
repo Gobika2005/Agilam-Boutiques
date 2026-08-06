@@ -117,7 +117,7 @@ function notFoundMeta() {
  * timeout and returned an empty sitemap.
  */
 async function dbTry(path) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, rows: [] };
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, rows: [], status: 0 };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DB_TIMEOUT_MS);
   try {
@@ -129,20 +129,52 @@ async function dbTry(path) {
       },
       signal: controller.signal
     });
-    if (!res.ok) return { ok: false, rows: [] };
+    if (!res.ok) return { ok: false, rows: [], status: res.status };
     const rows = await res.json();
-    return { ok: Array.isArray(rows), rows: Array.isArray(rows) ? rows : [] };
+    return { ok: Array.isArray(rows), rows: Array.isArray(rows) ? rows : [], status: res.status };
   } catch {
     // Timeout, network error, malformed JSON — all mean "serve the shell".
-    return { ok: false, rows: [] };
+    // `status: 0` distinguishes them from a rejection the server actually sent,
+    // which is what the column fallbacks below key on.
+    return { ok: false, rows: [], status: 0 };
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function db(path) {
-  return (await dbTry(path)).rows;
+/**
+ * Did the server reject this query because it named a column that isn't there?
+ *
+ * PostgREST answers an unknown column with 400 (SQLSTATE 42703). Everything
+ * else that makes a query fail — the 1500 ms abort above, a network blip, a 5xx
+ * from Supabase — is transient and says nothing about the schema.
+ *
+ * The distinction matters because the two column fallbacks are sticky: they
+ * remember the downgrade for the life of the edge instance. Treating "the
+ * sitemap's 2000-row read timed out" as "this deployment predates migration
+ * 0021" retired the rich columns permanently, and every shop page served by
+ * that instance afterwards silently lost its address, hours and Instagram link.
+ */
+function isSchemaRejection(attempt) {
+  return attempt.status === 400;
 }
+
+/**
+ * One read, retried once if it failed for a reason that might not repeat.
+ *
+ * The 1500 ms abort is tight enough that a cold connection loses to it now and
+ * then, and the cost of losing is a page served with no metadata or a sitemap
+ * served with no shops. The column fallbacks below used to supply this second
+ * attempt as a side effect — by asking for fewer columns, which fixed the
+ * symptom and corrupted the schema flag. This is the same second attempt,
+ * asking for the same thing.
+ */
+async function dbTryTwice(path) {
+  const attempt = await dbTry(path);
+  if (attempt.ok || isSchemaRejection(attempt)) return attempt;
+  return dbTry(path);
+}
+
 /*
  * Migration 0057 adds `products.slug`. Naming a column PostgREST does not know
  * fails the ENTIRE query, not just that field — so on a deployment where 0057
@@ -152,9 +184,44 @@ async function db(path) {
  * 0023 counter columns.
  */
 let productSlugAvailable = true;
-const PRODUCT_COLUMNS_LEGACY = "id,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
-const PRODUCT_COLUMNS = "id,slug,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
-const BOUTIQUE_COLUMNS = "id,name,slug,city,area,description,logo_url,cover_url,phone,rating,reviews_count,created_at";
+const PRODUCT_COLUMNS_LEGACY = "id,boutique_id,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
+const PRODUCT_COLUMNS = "id,slug,boutique_id,title,description,price,mrp,stock,category,occasion,color,fabric,image_url,rating,reviews_count,created_at,boutiques(name,slug,city)";
+/*
+ * Two boutique column lists, for the same reason products have two.
+ *
+ * A shop page has to win a search for the shop's OWN name — against that shop's
+ * Instagram, its Facebook page and its Google Business listing, all of which
+ * carry the address, the hours and the phone number. Migration 0021 revoked the
+ * blanket SELECT on `boutiques` and granted back a named public list, and that
+ * list already contains everything needed to match them: the full postal
+ * address, opening hours, the Instagram handle, the founding year. Only the
+ * first twelve of those were ever being read, so the markup a search engine got
+ * was a name and a city.
+ *
+ * The rich list is tried first and remembered, exactly like PRODUCT_COLUMNS: on
+ * a deployment where 0021 has not been applied, naming a column PostgREST does
+ * not know fails the WHOLE query and would blank every shop page rather than
+ * just dropping a field.
+ */
+// The lean list: everything the sitemap and a link preview need. It doubles as
+// the fallback for a database where 0021's column grant has not been applied.
+const BOUTIQUE_COLUMNS_CORE = "id,name,slug,city,area,description,logo_url,cover_url,phone,rating,reviews_count,created_at";
+const BOUTIQUE_COLUMNS = `${BOUTIQUE_COLUMNS_CORE},instagram,whatsapp,established_year,address_line,district,state,pincode,open_time,close_time,working_days,delivery_areas,category`;
+let boutiqueColumnsAvailable = true;
+
+/** `dbProductsTry`, for boutiques. Retries once on the pre-0021 column list. */
+async function dbBoutiquesTry(build) {
+  if (boutiqueColumnsAvailable) {
+    const attempt = await dbTryTwice(build(BOUTIQUE_COLUMNS));
+    // Succeeded, or failed for a reason that has nothing to do with the schema
+    // (see `isSchemaRejection`) — either way, do not downgrade.
+    if (attempt.ok || !isSchemaRejection(attempt)) return attempt;
+    const legacy = await dbTry(build(BOUTIQUE_COLUMNS_CORE));
+    if (legacy.ok) boutiqueColumnsAvailable = false;
+    return legacy;
+  }
+  return dbTry(build(BOUTIQUE_COLUMNS_CORE));
+}
 function orgNode(origin) {
   return {
     "@type": "Organization",
@@ -187,11 +254,14 @@ function isUuid(value) {
  */
 async function dbProductsTry(build) {
   if (productSlugAvailable) {
-    const attempt = await dbTry(build(PRODUCT_COLUMNS));
+    const attempt = await dbTryTwice(build(PRODUCT_COLUMNS));
     // Succeeded — including a legitimate zero-row answer. Nothing to retry.
-    if (attempt.ok) return attempt;
-    // Rejected. Almost always "column products.slug does not exist", i.e. 0057
-    // is not applied. Drop to the legacy list and remember, so this costs one
+    // A timeout or a 5xx is not retried either: it is not evidence about the
+    // schema, and acting on it would strip `slug` from every URL this instance
+    // builds from then on (see `isSchemaRejection`).
+    if (attempt.ok || !isSchemaRejection(attempt)) return attempt;
+    // Rejected with 400 — "column products.slug does not exist", i.e. 0057 is
+    // not applied. Drop to the legacy list and remember, so this costs one
     // extra round trip per cold edge instance rather than one per request.
     const legacy = await dbTry(build(PRODUCT_COLUMNS_LEGACY));
     if (legacy.ok) productSlugAvailable = false;
@@ -290,6 +360,106 @@ async function metaForProduct(slug, origin) {
     }
   };
 }
+/** `working_days` is stored as 'Mon'\u2026'Sun'; schema.org wants the full name. */
+const DAY_NAMES = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+  Sun: "Sunday"
+};
+
+function openingHoursSpec(b) {
+  const days = (Array.isArray(b.working_days) ? b.working_days : [])
+    .map((d) => DAY_NAMES[d])
+    .filter(Boolean);
+  if (!days.length || !b.open_time || !b.close_time) return void 0;
+  return [{ "@type": "OpeningHoursSpecification", dayOfWeek: days, opens: b.open_time, closes: b.close_time }];
+}
+
+/**
+ * The shop's own profiles elsewhere on the web.
+ *
+ * `sameAs` is how a search engine is told "this page and that Instagram account
+ * are the same business" \u2014 without it the two compete as unrelated results for
+ * the shop's name; with it they consolidate, and this page is the one on a
+ * domain that also carries the catalogue, the address and the ratings.
+ *
+ * The column holds either a full URL or a bare handle, depending on which
+ * onboarding screen filled it in, so both are normalised to a URL.
+ */
+function boutiqueSameAs(b) {
+  const links = [];
+  const instagram = b.instagram?.trim();
+  if (instagram) {
+    links.push(
+      /^https?:\/\//i.test(instagram)
+        ? instagram
+        : `https://www.instagram.com/${instagram.replace(/^@/, "")}`
+    );
+  }
+  return links.length ? links : void 0;
+}
+
+/**
+ * The crawlable body for a shop page, served inside `<noscript>`.
+ *
+ * The head has always been written server-side, but the body shipped as an
+ * empty `<div id="root">`: every word about the shop existed only after React
+ * had mounted and fetched. Google renders JavaScript and would eventually get
+ * there; Bing, WhatsApp, Slack, GPTBot and the rest largely do not, and even
+ * for Google the rendered pass is queued separately and can trail the crawl by
+ * days. A shop that is searched for by name deserves an answer in the first
+ * response.
+ *
+ * `<noscript>` rather than pre-filling `#root`: the content is identical to
+ * what the app paints, so there is no cloaking either way, but anything placed
+ * in `#root` is visible to real users until React replaces it \u2014 an unstyled
+ * flash of the same text \u2014 and would trip the `#root:not(:empty)` rule that
+ * retires the splash screen.
+ */
+function boutiquePrerender(b, products, origin, url) {
+  const city = [b.area, b.city].filter(Boolean).join(", ") || b.city || "Tamil Nadu";
+  /*
+   * Deduplicated: `city`, `area`, `district` and `address_line` overlap on most
+   * rows — a shop in Dharapuram with nothing else filled in rendered "Boutique
+   * in Dharapuram · Dharapuram". Compared case-insensitively because the
+   * onboarding form does not normalise what the seller types.
+   */
+  const addressParts = [];
+  let addressSoFar = city.toLowerCase();
+  for (const raw of [b.address_line, b.district, b.state, b.pincode]) {
+    const part = String(raw || "").trim();
+    // Substring, not equality: `address_line` is free text and usually already
+    // contains the town and the state ("75/35, Weavers Colony, Tiruppur, Tamil
+    // Nadu"), so appending those columns repeated them a second time.
+    if (!part || addressSoFar.includes(part.toLowerCase())) continue;
+    addressParts.push(part);
+    addressSoFar += `, ${part.toLowerCase()}`;
+  }
+  const address = addressParts.join(", ");
+  const hours = b.open_time && b.close_time
+    ? `${(Array.isArray(b.working_days) ? b.working_days : []).join(", ") || "Open"} \u00b7 ${b.open_time}\u2013${b.close_time}`
+    : "";
+  const rows = products.slice(0, 24).map(
+    (p) => `<li><a href="${escapeHtml(`${origin}${productPath(p)}`)}">${escapeHtml(p.title)}</a> \u2014 ${escapeHtml(inr(p.price))}</li>`
+  );
+  return `<noscript>
+<h1>${escapeHtml(b.name)}</h1>
+<p>${escapeHtml(
+    b.description?.trim() || `${b.name} is a verified boutique in ${city} selling ethnic wear on ${SITE_NAME}.`
+  )}</p>
+<p>Boutique in ${escapeHtml(city)}${address ? ` \u00b7 ${escapeHtml(address)}` : ""}${hours ? ` \u00b7 ${escapeHtml(hours)}` : ""}</p>
+<p><a href="${escapeHtml(url)}">${escapeHtml(b.name)} on ${SITE_NAME}</a> \u00b7 <a href="${origin}/boutiques">All boutiques</a></p>
+${rows.length ? `<h2>Pieces from ${escapeHtml(b.name)}</h2>
+<ul>
+${rows.join("\n")}
+</ul>` : ""}
+</noscript>`;
+}
+
 async function metaForBoutique(slug, origin) {
   /*
    * Same trap as products: `or=(slug.eq.X,id.eq.X)` asks Postgres to compare a
@@ -299,8 +469,8 @@ async function metaForBoutique(slug, origin) {
   const filter = isUuid(slug)
     ? `id=eq.${slug}`
     : `slug=eq.${encodeURIComponent(slug)}`;
-  const attempt = await dbTry(
-    `boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=1&${filter}`
+  const attempt = await dbBoutiquesTry(
+    (cols) => `boutiques?select=${cols}&status=eq.approved&limit=1&${filter}`
   );
   const b = attempt.rows[0];
   // As in metaForProduct: only a successful empty answer means "no such shop".
@@ -308,14 +478,31 @@ async function metaForBoutique(slug, origin) {
   // Falls back to the id where migration 0057 has not been applied yet.
   const boutiquePath = `/boutique/${b.slug || b.id}`;
   const url = `${origin}${boutiquePath}`;
+  /*
+   * What the shop actually sells, second round trip.
+   *
+   * A store page that lists nothing is a thin page, and thin pages lose to the
+   * shop's own Instagram. These titles are also the only text tying the shop's
+   * name to what it stocks, which is what turns "<shop name>" into a match and
+   * "<shop name> sarees" into one too.
+   */
+  const products = await dbProducts(
+    (cols) => `products?select=${cols}&boutique_id=eq.${b.id}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=24`
+  );
+  const prices = products.map((p) => Number(p.price)).filter((n) => Number.isFinite(n) && n > 0);
+  const city = b.city || "Tamil Nadu";
+  const locality = [b.area, city].filter(Boolean).join(", ");
   return {
-    title: `${b.name} \u2014 Boutique in ${b.city || "Tamil Nadu"}`,
+    // The shop's own name leads, unqualified and unabbreviated, because that is
+    // the string being typed into the search box.
+    title: `${b.name} \u2014 Boutique in ${city}`,
     description: clamp(
-      b.description?.trim() || `Shop ${b.name}, a verified boutique in ${b.city || "Tamil Nadu"}. Chat directly with the owner and get delivery across India.`
+      b.description?.trim() || `Shop ${b.name}, a verified boutique in ${locality || city}. ${products.length ? `${products.length} pieces listed. ` : ""}Chat directly with the owner and get delivery across India.`
     ),
     image: b.logo_url || b.cover_url || void 0,
     type: "profile",
     redirectTo: `/boutique/${slug}` !== boutiquePath ? boutiquePath : void 0,
+    prerender: boutiquePrerender(b, products, origin, url),
     schema: {
       "@context": "https://schema.org",
       "@graph": [
@@ -324,18 +511,31 @@ async function metaForBoutique(slug, origin) {
           "@type": "ClothingStore",
           "@id": `${url}#boutique`,
           name: b.name,
+          legalName: b.name,
           url,
-          image: b.cover_url || b.logo_url || void 0,
-          description: b.description?.trim() || `${b.name} is a verified boutique in ${b.city || "Tamil Nadu"}.`,
+          image: [b.cover_url, b.logo_url].filter(Boolean).length ? [b.cover_url, b.logo_url].filter(Boolean) : void 0,
+          logo: b.logo_url || void 0,
+          description: b.description?.trim() || `${b.name} is a verified boutique in ${locality || city}.`,
           telephone: b.phone || void 0,
+          sameAs: boutiqueSameAs(b),
+          foundingDate: b.established_year ? String(b.established_year) : void 0,
           address: {
             "@type": "PostalAddress",
-            streetAddress: b.area || void 0,
+            streetAddress: [b.address_line, b.area].filter(Boolean).join(", ") || b.area || void 0,
             addressLocality: b.city || void 0,
-            addressRegion: "Tamil Nadu",
+            addressRegion: b.state || "Tamil Nadu",
+            postalCode: b.pincode || void 0,
             addressCountry: "IN"
           },
+          areaServed: b.delivery_areas?.trim() || city,
+          openingHoursSpecification: openingHoursSpec(b),
           currenciesAccepted: "INR",
+          paymentAccepted: "Cash on Delivery, UPI, Card, Netbanking",
+          priceRange: prices.length
+            ? Math.min(...prices) === Math.max(...prices)
+              ? inr(prices[0])
+              : `${inr(Math.min(...prices))}\u2013${inr(Math.max(...prices))}`
+            : void 0,
           parentOrganization: { "@id": `${origin}/#organization` },
           aggregateRating: (b.reviews_count ?? 0) > 0 && (b.rating ?? 0) > 0 ? {
             "@type": "AggregateRating",
@@ -343,7 +543,29 @@ async function metaForBoutique(slug, origin) {
             reviewCount: b.reviews_count,
             bestRating: 5,
             worstRating: 1
+          } : void 0,
+          hasOfferCatalog: products.length ? {
+            "@type": "OfferCatalog",
+            name: `${b.name} catalogue`,
+            numberOfItems: products.length,
+            itemListElement: products.map((p, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              url: `${origin}${productPath(p)}`,
+              name: p.title
+            }))
           } : void 0
+        },
+        // Breadcrumbs were on products and category pages but not here, so a
+        // result for the shop had no path under it and no way to show Google
+        // that a boutique sits inside a boutique directory.
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: origin },
+            { "@type": "ListItem", position: 2, name: "Boutiques", item: `${origin}/boutiques` },
+            { "@type": "ListItem", position: 3, name: b.name }
+          ]
         }
       ]
     }
@@ -687,7 +909,10 @@ function legacyRedirectPath(pathname) {
 async function sitemapXml(origin) {
   const [products, boutiques] = await Promise.all([
     dbProducts((cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
-    db(`boutiques?select=${BOUTIQUE_COLUMNS}&status=eq.approved&limit=2000`)
+    // Deliberately the lean list, not `dbBoutiquesTry`: a sitemap row needs an
+    // id, a slug, a name and a date, and this read already carries 2000 rows
+    // against a 1500 ms abort. The rich columns are for the shop page itself.
+    dbTryTwice(`boutiques?select=${BOUTIQUE_COLUMNS_CORE}&status=eq.approved&limit=2000`).then((r) => r.rows)
   ]);
   /*
    * Every URL gets a `lastmod`.
@@ -736,12 +961,32 @@ async function sitemapXml(origin) {
       if (slug) entries.push(urlEntry(`${origin}/${prefix}/${slug}`, { lastmod: newest, changefreq: "daily", priority: "0.85" }));
     }
   }
+  /*
+   * A shop page changes when that shop lists something, so its `lastmod` is the
+   * date of its own newest piece — not the catalogue-wide `newest`, which would
+   * be the fabricated daily timestamp this file warns about above, and not its
+   * `created_at`, which froze on the day it signed up.
+   */
+  const newestPerBoutique = /* @__PURE__ */ new Map();
+  for (const p of products) {
+    if (!p.boutique_id || !p.created_at) continue;
+    const seen = newestPerBoutique.get(p.boutique_id);
+    if (!seen || p.created_at > seen) newestPerBoutique.set(p.boutique_id, p.created_at);
+  }
   for (const b of boutiques) {
     entries.push(
       urlEntry(`${origin}/boutique/${b.slug || b.id}`, {
-        lastmod: b.created_at || void 0,
-        changefreq: "weekly",
-        priority: "0.8",
+        lastmod: newestPerBoutique.get(b.id) || b.created_at || void 0,
+        /*
+         * 0.9, above every product and level with the boutique directory.
+         *
+         * A shop page is a destination someone searches for by name and it
+         * changes every time that shop lists a piece — hence `newest` rather
+         * than the shop's own `created_at`, which froze on the day it signed up
+         * and told Google a page updated weekly had not changed in months.
+         */
+        changefreq: "daily",
+        priority: "0.9",
         image: b.logo_url || b.cover_url || void 0,
         title: b.name
       })
@@ -814,8 +1059,18 @@ export default async function middleware(request) {
     if (!shell.ok) return void 0;
     const html = await shell.text();
     const canonical = `${origin}${pathname === "/" ? "/" : pathname.replace(/\/+$/, "")}`;
-    const injected = html.replace("<title>MangaiMart</title>", headFor(meta, canonical, origin, pathname)).replace('<html lang="en">', '<html lang="en-IN">');
+    let injected = html.replace("<title>MangaiMart</title>", headFor(meta, canonical, origin, pathname)).replace('<html lang="en">', '<html lang="en-IN">');
+    // Nothing was replaced: the shell is not the one this expects, so serve it
+    // untouched rather than a page with a made-up head. Checked before the body
+    // injection below, so a changed shell can never be served with a prerender
+    // block but no metadata.
     if (injected === html) return void 0;
+    // Crawlable body content, where the page has any (shop pages do). Anchored
+    // on the boot splash rather than on `#root`, which must stay empty until
+    // React mounts — see `boutiquePrerender`.
+    if (meta?.prerender) {
+      injected = injected.replace('<div id="ag-boot"', `${meta.prerender}\n<div id="ag-boot"`);
+    }
     const headers = new Headers({
       "content-type": "text/html; charset=utf-8",
       "cache-control": `public, max-age=0, s-maxage=${PAGE_CACHE_SECONDS}, stale-while-revalidate=86400`
