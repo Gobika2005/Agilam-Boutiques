@@ -22,7 +22,36 @@
  * correctly forbids for any normal caller. Never expose this over HTTP.
  */
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+
+/**
+ * Load the repo's .env when running on a machine that has one.
+ *
+ * A value already present in the real environment always wins — a scheduler or a
+ * cloud runner must be able to override the file, never the other way round.
+ *
+ * VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are accepted as fallbacks for the
+ * unprefixed names because that is what the app already stores, and both are
+ * public anyway (they ship inside the browser bundle). The service-role key is
+ * deliberately NOT aliased from anything.
+ */
+function loadDotEnv() {
+  const file = new URL('../.env', import.meta.url);
+  if (existsSync(file)) {
+    for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      if (process.env[key] !== undefined) continue;
+      process.env[key] = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
+    }
+  }
+  process.env.SUPABASE_URL ??= process.env.VITE_SUPABASE_URL;
+  process.env.SUPABASE_ANON_KEY ??= process.env.VITE_SUPABASE_ANON_KEY;
+}
+loadDotEnv();
 
 const IST_OFFSET_MIN = 330; // +05:30, no DST in India
 
