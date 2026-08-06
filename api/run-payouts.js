@@ -23,7 +23,12 @@ import {
  * COD is never touched here — the seller holds that cash and owes the platform,
  * which is a manual net-off on the admin console.
  *
- * Trigger: a daily cron (see vercel.json). Protected by PAYOUT_CRON_SECRET —
+ * Trigger: NOT scheduled. The daily cron entry was removed from vercel.json in
+ * 8cddccd (2026-08-01) and payouts are settled by hand from /admin/payments by
+ * decision — this project is on Vercel's Hobby plan, whose single cron slot goes
+ * to the ads lifecycle sweep. The endpoint still works if invoked directly, so
+ * restoring the schedule is a one-line change to vercel.json if the plan changes.
+ * Protected by PAYOUT_CRON_SECRET —
  * accepted either as `x-cron-secret` or as Vercel Cron's `Authorization: Bearer
  * <CRON_SECRET>`. With nothing configured (no RazorpayX, or no secret) it is an
  * inert 200 so a misconfigured deploy never 500s a scheduler.

@@ -14,7 +14,9 @@
     "preview": "vite preview",
     "bundle-migrations": "node scripts/bundle-migrations.mjs",
     "lint": "eslint .",
-    "verify:seo": "npm run build && node scripts/verify-seo.mjs"
+    "verify:seo": "npm run build && node scripts/verify-seo.mjs",
+    "report:daily": "node scripts/daily-report.mjs --json",
+    "report:send": "node scripts/daily-report.mjs --send"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
