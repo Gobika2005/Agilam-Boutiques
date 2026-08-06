@@ -219,6 +219,26 @@ const value = (name) => { const i = args.indexOf(name); return i === -1 ? null :
  * for running this on a trusted machine, and needs no migration.
  */
 let digest;
+if (!process.env.REPORT_TOKEN && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  // Neither path is configured. Say so explicitly rather than falling through to
+  // the service-role branch and reporting SUPABASE_SERVICE_ROLE_KEY as "missing"
+  // — that reads as an instruction to go and set it, which in a cloud sandbox is
+  // exactly the wrong fix.
+  console.error(
+    'No credentials configured. Pick one path:\n' +
+    '\n' +
+    '  Cloud routine / any untrusted runner (preferred):\n' +
+    '    REPORT_TOKEN, SUPABASE_URL, SUPABASE_ANON_KEY\n' +
+    '    REPORT_TOKEN is what selects this path. It uses the public anon key plus\n' +
+    '    the daily_digest RPC (migration 0060), which can read nothing else.\n' +
+    '\n' +
+    '  Trusted machine only:\n' +
+    '    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY\n' +
+    '    NEVER put the service-role key in a cloud environment — it bypasses RLS\n' +
+    '    on every table in the project.',
+  );
+  process.exit(1);
+}
 if (process.env.REPORT_TOKEN) {
   requireEnv('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'REPORT_TOKEN');
   // Plain fetch rather than supabase-js on purpose: constructing a Supabase
