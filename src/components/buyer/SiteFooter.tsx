@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { COMPANY, COMPANY_ADDRESS_LINE, CONTACT_LINKS } from '@/data/company';
+import { InstagramIcon, FacebookIcon, YouTubeIcon, WhatsAppIcon } from '@/components/ui/SocialIcons';
 
 /**
  * The marketplace footer, shared by every full-bleed buyer page.
@@ -35,10 +36,10 @@ const POLICY_LINKS = [
 ];
 
 const SOCIALS = [
-  { icon: 'photo_camera', label: 'Instagram', href: CONTACT_LINKS.instagram },
-  { icon: 'thumb_up', label: 'Facebook', href: CONTACT_LINKS.facebook },
-  { icon: 'smart_display', label: 'YouTube', href: CONTACT_LINKS.youtube },
-  { icon: 'chat', label: 'WhatsApp', href: CONTACT_LINKS.whatsapp },
+  { Icon: InstagramIcon, label: 'Instagram', href: CONTACT_LINKS.instagram },
+  { Icon: FacebookIcon, label: 'Facebook', href: CONTACT_LINKS.facebook },
+  { Icon: YouTubeIcon, label: 'YouTube', href: CONTACT_LINKS.youtube },
+  { Icon: WhatsAppIcon, label: 'WhatsApp', href: CONTACT_LINKS.whatsapp },
 ].filter((s) => !!s.href);
 
 const linkStyle = css('color:#fff;font-size:13.5px;opacity:.86;');
@@ -102,9 +103,9 @@ export function SiteFooter() {
                     rel="noreferrer noopener"
                     aria-label={s.label}
                     title={s.label}
-                    style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;')}
+                    style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#F4D9A6;display:flex;align-items:center;justify-content:center;')}
                   >
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#F4D9A6;")}>{s.icon}</span>
+                    <s.Icon size={19} />
                   </a>
                 ))}
               </div>

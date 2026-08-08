@@ -73,6 +73,12 @@ async function check(label, pathname, assertions) {
       catch (e) { return 'PARSE_ERROR: ' + e.message; }
     })(),
     bodyLen: body.length,
+    // Entity-decoded: `&` is correctly written as `&amp;` inside an attribute,
+    // so the raw match never equals the URL the browser will actually request.
+    preconnect: attr(body, /<link rel="preconnect" href="([^"]*supabase[^"]*)"/),
+    preloadHref: attr(body, /<link rel="preload" as="image" href="([^"]*)"/),
+    preloadSrcSet: attr(body, /<link rel="preload"[^>]*imagesrcset="([^"]*)"/),
+    preloadSizes: attr(body, /<link rel="preload"[^>]*imagesizes="([^"]*)"/),
     // The crawlable <noscript> body. Its absence is invisible from a browser —
     // the React app paints the same words either way — so the only way to catch
     // a page that regressed to shipping an empty <div id="root"> is to look for
@@ -95,9 +101,20 @@ async function check(label, pathname, assertions) {
   const problems = (assertions || []).filter((a) => !a.ok(out)).map((a) => a.name);
   if (problems.length) out.FAIL = problems.join('; ');
   results.push(out);
+  // Returned so a caller can assert on fields that need more than a boolean —
+  // the LCP preload compares its candidate list against imageUrl.ts.
+  return out;
 }
 
 const is = (n, f) => ({ name: n, ok: f });
+
+/** First capture of `re` in `body`, with HTML entities decoded. */
+function attr(body, re) {
+  const raw = (body.match(re) || [])[1];
+  return raw === undefined
+    ? undefined
+    : raw.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
 
 /*
  * robots.txt is checked on its text, not just its length.
@@ -174,7 +191,7 @@ for (const child of ['/sitemap-pages.xml', '/sitemap-boutiques.xml', '/sitemap-p
     is('not empty', (o) => o.bodyLen > 300),
   ]);
 }
-await check('homepage', '/', [
+const home = await check('homepage', '/', [
   is('200', (o) => o.status === 200),
   is('real title', (o) => o.title && o.title !== 'MangaiMart'),
   is('canonical', (o) => !!o.canonical),
@@ -182,6 +199,41 @@ await check('homepage', '/', [
   is('WebSite schema', (o) => (o.schema || '').includes('WebSite')),
 ]);
 await check('collections hub', '/collections', [is('200', (o) => o.status === 200), is('title', (o) => !!o.title)]);
+
+/*
+ * The LCP preload.
+ *
+ * The home page and a product page both paint an image that the browser cannot
+ * discover until ~240 kB of JavaScript has run, React has mounted and a fetch
+ * to a third-party origin has returned — four serial round trips, which is what
+ * put mobile LCP at 8.4 s. The edge knows the URL before any of that, so it
+ * preloads it.
+ *
+ * The candidate list and `sizes` are asserted, not just the presence of a tag:
+ * a preload whose chosen candidate differs from the one the `<img>` later asks
+ * for is WORSE than none — it downloads an image nobody uses and the real one
+ * still starts late. `imageSrcSet()` in src/lib/imageUrl.ts is the contract.
+ */
+const EXPECTED_WIDTHS = [240, 480, 800, 1280];
+function preloadProblems(o, expectedSizes) {
+  const problems = [];
+  if (!o.preconnect) problems.push('no preconnect to the Supabase origin');
+  if (!o.preloadHref) return [...problems, 'no LCP image preload'];
+  if (!o.preloadHref.includes('/storage/v1/render/image/public/')) {
+    problems.push('preload points at the raw object, not the transformer');
+  }
+  if (!/[?&]width=800&quality=70&resize=contain/.test(o.preloadHref)) {
+    problems.push(`href is not imageFallback()'s width=800&quality=70&resize=contain: ${o.preloadHref}`);
+  }
+  const widths = (o.preloadSrcSet || '').split(',').map((c) => Number((c.trim().match(/ (\d+)w$/) || [])[1]));
+  if (widths.join() !== EXPECTED_WIDTHS.join()) {
+    problems.push(`imagesrcset widths ${widths.join('/')} != imageUrl.ts WIDTHS ${EXPECTED_WIDTHS.join('/')}`);
+  }
+  if (o.preloadSizes !== expectedSizes) {
+    problems.push(`imagesizes "${o.preloadSizes}" != what the <img> renders ("${expectedSizes}")`);
+  }
+  return problems;
+}
 await check('checkout is noindex', '/checkout', [
   is('noindex meta', (o) => (o.robots || '').includes('noindex')),
   is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
@@ -252,8 +304,30 @@ const productUrl = (productsXml.match(/<loc>[^<]*(\/products\/[^<]+)<\/loc>/) ||
 const boutiqueUrl = (boutiquesXml.match(/<loc>[^<]*(\/boutique\/[^<]+)<\/loc>/) || [])[1];
 const cityUrl = (pagesXml.match(/<loc>[^<]*(\/boutiques\/[^<]+)<\/loc>/) || [])[1];
 
+/*
+ * Home hero preload. The hero is a paid `home_hero` ad, so this only asserts
+ * when one is actually live — with no campaign running there is no hero on the
+ * page and correctly nothing to preload.
+ */
+{
+  const problems = home.preloadHref
+    ? preloadProblems(home, '100vw')
+    : home.preconnect
+      ? []
+      : ['no preconnect to the Supabase origin'];
+  results.push(
+    problems.length
+      ? { label: 'home LCP preload', FAIL: problems.join('; ') }
+      : {
+          label: 'home LCP preload',
+          status: 200,
+          title: home.preloadHref ? 'hero preloaded + preconnect' : 'no live hero ad — preconnect only',
+        },
+  );
+}
+
 if (productUrl) {
-  await check('product page', productUrl, [
+  const pdp = await check('product page', productUrl, [
     is('200', (o) => o.status === 200),
     is('og:type=product', (o) => o.ogType === 'product'),
     is('Product schema', (o) => (o.schema || '').includes('Product')),
@@ -263,6 +337,14 @@ if (productUrl) {
     is('crawlable <h1>', (o) => !!o.noscriptH1),
     is('internal links', (o) => o.noscriptLinks >= 2),
   ]);
+  // The PDP's first gallery slide renders `ImageSlot` with no `sizes` prop, so
+  // the component default is what the preload has to declare.
+  const problems = preloadProblems(pdp, '(min-width: 768px) 320px, 50vw');
+  results.push(
+    problems.length
+      ? { label: 'product LCP preload', FAIL: problems.join('; ') }
+      : { label: 'product LCP preload', status: 200, title: 'first gallery slide preloaded + preconnect' },
+  );
 } else results.push({ label: 'product page', FAIL: 'no product in sitemap — DB unreachable?' });
 
 // The uuid branch needs no migration, so it proves the resolve/render path.

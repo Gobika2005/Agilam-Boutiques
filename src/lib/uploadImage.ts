@@ -40,7 +40,23 @@ export async function uploadImage(
   const path = `${folder}/${randomId()}.${ext}`;
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, { upsert: false, contentType: file.type || undefined });
+    /*
+     * A year, immutable.
+     *
+     * Without `cacheControl` Supabase serves these with a one-hour TTL, so a
+     * returning buyer re-downloaded every photo on the page — and the image
+     * transformer inherits the origin object's header, meaning the resized
+     * WebP the catalogue actually serves expired hourly too.
+     *
+     * Safe because the path is `${folder}/${randomId()}.${ext}` and the upload
+     * is `upsert: false`: a URL is minted once and its bytes never change. A
+     * replaced photo is a new random path, so there is nothing to invalidate.
+     */
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type || undefined,
+      cacheControl: '31536000',
+    });
   if (error) {
     // Surface the underlying cause instead of a generic failure so setup issues
     // (missing bucket / missing storage RLS policy) are diagnosable from the toast.

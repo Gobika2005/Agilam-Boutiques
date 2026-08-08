@@ -14,14 +14,8 @@
   "categories": ["shopping", "lifestyle"],
   "icons": [
     {
-      "src": "/square%20no%20BG.png",
+      "src": "/icon-500.png",
       "sizes": "500x500",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "1107x1107",
       "type": "image/png",
       "purpose": "any"
     }

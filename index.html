@@ -21,12 +21,14 @@
      Coimbatore" is a query it should be able to win. -->
 <meta name="geo.region" content="IN-TN" />
 <meta name="geo.placename" content="Tamil Nadu, India" />
-<!-- `sizes="any"` rather than a number: the file is 1107×1107, and the 512×512
-     it used to claim was simply wrong. It is also ~1 MB, which is a real cost on
-     every cold load — see SEO_COMPLETION_REPORT.md for the resize that is still
-     owed here. -->
-<link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
-<link rel="apple-touch-icon" href="/favicon.png" />
+<!-- 500×500 / 110 kB, not the 1107×1107 / 983 kB `favicon.png` this used to
+     point at (while declaring "512x512", which was wrong as well). A favicon is
+     requested on every cold load and shares the connection with the JavaScript
+     bundle and the LCP image, so ~1 MB of it was bandwidth taken directly from
+     the things the page is waiting on. `favicon.png` is left in place — older
+     bookmarks and cached manifests still reference it. -->
+<link rel="icon" type="image/png" sizes="500x500" href="/icon-500.png" />
+<link rel="apple-touch-icon" href="/icon-500.png" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <!-- Resolve the theme before first paint so there's never a wrong-theme flash.
      A saved choice wins; otherwise follow the device's prefers-color-scheme. -->

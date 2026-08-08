@@ -163,7 +163,21 @@ export interface LiveAds {
  */
 export async function fetchLiveAds(): Promise<LiveAds> {
   const now = Date.now();
-  const { data, error } = await supabase.from('ad_campaigns').select('*');
+  /*
+   * Ordered, not incidental.
+   *
+   * `Home.tsx` treats `SLIDES[0]` as the priority image and the edge middleware
+   * preloads that same slide into the HTML head, which is what stops the home
+   * page's LCP waiting on four serial round trips. An unordered select returned
+   * rows in whatever order PostgREST produced, so with two heroes live the two
+   * could disagree — the edge paying for an image the app renders second, and
+   * the real LCP still discovered late. `middleware.js` repeats this ordering.
+   */
+  const { data, error } = await supabase
+    .from('ad_campaigns')
+    .select('*')
+    .order('start_at', { ascending: true, nullsFirst: false })
+    .order('id', { ascending: true });
   if (error) throw error;
   const grouped: LiveAds = { sponsored_card: [], home_hero: [], boutique_promo: [] };
   for (const row of (data ?? []) as AdCampaign[]) {

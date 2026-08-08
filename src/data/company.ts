@@ -21,12 +21,16 @@ export const COMPANY = {
   description:
     'MangaiMart brings Tamil Nadu’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
 
-  /** TODO: `hello@` and `grievance@` still need creating on the domain. */
-  email: 'hello@mangaimart.com',
+  /**
+   * One mailbox answers everything. `hello@` and `grievance@` were never
+   * created on the domain, so general, support and grievance contact all
+   * point at the one address that is confirmed live.
+   */
+  email: 'support@mangaimart.com',
   /** Confirmed live — also the Supabase Auth sender, see AUTH_EMAIL_SETUP.md. */
   supportEmail: 'support@mangaimart.com',
   /** Required by the IT Rules 2021 — a named grievance officer contact. */
-  grievanceEmail: 'grievance@mangaimart.com',
+  grievanceEmail: 'support@mangaimart.com',
   /** TODO: the person actually accountable for grievances. */
   grievanceOfficer: 'Grievance Officer, MangaiMart',
 
@@ -49,11 +53,21 @@ export const COMPANY = {
   cin: '',
   gstin: '',
 
-  /** TODO: the live handles. A blank value hides that icon in the footer. */
+  /**
+   * Live profile URLs. Stored whole rather than as handles because the
+   * Facebook page is only reachable through a `/share/` link, which no
+   * `facebook.com/{handle}` template can build. A blank value hides that
+   * icon in the footer and drops it from the Organization `sameAs`.
+   *
+   * Keep these canonical — the `?igsh=` / `?mibextid=` / `utm_source=qr`
+   * parameters Instagram and Facebook append when you copy a link out of the
+   * app are share-session attribution, and Google wants a clean profile URL
+   * in `sameAs`.
+   */
   social: {
-    instagram: 'mangaimart',
-    facebook: 'mangaimart',
-    youtube: '',
+    instagram: 'https://www.instagram.com/mangaimartt',
+    facebook: 'https://www.facebook.com/share/194ncrSXck/',
+    youtube: 'https://www.youtube.com/@MangaiMart-n6u',
   },
 
   foundedYear: 2024,
@@ -76,9 +90,9 @@ export const CONTACT_LINKS = {
   grievance: `mailto:${COMPANY.grievanceEmail}`,
   call: `tel:+${COMPANY.phoneDigits}`,
   whatsapp: `https://wa.me/${COMPANY.phoneDigits}`,
-  instagram: COMPANY.social.instagram ? `https://instagram.com/${COMPANY.social.instagram}` : '',
-  facebook: COMPANY.social.facebook ? `https://facebook.com/${COMPANY.social.facebook}` : '',
-  youtube: COMPANY.social.youtube ? `https://youtube.com/@${COMPANY.social.youtube}` : '',
+  instagram: COMPANY.social.instagram,
+  facebook: COMPANY.social.facebook,
+  youtube: COMPANY.social.youtube,
 };
 
 /**

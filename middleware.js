@@ -23,6 +23,14 @@ export const config = {
 const SITE_NAME = "MangaiMart";
 const DEFAULT_DESCRIPTION = "Shop verified Tamil Nadu boutiques in one place \u2014 sarees, kurta sets, kurtis and more, with direct chat to the shop.";
 const DEFAULT_OG_IMAGE = "/mangaimart-logo.png";
+// Mirrors COMPANY.social in src/data/company.ts. Duplicated rather than
+// imported because the edge runtime cannot pull in the TypeScript source —
+// change both together, or the crawler-visible sameAs drifts from the footer.
+const SOCIAL_PROFILES = [
+  "https://www.instagram.com/mangaimartt",
+  "https://www.facebook.com/share/194ncrSXck/",
+  "https://www.youtube.com/@MangaiMart-n6u"
+];
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const PAGE_CACHE_SECONDS = 300;
@@ -240,6 +248,94 @@ async function dbBoutiquesTry(build) {
   }
   return dbTry(build(BOUTIQUE_COLUMNS_CORE));
 }
+/* ── The LCP image ────────────────────────────────────────────────────────
+ *
+ * Mirrors src/lib/imageUrl.ts, which the edge cannot import. Any change to the
+ * widths, the quality or the `resize` mode must be made in both files: a
+ * preload that does not resolve to the byte-identical URL the `<img>` later
+ * requests is not a head start, it is a second download.
+ */
+const PUBLIC_OBJECT = "/storage/v1/object/public/";
+const RENDER_IMAGE = "/storage/v1/render/image/public/";
+const IMAGE_WIDTHS = [240, 480, 800, 1280];
+const IMAGE_QUALITY = 70;
+
+function transformedImage(src, width) {
+  if (!src || !src.includes(PUBLIC_OBJECT)) return src;
+  return `${src.replace(PUBLIC_OBJECT, RENDER_IMAGE)}?width=${width}&quality=${IMAGE_QUALITY}&resize=contain`;
+}
+
+function imageSrcSet(src) {
+  if (!src || !src.includes(PUBLIC_OBJECT)) return void 0;
+  return IMAGE_WIDTHS.map((w) => `${transformedImage(src, w)} ${w}w`).join(", ");
+}
+
+/**
+ * `<link rel="preload">` for the image that will be the Largest Contentful Paint.
+ *
+ * ── Why this is the single biggest performance fix available here ────────
+ * The LCP image on both the home page and a product page is only *discoverable*
+ * after a chain of four serial round trips: download and parse ~240 kB of
+ * gzipped JavaScript, mount React, fetch the row from Supabase over a
+ * connection that has to be opened from scratch, and only then learn the image
+ * URL — which lives on that same third-party origin. Measured by PageSpeed on a
+ * throttled mobile profile, that put LCP at 8.4 s with the image bytes barely
+ * mattering; almost all of it was waiting.
+ *
+ * The edge already reads exactly these rows to build the metadata, so it knows
+ * the URL before a single byte of JavaScript has been sent. Preloading it moves
+ * the download from the end of that chain to the very start, in parallel with
+ * the bundle rather than behind it.
+ *
+ * ── The match has to be exact ───────────────────────────────────────────
+ * `imagesrcset` and `imagesizes` must be character-for-character what the
+ * `<img>` will carry, because the browser picks a candidate from the preload
+ * using the same rules and then has to recognise the result as already in
+ * flight. A mismatched `sizes` is worse than no preload: it downloads one
+ * candidate for nothing and then fetches another.
+ */
+function lcpPreload(src, sizes) {
+  if (!src) return "";
+  const srcset = imageSrcSet(src);
+  // `imageFallback()` in src/lib/imageUrl.ts is width 800 — same value here.
+  const href = transformedImage(src, 800);
+  return `<link rel="preload" as="image" href="${escapeHtml(href)}"${
+    srcset ? ` imagesrcset="${escapeHtml(srcset)}" imagesizes="${escapeHtml(sizes)}"` : ""
+  } fetchpriority="high" />`;
+}
+
+/**
+ * `preconnect` to Supabase.
+ *
+ * One origin serves both the PostgREST API the app calls on mount and the
+ * Storage/transformer host every photo comes from, so this one hint covers the
+ * DNS lookup, the TCP handshake and the TLS negotiation for both — roughly two
+ * round trips that were otherwise spent after the bundle had already run.
+ *
+ * Emitted from the edge rather than written into index.html because the origin
+ * is an environment variable; hardcoding it there would break the moment the
+ * project moves.
+ */
+function supabasePreconnect() {
+  if (!SUPABASE_URL) return "";
+  try {
+    const origin = escapeHtml(new URL(SUPABASE_URL).origin);
+    /*
+     * Both modes, deliberately — this is not a duplicate.
+     *
+     * Browsers pool sockets by (origin, credentials mode). supabase-js calls
+     * PostgREST with `fetch` in CORS mode, while a plain `<img src>` is a
+     * no-CORS request; a connection warmed for one is not reused by the other.
+     * Google Fonts is preconnected the same way two lines below, for the same
+     * reason. `dns-prefetch` is not included: it is strictly a subset of
+     * preconnect and only ever mattered for browsers that lack it.
+     */
+    return `<link rel="preconnect" href="${origin}" crossorigin />\n<link rel="preconnect" href="${origin}" />`;
+  } catch {
+    return "";
+  }
+}
+
 function orgNode(origin) {
   return {
     "@type": "Organization",
@@ -253,7 +349,11 @@ function orgNode(origin) {
       addressLocality: "Coimbatore",
       addressRegion: "Tamil Nadu",
       addressCountry: "IN"
-    }
+    },
+    // Ties the domain to the brand's own profiles. This is the copy a crawler
+    // actually reads — the client-rendered one in src/lib/schema.ts is behind
+    // JS and is not what the knowledge panel is built from.
+    sameAs: SOCIAL_PROFILES
   };
 }
 
@@ -369,6 +469,11 @@ async function metaForProduct(slug, origin) {
       p.description?.trim() || `${p.title} from ${shop}, ${city}. ${inr(p.price)}${p.fabric ? ` \xB7 ${p.fabric}` : ""}${p.color ? ` \xB7 ${p.color}` : ""}. ${inStock ? "In stock, 7-day returns, cash on delivery available." : "Currently sold out."}`
     ),
     image: p.image_url || void 0,
+    // The first gallery slide is the product page's LCP element. `ImageSlot` is
+    // rendered there without a `sizes` prop, so it falls back to the component
+    // default — repeated verbatim, because the preload has to match it exactly.
+    lcpImage: p.image_url || void 0,
+    lcpSizes: "(min-width: 768px) 320px, 50vw",
     type: "product",
     // A bare id, or a stale title slug, is rewritten to the canonical URL.
     redirectTo: `/products/${slug}` !== canonicalPath ? canonicalPath : void 0,
@@ -963,6 +1068,34 @@ ${rows.join("\n")}
 </noscript>`;
 }
 
+/**
+ * The home page's LCP element: the image of the first live `home_hero` ad.
+ *
+ * The hero is a paid placement, so there is nothing static to preload — the URL
+ * is a database row. `fetchLiveAds()` in src/data/ads.ts reads the same rows
+ * through RLS (which already restricts anonymous reads to live campaigns inside
+ * their window); the filters are repeated here because the edge has to answer
+ * before the app exists.
+ *
+ * ── Both sides must agree on which slide is FIRST ───────────────────────
+ * The app marks `SLIDES[0]` as the priority image, and `fetchLiveAds()` used to
+ * return rows in whatever order PostgREST happened to produce. With more than
+ * one hero live that is not stable, so the edge could preload a slide the app
+ * then renders second — paying for an image that is not the LCP and still
+ * discovering the real one late. Both now order by `start_at` then `id`.
+ */
+async function homeHeroImage() {
+  const now = new Date().toISOString();
+  const { rows } = await dbTryTwice(
+    "ad_campaigns?select=id,placement_code,status,image_url,start_at,end_at" +
+      "&placement_code=eq.home_hero&status=eq.live&order=start_at.asc.nullslast,id.asc&limit=8"
+  );
+  const live = rows.find(
+    (a) => a.image_url && (!a.start_at || a.start_at <= now) && (!a.end_at || a.end_at > now)
+  );
+  return live?.image_url || void 0;
+}
+
 async function resolveMeta(pathname, origin) {
   // Handled before STATIC_META: these two hubs keep their written copy but gain
   // a database-backed body and ItemList, so a crawler leaves with links.
@@ -978,6 +1111,9 @@ async function resolveMeta(pathname, origin) {
       ...staticMeta,
       type: "website",
       prerender: pathname === "/shop" ? await shopHubPrerender(origin) : void 0,
+      // The hero carousel is full-bleed — `sizes="100vw"` in Home.tsx.
+      lcpImage: pathname === "/" ? await homeHeroImage() : void 0,
+      lcpSizes: "100vw",
       schema: { "@context": "https://schema.org", "@graph": graph }
     };
   }
@@ -1072,6 +1208,11 @@ function headFor(meta, canonical, origin, pathname, forceNoindex) {
     `<meta name="geo.region" content="IN-TN" />`,
     `<meta name="geo.placename" content="Tamil Nadu, India" />`
   ];
+  // Performance hints, not metadata — but they belong in the same injection
+  // because this is the only place that knows the LCP image before React does.
+  const preconnect = supabasePreconnect();
+  if (preconnect) tags.push(preconnect);
+  if (meta?.lcpImage) tags.push(lcpPreload(meta.lcpImage, meta.lcpSizes));
   if (meta?.schema) {
     tags.push(
       `<script type="application/ld+json" data-edge-schema>${JSON.stringify(meta.schema).replace(/</g, "\\u003c")}</script>`

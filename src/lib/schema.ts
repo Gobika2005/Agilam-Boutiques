@@ -76,9 +76,9 @@ export function organizationSchema(): JsonLd {
       }),
     ],
     sameAs: [
-      COMPANY.social.instagram ? `https://instagram.com/${COMPANY.social.instagram}` : '',
-      COMPANY.social.facebook ? `https://facebook.com/${COMPANY.social.facebook}` : '',
-      COMPANY.social.youtube ? `https://youtube.com/@${COMPANY.social.youtube}` : '',
+      COMPANY.social.instagram,
+      COMPANY.social.facebook,
+      COMPANY.social.youtube,
     ].filter(Boolean),
   });
 }
