@@ -121,6 +121,15 @@ export const routes = {
   product: (p: { id: string; title: string; slug?: string | null }) => `/products/${productSlug(p)}`,
   boutique: (b: { slug?: string; id: string }) => `/boutique/${b.slug || b.id}`,
   boutiques: () => '/boutiques',
+  /**
+   * The per-city boutique directory — `/boutiques/coimbatore`.
+   *
+   * "Boutiques in Coimbatore" is a query with real local intent, and the city
+   * filter used to live only in React state: one national URL, nothing for a
+   * crawler to reach and nothing to rank. Each city with an approved shop is now
+   * its own page, and selecting a city navigates rather than setting state.
+   */
+  city: (name: string) => `/boutiques/${slugify(name)}`,
   newArrivals: () => '/new-arrivals',
   bestSellers: () => '/best-sellers',
   topBoutiques: () => '/top-boutiques',

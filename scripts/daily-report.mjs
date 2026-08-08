@@ -149,7 +149,7 @@ function renderHtml(d, brief) {
   ].filter(Boolean);
 
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:620px;margin:0 auto;color:${C.ink}">
-  <h1 style="font-size:19px;margin:0 0 2px">Agilam — daily report</h1>
+  <h1 style="font-size:19px;margin:0 0 2px">MangaiMart — daily report</h1>
   <p style="margin:0 0 20px;color:${C.mute};font-size:13px">${esc(d.day)}</p>
 
   ${brief ? `<div style="background:${C.soft};border-left:3px solid ${C.ink};padding:12px 16px;
@@ -226,7 +226,7 @@ const digest = await fetchDigest();
 if (args.includes('--send')) {
   const briefPath = value('--brief');
   const brief = briefPath && existsSync(briefPath) ? readFileSync(briefPath, 'utf8').trim() : '';
-  const subject = `Agilam — ${digest.orders?.count ?? 0} orders, ${inr(digest.money?.gmv)} — ${digest.day}`;
+  const subject = `MangaiMart — ${digest.orders?.count ?? 0} orders, ${inr(digest.money?.gmv)} — ${digest.day}`;
   const out = await send(renderHtml(digest, brief), subject);
   console.log(`Sent to ${process.env.REPORT_TO} (id ${out.id ?? 'n/a'})`);
 } else if (args.includes('--html')) {

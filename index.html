@@ -21,8 +21,13 @@
      Coimbatore" is a query it should be able to win. -->
 <meta name="geo.region" content="IN-TN" />
 <meta name="geo.placename" content="Tamil Nadu, India" />
-<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+<!-- `sizes="any"` rather than a number: the file is 1107×1107, and the 512×512
+     it used to claim was simply wrong. It is also ~1 MB, which is a real cost on
+     every cold load — see SEO_COMPLETION_REPORT.md for the resize that is still
+     owed here. -->
+<link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
 <link rel="apple-touch-icon" href="/favicon.png" />
+<link rel="manifest" href="/manifest.webmanifest" />
 <!-- Resolve the theme before first paint so there's never a wrong-theme flash.
      A saved choice wins; otherwise follow the device's prefers-color-scheme. -->
 <script>try{var p=localStorage.getItem('ag-theme-pref');var t=(p==='light'||p==='dark')?p:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark'){document.documentElement.dataset.theme='dark';document.querySelector('meta[name=theme-color]').setAttribute('content','#120A0E');}}catch(e){}</script>

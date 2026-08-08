@@ -190,6 +190,11 @@ export default function App() {
         <Route path="fabrics/:slug" element={<CategoryLanding kind="fabric" />} />
 
         <Route path="boutiques" element={<Boutiques />} />
+        {/* The per-city directory — `/boutiques/coimbatore`. Same screen; the
+            route param is the city filter, so every city is a real URL that can
+            be shared, sitemapped and ranked for "boutiques in <city>". Note the
+            plural: `/boutique/:slug` below is a single shop. */}
+        <Route path="boutiques/:citySlug" element={<Boutiques />} />
         {/* Accepts the boutique's slug (migration 0003) or its id — legacy
             `/b/:slug` and `/boutique/:id` links both land here. */}
         <Route path="boutique/:slug" element={<BoutiqueProfile />} />

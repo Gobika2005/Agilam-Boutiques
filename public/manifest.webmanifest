@@ -1,0 +1,46 @@
+{
+  "name": "MangaiMart — Boutique Ethnic Wear from Tamil Nadu",
+  "short_name": "MangaiMart",
+  "description": "Shop verified Tamil Nadu boutiques in one place — sarees, kurta sets, kurtis and lehengas, with direct chat to the shop and delivery across India.",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF6F2",
+  "theme_color": "#FBF6F2",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/square%20no%20BG.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "1107x1107",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shop all",
+      "short_name": "Shop",
+      "url": "/shop"
+    },
+    {
+      "name": "Boutiques",
+      "short_name": "Boutiques",
+      "url": "/boutiques"
+    },
+    {
+      "name": "My orders",
+      "short_name": "Orders",
+      "url": "/orders"
+    }
+  ]
+}

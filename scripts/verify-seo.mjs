@@ -23,6 +23,8 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 // Load .env so the Supabase-backed paths behave as they will in production.
 for (const line of fs.readFileSync('.env', 'utf8').split('\n')) {
@@ -71,6 +73,24 @@ async function check(label, pathname, assertions) {
       catch (e) { return 'PARSE_ERROR: ' + e.message; }
     })(),
     bodyLen: body.length,
+    // The crawlable <noscript> body. Its absence is invisible from a browser —
+    // the React app paints the same words either way — so the only way to catch
+    // a page that regressed to shipping an empty <div id="root"> is to look for
+    // the heading here.
+    //
+    // Every block is scanned and the one carrying an <h1> is the prerender:
+    // index.html already ships a <noscript> in the head holding the blocking
+    // font stylesheets, and it comes first, so matching a single block found
+    // that one and reported every page as having no links.
+    ...(() => {
+      const block = [...body.matchAll(/<noscript>[\s\S]*?<\/noscript>/g)]
+        .map((m) => m[0])
+        .find((b) => b.includes('<h1>')) || '';
+      return {
+        noscriptH1: (block.match(/<h1>([^<]*)<\/h1>/) || [])[1],
+        noscriptLinks: block.match(/<a href=/g)?.length || 0,
+      };
+    })(),
   };
   const problems = (assertions || []).filter((a) => !a.ok(out)).map((a) => a.name);
   if (problems.length) out.FAIL = problems.join('; ');
@@ -79,15 +99,81 @@ async function check(label, pathname, assertions) {
 
 const is = (n, f) => ({ name: n, ok: f });
 
-await check('robots.txt', '/robots.txt', [
-  is('200', (o) => o.status === 200),
-  is('text/plain', (o) => (o.contentType || '').includes('text/plain')),
-  is('has Sitemap with origin', (o) => o.bodyLen > 200),
-]);
-await check('sitemap.xml', '/sitemap.xml', [
+/*
+ * robots.txt is checked on its text, not just its length.
+ *
+ * The child sitemap lines are load-bearing and easy to lose: Bing and several
+ * smaller crawlers read only the first Sitemap: line and never expand a
+ * <sitemapindex>, so dropping them quietly halves what those engines discover.
+ *
+ * The Merchant Center feed must also stay crawlable — Google's scheduled feed
+ * fetch obeys robots.txt — which is why it lives at /merchant-feed.xml, under
+ * the blanket `Allow: /`, rather than behind the `Disallow: /api/`.
+ */
+{
+  const res = await middleware(new Request(`${origin}/robots.txt`));
+  const body = await res.text();
+  const problems = [
+    ['sitemap index', `Sitemap: ${origin}/sitemap.xml`],
+    ['sitemap-pages', `Sitemap: ${origin}/sitemap-pages.xml`],
+    ['sitemap-boutiques', `Sitemap: ${origin}/sitemap-boutiques.xml`],
+    ['sitemap-products', `Sitemap: ${origin}/sitemap-products.xml`],
+  ].filter(([, line]) => !body.includes(line)).map(([name]) => `missing ${name}`);
+  if (/^Disallow: \/merchant-feed/m.test(body)) problems.push('the Merchant Center feed is disallowed');
+  results.push(
+    res.status === 200 && (res.headers.get('content-type') || '').includes('text/plain') && !problems.length
+      ? { label: 'robots.txt', status: res.status, title: `${body.split('\n').length} lines, all Sitemap lines present` }
+      : { label: 'robots.txt', status: res.status, FAIL: problems.length ? problems.join('; ') : 'bad status or content-type' },
+  );
+}
+
+/*
+ * The Google Merchant Center feed.
+ *
+ * Served from the edge, not api/, because api/ is already at the 12-function
+ * Vercel Hobby ceiling and a 13th fails the deploy. Checked here for the same
+ * reason as everything else in this file: it is generated live from Supabase and
+ * a failed read is indistinguishable from a healthy empty catalogue unless
+ * something asserts on it.
+ */
+{
+  const res = await middleware(new Request(`${origin}/merchant-feed.xml`));
+  const body = await res.text();
+  const items = (body.match(/<item>/g) || []).length;
+  const problems = [];
+  if (res.status !== 200) problems.push(`status ${res.status}`);
+  if (!(res.headers.get('content-type') || '').includes('xml')) problems.push('not xml');
+  if (!items) problems.push('no <item> elements — DB unreachable, or every product lacks a photo');
+  // Every item Google requires. A missing one is an item-level disapproval.
+  for (const required of ['g:id', 'g:title', 'g:link', 'g:image_link', 'g:price', 'g:availability', 'g:condition', 'g:brand']) {
+    if (!body.includes(`<${required}>`)) problems.push(`no ${required}`);
+  }
+  // The landing pages must be the canonical product URLs, not preview or
+  // relative ones — Merchant Center indexes exactly what this says.
+  if (!/<g:link>https?:\/\/[^<]+\/products\//.test(body)) problems.push('g:link is not an absolute product URL');
+  results.push(
+    problems.length
+      ? { label: 'merchant feed', status: res.status, FAIL: problems.join('; ') }
+      : { label: 'merchant feed', status: res.status, title: `${items} items, all required fields present` },
+  );
+}
+/*
+ * The sitemap is an index of three children, so each has to be fetched and
+ * checked in its own right. A child that silently returns an empty <urlset> —
+ * which is exactly what a lost race against the 1500 ms abort looks like —
+ * would still be a well-formed 200 to any check that only asserts on the index.
+ */
+await check('sitemap.xml (index)', '/sitemap.xml', [
   is('200', (o) => o.status === 200),
   is('xml', (o) => (o.contentType || '').includes('xml')),
 ]);
+for (const child of ['/sitemap-pages.xml', '/sitemap-boutiques.xml', '/sitemap-products.xml']) {
+  await check(`sitemap child ${child}`, child, [
+    is('200', (o) => o.status === 200),
+    is('xml', (o) => (o.contentType || '').includes('xml')),
+    is('not empty', (o) => o.bodyLen > 300),
+  ]);
+}
 await check('homepage', '/', [
   is('200', (o) => o.status === 200),
   is('real title', (o) => o.title && o.title !== 'MangaiMart'),
@@ -154,11 +240,17 @@ for (const [from, to] of [
   ]);
 }
 
-// A real product + boutique, discovered from the sitemap.
-const sm = await middleware(new Request(`${origin}/sitemap.xml`));
-const xml = await sm.text();
-const productUrl = (xml.match(/<loc>[^<]*(\/products\/[^<]+)<\/loc>/) || [])[1];
-const boutiqueUrl = (xml.match(/<loc>[^<]*(\/boutique\/[^<]+)<\/loc>/) || [])[1];
+// Real URLs, discovered from the sitemap children.
+const fetchXml = async (path) => (await middleware(new Request(`${origin}${path}`))).text();
+const [pagesXml, boutiquesXml, productsXml] = await Promise.all([
+  fetchXml('/sitemap-pages.xml'),
+  fetchXml('/sitemap-boutiques.xml'),
+  fetchXml('/sitemap-products.xml'),
+]);
+const xml = pagesXml + boutiquesXml + productsXml;
+const productUrl = (productsXml.match(/<loc>[^<]*(\/products\/[^<]+)<\/loc>/) || [])[1];
+const boutiqueUrl = (boutiquesXml.match(/<loc>[^<]*(\/boutique\/[^<]+)<\/loc>/) || [])[1];
+const cityUrl = (pagesXml.match(/<loc>[^<]*(\/boutiques\/[^<]+)<\/loc>/) || [])[1];
 
 if (productUrl) {
   await check('product page', productUrl, [
@@ -166,6 +258,10 @@ if (productUrl) {
     is('og:type=product', (o) => o.ogType === 'product'),
     is('Product schema', (o) => (o.schema || '').includes('Product')),
     is('Breadcrumb', (o) => (o.schema || '').includes('BreadcrumbList')),
+    // The whole point of the prerender: a crawler that does not run JavaScript
+    // must leave with the product's name and a way onward.
+    is('crawlable <h1>', (o) => !!o.noscriptH1),
+    is('internal links', (o) => o.noscriptLinks >= 2),
   ]);
 } else results.push({ label: 'product page', FAIL: 'no product in sitemap — DB unreachable?' });
 
@@ -178,8 +274,134 @@ if (boutiqueUrl) {
   await check('boutique page', boutiqueUrl, [
     is('200', (o) => o.status === 200),
     is('ClothingStore schema', (o) => (o.schema || '').includes('ClothingStore')),
+    is('crawlable <h1>', (o) => !!o.noscriptH1),
   ]);
 } else results.push({ label: 'boutique page', FAIL: 'no boutique in sitemap' });
+
+/*
+ * The city landing pages.
+ *
+ * `/boutiques/<city>` and `/boutique/<slug>` differ by one character, and the
+ * router resolves them with two separate regexes — so the check that matters is
+ * that a city URL is NOT being answered as a missing shop.
+ */
+if (cityUrl) {
+  await check('city landing', cityUrl, [
+    is('200', (o) => o.status === 200),
+    is('indexable', (o) => (o.robots || '').startsWith('index')),
+    is('city in title', (o) => /Boutiques in \S/.test(o.title || '')),
+    is('CollectionPage schema', (o) => (o.schema || '').includes('CollectionPage')),
+    is('crawlable <h1>', (o) => !!o.noscriptH1),
+  ]);
+} else results.push({ label: 'city landing', FAIL: 'no /boutiques/<city> in the page sitemap' });
+
+// A city with no approved shop must be a soft 404, or `/boutiques/<anything>`
+// becomes an unbounded supply of indexable empty pages.
+await check('unknown city', '/boutiques/definitely-not-a-city-zz99', [
+  is('noindex meta', (o) => (o.robots || '').includes('noindex')),
+  is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
+]);
+
+// The two hubs that gained a database-backed body.
+await check('boutiques hub', '/boutiques', [
+  is('200', (o) => o.status === 200),
+  is('ItemList schema', (o) => (o.schema || '').includes('CollectionPage')),
+  is('crawlable <h1>', (o) => !!o.noscriptH1),
+]);
+await check('shop hub', '/shop', [
+  is('200', (o) => o.status === 200),
+  is('crawlable <h1>', (o) => !!o.noscriptH1),
+]);
+
+// FAQ rich results on /help. The markup is only legitimate while the same Q&A
+// is rendered on the page — see HELP_FAQ in middleware.js.
+await check('help FAQ schema', '/help', [
+  is('FAQPage', (o) => (o.schema || '').includes('FAQPage')),
+]);
+
+// A category landing, discovered from the page sitemap.
+const collectionUrl = (pagesXml.match(/<loc>[^<]*(\/collections\/[^<]+)<\/loc>/) || [])[1];
+if (collectionUrl) {
+  await check('collection landing', collectionUrl, [
+    is('200', (o) => o.status === 200),
+    is('CollectionPage schema', (o) => (o.schema || '').includes('CollectionPage')),
+    is('crawlable <h1>', (o) => !!o.noscriptH1),
+    is('product links', (o) => o.noscriptLinks >= 2),
+  ]);
+} else results.push({ label: 'collection landing', FAIL: 'no /collections/<slug> in the page sitemap' });
+
+/*
+ * The preview guard.
+ *
+ * `isPreviewHost` used to lead with `!!CANONICAL_HOST &&`, so with VITE_SITE_URL
+ * unset it disabled itself — and a *.vercel.app deploy served the entire
+ * catalogue as indexable, competing with the live domain for its own stock.
+ * Driven over a real preview-shaped host rather than 127.0.0.1, which stays
+ * exempt on purpose so this very script can run.
+ */
+{
+  const res = await middleware(new Request('https://mangaimart-git-preview.vercel.app/robots.txt'));
+  const body = res ? await res.text() : '';
+  results.push(
+    /User-agent: \*\s*\nDisallow: \/\s*$/m.test(body)
+      ? { label: 'preview robots.txt', status: res.status, title: 'Disallow: / — preview is walled off' }
+      : { label: 'preview robots.txt', FAIL: 'a *.vercel.app deploy is serving the crawlable robots.txt' },
+  );
+}
+
+/*
+ * The canonical-host redirect, checked in a child process.
+ *
+ * `VERCEL_ENV` is read into a module-level const when middleware.js is
+ * imported, so it cannot be changed after the fact — and setting it in THIS
+ * process would make every check above redirect 127.0.0.1 to the live domain.
+ * A child with the production environment is the only way to exercise it.
+ *
+ * What it protects: `agilam-boutiques.vercel.app` was serving the identical
+ * catalogue, indexable and self-canonical, putting a second copy of the whole
+ * shop into Google under a name that is not the brand. `www.mangaimart.com`
+ * answered 200 with no redirect and was a third. Both must 301 to the apex.
+ */
+{
+  const probe = `
+    const { default: mw } = await import(${JSON.stringify(pathToFileURL(path.resolve('middleware.js')).href)});
+    const out = [];
+    for (const from of [
+      'https://agilam-boutiques.vercel.app/products/some-piece-1a2b3c4d',
+      'https://www.mangaimart.com/boutiques',
+      'https://agilam-boutiques.vercel.app/buyer/collections',
+    ]) {
+      const res = await mw(new Request(from));
+      out.push([from, res ? res.status : 0, res ? res.headers.get('location') : null]);
+    }
+    // The canonical host itself must NOT redirect, or the site is a loop.
+    const same = await mw(new Request('https://mangaimart.com/shop'));
+    out.push(['https://mangaimart.com/shop', same ? same.status : 0, same ? same.headers.get('location') : null]);
+    console.log(JSON.stringify(out));
+  `;
+  const raw = execFileSync(process.execPath, ['--input-type=module', '-e', probe], {
+    env: { ...process.env, VERCEL_ENV: 'production' },
+    encoding: 'utf8',
+  });
+  const rows = JSON.parse(raw.trim().split('\n').pop());
+  const problems = [];
+  for (const [from, status, location] of rows.slice(0, 3)) {
+    if (status !== 301) problems.push(`${from} → ${status}, expected 301`);
+    else if (!location?.startsWith('https://mangaimart.com/')) problems.push(`${from} → ${location}`);
+  }
+  // The legacy path and the host rewrite must collapse into ONE hop.
+  const legacy = rows[2];
+  if (legacy[2] && legacy[2] !== 'https://mangaimart.com/collections') {
+    problems.push(`legacy path not resolved in the same hop: ${legacy[2]}`);
+  }
+  const canonicalSelf = rows[3];
+  if (canonicalSelf[1] === 301) problems.push('the canonical host redirects to itself — redirect loop');
+  results.push(
+    problems.length
+      ? { label: 'canonical host 301', FAIL: problems.join('; ') }
+      : { label: 'canonical host 301', status: 301, title: 'vercel.app + www → mangaimart.com, one hop, no loop' },
+  );
+}
 
 /*
  * Occasion headings. Sellers type the vocabulary, so a term can already end in

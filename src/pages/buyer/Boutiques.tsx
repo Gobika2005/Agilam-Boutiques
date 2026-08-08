@@ -1,8 +1,8 @@
 import { Fragment, useMemo, useState, type MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
-import { routes } from '@/lib/seo';
+import { routes, slugify } from '@/lib/seo';
 import { boutiqueListSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
@@ -35,20 +35,63 @@ export function Boutiques() {
   const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
   const { boutiques: BOUTIQUES, error: catalogError, reload } = useCatalog();
 
+  /*
+   * The city filter is the URL, not component state.
+   *
+   * This screen serves both `/boutiques` and `/boutiques/:citySlug`. Making the
+   * route the single source of truth is what gives every city a page that can be
+   * linked, shared, sitemapped and ranked for "boutiques in <city>" — as state
+   * it was one national URL with a chip nobody outside the session could reach.
+   */
+  const { citySlug } = useParams<{ citySlug?: string }>();
+  const navigate = useNavigate();
+
+  const cities = useMemo(
+    () => Array.from(new Set(BOUTIQUES.map((b) => b.city))).sort(),
+    [BOUTIQUES],
+  );
+
+  const city = useMemo(
+    () => (citySlug ? cities.find((c) => slugify(c) === citySlug) ?? null : null),
+    [cities, citySlug],
+  );
+
+  /** Selecting a city navigates; `null` returns to the national directory. */
+  const selectCity = (next: string | null) =>
+    navigate(next ? routes.city(next) : routes.boutiques());
+
+  // The catalogue arrives asynchronously, so on a cold load of a city URL the
+  // city is briefly unresolved. Passing `null` leaves the head exactly as the
+  // edge middleware wrote it rather than flashing the national copy over it.
+  const cityPending = !!citySlug && !city && BOUTIQUES.length === 0;
+
   usePageMeta({
-    title: 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
-    description:
-      'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list.',
-    canonical: routes.boutiques(),
+    title: cityPending
+      ? null
+      : city
+        ? `Boutiques in ${city} — Verified Ethnic Wear Shops`
+        : 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
+    description: cityPending
+      ? null
+      : city
+        ? `Verified boutiques in ${city} listing sarees, kurta sets and ethnic wear on MangaiMart. Chat directly with the shop and get delivery across India.`
+        : 'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list.',
+    canonical: city ? routes.city(city) : routes.boutiques(),
     schema: graph(
       organizationSchema(),
       boutiqueListSchema({
-        name: 'Boutiques on MangaiMart',
-        description: 'Verified independent ethnic-wear boutiques across Tamil Nadu.',
-        path: routes.boutiques(),
-        boutiques: BOUTIQUES,
+        name: city ? `Boutiques in ${city}` : 'Boutiques on MangaiMart',
+        description: city
+          ? `Verified independent ethnic-wear boutiques in ${city}.`
+          : 'Verified independent ethnic-wear boutiques across Tamil Nadu.',
+        path: city ? routes.city(city) : routes.boutiques(),
+        boutiques: city ? BOUTIQUES.filter((b) => b.city === city) : BOUTIQUES,
       }),
-      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Boutiques', path: routes.boutiques() }]),
+      breadcrumbSchema([
+        { name: 'Home', path: '/' },
+        { name: 'Boutiques', path: routes.boutiques() },
+        ...(city ? [{ name: city, path: routes.city(city) }] : []),
+      ]),
     ),
   });
   const { ads } = useLiveAds();
@@ -68,13 +111,7 @@ export function Boutiques() {
   const [followingOnly, setFollowingOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<SortKey>('rating');
-  const [city, setCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-
-  const cities = useMemo(
-    () => Array.from(new Set(BOUTIQUES.map((b) => b.city))).sort(),
-    [BOUTIQUES],
-  );
 
   const followingCount = useMemo(
     () => BOUTIQUES.filter((b) => following[b.id]).length,
@@ -127,8 +164,11 @@ export function Boutiques() {
 
   function clearFilters() {
     setSort('rating');
-    setCity(null);
     setVerifiedOnly(false);
+    // The city lives in the URL now, so clearing it is a navigation back to the
+    // national directory — and only when there is one to clear, or "Clear all"
+    // on `/boutiques` would push a duplicate history entry.
+    if (citySlug) selectCity(null);
   }
 
   return (
@@ -223,7 +263,7 @@ export function Boutiques() {
           <div style={css('font-size:10px;color:var(--ag-muted-soft);letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:16px 0 8px;')}>City</div>
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
             <button
-              onClick={() => setCity(null)}
+              onClick={() => selectCity(null)}
               style={css(`border:1px solid ${!city ? 'transparent' : 'var(--ag-border-soft)'};background:${!city ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${!city ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
             >
               All cities
@@ -233,7 +273,7 @@ export function Boutiques() {
               return (
                 <button
                   key={c}
-                  onClick={() => setCity(on ? null : c)}
+                  onClick={() => selectCity(on ? null : c)}
                   style={css(`border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
                 >
                   {c}

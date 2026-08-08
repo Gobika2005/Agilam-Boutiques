@@ -18,7 +18,7 @@
  * comments and plain block comments are safe; JSDoc is not. Keep prose up here.
  */
 export const config = {
-  matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/sitemap.xml"]
+  matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/sitemap.xml", "/sitemap-pages.xml", "/sitemap-boutiques.xml", "/sitemap-products.xml", "/merchant-feed.xml"]
 };
 const SITE_NAME = "MangaiMart";
 const DEFAULT_DESCRIPTION = "Shop verified Tamil Nadu boutiques in one place \u2014 sarees, kurta sets, kurtis and more, with direct chat to the shop.";
@@ -29,7 +29,22 @@ const PAGE_CACHE_SECONDS = 300;
 const SITEMAP_CACHE_SECONDS = 3600;
 // The live domain, as a bare hostname. Same VITE_SITE_URL the client reads in
 // src/lib/seo.ts, so the edge and the app can never disagree about who we are.
-const CANONICAL_HOST = (process.env.VITE_SITE_URL || "").replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+//
+// The literal is a FALLBACK, not a default-empty string, and mirrors the last
+// line of the SITE_URL resolver in src/lib/seo.ts. Every guard below keys on
+// "are we on the canonical host?", and with this empty they all quietly answer
+// "yes" — which is exactly how agilam-boutiques.vercel.app came to serve the
+// whole catalogue as an indexable, self-canonical duplicate of mangaimart.com.
+// Setting VITE_SITE_URL is still the right thing to do; this makes forgetting
+// it survivable rather than silently un-branding the site.
+const CANONICAL_HOST = (process.env.VITE_SITE_URL || "https://mangaimart.com")
+  .replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+// Vercel sets this on every deployment: "production" | "preview" | "development".
+// It is the only reliable way to tell a PRODUCTION alias that happens to end in
+// .vercel.app — which must be redirected away — from a branch preview, which
+// must stay reachable so it can be tested. Unset locally, so `npm run dev` and
+// `npm run verify:seo` are untouched by anything that keys on it.
+const VERCEL_ENV = process.env.VERCEL_ENV || "";
 const DB_TIMEOUT_MS = 1500;
 const NOINDEX_PREFIXES = [
   "/admin",
@@ -53,7 +68,7 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function slugify(input, maxLength = 60) {
-  return (input || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, maxLength).replace(/-+$/g, "");
+  return (input || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, maxLength).replace(/-+$/g, "");
 }
 function productPath(row) {
   // The database slug (migration 0057) is the authority; the computed form is
@@ -277,6 +292,47 @@ async function dbProducts(build) {
   return (await dbProductsTry(build)).rows;
 }
 
+/**
+ * The crawlable body for a product page, served inside `<noscript>`.
+ *
+ * Same reasoning as `boutiquePrerender`, applied to the pages that actually
+ * convert. The head has always described the piece; the body shipped as an
+ * empty `<div id="root">`, so every crawler that does not execute JavaScript —
+ * Bing, WhatsApp's link preview, GPTBot, PerplexityBot, ClaudeBot — saw a
+ * product page with a title and no text under it. Google does render, but on a
+ * second pass that is queued separately and can trail the crawl by days, which
+ * on a catalogue where pieces sell out in a week is most of the page's life.
+ *
+ * Everything here is the same text React paints, so there is no cloaking. As on
+ * shop pages it goes in `<noscript>` rather than `#root`, which must stay empty
+ * until React mounts or the `#root:not(:empty)` rule never retires the splash.
+ */
+function productPrerender(p, origin, url, shop, city) {
+  const inStock = (p.stock ?? 0) > 0;
+  const specs = [
+    p.category && `Category: ${p.category}`,
+    p.occasion && `Occasion: ${p.occasion}`,
+    p.fabric && `Fabric: ${p.fabric}`,
+    p.color && `Colour: ${p.color}`
+  ].filter(Boolean);
+  // The MRP is only worth printing when it is genuinely above the asking price;
+  // sellers leave it equal to `price` more often than not.
+  const savings = Number(p.mrp) > Number(p.price)
+    ? ` (MRP ${inr(p.mrp)})`
+    : "";
+  const shopPath = p.boutiques?.slug ? `/boutique/${p.boutiques.slug}` : null;
+  return `<noscript>
+<h1>${escapeHtml(p.title)}</h1>
+<p>${escapeHtml(inr(p.price))}${escapeHtml(savings)} · ${inStock ? "In stock" : "Sold out"}</p>
+<p>${escapeHtml(
+    p.description?.trim() || `${p.title} from ${shop}, ${city}. Sold on ${SITE_NAME} by a verified Tamil Nadu boutique.`
+  )}</p>
+${specs.length ? `<ul>\n${specs.map((s) => `<li>${escapeHtml(s)}</li>`).join("\n")}\n</ul>` : ""}
+<p>Sold by ${shopPath ? `<a href="${escapeHtml(`${origin}${shopPath}`)}">${escapeHtml(shop)}</a>` : escapeHtml(shop)}, ${escapeHtml(city)}.</p>
+<p><a href="${escapeHtml(url)}">${escapeHtml(p.title)} on ${SITE_NAME}</a>${p.category ? ` · <a href="${escapeHtml(`${origin}/collections/${slugify(p.category)}`)}">More ${escapeHtml(titleCase(p.category))}</a>` : ""} · <a href="${origin}/shop">Shop all</a></p>
+</noscript>`;
+}
+
 async function metaForProduct(slug, origin) {
   if (!slug) return null;
   /*
@@ -316,6 +372,7 @@ async function metaForProduct(slug, origin) {
     type: "product",
     // A bare id, or a stale title slug, is rewritten to the canonical URL.
     redirectTo: `/products/${slug}` !== canonicalPath ? canonicalPath : void 0,
+    prerender: productPrerender(p, origin, url, shop, city),
     schema: {
       "@context": "https://schema.org",
       "@graph": [
@@ -650,6 +707,29 @@ const STATIC_META = {
     description: "The listing standards every MangaiMart boutique agrees to: accurate photos, honest sizing, real stock and lawful goods."
   }
 };
+/**
+ * The crawlable body for a category, occasion or fabric landing page.
+ *
+ * These are the pages built to win the head terms — "silk sarees online",
+ * "office wear", "cotton kurta sets" — and they were shipping an empty body, so
+ * the only text a non-rendering crawler could weigh against those queries was
+ * the meta description. The product titles below are also the internal links
+ * that let a crawler reach a piece without executing the grid.
+ */
+function collectionPrerender(heading, items, origin, url, description) {
+  const rows = items.slice(0, 30).map(
+    (p) => `<li><a href="${escapeHtml(`${origin}${productPath(p)}`)}">${escapeHtml(p.title)}</a> — ${escapeHtml(inr(p.price))}${p.boutiques?.name ? ` · ${escapeHtml(p.boutiques.name)}` : ""}</li>`
+  );
+  return `<noscript>
+<h1>${escapeHtml(heading)}</h1>
+<p>${escapeHtml(description)}</p>
+<ul>
+${rows.join("\n")}
+</ul>
+<p><a href="${escapeHtml(url)}">${escapeHtml(heading)} on ${SITE_NAME}</a> · <a href="${origin}/collections">All collections</a> · <a href="${origin}/boutiques">All boutiques</a></p>
+</noscript>`;
+}
+
 async function metaForCategory(kind, slug, origin) {
   const attempt = await dbProductsTry(
     (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=40`
@@ -674,6 +754,7 @@ async function metaForCategory(kind, slug, origin) {
     description,
     image: items.find((p) => p.image_url)?.image_url || void 0,
     type: "website",
+    prerender: collectionPrerender(heading, items, origin, url, description),
     schema: {
       "@context": "https://schema.org",
       "@graph": [
@@ -707,30 +788,197 @@ async function metaForCategory(kind, slug, origin) {
     }
   };
 }
+function websiteNode(origin) {
+  return {
+    "@type": "WebSite",
+    "@id": `${origin}/#website`,
+    url: origin,
+    name: SITE_NAME,
+    inLanguage: "en-IN",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: { "@type": "EntryPoint", urlTemplate: `${origin}/search?q={search_term_string}` },
+      "query-input": "required name=search_term_string"
+    }
+  };
+}
+
+/*
+ * The /help questions, mirrored from the `help` entry in src/data/policies.ts.
+ *
+ * FAQPage markup is only legitimate when the same question and answer are
+ * visible on the page, so these are the rendered headings and their first
+ * paragraph verbatim. The two answers that interpolate company constants are
+ * written with the constants' current values (support@mangaimart.com, a 7-day
+ * return window) — if those change in src/data/company.ts they must change here
+ * too, the same mirroring rule that applies to pricing.
+ */
+const HELP_FAQ = [
+  {
+    q: "Where is my order?",
+    a: "Open My Orders and tap Track order. The timeline shows the stage your order has reached and updates as the boutique fulfils it. If it has not moved in more than two working days, message the boutique."
+  },
+  {
+    q: "I paid but there is no order",
+    a: "This is rare and it is recoverable. Your payment is captured and held against your session — reopen the payment screen and you will be offered “Complete my order”, which finishes the order without charging you a second time."
+  },
+  {
+    q: "How do I return something?",
+    a: "Within 7 days of delivery, open the order and message the boutique with photographs. See the Return & Refund Policy for what is eligible."
+  },
+  {
+    q: "How do I change my address?",
+    a: "Profile → Edit updates your saved delivery address for future orders. To change the address on an order already placed, message the boutique before it is dispatched."
+  }
+];
+
+function faqNode(origin) {
+  return {
+    "@type": "FAQPage",
+    "@id": `${origin}/help#faq`,
+    mainEntity: HELP_FAQ.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a }
+    }))
+  };
+}
+
+/**
+ * `/boutiques`, and `/boutiques/<city>` — the city landing pages.
+ *
+ * "Boutiques in Coimbatore" is a query with real local intent that the site had
+ * no page for: the directory existed only as one national list whose city
+ * filter lived in React state, so there was no URL to rank and nothing for a
+ * crawler to reach. Each city with at least one approved shop now gets its own
+ * indexable page, listed in the sitemap, with the shops named in the body.
+ *
+ * A city with no shops returns `notFoundMeta()` rather than an empty page, so
+ * the space of `/boutiques/<anything>` cannot become a soft-404 farm.
+ */
+async function metaForBoutiquesHub(citySlug, origin) {
+  const attempt = await dbBoutiquesTry(
+    (cols) => `boutiques?select=${cols}&status=eq.approved&order=rating.desc&limit=200`
+  );
+  // A failed read is "we don't know", not "no such city": the directory falls
+  // back to its written copy, and a city page serves the plain shell rather
+  // than being marked `noindex` because Supabase blinked.
+  if (!attempt.ok) {
+    return citySlug ? null : {
+      ...STATIC_META["/boutiques"],
+      type: "website",
+      schema: { "@context": "https://schema.org", "@graph": [orgNode(origin), websiteNode(origin)] }
+    };
+  }
+  const all = attempt.rows;
+  const shops = citySlug ? all.filter((b) => b.city && slugify(b.city) === citySlug) : all;
+  if (citySlug && !shops.length) return notFoundMeta();
+
+  const cityName = citySlug ? titleCase(shops[0].city) : null;
+  const path = citySlug ? `/boutiques/${citySlug}` : "/boutiques";
+  const url = `${origin}${path}`;
+  const title = cityName
+    ? `Boutiques in ${cityName} — Verified Ethnic Wear Shops`
+    : STATIC_META["/boutiques"].title;
+  const description = cityName
+    ? clamp(
+        `${shops.length} verified ${shops.length === 1 ? "boutique" : "boutiques"} in ${cityName} listing sarees, kurta sets and ethnic wear on ${SITE_NAME}. Chat directly with the shop and get delivery across India.`
+      )
+    : STATIC_META["/boutiques"].description;
+
+  const rows = shops.slice(0, 60).map(
+    (b) => `<li><a href="${escapeHtml(`${origin}/boutique/${b.slug || b.id}`)}">${escapeHtml(b.name)}</a>${b.city ? ` — ${escapeHtml([b.area, b.city].filter(Boolean).join(", "))}` : ""}</li>`
+  );
+  const prerender = `<noscript>
+<h1>${escapeHtml(cityName ? `Boutiques in ${cityName}` : "Boutiques in Tamil Nadu")}</h1>
+<p>${escapeHtml(description)}</p>
+<ul>
+${rows.join("\n")}
+</ul>
+<p><a href="${origin}/boutiques">All boutiques</a> · <a href="${origin}/collections">Shop by collection</a></p>
+</noscript>`;
+
+  return {
+    title,
+    description,
+    image: shops.find((b) => b.logo_url || b.cover_url)?.logo_url || void 0,
+    type: "website",
+    prerender,
+    schema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        orgNode(origin),
+        {
+          "@type": "CollectionPage",
+          "@id": `${url}#collection`,
+          name: cityName ? `Boutiques in ${cityName}` : "Boutiques in Tamil Nadu",
+          description,
+          url,
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: shops.length,
+            itemListElement: shops.slice(0, 60).map((b, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              url: `${origin}/boutique/${b.slug || b.id}`,
+              name: b.name
+            }))
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: origin },
+            { "@type": "ListItem", position: 2, name: "Boutiques", item: `${origin}/boutiques` },
+            ...cityName ? [{ "@type": "ListItem", position: 3, name: cityName }] : []
+          ]
+        }
+      ]
+    }
+  };
+}
+
+/**
+ * `/shop` — the everything grid.
+ *
+ * Its only job here is discovery: 40 product links in the first response give a
+ * non-rendering crawler a path into the catalogue that does not depend on
+ * executing an infinite-scroll grid.
+ */
+async function shopHubPrerender(origin) {
+  const products = await dbProducts(
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=40`
+  );
+  if (!products.length) return void 0;
+  const rows = products.map(
+    (p) => `<li><a href="${escapeHtml(`${origin}${productPath(p)}`)}">${escapeHtml(p.title)}</a> — ${escapeHtml(inr(p.price))}</li>`
+  );
+  return `<noscript>
+<h1>Shop All Ethnic Wear</h1>
+<p>${escapeHtml(STATIC_META["/shop"].description)}</p>
+<ul>
+${rows.join("\n")}
+</ul>
+<p><a href="${origin}/collections">Shop by collection</a> · <a href="${origin}/boutiques">All boutiques</a> · <a href="${origin}/new-arrivals">New arrivals</a></p>
+</noscript>`;
+}
+
 async function resolveMeta(pathname, origin) {
+  // Handled before STATIC_META: these two hubs keep their written copy but gain
+  // a database-backed body and ItemList, so a crawler leaves with links.
+  if (pathname === "/boutiques") return metaForBoutiquesHub(null, origin);
+  const city = pathname.match(/^\/boutiques\/([^/]+)$/);
+  if (city) return metaForBoutiquesHub(decodeURIComponent(city[1]).toLowerCase(), origin);
+
   const staticMeta = STATIC_META[pathname];
   if (staticMeta) {
+    const graph = [orgNode(origin), websiteNode(origin)];
+    if (pathname === "/help") graph.push(faqNode(origin));
     return {
       ...staticMeta,
       type: "website",
-      schema: {
-        "@context": "https://schema.org",
-        "@graph": [
-          orgNode(origin),
-          {
-            "@type": "WebSite",
-            "@id": `${origin}/#website`,
-            url: origin,
-            name: SITE_NAME,
-            inLanguage: "en-IN",
-            potentialAction: {
-              "@type": "SearchAction",
-              target: { "@type": "EntryPoint", urlTemplate: `${origin}/search?q={search_term_string}` },
-              "query-input": "required name=search_term_string"
-            }
-          }
-        ]
-      }
+      prerender: pathname === "/shop" ? await shopHubPrerender(origin) : void 0,
+      schema: { "@context": "https://schema.org", "@graph": graph }
     };
   }
   const product = pathname.match(/^\/products\/([^/]+)$/);
@@ -758,8 +1006,45 @@ async function resolveMeta(pathname, origin) {
 // 127.0.0.1 with the production .env loaded, so pinning on host alone would
 // make every page in that run assert as noindex.
 function isPreviewHost(url) {
+  // Vercel's own word for it, where we have it. A branch preview is a preview
+  // whatever host it answers on.
+  if (VERCEL_ENV === "preview") return true;
   const host = url.hostname.toLowerCase();
-  return !!CANONICAL_HOST && host !== CANONICAL_HOST && host.endsWith(".vercel.app");
+  // Otherwise only *.vercel.app. Localhost stays exempt (see above).
+  if (!host.endsWith(".vercel.app")) return false;
+  // `!!CANONICAL_HOST &&` used to lead this expression, which meant the guard
+  // switched itself off whenever VITE_SITE_URL was unset — precisely the
+  // configuration in which nothing else is protecting the live domain either.
+  // A *.vercel.app host is a deploy URL by construction and never the custom
+  // domain, so it is a preview unless it somehow IS the canonical host.
+  return host !== CANONICAL_HOST;
+}
+
+/**
+ * Is this request arriving on a host that is not the one we want to rank?
+ *
+ * Two live examples, both of which put a second copy of the entire catalogue
+ * into Google under a name that is not the brand:
+ *
+ *   · `agilam-boutiques.vercel.app` — the Vercel production alias. It served
+ *     the identical catalogue from the identical database with a canonical tag
+ *     pointing at itself, so "Agilam" appeared in search results for a shop
+ *     called MangaiMart, competing with mangaimart.com for its own stock.
+ *   · `www.mangaimart.com` — answered 200 with no redirect, making the apex and
+ *     the www host two separate indexable sites.
+ *
+ * A 301 rather than a canonical tag or `noindex`: a redirect is the only signal
+ * that both removes the duplicate from the index AND passes its accumulated
+ * ranking to the address that should have it. Anything already indexed under
+ * the old host drops out on its own once Google recrawls it.
+ *
+ * Production only. A branch preview must keep answering on its own URL or it
+ * cannot be tested before release; `isPreviewHost` keeps that one out of the
+ * index instead. Locally VERCEL_ENV is unset, so nothing here ever fires.
+ */
+function isNonCanonicalHost(url) {
+  if (VERCEL_ENV !== "production") return false;
+  return url.hostname.toLowerCase() !== CANONICAL_HOST;
 }
 function headFor(meta, canonical, origin, pathname, forceNoindex) {
   const title = meta ? `${meta.title} \xB7 ${SITE_NAME}` : SITE_NAME;
@@ -868,7 +1153,11 @@ Disallow: /
 User-agent: SemrushBot
 Disallow: /
 
+# The index is enough for Google, which follows it. The children are named as
+# well because Bing and several smaller crawlers historically read only the
+# first Sitemap: line and never expand a <sitemapindex>.
 Sitemap: ${origin}/sitemap.xml
+${SITEMAP_CHILDREN.map((path) => `Sitemap: ${origin}${path}`).join("\n")}
 `;
 }
 function urlEntry(loc, opts = {}) {
@@ -933,35 +1222,78 @@ function legacyRedirectPath(pathname) {
   if (match) return `/boutique/${match[1]}`;
   return null;
 }
-async function sitemapXml(origin) {
-  const [products, boutiques] = await Promise.all([
-    dbProducts((cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`),
-    // Deliberately the lean list, not `dbBoutiquesTry`: a sitemap row needs an
-    // id, a slug, a name and a date, and this read already carries 2000 rows
-    // against a 1500 ms abort. The rich columns are for the shop page itself.
-    dbTryTwice(`boutiques?select=${BOUTIQUE_COLUMNS_CORE}&status=eq.approved&limit=2000`).then((r) => r.rows)
+/*
+ * ── Why the sitemap is an index of three ─────────────────────────────────
+ *
+ * It used to be one document, which meant one edge request did the 5000-row
+ * product read AND the 2000-row boutique read, each against the 1500 ms abort
+ * in `dbTry`. Losing either one served a sitemap missing a whole section, and
+ * the odds of losing one of two reads are roughly twice the odds of losing one.
+ *
+ * Split, each child does a single read — and the lightest of them, the page
+ * sitemap, no longer needs the wide column lists at all, because a facet only
+ * needs `category/occasion/fabric` and a city only needs `city`.
+ *
+ * It also makes Search Console useful: "Pages: 41 discovered, 39 indexed" for
+ * one blob says nothing, whereas the same numbers per section say whether it is
+ * the catalogue or the directory that is not getting in.
+ */
+const SITEMAP_CHILDREN = ["/sitemap-pages.xml", "/sitemap-boutiques.xml", "/sitemap-products.xml"];
+
+function sitemapIndexXml(origin, lastmod) {
+  const entries = SITEMAP_CHILDREN.map(
+    (path) => `<sitemap><loc>${escapeHtml(`${origin}${path}`)}</loc>${lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : ""}</sitemap>`
+  );
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries.join("\n")}
+</sitemapindex>`;
+}
+
+function wrapUrlset(entries) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${entries.join("\n")}
+</urlset>`;
+}
+
+/** The newest live product's date — every hub is exactly as fresh as that. */
+async function newestProductDate() {
+  const { rows } = await dbTryTwice(
+    "products?select=created_at&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=1"
+  );
+  return rows[0]?.created_at || void 0;
+}
+
+/**
+ * Hubs, facet landings, city landings and the written pages.
+ *
+ * Reads only the four columns it actually needs, so it never touches the
+ * migration-0057 column fallback and stays well inside the abort budget.
+ */
+async function sitemapPagesXml(origin) {
+  const [facetRead, cityRead] = await Promise.all([
+    dbTryTwice("products?select=category,occasion,fabric,created_at&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000"),
+    dbTryTwice("boutiques?select=city&status=eq.approved&limit=2000")
   ]);
+  const products = facetRead.rows;
   /*
    * Every URL gets a `lastmod`.
    *
-   * Products and boutiques already carried one from their own `created_at`; the
-   * hubs, the category/occasion/fabric landings and the written pages did not —
-   * 33 of 58 URLs, including the home page. Google states plainly that it
-   * ignores `<changefreq>` and `<priority>` and uses `<lastmod>` (when it is
-   * consistently accurate) to decide what is worth re-crawling, so those 33 were
-   * offering the one signal it discards and withholding the one it reads.
-   *
-   * A hub is only as fresh as the newest thing in it, which for every one of
-   * these is the newest live product — so that date is both honest and exactly
-   * what "has this page changed?" means here. Static prose pages get the same
-   * date rather than a fabricated one: they genuinely do change when the
-   * catalogue behind their examples does, and an invented daily timestamp is the
-   * thing that teaches Google to stop trusting the field.
+   * Google states plainly that it ignores `<changefreq>` and `<priority>` and
+   * uses `<lastmod>` — when it is consistently accurate — to decide what is
+   * worth re-crawling. A hub is only as fresh as the newest thing in it, which
+   * for every page in this file is the newest live product, so that date is both
+   * honest and exactly what "has this page changed?" means here. The written
+   * pages get the same date rather than a fabricated one: they genuinely do
+   * change when the catalogue behind their examples does, and an invented daily
+   * timestamp is the thing that teaches Google to stop trusting the field.
    */
   const newest = products.reduce(
     (latest, p) => (p.created_at && p.created_at > latest ? p.created_at : latest),
     ""
   ) || void 0;
+
   const entries = [
     urlEntry(`${origin}/`, { lastmod: newest, changefreq: "daily", priority: "1.0" }),
     urlEntry(`${origin}/collections`, { lastmod: newest, changefreq: "daily", priority: "0.9" }),
@@ -972,6 +1304,7 @@ async function sitemapXml(origin) {
     urlEntry(`${origin}/top-boutiques`, { lastmod: newest, changefreq: "weekly", priority: "0.7" }),
     urlEntry(`${origin}/inspire`, { lastmod: newest, changefreq: "daily", priority: "0.6" })
   ];
+
   const facets = {
     collections: /* @__PURE__ */ new Set(),
     occasions: /* @__PURE__ */ new Set(),
@@ -979,8 +1312,7 @@ async function sitemapXml(origin) {
   };
   for (const p of products) {
     if (p.category) facets.collections.add(slugify(p.category));
-    const occasion = p.occasion;
-    if (occasion) facets.occasions.add(slugify(occasion));
+    if (p.occasion) facets.occasions.add(slugify(p.occasion));
     if (p.fabric) facets.fabrics.add(slugify(p.fabric));
   }
   for (const [prefix, values] of Object.entries(facets)) {
@@ -988,39 +1320,59 @@ async function sitemapXml(origin) {
       if (slug) entries.push(urlEntry(`${origin}/${prefix}/${slug}`, { lastmod: newest, changefreq: "daily", priority: "0.85" }));
     }
   }
+
+  // One landing page per city that actually has an approved shop — the set the
+  // middleware will serve, so the sitemap can never advertise a soft 404.
+  const cities = /* @__PURE__ */ new Set();
+  for (const b of cityRead.rows) {
+    const slug = slugify(b.city || "");
+    if (slug) cities.add(slug);
+  }
+  for (const slug of cities) {
+    entries.push(urlEntry(`${origin}/boutiques/${slug}`, { lastmod: newest, changefreq: "weekly", priority: "0.75" }));
+  }
+
+  for (const slug of POLICY_SLUGS) {
+    entries.push(urlEntry(`${origin}/${slug}`, { lastmod: newest, changefreq: "monthly", priority: "0.3" }));
+  }
+  return wrapUrlset(entries);
+}
+
+async function sitemapBoutiquesXml(origin) {
+  // Deliberately the lean list, not `dbBoutiquesTry`: a sitemap row needs an
+  // id, a slug, a name and a date. The rich columns are for the shop page.
+  const boutiques = (await dbTryTwice(`boutiques?select=${BOUTIQUE_COLUMNS_CORE}&status=eq.approved&limit=2000`)).rows;
   /*
    * A shop page changes when that shop lists something, so its `lastmod` is the
-   * date of its own newest piece — not the catalogue-wide `newest`, which would
-   * be the fabricated daily timestamp this file warns about above, and not its
+   * date of its own newest piece — not a catalogue-wide date, which would be
+   * the fabricated daily timestamp this file warns about, and not its
    * `created_at`, which froze on the day it signed up.
    */
   const newestPerBoutique = /* @__PURE__ */ new Map();
-  for (const p of products) {
+  for (const p of (await dbTryTwice("products?select=boutique_id,created_at&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000")).rows) {
     if (!p.boutique_id || !p.created_at) continue;
     const seen = newestPerBoutique.get(p.boutique_id);
     if (!seen || p.created_at > seen) newestPerBoutique.set(p.boutique_id, p.created_at);
   }
-  for (const b of boutiques) {
-    entries.push(
+  return wrapUrlset(
+    boutiques.map((b) =>
       urlEntry(`${origin}/boutique/${b.slug || b.id}`, {
         lastmod: newestPerBoutique.get(b.id) || b.created_at || void 0,
-        /*
-         * 0.9, above every product and level with the boutique directory.
-         *
-         * A shop page is a destination someone searches for by name and it
-         * changes every time that shop lists a piece — hence `newest` rather
-         * than the shop's own `created_at`, which froze on the day it signed up
-         * and told Google a page updated weekly had not changed in months.
-         */
         changefreq: "daily",
         priority: "0.9",
         image: b.logo_url || b.cover_url || void 0,
         title: b.name
       })
-    );
-  }
-  for (const p of products) {
-    entries.push(
+    )
+  );
+}
+
+async function sitemapProductsXml(origin) {
+  const products = await dbProducts(
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`
+  );
+  return wrapUrlset(
+    products.map((p) =>
       urlEntry(`${origin}${productPath(p)}`, {
         lastmod: p.created_at || void 0,
         changefreq: "weekly",
@@ -1028,21 +1380,184 @@ async function sitemapXml(origin) {
         image: p.image_url || void 0,
         title: p.title
       })
-    );
-  }
-  for (const slug of POLICY_SLUGS) {
-    entries.push(urlEntry(`${origin}/${slug}`, { lastmod: newest, changefreq: "monthly", priority: "0.3" }));
-  }
+    )
+  );
+}
+
+const SITEMAP_HANDLERS = {
+  "/sitemap-pages.xml": sitemapPagesXml,
+  "/sitemap-boutiques.xml": sitemapBoutiquesXml,
+  "/sitemap-products.xml": sitemapProductsXml
+};
+
+/* ── The Google Merchant Center feed ──────────────────────────────────────
+ *
+ * `/merchant-feed.xml` — RSS 2.0 with the `g:` namespace, one <item> per live
+ * product. Merchant Center is pointed at it on a daily schedule and pulls the
+ * whole catalogue; a piece that sells out or is delisted drops out of Shopping
+ * within a day, with nothing uploaded by hand.
+ *
+ * Free Shopping listings are a separate index from web search, with their own
+ * surface and considerably more commercial intent per impression. None of the
+ * on-page work in this file reaches it — Google will not build a Shopping
+ * listing from `Product` markup on a marketplace it has no verified merchant
+ * relationship with. This is the only route in.
+ *
+ * ── Why it lives at the edge and not in api/ ────────────────────────────
+ * `api/` holds exactly 12 serverless functions, which IS the Vercel Hobby
+ * ceiling — a 13th fails the deploy. Written as `api/merchant-feed.js` first,
+ * which is why this comment exists. It is the same reason the sitemap is here
+ * rather than at `/api/sitemap`, and the fit is just as good: this is a public,
+ * anonymous, cacheable read of the same catalogue the sitemap already walks.
+ *
+ * ── Fields ──────────────────────────────────────────────────────────────
+ * Google's apparel requirements (`gender`, `age_group`, `size`) bind only in a
+ * handful of target countries, and India is not among them — so they are
+ * emitted where the data is genuinely known and omitted otherwise rather than
+ * guessed. A wrong `age_group` is an item disapproval; a missing one is not.
+ *
+ * One item per product, NOT one per size. Apparel feeds usually emit a variant
+ * per size sharing an `item_group_id`, which requires per-size stock that this
+ * catalogue does not track — every variant would carry the parent's
+ * availability and Merchant Center would eventually flag the mismatch against
+ * the landing page.
+ */
+
+// `sizes` and `images` are not in the shared column lists because every other
+// consumer (sitemap, page metadata) would then carry two arrays it never reads,
+// on queries that fetch up to 5000 rows. Appended here so the feed still goes
+// through `dbProductsTry` and inherits its migration-0057 `slug` fallback.
+const FEED_EXTRA_COLUMNS = "sizes,images";
+
+/**
+ * The single Google taxonomy node that is true of every piece in this catalogue.
+ *
+ * Deliberately not mapped per category. A category Google does not recognise is
+ * an item-level error, and the seller-typed vocabulary ("Half saree", "Office
+ * wear" — see [[catalogue-vocabulary]]) does not map onto the taxonomy cleanly
+ * enough to risk it catalogue-wide. The seller's own terms go into
+ * `product_type`, which is free text and is not validated against the taxonomy.
+ */
+const GOOGLE_PRODUCT_CATEGORY = "Apparel & Accessories > Clothing";
+
+/**
+ * Google rejects a description containing markup and truncates at 5000 chars.
+ *
+ * `[^\P{C}\n\r\t]` reads as "in Unicode category C, but not tab/newline/CR" —
+ * C being control, format, unassigned, private-use and surrogate. That covers
+ * both what sellers paste out of WhatsApp and Word and the zero-width and bidi
+ * format characters that make an XML feed unparseable. Tab, newline and CR are
+ * spared so the `\s+` collapse below turns them into spaces rather than welding
+ * two words together.
+ */
+function feedText(value, max) {
+  const clean = String(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[^\P{C}\n\r\t]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
+/** Google wants `1299.00 INR` — two decimals, a space, the ISO code. */
+function feedPrice(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? `${n.toFixed(2)} INR` : null;
+}
+
+function feedTag(name, value) {
+  return value === null || value === void 0 || value === "" ? "" : `<${name}>${escapeHtml(value)}</${name}>`;
+}
+
+function feedItem(p, origin) {
+  const image = p.image_url;
+  // No photo means no listing — Merchant Center rejects the item outright, and
+  // an error rate across a large slice of the feed can suspend the account.
+  if (!image) return null;
+
+  const price = Number(p.price);
+  const mrp = Number(p.mrp);
+  // Google's contract: `price` is the regular price and `sale_price` the
+  // discounted one. Sellers routinely leave MRP equal to (or below) the asking
+  // price, in which case there is no sale to declare.
+  const onSale = Number.isFinite(mrp) && mrp > price;
+  const regular = feedPrice(onSale ? mrp : price);
+  if (!regular) return null;
+
+  const sizes = (Array.isArray(p.sizes) ? p.sizes : []).filter(Boolean);
+  const extraImages = (Array.isArray(p.images) ? p.images : [])
+    .filter((src) => src && src !== image)
+    .slice(0, 10);
+  const shop = feedText(p.boutiques?.name, 70);
+
+  return [
+    "<item>",
+    feedTag("g:id", p.id),
+    feedTag("g:title", feedText(p.title, 150)),
+    feedTag(
+      "g:description",
+      feedText(p.description, 5000) ||
+        `${feedText(p.title, 120)} from ${shop || "a verified Tamil Nadu boutique"} on ${SITE_NAME}.`
+    ),
+    feedTag("g:link", `${origin}${productPath(p)}`),
+    feedTag("g:image_link", image),
+    ...extraImages.map((src) => feedTag("g:additional_image_link", src)),
+    feedTag("g:availability", (p.stock ?? 0) > 0 ? "in_stock" : "out_of_stock"),
+    feedTag("g:condition", "new"),
+    feedTag("g:price", regular),
+    onSale ? feedTag("g:sale_price", feedPrice(price)) : "",
+    feedTag("g:brand", shop || SITE_NAME),
+    // No GTIN or MPN exists for a one-off boutique piece, and saying so is what
+    // stops Google treating the item as missing a required identifier.
+    feedTag("g:identifier_exists", "no"),
+    feedTag("g:google_product_category", GOOGLE_PRODUCT_CATEGORY),
+    feedTag("g:product_type", [p.category, p.occasion].filter(Boolean).map((s) => feedText(s, 60)).join(" > ")),
+    feedTag("g:color", feedText(p.color, 40)),
+    feedTag("g:material", feedText(p.fabric, 40)),
+    // Only when the piece comes in exactly one size. A list would have to be a
+    // variant group, which needs the per-size stock described above.
+    sizes.length === 1 ? feedTag("g:size", feedText(sizes[0], 20)) : "",
+    "</item>"
+  ].filter(Boolean).join("\n");
+}
+
+async function merchantFeedXml(origin) {
+  const attempt = await dbProductsTry(
+    (cols) => `products?select=${cols},${FEED_EXTRA_COLUMNS}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000`
+  );
+  // A failed read must not become an empty feed: an empty feed tells Merchant
+  // Center the catalogue was withdrawn and it delists every product. Returning
+  // null makes the caller answer 503, which makes it keep the last good one.
+  if (!attempt.ok) return null;
+  const items = attempt.rows.map((p) => feedItem(p, origin)).filter(Boolean);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${entries.join("\n")}
-</urlset>`;
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+<channel>
+<title>${SITE_NAME} — Boutique Ethnic Wear from Tamil Nadu</title>
+<link>${escapeHtml(origin)}</link>
+<description>${escapeHtml(DEFAULT_DESCRIPTION)}</description>
+${items.join("\n")}
+</channel>
+</rss>`;
 }
 export default async function middleware(request) {
   try {
     const url = new URL(request.url);
     const { pathname, origin } = url;
     const legacyPath = legacyRedirectPath(pathname);
+    // The two rewrites are resolved together so a legacy path arriving on a
+    // non-canonical host costs ONE redirect rather than a chain of two. Google
+    // follows chains, but it discounts them, and every hop is a round trip on
+    // the 3G connections most of this marketplace's buyers are on.
+    if (isNonCanonicalHost(url)) {
+      return new Response(null, {
+        status: 301,
+        headers: {
+          location: `https://${CANONICAL_HOST}${legacyPath || pathname}${url.search}`,
+          "cache-control": "public, max-age=3600"
+        }
+      });
+    }
     if (legacyPath) {
       return new Response(null, {
         status: 301,
@@ -1058,13 +1573,26 @@ export default async function middleware(request) {
         }
       });
     }
+    const sitemapHeaders = {
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}, stale-while-revalidate=86400`
+    };
     if (pathname === "/sitemap.xml") {
-      return new Response(await sitemapXml(origin), {
-        headers: {
-          "content-type": "application/xml; charset=utf-8",
-          "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}, stale-while-revalidate=86400`
-        }
-      });
+      return new Response(sitemapIndexXml(origin, await newestProductDate()), { headers: sitemapHeaders });
+    }
+    const sitemapChild = SITEMAP_HANDLERS[pathname];
+    if (sitemapChild) {
+      return new Response(await sitemapChild(origin), { headers: sitemapHeaders });
+    }
+    if (pathname === "/merchant-feed.xml") {
+      const feed = await merchantFeedXml(origin);
+      // 503 rather than an empty feed — see `merchantFeedXml`. Preview deploys
+      // are refused outright: pointed at one, Merchant Center would take
+      // *.vercel.app URLs as the landing pages for the whole catalogue.
+      if (!feed || preview) {
+        return new Response("Feed unavailable", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
+      }
+      return new Response(feed, { headers: sitemapHeaders });
     }
     if (
       pathname.startsWith("/api/") ||
