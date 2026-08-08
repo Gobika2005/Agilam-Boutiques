@@ -14,9 +14,19 @@ import { supabase } from '@/lib/supabase';
  * URLs. Email OTP works with the default email provider.
  */
 
+/** Shown whenever the cause is ours, not something the user can act on. */
+const SEND_FAILED =
+  'We couldn’t send that email just now. Please try again, or contact support if it keeps failing.';
+
 /** Human-friendly text for the raw Supabase auth errors. */
 export function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
+  // gotrue-js has no prose to show when GoTrue returns a non-2xx with an empty
+  // or unrecognised body, so it falls back to JSON.stringify — which reaches the
+  // buyer as a literal "{}". Anything JSON-shaped or blank is an infrastructure
+  // failure on our side, not something they typed wrong.
+  const t = message.trim();
+  if (!t || t === '{}' || t === '[]' || t.startsWith('{') || t.startsWith('[')) return SEND_FAILED;
   if (m.includes('provider is not enabled') || m.includes('unsupported provider')) {
     return 'That sign-in method isn’t set up yet. Try email instead.';
   }
@@ -35,9 +45,7 @@ export function friendlyAuthError(message: string): string {
   if (m.includes('rate') || m.includes('too many')) return 'Too many attempts — wait a minute and retry.';
   // GoTrue reports SMTP failures as "Error sending confirmation/recovery email".
   // Left raw it reads like the buyer did something wrong, when it's our outage.
-  if (m.includes('error sending')) {
-    return 'We couldn’t send that email just now. Please try again, or contact support if it keeps failing.';
-  }
+  if (m.includes('error sending') || m.includes('unexpected_failure')) return SEND_FAILED;
   return message;
 }
 

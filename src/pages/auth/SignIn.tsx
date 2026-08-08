@@ -8,7 +8,7 @@ import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
 import { ConsentNotice } from '@/components/legal/Consent';
 import { useToast } from '@/components/ui/Toast';
-import { signInWithGoogle } from '@/lib/authMethods';
+import { friendlyAuthError, signInWithGoogle } from '@/lib/authMethods';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
 
 export function SignIn() {
@@ -59,7 +59,7 @@ export function SignIn() {
       const profileRole = await signInWithPassword(trimmedEmail, password, role);
       navigate(homeFor(profileRole), { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Sign in failed');
+      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Sign in failed');
     } finally {
       setSending(false);
     }
