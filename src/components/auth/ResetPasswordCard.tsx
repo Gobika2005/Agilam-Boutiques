@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { friendlyAuthError } from '@/lib/authMethods';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { useToast } from '@/components/ui/Toast';
@@ -129,7 +130,7 @@ export function RequestResetFields({
       await sendPasswordReset(trimmed, redirectTo);
       setSent(true);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not send reset email');
+      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not send reset email');
     } finally {
       setBusy(false);
     }

@@ -21,8 +21,9 @@ export const COMPANY = {
   description:
     'MangaiMart brings Tamil Nadu’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
 
-  /** TODO: confirm the live support inbox. */
+  /** TODO: `hello@` and `grievance@` still need creating on the domain. */
   email: 'hello@mangaimart.com',
+  /** Confirmed live — also the Supabase Auth sender, see AUTH_EMAIL_SETUP.md. */
   supportEmail: 'support@mangaimart.com',
   /** Required by the IT Rules 2021 — a named grievance officer contact. */
   grievanceEmail: 'grievance@mangaimart.com',
@@ -30,8 +31,8 @@ export const COMPANY = {
   grievanceOfficer: 'Grievance Officer, MangaiMart',
 
   /** Live support number. `phoneDigits` must be E.164 without "+". */
-  phone: '+91 63790 07829',
-  phoneDigits: '916379007829',
+  phone: '+91 93442 94969',
+  phoneDigits: '919344294969',
   supportHours: 'Monday – Saturday, 10:00 – 19:00 IST',
 
   /** TODO: registered office address. */

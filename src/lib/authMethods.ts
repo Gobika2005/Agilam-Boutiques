@@ -24,7 +24,20 @@ export function friendlyAuthError(message: string): string {
   if (m.includes('otp') && m.includes('expired')) return 'That code has expired — request a new one.';
   if (m.includes('email not confirmed')) return 'Please confirm your email, then try again.';
   if (m.includes('invalid login credentials')) return 'Wrong email or password.';
+  if (m.includes('email rate limit')) {
+    return 'Our email service is over its sending limit right now — try again in a little while.';
+  }
+  // SMTP "minimum interval per user" (60s by default) surfaces as
+  // "For security purposes, you can only request this after N seconds."
+  // Quote the real wait back rather than a generic "wait a minute".
+  const throttled = /after (\d+) seconds?/.exec(m);
+  if (throttled) return `Please wait ${throttled[1]} seconds before requesting another email.`;
   if (m.includes('rate') || m.includes('too many')) return 'Too many attempts — wait a minute and retry.';
+  // GoTrue reports SMTP failures as "Error sending confirmation/recovery email".
+  // Left raw it reads like the buyer did something wrong, when it's our outage.
+  if (m.includes('error sending')) {
+    return 'We couldn’t send that email just now. Please try again, or contact support if it keeps failing.';
+  }
   return message;
 }
 
@@ -71,7 +84,10 @@ export function clearPendingOAuthRole(): void {
 export async function sendEmailOtp(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim(),
-    options: { shouldCreateUser: true },
+    // emailRedirectTo only matters if the template keeps {{ .ConfirmationURL }}
+    // alongside the code, but without it that link points at the project's Site
+    // URL rather than the host the buyer is signing in on.
+    options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback` },
   });
   if (error) throw new Error(friendlyAuthError(error.message));
 }

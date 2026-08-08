@@ -185,7 +185,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: pending },
+      // Without emailRedirectTo the confirmation link falls back to the project's
+      // Site URL, which sends everyone to whichever single host is configured
+      // there (prod, or worse, localhost). Send them back to the host they
+      // actually signed up on — /auth/callback then routes by role.
+      options: { data: pending, emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     // When email confirmation is off, Supabase returns a session immediately —

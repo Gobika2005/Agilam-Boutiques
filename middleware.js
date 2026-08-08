@@ -27,6 +27,9 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL |
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const PAGE_CACHE_SECONDS = 300;
 const SITEMAP_CACHE_SECONDS = 3600;
+// The live domain, as a bare hostname. Same VITE_SITE_URL the client reads in
+// src/lib/seo.ts, so the edge and the app can never disagree about who we are.
+const CANONICAL_HOST = (process.env.VITE_SITE_URL || "").replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
 const DB_TIMEOUT_MS = 1500;
 const NOINDEX_PREFIXES = [
   "/admin",
@@ -745,11 +748,24 @@ async function resolveMeta(pathname, origin) {
   // Say so in the head rather than serving it as another indexable page.
   return isNoIndex(pathname) ? null : notFoundMeta();
 }
-function headFor(meta, canonical, origin, pathname) {
+// A publicly reachable deploy that is not the live domain — i.e. a Vercel
+// preview URL, which serves the identical catalogue from the identical
+// database. Crawled, every product exists at two addresses and a throwaway
+// preview can outrank mangaimart.com for its own stock.
+//
+// Only *.vercel.app is treated this way. Localhost is deliberately exempt: no
+// crawler can reach it, and `npm run verify:seo` drives this middleware over
+// 127.0.0.1 with the production .env loaded, so pinning on host alone would
+// make every page in that run assert as noindex.
+function isPreviewHost(url) {
+  const host = url.hostname.toLowerCase();
+  return !!CANONICAL_HOST && host !== CANONICAL_HOST && host.endsWith(".vercel.app");
+}
+function headFor(meta, canonical, origin, pathname, forceNoindex) {
   const title = meta ? `${meta.title} \xB7 ${SITE_NAME}` : SITE_NAME;
   const description = meta?.description || DEFAULT_DESCRIPTION;
   const image = meta?.image ? meta.image.startsWith("http") ? meta.image : `${origin}${meta.image}` : `${origin}${DEFAULT_OG_IMAGE}`;
-  const robots = isNoIndex(pathname) || meta?.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+  const robots = forceNoindex || isNoIndex(pathname) || meta?.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta name="robots" content="${robots}" />`,
@@ -778,6 +794,17 @@ function headFor(meta, canonical, origin, pathname) {
   }
   return `<title>${escapeHtml(title)}</title>
 ${tags.join("\n")}`;
+}
+function previewRobotsTxt(origin) {
+  return `# MangaiMart \u2014 preview deploy (${origin})
+#
+# Not the live site. This deploy serves the same catalogue from the same
+# database, so indexing it would duplicate every product page and compete with
+# https://${CANONICAL_HOST}. No Sitemap: line either, for the same reason.
+
+User-agent: *
+Disallow: /
+`;
 }
 function robotsTxt(origin) {
   return `# MangaiMart \u2014 ${origin}
@@ -1022,8 +1049,9 @@ export default async function middleware(request) {
         headers: { location: `${origin}${legacyPath}${url.search}`, "cache-control": "public, max-age=3600" }
       });
     }
+    const preview = isPreviewHost(url);
     if (pathname === "/robots.txt") {
-      return new Response(robotsTxt(origin), {
+      return new Response(preview ? previewRobotsTxt(origin) : robotsTxt(origin), {
         headers: {
           "content-type": "text/plain; charset=utf-8",
           "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}`
@@ -1059,7 +1087,7 @@ export default async function middleware(request) {
     if (!shell.ok) return void 0;
     const html = await shell.text();
     const canonical = `${origin}${pathname === "/" ? "/" : pathname.replace(/\/+$/, "")}`;
-    let injected = html.replace("<title>MangaiMart</title>", headFor(meta, canonical, origin, pathname)).replace('<html lang="en">', '<html lang="en-IN">');
+    let injected = html.replace("<title>MangaiMart</title>", headFor(meta, canonical, origin, pathname, preview)).replace('<html lang="en">', '<html lang="en-IN">');
     // Nothing was replaced: the shell is not the one this expects, so serve it
     // untouched rather than a page with a made-up head. Checked before the body
     // injection below, so a changed shell can never be served with a prerender
@@ -1075,7 +1103,7 @@ export default async function middleware(request) {
       "content-type": "text/html; charset=utf-8",
       "cache-control": `public, max-age=0, s-maxage=${PAGE_CACHE_SECONDS}, stale-while-revalidate=86400`
     });
-    if (isNoIndex(pathname) || meta?.noindex) headers.set("x-robots-tag", "noindex, nofollow");
+    if (preview || isNoIndex(pathname) || meta?.noindex) headers.set("x-robots-tag", "noindex, nofollow");
     return new Response(injected, { headers });
   } catch {
     return void 0;
