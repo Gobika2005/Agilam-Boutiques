@@ -308,6 +308,20 @@ export interface Database {
           guest_city: string | null;
           guest_address: string | null;
           guest_pincode: string | null;
+          // ── Courier tracking (migration 0063) ────────────────────────────
+          /** Filled by the seller's optional "Mark packed" step. */
+          packed_at: string | null;
+          /** Only a courier scan can honestly set this, and no webhook exists
+           *  yet — so the buyer's "Out for delivery" stage stays blank rather
+           *  than being invented from a timer. */
+          out_for_delivery_at: string | null;
+          /** The buyer reported the order never arrived. Excludes it from both
+           *  the automatic and manual payout sweeps until an admin resolves it;
+           *  a seller cannot clear it (0063's guard trigger reverts them). */
+          delivery_disputed: boolean;
+          delivery_disputed_at: string | null;
+          delivery_dispute_note: string | null;
+          delivery_resolved_at: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -492,6 +506,50 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['expenses']['Row']>;
         Relationships: [];
       };
+      // ── Courier tracking (migration 0063) ────────────────────────────────
+      // The list sellers pick from when shipping. Admin-managed, same pattern
+      // as the catalogue vocabulary.
+      couriers: {
+        Row: {
+          id: string;
+          name: string;
+          /** '{awb}' is substituted at render time. Null is normal: most Indian
+           *  courier tracking pages are form-POST and take no AWB in the URL. */
+          tracking_url_template: string | null;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['couriers']['Row']> & { name: string };
+        Update: Partial<Database['public']['Tables']['couriers']['Row']>;
+        Relationships: [];
+      };
+      // One parcel per order. Its existence is what gates the seller's payout —
+      // an AWB does not prove delivery, but it proves a parcel left the shop.
+      shipments: {
+        Row: {
+          id: string;
+          order_id: string;
+          boutique_id: string;
+          courier_id: string | null;
+          /** Denormalised so renaming or hiding a courier never rewrites the
+           *  history of parcels already sent; also holds the free-text name
+           *  when the seller picked "Other". */
+          courier_name: string;
+          awb: string;
+          tracking_url: string | null;
+          shipped_at: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['shipments']['Row']> & {
+          order_id: string; boutique_id: string; courier_name: string; awb: string;
+        };
+        Update: Partial<Database['public']['Tables']['shipments']['Row']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -630,6 +688,18 @@ export interface Database {
        * DEFINER; recomputes the amount from the boutique's unsettled orders,
        * stamps them, and returns the inserted `payouts` row.
        */
+      /**
+       * The buyer's "it never arrived" report (migration 0063).
+       *
+       * An RPC rather than an UPDATE because `orders` has no buyer update
+       * policy and must not get one — a broad grant would let a buyer edit
+       * status or total. This verifies ownership and writes only the dispute
+       * columns.
+       */
+      report_delivery_issue: {
+        Args: { p_order_id: string; p_note?: string | null };
+        Returns: void;
+      };
       settle_boutique_payout: {
         Args: { p_boutique_id: string; p_note?: string | null };
         Returns: {

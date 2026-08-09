@@ -39,52 +39,74 @@ Legend below: **[you]** = needs your hands or your credentials. **[me]** = I wri
 This phase blocks everything that actually sends. Nothing else depends on it, so I can
 build Phases 1–4 in parallel.
 
-**0.1 Free up +91 93442 94969.** You chose to migrate the live support number. Before it
-can be registered on the API it must be **deleted from the WhatsApp Business app** on the
-phone (Settings → Account → Delete account). Export chat history first if you want to keep
-it — it does not come across. The number must be able to receive an SMS or voice OTP
-during registration.
+**Ordering matters.** +91 93442 94969 is the live support number published in the footer,
+the policy pages and every "Contact us" link. The one destructive step — removing it from
+the WhatsApp Business app — is deliberately placed **last**, right before registration,
+because business verification can take days and support must keep working until then.
 
-> Your existing `wa.me/919344294969` links in `src/data/company.ts:82` keep working after
-> migration. Incoming messages just land in Meta Business Suite's inbox instead of on the
-> phone. No code change needed for that.
+### Before you touch anything
 
-**0.2** Create a Meta Business account at `business.facebook.com` (skip if you have one).
+Have ready: a business document whose name matches the entity you'll verify (GST
+certificate or incorporation proof), a card for the WABA, access to the SIM for
++91 93442 94969 to receive an OTP, and a decision about **who answers support after this**
+— the number leaves the phone app permanently, so replies happen in Meta Business Suite
+(web or the Business Suite mobile app) and whoever does support needs access to it.
+
+**0.1** Create a Meta Business account at `business.facebook.com` (skip if you have one).
+
+**0.2 Start business verification immediately** — Business Settings → Security Centre →
+Start Verification. Do this first because it is the slowest step and everything else can
+proceed while it sits in review. Until it clears you are capped at roughly 250
+business-initiated conversations per 24h: enough to test, not to run on.
 
 **0.3** At `developers.facebook.com` create an app of type **Business**, then add the
 **WhatsApp** product to it. This auto-creates a WhatsApp Business Account (WABA) and a
-test number — ignore the test number.
+test number.
 
-**0.4** In the app's WhatsApp → API Setup, add +91 93442 94969 as a real phone number and
-complete the OTP verification. Note the **Phone Number ID** and **WABA ID** shown there.
+**0.4 Test on the test number first.** The auto-created test number can send to up to five
+recipients you nominate, with no verification and no charge. Add your own mobile, and use
+it for all of Phase 3's template testing and Phase 5's first walkthrough. This is what lets
+you prove the whole pipeline works *before* the support line is disturbed.
 
-**0.5 Business verification.** Business Settings → Security Centre → Start Verification.
-Needs your registered business documents (GST certificate / incorporation proof matching
-the name). Until this clears you are capped at roughly 250 business-initiated
-conversations per 24h — fine for testing, not for production.
-
-**0.6 Payment method** on the WABA (Business Settings → WhatsApp Accounts → Payment
+**0.5 Payment method** on the WABA (Business Settings → WhatsApp Accounts → Payment
 Settings). India utility messages are in the ballpark of ₹0.10–0.15 each — verify the
 current rate card, Meta has re-cut it twice. Utility templates sent inside an open 24-hour
 service window are currently free.
 
-**0.7 Permanent access token.** Business Settings → Users → **System Users** → add a
-system user with Admin role → Generate token, scoped to your app, with
+**0.6 Permanent access token.** Business Settings → Users → **System Users** → add a
+system user with Admin role → assign your app → Generate token with
 `whatsapp_business_messaging` and `whatsapp_business_management`. **Do not use the
-temporary 24-hour token** from the API Setup screen — it expires and the drain silently
-starts failing.
+temporary 24-hour token** from the API Setup screen — it expires and the drain then fails
+silently. The token is shown once; store it straight into Supabase secrets.
 
-**0.8** Give me these four values, or set them as Supabase secrets yourself in 2.3:
+**0.7 Record the four secrets — set these yourself, do not send them to me.** A System User
+token can send messages as your business, so it should never pass through a chat
+transcript, an issue, or a commit. Set them directly per Phase 2.3.
 
 | Secret | Where it comes from |
 |---|---|
-| `WA_PHONE_NUMBER_ID` | step 0.4 |
-| `WA_ACCESS_TOKEN` | step 0.7 (system user, permanent) |
-| `WA_VERIFY_TOKEN` | you invent it — any random string, used in 2.5 |
-| `WA_APP_SECRET` | app → Settings → Basic (to verify webhook signatures) |
+| `WA_PHONE_NUMBER_ID` | API Setup screen (test number's ID at first, real number's after 0.9) |
+| `WA_ACCESS_TOKEN` | step 0.6 — system user, permanent |
+| `WA_VERIFY_TOKEN` | you invent it — any long random string, used again in 2.5/2.7 |
+| `WA_APP_SECRET` | app → Settings → Basic → App Secret |
 
-Meta's UI labels shift; if a screen name doesn't match, the nouns above (System User,
-Phone Number ID, WABA) are stable.
+### Only once verification has cleared and the pipeline is proven on the test number
+
+**0.8 Free up the number — this is the irreversible step.** Export the chat history you
+want to keep (WhatsApp Business → Settings → Chats → Export chat; it does **not** migrate),
+tell whoever handles support that replies move to Business Suite, then delete the WhatsApp
+Business account on that number (Settings → Account → Delete my account). Do this at a
+quiet hour: between deletion and successful registration, inbound messages to that number
+can be lost.
+
+**0.9** In WhatsApp → API Setup, add +91 93442 94969 as a real phone number, complete the
+SMS or voice OTP, set the display name, and update `WA_PHONE_NUMBER_ID` to this number's ID.
+
+> After this, `wa.me/919344294969` links in `src/data/company.ts:82` still work — inbound
+> messages simply arrive in Business Suite's inbox rather than on a phone. No code change.
+
+Meta's UI labels shift; if a screen name doesn't match, the nouns above (System User, Phone
+Number ID, WABA, App Secret) are stable.
 
 ---
 

@@ -131,7 +131,7 @@ export function Collections() {
               >
                 <span style={css(`position:relative;width:44px;height:44px;flex:none;border-radius:14px;overflow:hidden;background:${o.toneHex};display:flex;align-items:center;justify-content:center;`)}>
                   {o.image ? (
-                    <ImageSlot src={o.image} placeholder={o.name} style={css('position:absolute;inset:0;')} />
+                    <ImageSlot src={o.image} placeholder={o.name} sizes="44px" style={css('position:absolute;inset:0;')} />
                   ) : (
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-deep);")}>{o.icon}</span>
                   )}

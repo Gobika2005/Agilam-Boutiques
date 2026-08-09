@@ -262,7 +262,7 @@ export function Home() {
             <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
               <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
                 <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
-                  <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
+                  <ImageSlot src={c.image} placeholder={c.name} sizes="116px" style={css('position:absolute;inset:0;')} />
                   <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
                   <span aria-hidden="true" style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
                 </span>
@@ -302,7 +302,7 @@ export function Home() {
         {NEW_ARRIVALS.map((p) => (
           <div key={p.id} onClick={() => openProduct(p.id)} className="agx-lift" style={css('flex:none;width:230px;cursor:pointer;')}>
             <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
-              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" sizes="230px" />
               <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
                 <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>New</span>
@@ -379,7 +379,7 @@ export function Home() {
           <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {/* Cover — image only, no name overlay */}
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
-              <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
+              <ImageSlot src={b.image} placeholder={`${b.name} — cover`} sizes="300px" style={css('position:absolute;inset:0;')} />
             </div>
             {/* Identity — logo + name shown separately below the cover */}
             <div style={css('padding:14px 16px 16px;')}>

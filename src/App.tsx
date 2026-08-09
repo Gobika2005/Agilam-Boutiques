@@ -1,6 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 import { ScrollManager } from '@/components/layout/ScrollManager';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
@@ -105,6 +104,7 @@ const ReviewsAdmin = lazyNamed(() => import('@/pages/admin/ReviewsAdmin'), 'Revi
 const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast');
 const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
 const Expenses = lazyNamed(() => import('@/pages/admin/Expenses'), 'Expenses');
+const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveries');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
 
 export default function App() {
@@ -298,6 +298,9 @@ export default function App() {
         <Route path="users" element={<Users />} />
         <Route path="products" element={<ProductsAdmin />} />
         <Route path="orders" element={<OrdersAdmin />} />
+        {/* Courier tracking's admin side (0063): disputes that freeze a payout,
+            stalled parcels, and the courier list sellers pick from. */}
+        <Route path="deliveries" element={<Deliveries />} />
         <Route path="reports" element={<Reports />} />
         <Route path="payments" element={<Payments />} />
         {/* The outgoing side of the ledger — spends with their receipts (0056). */}
@@ -315,7 +318,6 @@ export default function App() {
       </Route>
 
       </Routes>
-      <SpeedInsights />
     </>
   );
 }

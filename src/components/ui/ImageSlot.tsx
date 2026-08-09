@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { css } from '@/lib/css';
-import { imageFallback, imageSrcSet } from '@/lib/imageUrl';
+import { imageFallback, imageSrcSet, QUALITY_DETAIL } from '@/lib/imageUrl';
 
 /**
  * Stand-in for the design's `<x-import component="image-slot">` elements.
@@ -59,6 +59,7 @@ export function ImageSlot({
   width,
   height,
   sizes,
+  detail = false,
 }: {
   placeholder?: string;
   src?: string;
@@ -91,12 +92,24 @@ export function ImageSlot({
    * The default describes the app's dominant shape: a phone laying cards two to
    * a row, opening out to a fixed tile on desktop. Any surface that isn't that
    * (a hero, a 3-across strip, a 56 px avatar) should pass its own.
+   *
+   * Getting this WRONG IN THE OTHER DIRECTION is what makes a photo look blurry:
+   * understating the width makes the browser pick a candidate smaller than the
+   * box and upscale it. Over-stating only wastes bytes — so when a surface is
+   * full-bleed, say so.
    */
   sizes?: string;
+  /**
+   * This is a photo the buyer studies, not one they scan past — a PDP frame, a
+   * story, an Inspire card. Serves it at {@link QUALITY_DETAIL} instead of the
+   * thumbnail default, which holds embroidery and zari together at full width.
+   */
+  detail?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = !!src && !failed && isEmbeddable(src);
-  const srcSet = showImage ? imageSrcSet(src!) : undefined;
+  const quality = detail ? QUALITY_DETAIL : undefined;
+  const srcSet = showImage ? imageSrcSet(src!, undefined, quality) : undefined;
 
   return (
     <div
@@ -112,7 +125,7 @@ export function ImageSlot({
     >
       {showImage ? (
         <img
-          src={imageFallback(src!)}
+          src={imageFallback(src!, quality)}
           srcSet={srcSet}
           sizes={srcSet ? (sizes ?? '(min-width: 768px) 320px, 50vw') : undefined}
           alt={alt ?? placeholder ?? ''}

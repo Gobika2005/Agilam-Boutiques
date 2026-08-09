@@ -17,6 +17,7 @@ const NAV = [
   { label: 'Products', icon: 'shopping_bag', to: '/admin/products', title: 'Products', sub: 'Moderation and inventory' },
   { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
   { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
+  { label: 'Deliveries', icon: 'local_shipping', to: '/admin/deliveries', title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
   { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
   { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
   { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },

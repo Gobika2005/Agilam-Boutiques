@@ -42,9 +42,19 @@ export const CROP: Record<'product' | 'logo' | 'cover' | 'tile', CropPreset> = {
   },
 };
 
-/** Longest edge of the written-out crop. Plenty for a full-bleed cover on a
- *  desktop screen, and a fraction of the megapixels a phone camera hands over. */
-const MAX_EDGE = 1600;
+/**
+ * Longest edge of the written-out crop — and therefore the hard ceiling on how
+ * sharp a photo can ever look, since Supabase's transformer never upscales.
+ *
+ * Note this caps the LONG edge, so a portrait crop keeps far less width than
+ * the number suggests: at 1600 a 3:4 product shot was written 1200 px wide, and
+ * the PDP frame asks for ~1240 on a desktop at DPR 2 and ~1290 on a large phone
+ * at DPR 3. Every product photo was therefore being upscaled at full size, in
+ * the zoom viewer included. 2000 puts a 3:4 crop at 1500 px wide, clear of the
+ * largest candidate the app requests, and a JPEG at q0.9 that size is still
+ * under a megabyte — a fraction of what the phone camera handed over.
+ */
+const MAX_EDGE = 2000;
 const MAX_ZOOM = 4;
 
 type Request = { file: File; preset: CropPreset };

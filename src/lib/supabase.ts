@@ -6,7 +6,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export const supabaseConfigError =
   !url || !anonKey
-    ? 'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Add them in Vercel Project Settings and redeploy.'
+    ? 'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Add them to the deployment environment and redeploy.'
     : null;
 
 if (supabaseConfigError) {

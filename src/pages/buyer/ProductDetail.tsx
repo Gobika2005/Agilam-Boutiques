@@ -546,7 +546,15 @@ export function ProductDetail() {
                   style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in;')}
                 >
                   {/* The first slide is the product page's LCP element, so it
-                      is eager and high-priority; the rest stay lazy. */}
+                      is eager and high-priority; the rest stay lazy.
+
+                      `sizes` matters more here than anywhere else in the app.
+                      This frame is the full width of the viewport on a phone
+                      and ~620px of the two-column layout from 900px up; left to
+                      ImageSlot's grid-tile default it claimed half that, so the
+                      browser fetched a 480w file and stretched it — which is
+                      why the photo read as soft until the zoom viewer (which
+                      loads the original) opened over it. */}
                   <ImageSlot
                     src={src}
                     placeholder={ap.title}
@@ -554,6 +562,8 @@ export function ProductDetail() {
                       ? `${ap.title} — ${ap.cat}${ap.fabric ? ` in ${ap.fabric}` : ''} from ${ap.boutique}, ${ap.city}`
                       : `${ap.title} — photo ${i + 1} of ${gallery.length}`}
                     priority={i === 0}
+                    sizes="(min-width: 900px) 620px, 100vw"
+                    detail
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>

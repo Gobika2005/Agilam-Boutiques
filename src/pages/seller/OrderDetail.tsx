@@ -5,14 +5,16 @@ import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
 import { POLICY_TERMS } from '@/data/company';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchOrder, updateOrderStatus, markCashCollected } from '@/data/orders';
+import { fetchOrder, updateOrderStatus, markCashCollected, markOrderPacked } from '@/data/orders';
 import type { OrderStatus } from '@/data/types';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
 import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
+import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { createShipment, fetchCouriers, fetchShipment } from '@/data/shipments';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -24,7 +26,17 @@ export function OrderDetail() {
   const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
   const [sharing, setSharing] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [shipOpen, setShipOpen] = useState(false);
+  const [shipping, setShipping] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Both read separately from the order (see src/data/shipments.ts): an
+  // un-migrated deploy must degrade to "no tracking", never to a dead screen.
+  const { data: couriers } = useAsync(() => fetchCouriers().catch(() => []), []);
+  const { data: shipment, reload: reloadShipment } = useAsync(
+    () => (orderId ? fetchShipment(orderId) : Promise.resolve(null)),
+    [orderId],
+  );
 
   if (!row) {
     return (
@@ -44,6 +56,39 @@ export function OrderDetail() {
       reload();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Update failed');
+    }
+  };
+
+  /**
+   * Record the parcel, then move the order to 'shipped'.
+   *
+   * Order matters: migration 0063's trigger refuses the transition until a
+   * shipment row exists, so the write has to land first. If the status update
+   * then fails the shipment row is left behind — harmless, and the seller simply
+   * ships again (the unique constraint on order_id means the retry updates
+   * nothing rather than duplicating).
+   */
+  const shipOrder = async (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => {
+    if (!row) return;
+    setShipping(true);
+    try {
+      await createShipment({
+        orderId: o.id,
+        boutiqueId: row.boutique_id,
+        courierId: v.courierId,
+        courierName: v.courierName,
+        awb: v.awb,
+        trackingUrl: v.trackingUrl,
+      });
+      await updateOrderStatus(o.id, 'shipped');
+      setShipOpen(false);
+      showToast(`Shipped via ${v.courierName}`);
+      reloadShipment();
+      reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not ship this order');
+    } finally {
+      setShipping(false);
     }
   };
 
@@ -295,6 +340,41 @@ export function OrderDetail() {
           </div>
         )}
 
+        {/* Once dispatched, the docket is the thing the seller gets asked about
+            on the phone — so it sits on the order, copyable, not buried. */}
+        {shipment && (
+          <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+            <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>SHIPMENT</div>
+            <div style={css('display:flex;align-items:center;gap:11px;margin-top:10px;')}>
+              <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>local_shipping</span>
+              </span>
+              <div style={css('flex:1;min-width:0;')}>
+                <div style={css('font-weight:800;font-size:14px;')}>{shipment.courier_name}</div>
+                <div style={css('font-size:12.5px;color:var(--ag-muted);word-break:break-all;')}>{shipment.awb}</div>
+              </div>
+              <button
+                onClick={() => { void navigator.clipboard?.writeText(shipment.awb); showToast('Tracking number copied'); }}
+                aria-label="Copy tracking number"
+                style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>content_copy</span>
+              </button>
+            </div>
+            {shipment.tracking_url && (
+              <a
+                href={shipment.tracking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:12px;height:44px;border-radius:13px;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;text-decoration:none;')}
+              >
+                Track shipment
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
+              </a>
+            )}
+          </div>
+        )}
+
         {o.rawStatus === 'cancelled' && (
           <div style={css('margin-top:12px;border-radius:16px;padding:14px 16px;border:1px solid var(--ag-border);background:var(--ag-surface-2);display:flex;gap:11px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);")}>cancel</span>
@@ -327,6 +407,26 @@ export function OrderDetail() {
 
         return (
           <div style={css('position:sticky;bottom:0;background:var(--ag-bg);padding:12px 20px 16px;')}>
+            {/* Packing isn't a lifecycle status — it sits between accepted and
+                shipped without changing either. It's here so the buyer's
+                "Packed" step finally shows a real time instead of a blank. */}
+            {o.rawStatus === 'accepted' && !row.packed_at && !confirmReject && (
+              <button
+                onClick={async () => {
+                  try {
+                    await markOrderPacked(o.id);
+                    showToast('Marked as packed');
+                    reload();
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : 'Could not update this order');
+                  }
+                }}
+                style={css('width:100%;height:42px;margin-bottom:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>inventory_2</span>
+                Mark packed
+              </button>
+            )}
             {confirmReject ? (
               <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
                 <div style={css('font-size:13px;font-weight:700;color:#8A2A34;line-height:1.5;')}>
@@ -343,13 +443,32 @@ export function OrderDetail() {
                   <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
                 )}
                 {forward && (
-                  <button onClick={() => setStatus(forward.status, forward.msg)} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>{forward.label}</button>
+                  <button
+                    onClick={() => {
+                      // Shipping is the one step that needs data first — the
+                      // sheet collects it and does the transition itself.
+                      if (forward.status === 'shipped') setShipOpen(true);
+                      else setStatus(forward.status, forward.msg);
+                    }}
+                    style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}
+                  >
+                    {forward.label}
+                  </button>
                 )}
               </div>
             )}
           </div>
         );
       })()}
+
+      {shipOpen && (
+        <ShipSheet
+          couriers={couriers ?? []}
+          busy={shipping}
+          onCancel={() => setShipOpen(false)}
+          onConfirm={shipOrder}
+        />
+      )}
     </div>
   );
 }

@@ -265,6 +265,15 @@ export default async function handler(req, res) {
     }
 
     // ── 2) Open + pay new eligible balances ─────────────────────────────────
+    //
+    // This query only picks which BOUTIQUES to try; `open_auto_payout` then
+    // recomputes the amount from the orders themselves and is the authority on
+    // what is eligible. Migration 0063 added two brakes there — a courier
+    // docket must exist, and a disputed delivery is held — so deliberately do
+    // NOT duplicate the shipment requirement here: orders delivered before the
+    // rollout are exempt inside the function, and a stricter prefilter would
+    // skip those boutiques entirely and strand money that is genuinely owed.
+    // `delivery_disputed` is kept as a cheap prefilter only.
     const { data: eligible, error: eligErr } = await supabase
       .from('orders')
       .select('boutique_id')
@@ -272,11 +281,25 @@ export default async function handler(req, res) {
       .neq('payment_method', 'COD')
       .eq('payment_status', 'paid')
       .eq('refunded', false)
+      .eq('delivery_disputed', false)
       .eq('status', 'delivered')
       .not('delivered_at', 'is', null)
       .lte('delivered_at', cutoff)
       .limit(5000);
-    if (eligErr) throw eligErr;
+    if (eligErr) {
+      // 42703 undefined_column / 42P01 undefined_table / PGRST200 no such
+      // relationship — all mean 0063 has not been applied. Fail CLOSED and say
+      // so: quietly paying out without the gate is the exact failure this
+      // migration exists to prevent, and a silent skip would hide it.
+      if (eligErr.code === '42703' || eligErr.code === '42P01') {
+        console.error('run-payouts: courier tracking schema missing — apply migration 0063.');
+        return res.status(200).json({
+          ok: true,
+          skipped: 'migration 0063 (courier tracking) must be applied before automatic payouts can run — payouts are held, not lost',
+        });
+      }
+      throw eligErr;
+    }
 
     const boutiqueIds = [...new Set((eligible ?? []).map((o) => o.boutique_id))];
 

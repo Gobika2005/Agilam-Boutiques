@@ -2,11 +2,41 @@ import { supabase } from '@/lib/supabase';
 import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
-const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, accepted_at, shipped_at, delivered_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, platform_discount, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color, product:products(image_url, tone))`;
+const BASE_SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, accepted_at, shipped_at, delivered_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, platform_discount, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color, product:products(image_url, tone))`;
+
+/**
+ * Courier-tracking columns from migration 0063. Split out for the same reason
+ * as the sales counters in `src/data/boutiques.ts`: naming a column that does
+ * not exist yet fails the WHOLE query, and this SELECT feeds every order screen
+ * in all three consoles. An un-migrated deploy must lose the tracking detail,
+ * not the orders.
+ */
+const TRACKING_COLUMNS = 'packed_at, out_for_delivery_at, delivery_disputed, delivery_disputed_at';
+
+const SELECT = `${BASE_SELECT}, ${TRACKING_COLUMNS}`;
+
+let trackingAvailable = true;
+
+async function selectOrders<T>(
+  run: (columns: string) => PromiseLike<{ data: T; error: { message?: string; code?: string } | null }>,
+): Promise<T> {
+  if (trackingAvailable) {
+    const { data, error } = await run(SELECT);
+    if (!error) return data;
+    // 42703 = undefined_column, 42501 = insufficient_privilege (not granted).
+    if (error.code !== '42703' && error.code !== '42501') throw error;
+    trackingAvailable = false;
+    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
+  }
+  const { data, error } = await run(BASE_SELECT);
+  if (error) throw error;
+  return data;
+}
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('buyer_id', buyerId).order('created_at', { ascending: false }),
+  );
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
@@ -33,25 +63,44 @@ export function subscribeToBuyerOrders(buyerId: string, onChange: () => void) {
 }
 
 export async function fetchOrdersForBoutique(boutiqueId: string): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('boutique_id', boutiqueId).order('created_at', { ascending: false });
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('boutique_id', boutiqueId).order('created_at', { ascending: false }),
+  );
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
 export async function fetchAllOrdersAdmin(): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).order('created_at', { ascending: false });
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).order('created_at', { ascending: false }),
+  );
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
 export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('id', id).maybeSingle();
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('id', id).maybeSingle(),
+  );
   return data as unknown as OrderWithDetails | null;
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Stamp "Packed" (migration 0063).
+ *
+ * Not a lifecycle status — packing sits between 'accepted' and 'shipped'
+ * without changing either. It exists because the buyer's timeline has always
+ * drawn a "Packed" step with nothing behind it; this is what finally gives that
+ * step a real time instead of a blank.
+ */
+export async function markOrderPacked(id: string) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ packed_at: new Date().toISOString() })
+    .eq('id', id);
   if (error) throw error;
 }
 
@@ -117,19 +166,31 @@ export interface OrdersQuery {
 }
 
 export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
-  let query = supabase.from('orders').select(SELECT, { count: 'exact' });
+  // `count` rides along with the rows, so this uses its own runner rather than
+  // `selectOrders` — but it needs the identical un-migrated fallback, or the
+  // admin Orders table goes blank before 0063 is applied.
+  const run = (cols: string) => {
+    let query = supabase.from('orders').select(cols, { count: 'exact' });
 
-  if (q.status === 'refunded') query = query.eq('refunded', true);
-  else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
-  if (q.search?.trim()) {
-    const s = `%${q.search.trim()}%`;
-    query = query.or(`order_number.ilike.${s},guest_name.ilike.${s},guest_phone.ilike.${s}`);
+    if (q.status === 'refunded') query = query.eq('refunded', true);
+    else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
+    if (q.search?.trim()) {
+      const s = `%${q.search.trim()}%`;
+      query = query.or(`order_number.ilike.${s},guest_name.ilike.${s},guest_phone.ilike.${s}`);
+    }
+
+    const from = q.page * q.pageSize;
+    return query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
+  };
+
+  if (trackingAvailable) {
+    const { data, error, count } = await run(SELECT);
+    if (!error) return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
+    if (error.code !== '42703' && error.code !== '42501') throw error;
+    trackingAvailable = false;
+    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
   }
-
-  const from = q.page * q.pageSize;
-  query = query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
-
-  const { data, error, count } = await query;
+  const { data, error, count } = await run(BASE_SELECT);
   if (error) throw error;
   return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
 }

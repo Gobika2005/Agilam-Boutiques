@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchShipment, reportDeliveryIssue } from '@/data/shipments';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
 import { deliveryEstimate, formatOrderDateTime, STATUS_STAGE } from '@/lib/orderHistory';
@@ -18,7 +20,7 @@ export function TrackOrder() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { productById } = useCatalog();
-  const { guest } = useShop();
+  const { guest, showToast } = useShop();
   const { orders, refresh, refreshing } = useBuyerOrders();
 
   const decoded = id ? decodeURIComponent(id) : undefined;
@@ -29,6 +31,16 @@ export function TrackOrder() {
     () => orders.find((o) => o.id === decoded || o.orderNumber === decoded || o.rowId === decoded),
     [orders, decoded],
   );
+
+  // Keyed on the DB row id, which only a signed-in buyer's order carries: a
+  // guest's order is mirrored in memory and unreadable through RLS, so they see
+  // no tracking here at all. That gap is the public lookup in §6 of the plan.
+  const { data: shipment } = useAsync(
+    () => (order?.rowId ? fetchShipment(order.rowId) : Promise.resolve(null)),
+    [order?.rowId],
+  );
+  const [disputing, setDisputing] = useState(false);
+  const [disputed, setDisputed] = useState(false);
 
   if (!order) {
     return (
@@ -91,14 +103,16 @@ export function TrackOrder() {
     });
   };
 
-  // A real timestamp per stage, from migration 0042 — "Packed" and "Out for
-  // delivery" are cosmetic hand-offs between the real events (accepted →
-  // shipped) rather than status values of their own, so they carry no
-  // timestamp of their own.
+  // A real timestamp per stage — 0042 for accepted/shipped/delivered, 0063 for
+  // the two that never had a source. "Out for delivery" (4) can only honestly
+  // come from a courier scan, and nothing feeds that yet, so it stays blank
+  // rather than being invented from a timer.
   const stageTimes: Record<number, string | null | undefined> = {
     0: order.placedAt,
     1: order.acceptedAt,
+    2: order.packedAt,
     3: order.shippedAt,
+    4: order.outForDeliveryAt,
     5: order.deliveredAt,
   };
   const steps = TRACK_STAGES.map((st, i) => ({
@@ -158,6 +172,81 @@ export function TrackOrder() {
             </div>
           )}
         </div>
+
+        {/* ---------- Courier tracking (migration 0063) ---------- */}
+        {shipment && !rejected && (
+          <div style={css(`${card}padding:18px;margin-top:16px;`)}>
+            <div style={css('display:flex;align-items:center;gap:12px;')}>
+              <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>local_shipping</span>
+              </span>
+              <div style={css('flex:1;min-width:0;')}>
+                <div style={css('font-size:11px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>SHIPPED WITH</div>
+                <div style={css('font-weight:800;font-size:15px;margin-top:2px;')}>{shipment.courier_name}</div>
+                <div style={css('font-size:12.5px;color:var(--ag-muted);word-break:break-all;')}>{shipment.awb}</div>
+              </div>
+            </div>
+            {/* No link is a real outcome, not a bug: most Indian courier
+                tracking pages take no AWB in the URL. Courier + docket number
+                is still everything the buyer needs to ask the courier. */}
+            {shipment.tracking_url ? (
+              <a
+                href={shipment.tracking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:14px;height:46px;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;')}
+              >
+                Track shipment
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
+              </a>
+            ) : (
+              <div style={css('margin-top:12px;font-size:12.5px;color:var(--ag-muted);line-height:1.55;')}>
+                Quote this docket number to {shipment.courier_name} to check where your parcel is.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---------- "It never arrived" ---------- */}
+        {/* The buyer's only way to stop the seller being paid for a delivery
+            that did not happen. Until this existed, "delivered" was the
+            seller's word alone and the payout ran on a timer. */}
+        {delivered && order.rowId && (
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:18px;align-items:center;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);font-size:22px;flex:none;")}>help</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-size:13.5px;font-weight:800;')}>
+                {disputed || order.deliveryDisputed ? 'We’re looking into it' : 'Not received?'}
+              </div>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.5;margin-top:2px;')}>
+                {disputed || order.deliveryDisputed
+                  ? 'Thanks — we’ve put this order on hold and our team will be in touch.'
+                  : 'This order is marked delivered. Tell us if it hasn’t reached you.'}
+              </div>
+            </div>
+            {!(disputed || order.deliveryDisputed) && (
+              <button
+                disabled={disputing}
+                onClick={async () => {
+                  if (!order.rowId) return;
+                  setDisputing(true);
+                  try {
+                    await reportDeliveryIssue(order.rowId);
+                    setDisputed(true);
+                    showToast('Reported — we’ll look into it');
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : 'Could not report this');
+                  } finally {
+                    setDisputing(false);
+                  }
+                }}
+                style={css(`flex:none;height:40px;padding:0 15px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:${disputing ? 'wait' : 'pointer'};font-family:inherit;`)}
+              >
+                {disputing ? 'Sending…' : 'Report'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ---------- Cash on delivery ---------- */}
         {owes && (

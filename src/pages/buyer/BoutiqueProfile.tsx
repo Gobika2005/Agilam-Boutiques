@@ -187,7 +187,8 @@ export function BoutiqueProfile() {
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);padding-bottom:40px;')}>
       {/* ---------- Cover ---------- */}
       <div className="agx-zoom" style={css(`position:relative;height:clamp(210px,36vw,360px);background:${TONES[ab.tone]};overflow:hidden;`)}>
-        <ImageSlot src={ab.image} placeholder={ab.name} fallback="brand" style={css('position:absolute;inset:0;')} />
+        {/* Full-bleed cover — it spans the viewport at every width. */}
+        <ImageSlot src={ab.image} placeholder={ab.name} fallback="brand" sizes="100vw" detail style={css('position:absolute;inset:0;')} />
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,.3) 0%,rgba(30,8,18,0) 30%,rgba(30,8,18,0) 62%,var(--ag-cover-fade) 100%);pointer-events:none;')} />
 
         <button

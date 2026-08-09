@@ -21,14 +21,30 @@
      Coimbatore" is a query it should be able to win. -->
 <meta name="geo.region" content="IN-TN" />
 <meta name="geo.placename" content="Tamil Nadu, India" />
-<!-- 500×500 / 110 kB, not the 1107×1107 / 983 kB `favicon.png` this used to
-     point at (while declaring "512x512", which was wrong as well). A favicon is
-     requested on every cold load and shares the connection with the JavaScript
-     bundle and the LCP image, so ~1 MB of it was bandwidth taken directly from
-     the things the page is waiting on. `favicon.png` is left in place — older
-     bookmarks and cached manifests still reference it. -->
-<link rel="icon" type="image/png" sizes="500x500" href="/icon-500.png" />
-<link rel="apple-touch-icon" href="/icon-500.png" />
+<!-- ── Icons ────────────────────────────────────────────────────────────────
+     Cut from `Fav no BG.png` — the mark alone. The previous icon was
+     `icon-500.png`, the full lockup including the "MangaiMart" wordmark and the
+     "ALL BOUTIQUES · ONE PLACE" tagline; at the 16–32 px a tab actually renders,
+     that type is an unreadable pink smudge.
+
+     `favicon.ico` carries 16/32/48 and exists as a real file for a second
+     reason: `vercel.json` rewrites everything that isn't a static file to `/`,
+     so a request for `/favicon.ico` — which Google's favicon crawler, feed
+     readers and older browsers make regardless of what this markup says — was
+     being answered with the HTML of the home page. It is transparent, so it
+     sits on the browser's own tab colour in both light and dark chrome.
+
+     Both are tiny (≈7 kB and ≈2 kB). A favicon is requested on every cold load
+     and shares the connection with the JavaScript bundle and the LCP image, so
+     weight here is taken directly from what the page is waiting on — which is
+     why the 983 kB `favicon.png` and the 110 kB `icon-500.png` are no longer
+     referenced. Both files stay on disk: older bookmarks and already-cached
+     manifests still point at them. -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+<!-- iOS ignores the manifest for the home-screen icon and composites any
+     transparency onto black, so this one is pre-flattened onto the brand ground. -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <!-- Resolve the theme before first paint so there's never a wrong-theme flash.
      A saved choice wins; otherwise follow the device's prefers-color-scheme. -->

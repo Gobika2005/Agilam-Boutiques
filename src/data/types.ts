@@ -181,6 +181,15 @@ export interface OrderWithDetails {
   platform_discount?: number;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
+  /** Migration 0063. Optional because the SELECT falls back to a column list
+   *  without them when the migration has not been applied yet. */
+  packed_at?: string | null;
+  /** Only ever set by a courier webhook, which does not exist yet — so the
+   *  buyer's "Out for delivery" stage stays dim rather than being faked. */
+  out_for_delivery_at?: string | null;
+  /** The buyer said it never arrived. Blocks the payout sweep until resolved. */
+  delivery_disputed?: boolean;
+  delivery_disputed_at?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: {

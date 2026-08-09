@@ -56,6 +56,11 @@ export type PlacedOrder = {
   acceptedAt?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
+  /** Migration 0063 — the two timeline stages that never had a source. */
+  packedAt?: string | null;
+  outForDeliveryAt?: string | null;
+  /** The buyer reported it never arrived; the seller's payout is frozen. */
+  deliveryDisputed?: boolean;
 };
 
 let orderState: PlacedOrder[] = [];
@@ -123,6 +128,9 @@ export type BuyerDbOrder = {
   accepted_at?: string | null;
   shipped_at?: string | null;
   delivered_at?: string | null;
+  packed_at?: string | null;
+  out_for_delivery_at?: string | null;
+  delivery_disputed?: boolean;
   payment_method?: string | null;
   payment_status?: PaymentStatus;
   cod_fee?: number;
@@ -160,6 +168,9 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     acceptedAt: o.accepted_at ?? null,
     shippedAt: o.shipped_at ?? null,
     deliveredAt: o.delivered_at ?? null,
+    packedAt: o.packed_at ?? null,
+    outForDeliveryAt: o.out_for_delivery_at ?? null,
+    deliveryDisputed: o.delivery_disputed ?? false,
     // `pid` is what the order screens look the product photo up by, so it has to
     // survive the round-trip through the server copy — without it every line
     // falls back to the empty placeholder tile.
