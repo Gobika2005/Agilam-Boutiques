@@ -227,6 +227,12 @@ export function Home() {
                 <button
                   key={i}
                   onClick={() => goHero(i)}
+                  // The dot has no text and no icon, so without these it reaches
+                  // a screen reader as an unnamed "button" — Lighthouse's
+                  // `button-name` failure on the home page.
+                  type="button"
+                  aria-label={`Show slide ${i + 1} of ${SLIDES.length}`}
+                  aria-current={i === heroIndex}
                   style={css(`width:${i === heroIndex ? '18px' : '5px'};height:6px;border-radius:3px;border:none;padding:0;cursor:pointer;background:${i === heroIndex ? '#F4D9A6' : 'rgba(255,255,255,.55)'};transition:width .3s ease;`)}
                 />
               ))}
@@ -262,7 +268,13 @@ export function Home() {
             <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
               <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
                 <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
-                  <ImageSlot src={c.image} placeholder={c.name} sizes="116px" style={css('position:absolute;inset:0;')} />
+                  {/* Decorative: the category name is rendered as real text
+                      directly below, so `ImageSlot`'s default of reusing
+                      `placeholder` as the alt made a screen reader announce it
+                      twice (Lighthouse `image-redundant-alt`). The placeholder
+                      is still needed — it is the visible fallback when a
+                      category has no photo. */}
+                  <ImageSlot src={c.image} placeholder={c.name} alt="" sizes="116px" style={css('position:absolute;inset:0;')} />
                   <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
                   <span aria-hidden="true" style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
                 </span>

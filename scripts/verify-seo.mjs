@@ -222,7 +222,22 @@ await check('collections hub', '/collections', [is('200', (o) => o.status === 20
  * for is WORSE than none — it downloads an image nobody uses and the real one
  * still starts late. `imageSrcSet()` in src/lib/imageUrl.ts is the contract.
  */
-const EXPECTED_WIDTHS = [240, 480, 800, 1280];
+/*
+ * Read out of imageUrl.ts, never restated here.
+ *
+ * This constant used to be a literal `[240, 480, 800, 1280]` — a copy of the
+ * list as it stood when this check was written. When 1600 was later added to
+ * imageUrl.ts for full-bleed heroes, both this check and the edge preload kept
+ * the stale four, so the assertion compared the bug against itself and passed
+ * while the live home page downloaded its hero twice (1280 preloaded, 1600
+ * rendered). A check that hardcodes the thing it is checking cannot catch drift.
+ */
+const EXPECTED_WIDTHS = (() => {
+  const src = fs.readFileSync(new URL('../src/lib/imageUrl.ts', import.meta.url), 'utf8');
+  const m = src.match(/const WIDTHS = \[([^\]]+)\]/);
+  if (!m) throw new Error('verify-seo: cannot find WIDTHS in src/lib/imageUrl.ts');
+  return m[1].split(',').map((n) => Number(n.trim()));
+})();
 function preloadProblems(o, expectedSizes) {
   const problems = [];
   if (!o.preconnect) problems.push('no preconnect to the Supabase origin');

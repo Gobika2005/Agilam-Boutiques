@@ -257,7 +257,13 @@ async function dbBoutiquesTry(build) {
  */
 const PUBLIC_OBJECT = "/storage/v1/object/public/";
 const RENDER_IMAGE = "/storage/v1/render/image/public/";
-const IMAGE_WIDTHS = [240, 480, 800, 1280];
+// MUST equal WIDTHS in src/lib/imageUrl.ts, in the same order. 1600 was added
+// there for full-bleed heroes and never added here, so on any viewport wide
+// enough to want it the <img> asked for 1600 while this preload had fetched
+// 1280 — the home hero was downloaded twice and the LCP still started late,
+// which is precisely the second download this whole module exists to avoid.
+// verify:seo now reads the list out of imageUrl.ts rather than restating it.
+const IMAGE_WIDTHS = [240, 480, 800, 1280, 1600];
 const IMAGE_QUALITY = 70;
 
 function transformedImage(src, width) {
