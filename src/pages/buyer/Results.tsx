@@ -125,10 +125,10 @@ export function Results() {
   const isSearchSurface = pathname.startsWith('/search') || !isBaseCollection;
   usePageMeta({
     title: isBaseCollection
-      ? 'Shop All — Ethnic Wear from Verified Tamil Nadu Boutiques'
+      ? 'Shop All — Ethnic Wear from Verified Indian Boutiques'
       : `${collectionTitle} — MangaiMart`,
     description: isBaseCollection
-      ? 'Every piece listed by verified Tamil Nadu boutiques on MangaiMart. Filter by category, occasion, colour, size and budget.'
+      ? 'Every piece listed by verified independent boutiques on MangaiMart. Filter by category, occasion, colour, size and budget.'
       : `${results.length} ${results.length === 1 ? 'piece' : 'pieces'} matching ${collectionTitle} on MangaiMart.`,
     canonical: '/shop',
     noindex: isSearchSurface,
@@ -137,7 +137,7 @@ export function Results() {
           organizationSchema(),
           collectionSchema({
             name: 'Shop all',
-            description: 'Every piece listed by verified Tamil Nadu boutiques on MangaiMart.',
+            description: 'Every piece listed by verified independent boutiques on MangaiMart.',
             path: '/shop',
             items: results,
           }),

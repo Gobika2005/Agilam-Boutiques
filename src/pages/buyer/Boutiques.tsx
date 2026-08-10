@@ -70,12 +70,12 @@ export function Boutiques() {
       ? null
       : city
         ? `Boutiques in ${city} — Verified Ethnic Wear Shops`
-        : 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
+        : 'Boutiques in India — Verified Ethnic Wear Shops',
     description: cityPending
       ? null
       : city
         ? `Verified boutiques in ${city} listing sarees, kurta sets and ethnic wear on MangaiMart. Chat directly with the shop and get delivery across India.`
-        : 'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list.',
+        : 'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across India, each checked before it can list.',
     canonical: city ? routes.city(city) : routes.boutiques(),
     schema: graph(
       organizationSchema(),
@@ -83,7 +83,7 @@ export function Boutiques() {
         name: city ? `Boutiques in ${city}` : 'Boutiques on MangaiMart',
         description: city
           ? `Verified independent ethnic-wear boutiques in ${city}.`
-          : 'Verified independent ethnic-wear boutiques across Tamil Nadu.',
+          : 'Verified independent ethnic-wear boutiques across India.',
         path: city ? routes.city(city) : routes.boutiques(),
         boutiques: city ? BOUTIQUES.filter((b) => b.city === city) : BOUTIQUES,
       }),

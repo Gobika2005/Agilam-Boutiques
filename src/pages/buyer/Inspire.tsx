@@ -30,7 +30,7 @@ type TabKey = (typeof TABS)[number]['key'];
 
 export function Inspire() {
   usePageMeta({
-    title: 'Inspire — New Pieces from Tamil Nadu Boutiques',
+    title: 'Inspire — New Pieces from Indian Boutiques',
     description: 'A live feed of what MangaiMart boutiques are listing right now. Follow the shops you like and see their new pieces first.',
     canonical: routes.inspire(),
     schema: graph(
@@ -70,7 +70,7 @@ export function Inspire() {
       {/* The feed's own chrome is the story rail and the For You / Following
           tabs — there is no visible title, so this names the screen for anything
           reading the page rather than looking at it. */}
-      <h1 className="agx-sr-only">Inspire — new pieces from Tamil Nadu boutiques</h1>
+      <h1 className="agx-sr-only">Inspire — new pieces from Indian boutiques</h1>
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div className="agx-feed">
         {/* ── Stories ── */}

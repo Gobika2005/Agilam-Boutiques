@@ -19,7 +19,7 @@ export const COMPANY = {
   legalName: 'MangaiMart Private Limited',
   tagline: 'All Boutiques • One Place',
   description:
-    'MangaiMart brings Tamil Nadu’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
+    'MangaiMart brings India’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
 
   /**
    * One mailbox answers everything. `hello@` and `grievance@` were never

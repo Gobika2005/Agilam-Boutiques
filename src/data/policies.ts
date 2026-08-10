@@ -61,7 +61,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Where we deliver',
         blocks: [
-          `${COMPANY.brand} delivers across India. Orders are fulfilled by the individual boutique you bought from, and shipped from their store in Tamil Nadu.`,
+          `${COMPANY.brand} delivers across India. Orders are fulfilled by the individual boutique you bought from, and shipped from their own store.`,
           'We do not currently deliver outside India. If your pincode is not serviceable by our delivery partners, the boutique will contact you on the number you provided and refund the order in full.',
         ],
       },
@@ -464,12 +464,12 @@ export const POLICIES: PolicyPage[] = [
     title: 'About Us',
     eyebrow: 'Why MangaiMart exists',
     icon: 'favorite',
-    summary: 'A marketplace built so Tamil Nadu’s boutiques can be found — and talked to — online.',
+    summary: 'A marketplace built so India’s independent boutiques can be found — and talked to — online.',
     sections: [
       {
         heading: 'Our story',
         blocks: [
-          'Tamil Nadu’s best ethnic wear has always come from small boutiques — a street in RS Puram, a first floor in T. Nagar, a family loom in Kanchipuram. What they have never had is a way to be found by someone two districts away.',
+          'India’s best ethnic wear has always come from small boutiques — a street in RS Puram, a first floor in T. Nagar, a family loom in Kanchipuram, a block-printing studio in Jaipur. What they have never had is a way to be found by someone two districts away.',
           `${COMPANY.brand} was built for exactly that. We put verified local boutiques in one place, keep their photographs and their prices theirs, and let you talk to the owner before you buy — the way you would across the counter.`,
         ],
       },

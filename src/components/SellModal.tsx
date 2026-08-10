@@ -38,7 +38,7 @@ export function SellModal() {
           Are you a Boutique Owner?
         </div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:14px;margin-top:9px;line-height:1.55;max-width:340px;margin-left:auto;margin-right:auto;')}>
-          Sell your creations to thousands of shoppers across Tamil Nadu. Manage orders, chat with buyers and grow your boutique on MangaiMart.
+          Sell your creations to thousands of shoppers across India. Manage orders, chat with buyers and grow your boutique on MangaiMart.
         </div>
         <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:24px;')}>
           <button

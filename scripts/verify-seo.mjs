@@ -66,6 +66,14 @@ async function check(label, pathname, assertions) {
     canonical: (body.match(/<link rel="canonical" href="([^"]*)"/) || [])[1],
     robots: (body.match(/<meta name="robots" content="([^"]*)"/) || [])[1],
     ogType: (body.match(/<meta property="og:type" content="([^"]*)"/) || [])[1],
+    // Counted, not just read. The edge injects its own description/robots/geo
+    // where the shell's <title> was, but for a long time it did not remove the
+    // shell's own copies — so every crawled page carried two `description` and
+    // two `geo.region` tags, and Google was free to prefer the generic
+    // fallback over the page's real copy. `headFor()` strips the
+    // `ag:shell-meta` block; these counts are what proves it still does.
+    descriptionCount: (body.match(/<meta name="description"/g) || []).length,
+    geoRegionCount: (body.match(/<meta name="geo\.region"/g) || []).length,
     schema: (() => {
       const m = body.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s);
       if (!m) return null;
@@ -330,6 +338,8 @@ if (productUrl) {
   const pdp = await check('product page', productUrl, [
     is('200', (o) => o.status === 200),
     is('og:type=product', (o) => o.ogType === 'product'),
+    is('one description tag', (o) => o.descriptionCount === 1),
+    is('one geo.region tag', (o) => o.geoRegionCount === 1),
     is('Product schema', (o) => (o.schema || '').includes('Product')),
     is('Breadcrumb', (o) => (o.schema || '').includes('BreadcrumbList')),
     // The whole point of the prerender: a crawler that does not run JavaScript

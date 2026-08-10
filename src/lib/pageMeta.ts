@@ -37,7 +37,7 @@ import type { JsonLd } from '@/lib/schema';
  */
 
 const DEFAULT_DESCRIPTION =
-  'Shop verified Tamil Nadu boutiques in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop.';
+  'Shop verified independent boutiques across India in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop.';
 
 /** Tags this hook owns, so cleanup can retire exactly what it added. */
 const MANAGED = 'data-page-meta';

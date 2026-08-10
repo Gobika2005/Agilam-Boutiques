@@ -21,7 +21,7 @@ export const config = {
   matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/sitemap.xml", "/sitemap-pages.xml", "/sitemap-boutiques.xml", "/sitemap-products.xml", "/merchant-feed.xml"]
 };
 const SITE_NAME = "MangaiMart";
-const DEFAULT_DESCRIPTION = "Shop verified Tamil Nadu boutiques in one place \u2014 sarees, kurta sets, kurtis and more, with direct chat to the shop.";
+const DEFAULT_DESCRIPTION = "Shop verified independent boutiques across India in one place \u2014 sarees, kurta sets, kurtis and more, with direct chat to the shop.";
 const DEFAULT_OG_IMAGE = "/mangaimart-logo.png";
 // Mirrors COMPANY.social in src/data/company.ts. Duplicated rather than
 // imported because the edge runtime cannot pull in the TypeScript source —
@@ -128,7 +128,7 @@ function occasionHeading(term) {
 function notFoundMeta() {
   return {
     title: "Page Not Found",
-    description: "That page isn\u2019t available. Browse the full catalogue of verified Tamil Nadu boutiques on MangaiMart instead.",
+    description: "That page isn\u2019t available. Browse the full catalogue of verified independent boutiques on MangaiMart instead.",
     type: "website",
     noindex: true
   };
@@ -357,6 +357,28 @@ function orgNode(origin) {
   };
 }
 
+/**
+ * Every image for a product, cover first, as an array for a `Product` node.
+ *
+ * `images` is a text[] that may or may not already contain the cover, depending
+ * on which version of the seller upload form wrote the row, so the two are
+ * merged and deduplicated rather than concatenated.
+ */
+function productImages(p) {
+  const all = [p.image_url, ...Array.isArray(p.images) ? p.images : []]
+    .map((u) => String(u || "").trim())
+    .filter(Boolean);
+  const unique = [...new Set(all)];
+  return unique.length ? unique : void 0;
+}
+
+/** One year out, as YYYY-MM-DD. See the `priceValidUntil` comment on Offer. */
+function priceValidUntil() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /** A full UUID, as opposed to a title slug. Decides which column to filter on. */
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
@@ -425,7 +447,7 @@ function productPrerender(p, origin, url, shop, city) {
 <h1>${escapeHtml(p.title)}</h1>
 <p>${escapeHtml(inr(p.price))}${escapeHtml(savings)} · ${inStock ? "In stock" : "Sold out"}</p>
 <p>${escapeHtml(
-    p.description?.trim() || `${p.title} from ${shop}, ${city}. Sold on ${SITE_NAME} by a verified Tamil Nadu boutique.`
+    p.description?.trim() || `${p.title} from ${shop}, ${city}. Sold on ${SITE_NAME} by a verified independent boutique.`
   )}</p>
 ${specs.length ? `<ul>\n${specs.map((s) => `<li>${escapeHtml(s)}</li>`).join("\n")}\n</ul>` : ""}
 <p>Sold by ${shopPath ? `<a href="${escapeHtml(`${origin}${shopPath}`)}">${escapeHtml(shop)}</a>` : escapeHtml(shop)}, ${escapeHtml(city)}.</p>
@@ -451,15 +473,20 @@ async function metaForProduct(slug, origin) {
   const filter = isUuid(slug)
     ? `id=eq.${slug}`
     : `slug=eq.${encodeURIComponent(slug)}`;
+  // `images` is appended here rather than added to the shared column lists: this
+  // is the only consumer that needs the gallery (the cards elsewhere show the
+  // cover alone), and Google wants every image it can get on a Product node.
+  // The column has existed since migration 0008 — well before `slug` (0057) —
+  // so it is safe on the legacy fallback path too.
   const attempt = await dbProductsTry(
-    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=1&${filter}`
+    (cols) => `products?select=${cols},images&status=eq.active&deleted_at=is.null&limit=1&${filter}`
   );
   const p = attempt.rows[0];
   // A failed read means "we don't know" — serve the generic shell and leave the
   // page indexable. Only a successful read that found nothing is a real 404.
   if (!p) return attempt.ok ? notFoundMeta() : null;
   const shop = p.boutiques?.name || SITE_NAME;
-  const city = p.boutiques?.city || "Tamil Nadu";
+  const city = p.boutiques?.city || "India";
   const canonicalPath = productPath(p);
   const url = `${origin}${canonicalPath}`;
   const inStock = (p.stock ?? 0) > 0;
@@ -487,7 +514,10 @@ async function metaForProduct(slug, origin) {
           "@id": `${url}#product`,
           name: p.title,
           url,
-          image: p.image_url ? [p.image_url] : void 0,
+          // Cover first, then the gallery, deduplicated. Google treats `image`
+          // as required for a merchant listing and explicitly prefers several
+          // per product — this node used to carry exactly one.
+          image: productImages(p),
           description: p.description?.trim() || `${p.title} from ${shop}, ${city}.`,
           sku: p.id,
           category: p.category || void 0,
@@ -501,6 +531,11 @@ async function metaForProduct(slug, origin) {
             priceCurrency: "INR",
             availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
             itemCondition: "https://schema.org/NewCondition",
+            // Without this Google treats the price as valid only for the day it
+            // was crawled and can drop the price from the result entirely. A
+            // rolling year is the standard answer for a catalogue with no
+            // scheduled price expiry.
+            priceValidUntil: priceValidUntil(),
             seller: { "@type": "Organization", name: shop }
           },
           // Only when a rating is real — a fabricated one is a manual-action risk.
@@ -586,7 +621,7 @@ function boutiqueSameAs(b) {
  * retires the splash screen.
  */
 function boutiquePrerender(b, products, origin, url) {
-  const city = [b.area, b.city].filter(Boolean).join(", ") || b.city || "Tamil Nadu";
+  const city = [b.area, b.city].filter(Boolean).join(", ") || b.city || "India";
   /*
    * Deduplicated: `city`, `area`, `district` and `address_line` overlap on most
    * rows — a shop in Dharapuram with nothing else filled in rendered "Boutique
@@ -655,7 +690,7 @@ async function metaForBoutique(slug, origin) {
     (cols) => `products?select=${cols}&boutique_id=eq.${b.id}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=24`
   );
   const prices = products.map((p) => Number(p.price)).filter((n) => Number.isFinite(n) && n > 0);
-  const city = b.city || "Tamil Nadu";
+  const city = b.city || "India";
   const locality = [b.area, city].filter(Boolean).join(", ");
   return {
     // The shop's own name leads, unqualified and unabbreviated, because that is
@@ -688,7 +723,10 @@ async function metaForBoutique(slug, origin) {
             "@type": "PostalAddress",
             streetAddress: [b.address_line, b.area].filter(Boolean).join(", ") || b.area || void 0,
             addressLocality: b.city || void 0,
-            addressRegion: b.state || "Tamil Nadu",
+            // Omitted rather than guessed. Sellers are no longer assumed to be
+            // in one state, and a wrong addressRegion on a ClothingStore is a
+            // structured-data error Google will flag.
+            addressRegion: b.state || void 0,
             postalCode: b.pincode || void 0,
             addressCountry: "IN"
           },
@@ -738,23 +776,23 @@ async function metaForBoutique(slug, origin) {
 }
 const STATIC_META = {
   "/": {
-    title: "Boutique Ethnic Wear from Tamil Nadu \u2014 Sarees, Kurta Sets & More",
-    description: "Shop verified Tamil Nadu boutiques in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India."
+    title: "Boutique Ethnic Wear Online \u2014 Sarees, Kurta Sets & More",
+    description: "Shop verified independent boutiques across India in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India."
   },
   "/collections": {
     title: "Shop by Collection \u2014 Sarees, Kurta Sets & Ethnic Wear",
-    description: "Browse every category, occasion, fabric, budget and colour Tamil Nadu boutiques are listing on MangaiMart right now."
+    description: "Browse every category, occasion, fabric, budget and colour independent boutiques are listing on MangaiMart right now."
   },
   "/shop": {
-    title: "Shop All \u2014 Ethnic Wear from Verified Tamil Nadu Boutiques",
-    description: "Every piece listed by verified Tamil Nadu boutiques on MangaiMart. Filter by category, occasion, colour, size and budget."
+    title: "Shop All \u2014 Ethnic Wear from Verified Indian Boutiques",
+    description: "Every piece listed by verified independent boutiques on MangaiMart. Filter by category, occasion, colour, size and budget."
   },
   "/boutiques": {
-    title: "Boutiques in Tamil Nadu \u2014 Verified Ethnic Wear Shops",
-    description: "Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list."
+    title: "Boutiques in India \u2014 Verified Ethnic Wear Shops",
+    description: "Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across India, each checked before it can list."
   },
   "/new-arrivals": {
-    title: "New Arrivals \u2014 Latest Ethnic Wear from Tamil Nadu Boutiques",
+    title: "New Arrivals \u2014 Latest Ethnic Wear from Indian Boutiques",
     description: "Every piece MangaiMart boutiques have listed in the last 30 days, newest first."
   },
   "/best-sellers": {
@@ -762,11 +800,11 @@ const STATIC_META = {
     description: "The pieces MangaiMart buyers are actually taking home, ranked by units sold and how well they are rated."
   },
   "/top-boutiques": {
-    title: "Best-Selling Boutiques in Tamil Nadu \u2014 Top Rated Shops",
-    description: "The Tamil Nadu boutiques moving the most pieces, weighed against how well they are rated by real buyers."
+    title: "Best-Selling Boutiques in India \u2014 Top Rated Shops",
+    description: "The independent boutiques moving the most pieces, weighed against how well they are rated by real buyers."
   },
   "/inspire": {
-    title: "Inspire \u2014 New Pieces from Tamil Nadu Boutiques",
+    title: "Inspire \u2014 New Pieces from Indian Boutiques",
     description: "A live feed of what MangaiMart boutiques are listing right now."
   },
   // \u2500\u2500 The written pages \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -776,7 +814,7 @@ const STATIC_META = {
   // the policy pages in particular are what a cautious buyer (and a payment
   // gateway's review) actually reads before trusting a new marketplace.
   "/about": {
-    title: "About MangaiMart \u2014 One Place for Tamil Nadu\u2019s Boutiques",
+    title: "About MangaiMart \u2014 One Place for India\u2019s Boutiques",
     description: "Why MangaiMart exists, who runs it, and how we verify every boutique before it can list a single piece."
   },
   "/help": {
@@ -852,10 +890,10 @@ async function metaForCategory(kind, slug, origin) {
   const path = `/${kind === "category" ? "collections" : kind === "occasion" ? "occasions" : "fabrics"}/${slug}`;
   const url = `${origin}${path}`;
   const description = clamp(
-    `${items.length} ${heading.toLowerCase()} ${items.length === 1 ? "piece" : "pieces"} from ${shops} verified ${shops === 1 ? "boutique" : "boutiques"} in Tamil Nadu, from ${inr(from)}. Direct chat with the shop, 7-day returns, delivery across India.`
+    `${items.length} ${heading.toLowerCase()} ${items.length === 1 ? "piece" : "pieces"} from ${shops} verified independent ${shops === 1 ? "boutique" : "boutiques"}, from ${inr(from)}. Direct chat with the shop, 7-day returns, delivery across India.`
   );
   return {
-    title: `${heading} Online \u2014 Buy from Verified Tamil Nadu Boutiques`,
+    title: `${heading} Online \u2014 Buy from Verified Indian Boutiques`,
     description,
     image: items.find((p) => p.image_url)?.image_url || void 0,
     type: "website",
@@ -995,7 +1033,7 @@ async function metaForBoutiquesHub(citySlug, origin) {
     (b) => `<li><a href="${escapeHtml(`${origin}/boutique/${b.slug || b.id}`)}">${escapeHtml(b.name)}</a>${b.city ? ` — ${escapeHtml([b.area, b.city].filter(Boolean).join(", "))}` : ""}</li>`
   );
   const prerender = `<noscript>
-<h1>${escapeHtml(cityName ? `Boutiques in ${cityName}` : "Boutiques in Tamil Nadu")}</h1>
+<h1>${escapeHtml(cityName ? `Boutiques in ${cityName}` : "Boutiques in India")}</h1>
 <p>${escapeHtml(description)}</p>
 <ul>
 ${rows.join("\n")}
@@ -1016,7 +1054,7 @@ ${rows.join("\n")}
         {
           "@type": "CollectionPage",
           "@id": `${url}#collection`,
-          name: cityName ? `Boutiques in ${cityName}` : "Boutiques in Tamil Nadu",
+          name: cityName ? `Boutiques in ${cityName}` : "Boutiques in India",
           description,
           url,
           mainEntity: {
@@ -1190,6 +1228,10 @@ function headFor(meta, canonical, origin, pathname, forceNoindex) {
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta name="robots" content="${robots}" />`,
+    // Carried over from the shell block this injection replaces. Every tag named
+    // between the `ag:shell-meta` markers in index.html has to be re-emitted
+    // here, or it is simply lost on the pages crawlers actually read.
+    `<meta name="author" content="${SITE_NAME}" />`,
     `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
     `<meta property="og:site_name" content="${SITE_NAME}" />`,
     `<meta property="og:locale" content="en_IN" />`,
@@ -1198,15 +1240,19 @@ function headFor(meta, canonical, origin, pathname, forceNoindex) {
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
     `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
     `<meta property="og:image" content="${escapeHtml(image)}" />`,
-    `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="630" />`,
+    // No og:image:width/height. They were hardcoded to 1200x630, which is not
+    // the shape of ANY image this actually serves: a product photo is portrait,
+    // a boutique logo is square, and the brand fallback (mangaimart-logo.png)
+    // is 1254x1254. A declared size that does not match the file is worse than
+    // none — the scraper reserves the wrong box and crops or drops the preview.
+    // Restore these only alongside a purpose-built 1.91:1 share image.
     `<meta property="og:image:alt" content="${escapeHtml(meta?.title || SITE_NAME)}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
     `<meta name="twitter:description" content="${escapeHtml(description)}" />`,
     `<meta name="twitter:image" content="${escapeHtml(image)}" />`,
-    `<meta name="geo.region" content="IN-TN" />`,
-    `<meta name="geo.placename" content="Tamil Nadu, India" />`
+    `<meta name="geo.region" content="IN" />`,
+    `<meta name="geo.placename" content="India" />`
   ];
   // Performance hints, not metadata — but they belong in the same injection
   // because this is the only place that knows the LCP image before React does.
@@ -1638,7 +1684,7 @@ function feedItem(p, origin) {
     feedTag(
       "g:description",
       feedText(p.description, 5000) ||
-        `${feedText(p.title, 120)} from ${shop || "a verified Tamil Nadu boutique"} on ${SITE_NAME}.`
+        `${feedText(p.title, 120)} from ${shop || "a verified independent boutique"} on ${SITE_NAME}.`
     ),
     feedTag("g:link", `${origin}${productPath(p)}`),
     feedTag("g:image_link", image),
@@ -1674,7 +1720,7 @@ async function merchantFeedXml(origin) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
 <channel>
-<title>${SITE_NAME} — Boutique Ethnic Wear from Tamil Nadu</title>
+<title>${SITE_NAME} — Boutique Ethnic Wear Online</title>
 <link>${escapeHtml(origin)}</link>
 <description>${escapeHtml(DEFAULT_DESCRIPTION)}</description>
 ${items.join("\n")}
@@ -1762,6 +1808,12 @@ export default async function middleware(request) {
     // injection below, so a changed shell can never be served with a prerender
     // block but no metadata.
     if (injected === html) return void 0;
+    // Drop the shell's fallback metadata now that the real thing is in the head.
+    // Done AFTER the guard above, which needs `injected === html` to mean "the
+    // title was not replaced" — stripping first would make that always false.
+    // A shell without the markers strips nothing and merely restores the old
+    // duplicate-tag behaviour, which is why verify:seo asserts the count.
+    injected = injected.replace(/\n?<!-- ag:shell-meta:start -->[\s\S]*?<!-- ag:shell-meta:end -->/, "");
     // Crawlable body content, where the page has any (shop pages do). Anchored
     // on the boot splash rather than on `#root`, which must stay empty until
     // React mounts — see `boutiquePrerender`.

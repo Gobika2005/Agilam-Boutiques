@@ -33,7 +33,7 @@ import type { Product } from '@/data/demo';
  * bookmarked, did not survive a refresh, and — the expensive part — gave search
  * engines a single address for the entire catalogue. The forty-odd commercial
  * queries this marketplace should own ("silk sarees online Coimbatore",
- * "bridal lehenga Tamil Nadu") had nowhere to land.
+ * "bridal lehenga online") had nowhere to land.
  *
  * Each term now has a real URL with its own title, description, canonical,
  * heading, editorial intro, breadcrumb and `CollectionPage`/`ItemList` schema.
@@ -91,7 +91,7 @@ function introFor(kind: LandingKind, term: string, items: Product[]): string {
   const piece = count === 1 ? 'piece' : 'pieces';
   const where =
     cities.length === 0
-      ? 'Tamil Nadu'
+      ? 'India'
       : cities.length <= 3
         ? cities.join(', ')
         : `${cities.slice(0, 3).join(', ')} and ${cities.length - 3} more towns`;
@@ -128,7 +128,7 @@ function faqsFor(kind: LandingKind, term: string, items: Product[]): { q: string
       a: `Yes. Every order is covered by a 7-day return window from delivery, and refunds are processed in 5–7 working days. Check the size guide on the product page, or message the boutique before ordering if you're unsure.`,
     },
     {
-      q: `Do you deliver ${noun} outside Tamil Nadu?`,
+      q: `Do you deliver ${noun} across India?`,
       a: `Yes — MangaiMart delivers across India. Standard delivery takes 3–7 working days, 2–4 in metros, and cash on delivery is available on eligible orders.`,
     },
   ];
@@ -192,8 +192,8 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
   const heading = kind === 'occasion' ? occasionLabel(term ?? '') : titleCase(String(term ?? ''));
   const title = term
     ? kind === 'occasion'
-      ? `${occasionLabel(term)} Online — ${items.length} Pieces from Tamil Nadu Boutiques`
-      : `${titleCase(term)} Online — Buy from ${new Set(items.map((p) => p.boutique)).size} Verified Tamil Nadu Boutiques`
+      ? `${occasionLabel(term)} Online — ${items.length} Pieces from Indian Boutiques`
+      : `${titleCase(term)} Online — Buy from ${new Set(items.map((p) => p.boutique)).size} Verified Indian Boutiques`
     : null;
 
   usePageMeta({
@@ -270,7 +270,7 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
       {/* ── Heading + intro ────────────────────────────────────────────── */}
       <header style={css('margin-top:14px;')}>
         <p className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0;')}>
-          {LABEL[kind]} · Tamil Nadu boutiques
+          {LABEL[kind]} · Indian boutiques
         </p>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
           {heading}

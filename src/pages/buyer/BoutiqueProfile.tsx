@@ -67,7 +67,7 @@ export function BoutiqueProfile() {
     description: ab
       ? clampDescription(
           ab.desc?.trim() ||
-            `Shop ${ab.name}, a verified boutique in ${ab.city}, Tamil Nadu. ${shopProductCount} ${shopProductCount === 1 ? 'piece' : 'pieces'} listed, direct chat with the owner, delivery across India.`,
+            `Shop ${ab.name}, a verified boutique in ${ab.city}. ${shopProductCount} ${shopProductCount === 1 ? 'piece' : 'pieces'} listed, direct chat with the owner, delivery across India.`,
         )
       : null,
     image: ab?.logo ?? ab?.image ?? null,

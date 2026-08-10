@@ -91,7 +91,7 @@ export function LaunchNotice() {
       <div style={css('min-width:0;')}>
         <div style={css('font-size:13.5px;font-weight:800;letter-spacing:.2px;')}>Newly opened</div>
         <div style={css('font-size:12.5px;line-height:1.5;color:rgba(255,255,255,.82);margin-top:3px;')}>
-          We’re a new marketplace for Tamil Nadu’s boutiques, and more shops are joining every week.
+          We’re a new marketplace for India’s independent boutiques, and more shops are joining every week.
           Thank you for being early.
         </div>
       </div>

@@ -73,8 +73,8 @@ export function NewArrivals() {
   );
 
   usePageMeta({
-    title: 'New Arrivals — Latest Ethnic Wear from Tamil Nadu Boutiques',
-    description: 'Every piece MangaiMart boutiques have listed in the last 30 days, newest first. Fresh sarees, kurta sets and kurtis from verified Tamil Nadu shops.',
+    title: 'New Arrivals — Latest Ethnic Wear from Indian Boutiques',
+    description: 'Every piece MangaiMart boutiques have listed in the last 30 days, newest first. Fresh sarees, kurta sets and kurtis from verified independent shops.',
     canonical: routes.newArrivals(),
     schema: graph(
       organizationSchema(),

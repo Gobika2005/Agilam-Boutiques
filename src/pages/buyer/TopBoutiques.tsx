@@ -31,8 +31,8 @@ const PAGE = 12;
  */
 export function TopBoutiques() {
   usePageMeta({
-    title: 'Best-Selling Boutiques in Tamil Nadu — Top Rated Shops',
-    description: 'The Tamil Nadu boutiques moving the most pieces on MangaiMart, weighed against how well they are rated by real buyers.',
+    title: 'Best-Selling Boutiques in India — Top Rated Shops',
+    description: 'The independent boutiques moving the most pieces on MangaiMart, weighed against how well they are rated by real buyers.',
     canonical: routes.topBoutiques(),
     schema: graph(
       organizationSchema(),

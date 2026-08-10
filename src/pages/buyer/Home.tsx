@@ -29,9 +29,9 @@ export function Home() {
    * is the URL Google treats as the site's root entity.
    */
   usePageMeta({
-    title: 'Boutique Ethnic Wear from Tamil Nadu — Sarees, Kurta Sets & More',
+    title: 'Boutique Ethnic Wear Online — Sarees, Kurta Sets & More',
     description:
-      'Shop verified Tamil Nadu boutiques in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India.',
+      'Shop verified independent boutiques across India in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India.',
     canonical: '/',
     schema: graph(organizationSchema(), websiteSchema()),
   });
@@ -150,7 +150,7 @@ export function Home() {
         Visually hidden because the design leads with imagery, not a headline.
       */}
       <h1 className="agx-sr-only">
-        MangaiMart — boutique ethnic wear from across Tamil Nadu
+        MangaiMart — boutique ethnic wear from across India
       </h1>
       {/* The hero's space, held open while we find out whether an ad is live.
           Same box, same gradient, no creative and no impression — see
@@ -416,7 +416,7 @@ export function Home() {
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,var(--ag-surface-2) 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
-            <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across Tamil Nadu</div>
+            <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across India</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
               What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>MangaiMart</span>
             </div>

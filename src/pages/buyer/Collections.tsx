@@ -29,7 +29,7 @@ import { fmt } from '@/data/demo';
 export function Collections() {
   usePageMeta({
     title: 'Shop by Collection — Sarees, Kurta Sets & Ethnic Wear',
-    description: 'Browse every category, occasion, fabric, budget and colour Tamil Nadu boutiques are listing on MangaiMart right now.',
+    description: 'Browse every category, occasion, fabric, budget and colour independent boutiques are listing on MangaiMart right now.',
     canonical: routes.collections(),
     schema: graph(
       organizationSchema(),

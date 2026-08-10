@@ -238,7 +238,7 @@ export function productSchema(
 /* ── Boutique ───────────────────────────────────────────────────────────── */
 
 /**
- * A boutique is a real shop in a real Tamil Nadu town, so it is marked up as a
+ * A boutique is a real shop in a real town, so it is marked up as a
  * `ClothingStore` (a `LocalBusiness`) rather than a generic seller. This is
  * what makes "boutiques in Coimbatore" a query the site can win.
  */
@@ -253,13 +253,15 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
     logo: boutique.logo ? absoluteUrl(boutique.logo) : undefined,
     description:
       boutique.desc?.trim() ||
-      `${boutique.name} is a verified boutique in ${boutique.city}, Tamil Nadu, selling ethnic wear on ${SITE_NAME}.`,
+      `${boutique.name} is a verified boutique in ${boutique.city}, selling ethnic wear on ${SITE_NAME}.`,
     telephone: boutique.phone || undefined,
     address: compact({
       '@type': 'PostalAddress',
       streetAddress: boutique.area || undefined,
       addressLocality: boutique.city,
-      addressRegion: 'Tamil Nadu',
+      // No addressRegion: sellers are no longer assumed to be in one state, and
+      // `compact` drops the key rather than emitting a wrong one. Mirrors the
+      // same decision in middleware.js.
       addressCountry: 'IN',
     }),
     areaServed: { '@type': 'Country', name: 'India' },

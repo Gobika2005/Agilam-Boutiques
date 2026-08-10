@@ -12,15 +12,25 @@
   own, written server-side by `middleware.ts` before the HTML is sent (which is
   what non-JavaScript crawlers and link-preview bots read) and kept in step
   during client-side navigation by `usePageMeta`.
+
+  The marker comments are load-bearing. The edge REPLACES this block rather than
+  adding to it: it emits its own description/robots/author/geo tags, and with
+  the block left in place every crawled page shipped two `description` and two
+  `geo.region` tags — leaving Google free to pick the generic fallback over the
+  page's real copy. `headFor()` in middleware.js must keep emitting every tag
+  named between these markers.
 -->
 <title>MangaiMart</title>
-<meta name="description" content="Shop verified Tamil Nadu boutiques in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop." />
+<!-- ag:shell-meta:start -->
+<meta name="description" content="Shop verified independent boutiques across India in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop." />
 <meta name="author" content="MangaiMart" />
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-<!-- Local signals: this is a Tamil Nadu marketplace, and "boutiques in
-     Coimbatore" is a query it should be able to win. -->
-<meta name="geo.region" content="IN-TN" />
-<meta name="geo.placename" content="Tamil Nadu, India" />
+<!-- Geo signal at country level. This was IN-TN, which pinned the whole
+     marketplace to one state; the per-boutique ClothingStore nodes still carry
+     the real city, which is what wins "boutiques in <city>". -->
+<meta name="geo.region" content="IN" />
+<meta name="geo.placename" content="India" />
+<!-- ag:shell-meta:end -->
 <!-- ── Icons ────────────────────────────────────────────────────────────────
      Cut from `Fav no BG.png` — the mark alone. The previous icon was
      `icon-500.png`, the full lockup including the "MangaiMart" wordmark and the
