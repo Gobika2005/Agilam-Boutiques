@@ -209,6 +209,18 @@ select:-webkit-autofill {
 /* ---------- v2 elevation system ---------- */
 .agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
+/* Composite fields — a borderless <input> sitting inside a bordered shell with
+   an icon and/or a clear button (search bars, the +91 phone rows, the chat
+   composer). The rule above would ring the bare input, which lands *inside* the
+   shell's border as a second, differently-shaped box. Mark the shell
+   `.agx-field` instead and the ring goes round the whole control.
+   Only input/textarea focus moves the ring outward; a clear button inside the
+   shell still gets its own. `:has` is the guard, so where it is unsupported the
+   input keeps the default ring rather than losing focus feedback entirely. */
+@supports selector(:has(*)) {
+  .agx-field:has(:is(input, textarea):focus-visible) { outline:2.5px solid #C7275E; outline-offset:2px; }
+  .agx-field :is(input, textarea):focus-visible { outline:none; }
+}
 /* `#main-content` is the target of the skip link in AppShell. It carries
    tabIndex={-1} so the jump actually moves focus rather than only scrolling —
    without that, the next Tab would continue from the header again. */
@@ -256,6 +268,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
 .agx-shimmer { background:linear-gradient(100deg,var(--ag-shimmer-1) 30%,var(--ag-shimmer-2) 50%,var(--ag-shimmer-1) 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
+@media (prefers-reduced-motion: reduce){
+  /* Keep the placeholder shape — it is what stops the layout jumping — but stop
+     the sweep, which is a large moving gradient repeating every 1.3s. */
+  .agx-shimmer { animation:none; background:var(--ag-shimmer-1); }
+}
+/* Announced to screen readers, invisible on screen. Used to give the skeletons a
+   spoken "Loading…" — a shimmering box says nothing without it. */
+.agx-visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
 /* responsive nav: the floating dock is the primary navigation at EVERY width.
    A horizontal top nav was briefly added for desktop and then removed by
    request — the floating dock is the app's navigation, phone and desktop

@@ -66,7 +66,7 @@ export function PasswordField({ value, onChange, label = 'Password', autoComplet
   return (
     <label style={css('font-size:13px;font-weight:700;color:var(--ag-label);')}>
       {label}
-      <div style={css('display:flex;align-items:center;gap:8px;margin-top:7px;background:var(--ag-surface);border:1.5px solid var(--ag-border);border-radius:14px;padding:0 15px;height:52px;')}>
+      <div className="agx-field" style={css('display:flex;align-items:center;gap:8px;margin-top:7px;background:var(--ag-surface);border:1.5px solid var(--ag-border);border-radius:14px;padding:0 15px;height:52px;')}>
         <input
           type={show ? 'text' : 'password'}
           name={name}

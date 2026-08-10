@@ -12,6 +12,7 @@ import { countUnreadNotifications } from '@/data/notifications';
 import { fetchReviewsForBoutique } from '@/data/reviews';
 import { toOrderView } from '@/lib/orderView';
 import { resolveDisplayName } from '@/lib/displayName';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 /**
  * Seller home. Every figure here is computed from the boutique's own orders and
@@ -374,7 +375,7 @@ export function Dashboard() {
           </div>
 
           <div style={css('display:flex;flex-direction:column;gap:10px;')}>
-            {ordersLoading && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Loading orders…</div>}
+            {ordersLoading && <SkeletonRows rows={3} height={76} thumb={false} label="Loading orders…" />}
             {!ordersLoading && recentOrders.length === 0 && (
               <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:22px;text-align:center;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>receipt_long</span>

@@ -142,7 +142,7 @@ export function Coupons() {
           </div>
         )}
 
-        <div style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
+        <div className="agx-field" style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
           <input
             value={code}

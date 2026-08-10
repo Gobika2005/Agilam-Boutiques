@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { Skeleton, SkeletonGroup, SkeletonText } from '@/components/ui/Skeleton';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { ProductReviews } from '@/components/buyer/ProductReviews';
@@ -228,6 +229,41 @@ export function ProductDetail() {
       : null,
   });
 
+  // While the catalogue is still arriving we don't yet know whether this id
+  // exists, so "not found" would be a lie. Lay out the page it is about to
+  // become instead — same grid, so nothing shifts when the real photo lands.
+  if (!ap && loading) {
+    return (
+      <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
+        <SkeletonGroup label="Loading this piece…" style="max-width:1300px;margin:0 auto;">
+          <div style={css('padding:14px clamp(16px,4vw,44px) 0;')}>
+            <Skeleton w={210} h={11} />
+          </div>
+          <div className="agx-pdp">
+            <div className="agx-pdp-media" style={css('padding:clamp(16px,2.5vw,28px) 0 clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
+              <Skeleton w="100%" h="auto" radius={24} style="aspect-ratio:4/5;max-height:78vh;" />
+              <div style={css('display:flex;gap:10px;margin-top:14px;')}>
+                {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} w={62} h={78} radius={14} />)}
+              </div>
+            </div>
+            <div style={css('padding:clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
+              <Skeleton w={130} h={11} />
+              <Skeleton w="88%" h={30} radius={10} style="margin-top:16px;" />
+              <Skeleton w="55%" h={30} radius={10} style="margin-top:10px;" />
+              <Skeleton w={150} h={24} radius={10} style="margin-top:22px;" />
+              <div style={css('display:flex;gap:10px;margin-top:26px;')}>
+                {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} w={54} h={44} radius={13} />)}
+              </div>
+              <Skeleton w="100%" h={54} radius={16} style="margin-top:26px;" />
+              <Skeleton w="100%" h={54} radius={16} style="margin-top:12px;" />
+              <div style={css('margin-top:30px;')}><SkeletonText lines={3} /></div>
+            </div>
+          </div>
+        </SkeletonGroup>
+      </div>
+    );
+  }
+
   if (!ap) {
     // A bare "Product not found." line was the only thing on screen here, with
     // no way onward. Match the empty state the policy and order screens use: say
@@ -235,24 +271,16 @@ export function ProductDetail() {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
         <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>
-            {loading ? 'hourglass_top' : 'search_off'}
-          </span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>search_off</span>
         </div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>
-          {loading ? 'Loading this piece…' : 'This piece isn’t available'}
-        </h1>
-        {!loading && (
-          <>
-            <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
-              It may have sold out or been taken down by the boutique. There is plenty more to see.
-            </p>
-            <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
-              <button onClick={() => navigate('/shop')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
-              <button onClick={() => navigate('/')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
-            </div>
-          </>
-        )}
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>This piece isn’t available</h1>
+        <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
+          It may have sold out or been taken down by the boutique. There is plenty more to see.
+        </p>
+        <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
+          <button onClick={() => navigate('/shop')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
+          <button onClick={() => navigate('/')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
+        </div>
       </div>
     );
   }

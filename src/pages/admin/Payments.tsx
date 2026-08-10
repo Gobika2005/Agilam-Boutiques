@@ -13,6 +13,7 @@ import {
   T, Card, StatCard, DataTable, StatusPill, Avatar, GhostButton, ConfirmDialog, Drawer, Field, EmptyState,
   BulkBar, type Column,
 } from '@/components/admin/kit';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /** Signed money: keeps a real minus for the "seller owes us" case. */
 const money = (n: number) => (n < -0.005 ? '−' : '') + fmtInr(Math.abs(n));
@@ -284,7 +285,21 @@ export function Payments() {
       <div>
         <div style={css('font-weight:800;font-size:15px;margin-bottom:12px;')}>Recent payouts</div>
         <Card style="padding:0;overflow:hidden;">
-          {histLoading && <div style={css(`padding:20px;color:${T.muted};font-size:13.5px;`)}>Loading…</div>}
+          {histLoading && (
+            <div role="status" aria-busy="true">
+              <span className="agx-visually-hidden">Loading payouts…</span>
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} style={css(`display:flex;align-items:center;gap:12px;padding:16px 20px;${i ? `border-top:1px solid ${T.border};` : ''}`)}>
+                  <Skeleton w={34} h={34} radius={11} />
+                  <span style={css('flex:1;min-width:0;')}>
+                    <Skeleton w="46%" h={12} />
+                    <Skeleton w="28%" h={10} style="margin-top:8px;" />
+                  </span>
+                  <Skeleton w={72} h={14} />
+                </div>
+              ))}
+            </div>
+          )}
           {!histLoading && (history ?? []).length === 0 && (
             <div style={css(`padding:20px;color:${T.muted};font-size:13.5px;`)}>No payouts recorded yet.</div>
           )}

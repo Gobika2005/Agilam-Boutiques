@@ -408,7 +408,7 @@ export function ChatView({
             ))}
           </div>
         )}
-        <div style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-frost-strong);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 22px 44px -22px var(--ag-shadow);')}>
+        <div className="agx-field" style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-frost-strong);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 22px 44px -22px var(--ag-shadow);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}
             disabled={!live}

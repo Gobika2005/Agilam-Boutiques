@@ -13,6 +13,7 @@ import {
   emptyCouponInput, couponInputFromRow, validateCouponInput, describeCoupon, type CouponFieldErrors,
 } from '@/lib/couponForm';
 import { isExpired } from '@/lib/pricing';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 /**
  * Seller coupons — a boutique's own discount codes.
@@ -122,9 +123,7 @@ export function Coupons() {
 
         {/* The seller's own coupons */}
         <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:18px;')}>
-          {loading && rows.length === 0 && (
-            <div style={css('padding:30px;text-align:center;color:var(--ag-muted-soft);font-weight:700;font-size:13px;')}>Loading…</div>
-          )}
+          {loading && rows.length === 0 && <SkeletonRows rows={3} height={84} thumb={false} label="Loading your coupons…" />}
           {/* A load that failed must say so. This list used to render `mine ?? []`,
               so when migration 0058 made the query 403 for sellers, every seller
               was told "No coupons yet" — a confident lie about their own data,

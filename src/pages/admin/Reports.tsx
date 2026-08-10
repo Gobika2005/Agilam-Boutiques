@@ -4,6 +4,7 @@ import { fmtInr } from '@/lib/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchCategoryStats, fetchRevenueByCity, fetchDashboard } from '@/data/admin';
 import { StatCard, Card, Select, GhostButton, T } from '@/components/admin/kit';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Reports & Analytics.
@@ -103,7 +104,15 @@ export function Reports() {
           <span style={css('font-weight:800;font-size:15px;')}>Revenue trend</span>
           <span style={css(`font-size:11.5px;font-weight:700;color:${T.muted};`)}>last 14 days</span>
         </div>
-        {dashLoading && <div style={css(`padding:24px 0;color:${T.muted};font-size:13.5px;`)}>Loading…</div>}
+        {dashLoading && (
+          <div role="status" aria-busy="true" style={css('display:flex;align-items:flex-end;gap:5px;height:180px;margin-top:18px;')}>
+            <span className="agx-visually-hidden">Loading revenue trend…</span>
+            {Array.from({ length: 14 }, (_, i) => (
+              // Varying heights so the placeholder reads as a chart rather than a block.
+              <Skeleton key={i} w="100%" h={`${28 + ((i * 37) % 62)}%`} radius={7} style="align-self:flex-end;" />
+            ))}
+          </div>
+        )}
         {!dashLoading && series.length === 0 && (
           <div style={css(`padding:24px 0;color:${T.muted};font-size:13.5px;`)}>No orders yet.</div>
         )}

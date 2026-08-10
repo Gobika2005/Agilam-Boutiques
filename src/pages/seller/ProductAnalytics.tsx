@@ -6,6 +6,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProduct } from '@/data/products';
 import { fetchOrdersForBoutique } from '@/data/orders';
+import { SkeletonRows, SkeletonTiles } from '@/components/ui/Skeleton';
 
 /**
  * Per-product analytics — the buyer-side story of one piece: how many people saw
@@ -91,7 +92,12 @@ export function ProductAnalytics() {
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Product analytics</div>
       </div>
 
-      {loading && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 22px;')}>Loading…</div>}
+      {loading && !p && (
+        <div style={css('padding:0 20px;')}>
+          <SkeletonRows rows={1} height={78} label="Loading analytics…" />
+          <div style={css('margin-top:14px;')}><SkeletonTiles count={4} /></div>
+        </div>
+      )}
 
       {p && (
         <div style={css('padding:0 20px;')}>

@@ -44,7 +44,7 @@ const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
 const CONTACT_SECTION: PolicySection = {
   heading: 'Contact us',
   blocks: [
-    `Questions about this policy? Write to ${COMPANY.supportEmail} or call ${COMPANY.phone} (${COMPANY.supportHours}).`,
+    `Questions about this policy? Write to ${COMPANY.supportEmail} or call ${COMPANY.phone}.`,
     `${COMPANY.legalName}, ${COMPANY_ADDRESS_LINE}.`,
   ],
 };
@@ -503,7 +503,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Reaching us',
         blocks: [
-          `Email ${COMPANY.supportEmail} or call ${COMPANY.phone}. We answer ${COMPANY.supportHours}.`,
+          `Email ${COMPANY.supportEmail} or call ${COMPANY.phone}.`,
           'For anything about a specific order — where it is, a size change, a custom blouse — the fastest route is to message the boutique directly from the order page. They are the ones holding your parcel.',
         ],
       },

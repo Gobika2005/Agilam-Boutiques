@@ -8,6 +8,7 @@ import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { printInvoice } from '@/lib/printInvoice';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 // "To collect" is not a fulfilment status — it is every COD order whose cash is
 // still outstanding, which is the list a seller actually chases at end of day.
@@ -90,7 +91,7 @@ export function Orders() {
 
       {/* Search */}
       <div style={css('padding:2px 20px 10px;')}>
-        <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
+        <div className="agx-field" style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input
             value={search}
@@ -157,6 +158,7 @@ export function Orders() {
       </div>
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
+        {loading && filtered.length === 0 && <SkeletonRows rows={4} height={92} thumb={false} label="Loading orders…" />}
         {!loading && filtered.length === 0 && (
           <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>
             {q || period !== 'All time' || tab !== 'All' ? 'No orders match these filters.' : 'No orders yet.'}

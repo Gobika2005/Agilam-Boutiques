@@ -96,7 +96,7 @@ export function Checkout() {
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
               Mobile number
-              <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${errorRing(errors.phone)};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
+              <div className="agx-field" style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${errorRing(errors.phone)};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
                 <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
                 <input value={guest.phone} onChange={(e) => setGuest({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} inputMode="numeric" placeholder="10-digit number" style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')} />
               </div>

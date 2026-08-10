@@ -5,6 +5,7 @@ import { TONES } from '@/data/demo';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchAllBoutiquesAdmin, setBoutiqueStatus, fetchBoutiquePrivate, type AdminBoutiqueRow } from '@/data/boutiques';
 import { BOUTIQUE_STATUS_LABEL, type BoutiquePrivate, type BoutiqueStatus } from '@/data/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Seller verification queue.
@@ -81,7 +82,16 @@ export function Approvals() {
           <span>BOUTIQUE</span><span>CITY</span><span>OWNER</span><span>SUBMITTED</span><span style={css('text-align:right;')}>ACTION</span>
         </div>
 
-        {loading && <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>Loading…</div>}
+        {loading && (
+          <div role="status" aria-busy="true">
+            <span className="agx-visually-hidden">Loading boutiques…</span>
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} style={css(`${GRID}padding:16px 20px;border-top:1px solid var(--ag-border-soft);align-items:center;`)}>
+                {Array.from({ length: 5 }, (_, j) => <Skeleton key={j} w={`${58 + ((i * 11 + j * 17) % 30)}%`} />)}
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && list.length === 0 && (
           <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>
             No boutiques in “{BOUTIQUE_STATUS_LABEL[tab]}”.

@@ -5,6 +5,7 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { CatalogError } from '@/components/buyer/CatalogError';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { useCatalog } from '@/state/CatalogContext';
 import { routes } from '@/lib/seo';
 import { TONES, fmt, type Product } from '@/data/demo';
@@ -270,15 +271,17 @@ export function EmptyState({ icon, title, body, action }: { icon: string; title:
 /** Skeleton tiles while the catalogue is still loading. */
 export function CardSkeletons({ count = 10 }: { count?: number }) {
   return (
-    <div className="agx-rgrid">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i}>
-          <div className="agx-prod-media" style={css('background:linear-gradient(90deg,var(--ag-shimmer-1) 25%,var(--ag-shimmer-2) 37%,var(--ag-shimmer-1) 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
-          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:12px;width:80%;')} />
-          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:8px;width:45%;')} />
-        </div>
-      ))}
-    </div>
+    <SkeletonGroup label="Loading styles…">
+      <div className="agx-rgrid">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i}>
+            <div className="agx-prod-media agx-shimmer" />
+            <Skeleton w="80%" style="margin-top:12px;" />
+            <Skeleton w="45%" style="margin-top:8px;" />
+          </div>
+        ))}
+      </div>
+    </SkeletonGroup>
   );
 }
 

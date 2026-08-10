@@ -177,7 +177,17 @@ export function Earnings() {
             Your earnings · {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,5vw,44px);line-height:1;margin-top:6px;")}>
-            {loading ? '—' : fmt(netEarnings)}
+            {loading ? (
+              // The shimmer tokens are tuned for the page background and would
+              // read as a pale smudge on the crimson hero, so this instance
+              // re-points them at translucent white.
+              <span
+                className="agx-shimmer"
+                aria-label="Loading your earnings"
+                role="status"
+                style={css('display:inline-block;width:min(62%,210px);height:38px;border-radius:12px;--ag-shimmer-1:rgba(255,255,255,.18);--ag-shimmer-2:rgba(255,255,255,.38);')}
+              />
+            ) : fmt(netEarnings)}
           </div>
           <div style={css('font-size:12.5px;opacity:.82;margin-top:6px;')}>
             {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {commissionPct}% MangaiMart commission

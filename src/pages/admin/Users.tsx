@@ -38,6 +38,7 @@ import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
 import type { Role } from '@/types/database';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 const PAGE_SIZE = 12;
 const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
@@ -587,7 +588,7 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
       </div>
 
       <div style={css('font-weight:800;font-size:13px;margin-bottom:8px;')}>Order history</div>
-      {loading && <div style={css(`color:${T.muted};font-size:13px;`)}>Loading...</div>}
+      {loading && <SkeletonRows rows={3} height={54} thumb={false} label="Loading order history…" />}
       {!loading && (data?.orders.length ?? 0) === 0 && <EmptyState icon="receipt_long" title="No orders" />}
       <div style={css('display:flex;flex-direction:column;gap:8px;')}>
         {(data?.orders ?? []).map((order) => (

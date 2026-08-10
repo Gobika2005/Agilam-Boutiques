@@ -37,7 +37,9 @@ export const COMPANY = {
   /** Live support number. `phoneDigits` must be E.164 without "+". */
   phone: '+91 93442 94969',
   phoneDigits: '919344294969',
-  supportHours: 'Monday – Saturday, 10:00 – 19:00 IST',
+  // No `supportHours`, by decision: publishing "Mon–Sat, 10:00–19:00" is a
+  // promise to be reachable in that window and to be unreachable outside it.
+  // The contact points (email, phone, chat) stand on their own.
 
   /** TODO: registered office address. */
   address: {

@@ -70,7 +70,7 @@ export function Messages() {
 
       {/* Search */}
       <div style={css('padding:0 20px 10px;')}>
-        <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
+        <div className="agx-field" style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations" style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ag-ink);')} />
         </div>

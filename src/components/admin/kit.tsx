@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { css } from '@/lib/css';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Shared admin UI kit — the premium, consistent primitives every admin page is
@@ -95,7 +96,7 @@ export function StatCard({
 
 export function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div style={css(`display:flex;align-items:center;gap:8px;background:var(--ag-surface);border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
+    <div className="agx-field" style={css(`display:flex;align-items:center;gap:8px;background:var(--ag-surface);border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
       <Icon name="search" size={19} color="var(--ag-muted-soft)" />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? 'Search…'} style={css('border:none;background:none;flex:1;font-size:13.5px;min-width:0;font-family:inherit;color:var(--ag-ink);')} />
       {value && <button type="button" aria-label="Clear search" onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted-soft);display:flex;')}><Icon name="close" size={18} /></button>}
@@ -197,14 +198,20 @@ export function DataTable<T>({
             {columns.map((c) => <span key={c.key} style={css(`text-align:${c.align ?? 'left'};`)}>{c.header}</span>)}
           </div>
 
-          {loading &&
-            Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
-                {(selectable ? [null, ...columns] : columns).map((_c, j) => (
-                  <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,var(--ag-shimmer-1),var(--ag-shimmer-2),var(--ag-shimmer-1));width:70%;')} />
-                ))}
-              </div>
-            ))}
+          {loading && (
+            <div role="status" aria-busy="true">
+              <span className="agx-visually-hidden">Loading…</span>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
+                  {(selectable ? [null, ...columns] : columns).map((_c, j) => (
+                    // Widths vary per row so the block reads as text, not as a
+                    // bar chart of identical stripes.
+                    <Skeleton key={j} w={`${58 + ((i * 11 + j * 17) % 32)}%`} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
 
           {!loading && rows.length === 0 && (empty ?? <EmptyState icon="inbox" title="Nothing here yet" />)}
 

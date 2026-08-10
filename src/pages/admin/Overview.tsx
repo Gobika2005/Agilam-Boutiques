@@ -8,6 +8,7 @@ import { fetchDashboard, type WindowStat, type DashboardData } from '@/data/admi
 import { useSettings } from '@/data/settings';
 import { fetchActivity } from '@/data/activityLog';
 import { SectionCard, StatusPill, Avatar, Icon, EmptyState, T } from '@/components/admin/kit';
+import { SkeletonTiles } from '@/components/ui/Skeleton';
 
 const compactInr = (n: number) =>
   n >= 10000000 ? '₹' + (n / 10000000).toFixed(2) + 'Cr' : n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmtInr(n);
@@ -90,21 +91,33 @@ export function Overview() {
         </div>
       </div>
 
-      {/* Hero KPI band — reacts to the selected range */}
-      <div className="agx-adm-g4">
-        <HeroCard label={`Revenue · ${rc.label}`} value={compactInr(cur.revenue)} icon="payments" tint="var(--ag-bad-bg)" ic="#D6336C" trend={trend(cur.revenue, prev.revenue)} vs={rc.vs} bars={ordBars} />
-        <HeroCard label={`Orders · ${rc.label}`} value={String(cur.orders)} icon="receipt_long" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" trend={trend(cur.orders, prev.orders)} vs={rc.vs} bars={revBars} />
-        <HeroCard label={`Avg. order · ${rc.label}`} value={compactInr(aov)} icon="shopping_cart" tint="#F3EAF5" ic="#9B7FC7" trend={trend(aov, prevAov)} vs={rc.vs} />
-        <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" sub={`${commissionPct}% commission`} />
-      </div>
+      {/* Hero KPI band — reacts to the selected range.
+          On the very first load `d` is null, so every figure below would compute
+          to a real-looking ₹0 / 0 orders / 0%. Skeletons instead: an empty
+          platform and an unloaded one must not look the same. */}
+      {loading && !d ? (
+        <>
+          <SkeletonTiles count={4} height={148} className="agx-adm-g4" />
+          <SkeletonTiles count={4} height={118} className="agx-adm-g4" />
+        </>
+      ) : (
+        <>
+          <div className="agx-adm-g4">
+            <HeroCard label={`Revenue · ${rc.label}`} value={compactInr(cur.revenue)} icon="payments" tint="var(--ag-bad-bg)" ic="#D6336C" trend={trend(cur.revenue, prev.revenue)} vs={rc.vs} bars={ordBars} />
+            <HeroCard label={`Orders · ${rc.label}`} value={String(cur.orders)} icon="receipt_long" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" trend={trend(cur.orders, prev.orders)} vs={rc.vs} bars={revBars} />
+            <HeroCard label={`Avg. order · ${rc.label}`} value={compactInr(aov)} icon="shopping_cart" tint="#F3EAF5" ic="#9B7FC7" trend={trend(aov, prevAov)} vs={rc.vs} />
+            <HeroCard label={`Platform earning · ${rc.label}`} value={compactInr(cur.revenue * (commissionPct / 100))} icon="account_balance" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" sub={`${commissionPct}% commission`} />
+          </div>
 
-      {/* Health-insight tiles + quick-nav counters */}
-      <div className="agx-adm-g4">
-        <InsightTile label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} foot={`${d?.earnedOrders ?? 0} earned orders`} icon="trending_up" />
-        <InsightTile label="Fulfillment rate" value={`${fulfillRate}%`} foot={`${d?.fulfilledOrders ?? 0} shipped/delivered`} icon="local_shipping" bar={fulfillRate} good />
-        <InsightTile label="Refund rate" value={`${refundRate}%`} foot={`${compactInr(d?.refunds.amount ?? 0)} refunded`} icon="undo" bar={refundRate} danger />
-        <InsightTile label="Online payments" value={`${onlinePct}%`} foot={`${paidTotal - (d?.paymentSplit.online ?? 0)} COD orders`} icon="credit_card" bar={onlinePct} />
-      </div>
+          {/* Health-insight tiles + quick-nav counters */}
+          <div className="agx-adm-g4">
+            <InsightTile label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} foot={`${d?.earnedOrders ?? 0} earned orders`} icon="trending_up" />
+            <InsightTile label="Fulfillment rate" value={`${fulfillRate}%`} foot={`${d?.fulfilledOrders ?? 0} shipped/delivered`} icon="local_shipping" bar={fulfillRate} good />
+            <InsightTile label="Refund rate" value={`${refundRate}%`} foot={`${compactInr(d?.refunds.amount ?? 0)} refunded`} icon="undo" bar={refundRate} danger />
+            <InsightTile label="Online payments" value={`${onlinePct}%`} foot={`${paidTotal - (d?.paymentSplit.online ?? 0)} COD orders`} icon="credit_card" bar={onlinePct} />
+          </div>
+        </>
+      )}
 
       {/* Quick-nav counters */}
       <div className="agx-adm-g5">

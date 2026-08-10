@@ -64,7 +64,7 @@ export function Settings() {
         <div style={css('font-weight:700;font-size:13.5px;')}>{f.label}</div>
         <div style={css(`font-size:12px;color:${T.muted};margin-top:2px;`)}>{f.help}</div>
       </div>
-      <div style={css(`display:flex;align-items:center;gap:6px;border:1.5px solid ${T.field};border-radius:11px;padding:0 12px;height:42px;background:var(--ag-surface);flex:none;`)}>
+      <div className="agx-field" style={css(`display:flex;align-items:center;gap:6px;border:1.5px solid ${T.field};border-radius:11px;padding:0 12px;height:42px;background:var(--ag-surface);flex:none;`)}>
         {f.prefix && <span style={css(`font-size:13px;color:${T.muted};font-weight:700;`)}>{f.prefix}</span>}
         <input
           type="number"

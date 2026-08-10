@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { FullscreenLoader } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
@@ -9,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
 
 export function AdminLogin() {
-  const { adminSignIn, signOut } = useAuth();
+  const { adminSignIn, signOut, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
@@ -42,6 +43,13 @@ export function AdminLogin() {
       setBusy(false);
     }
   }
+
+  // The console has no entry point in the UI — staff arrive by typing or
+  // bookmarking the URL, and /admin/login is the one they tend to keep. An admin
+  // who still holds a session should land in the console rather than be asked to
+  // sign in to the account they are already signed in to.
+  if (loading) return <FullscreenLoader />;
+  if (profile?.role === 'admin') return <Navigate to="/admin/overview" replace />;
 
   if (mode === 'reset') {
     return (

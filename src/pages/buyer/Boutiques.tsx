@@ -180,7 +180,7 @@ export function Boutiques() {
       </div>
 
       {/* Search bar with a filter action on the right, per the design */}
-      <div style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
+      <div className="agx-field" style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:21px;")}>search</span>
         <input
           value={query}

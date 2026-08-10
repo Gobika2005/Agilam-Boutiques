@@ -87,10 +87,6 @@ export function SiteFooter() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>location_on</span>
                 {COMPANY_ADDRESS_LINE}
               </div>
-              <div style={css('display:flex;align-items:flex-start;gap:9px;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>schedule</span>
-                {COMPANY.supportHours}
-              </div>
             </div>
 
             {SOCIALS.length > 0 && (

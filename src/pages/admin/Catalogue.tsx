@@ -11,6 +11,7 @@ import {
   uploadTaxonomyImage, countProductsUsing, KIND_LABEL, type TaxonomyKind, type TaxonomyRow,
 } from '@/data/taxonomy';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 /**
  * Catalogue vocabulary — the words the whole marketplace shops by.
@@ -329,7 +330,7 @@ export function Catalogue() {
         </div>
 
         <div style={css('margin-top:16px;')}>
-          {loading && <div style={css(`color:${T.muted};font-size:13px;`)}>Loading…</div>}
+          {loading && <SkeletonRows rows={3} height={62} thumb={false} label="Loading requests…" />}
 
           {!loading && pending.length === 0 && (
             <EmptyState icon="inbox" title="Nothing waiting" sub="Seller requests for a new category, occasion or fabric land here." />

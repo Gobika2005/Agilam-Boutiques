@@ -15,6 +15,7 @@ import { BillReceipt } from '@/components/seller/BillReceipt';
 import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { createShipment, fetchCouriers, fetchShipment } from '@/data/shipments';
+import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -38,10 +39,21 @@ export function OrderDetail() {
     [orderId],
   );
 
+  if (!row && loading) {
+    return (
+      <SkeletonGroup label="Loading order…" style="padding:16px 20px;">
+        <Skeleton w="52%" h={26} radius={9} />
+        <Skeleton w="34%" h={12} style="margin-top:12px;" />
+        <div style={css('margin-top:20px;')}><SkeletonRows rows={3} height={72} /></div>
+        <Skeleton w="100%" h={120} radius={18} style="margin-top:16px;" />
+      </SkeletonGroup>
+    );
+  }
+
   if (!row) {
     return (
       <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:var(--ag-muted);font-size:15px;')}>
-        {loading ? 'Loading order…' : 'Order not found.'}
+        Order not found.
       </div>
     );
   }

@@ -102,8 +102,6 @@ export function Help() {
             </a>
           ))}
         </div>
-
-        <div style={css('margin:12px 24px 0;font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>Support hours: {COMPANY.supportHours}</div>
       </div>
     </div>
   );

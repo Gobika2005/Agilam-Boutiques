@@ -1,13 +1,16 @@
 import { supabase } from '@/lib/supabase';
 
 /**
- * Passwordless / social auth helpers for buyers.
+ * Social / one-time-code auth helpers for buyers.
  *
- * Buyers can sign in with Google or an emailed one-time code (no SMS provider
- * needed — Supabase sends these over email out of the box). Once signed in they
- * have a real account, so their profile syncs via the `profiles` table and their
- * orders via the `buyer_id` RLS policy. Email+password stays available through
- * AuthContext's existing sign-in/up.
+ * Buyers sign in with Google or with email + password (the latter through
+ * AuthContext's sign-in/up). Once signed in they have a real account, so their
+ * profile syncs via the `profiles` table and their orders via the `buyer_id`
+ * RLS policy.
+ *
+ * The emailed 6-digit code is no longer a sign-in method of its own — it backs
+ * the forgot-password flow only (see `sendPasswordResetCode`). No SMS provider
+ * is needed; Supabase sends these over email out of the box.
  *
  * Config: Google needs the Google provider enabled in the Supabase dashboard
  * (Auth → Providers → Google) with this app's URL added to the allowed redirect
@@ -88,16 +91,30 @@ export function clearPendingOAuthRole(): void {
   }
 }
 
-/** Email a 6-digit login code (creating the account if it's new). */
-export async function sendEmailOtp(email: string): Promise<void> {
+/**
+ * Email a 6-digit code for the "forgot password" flow.
+ *
+ * Deliberately the OTP email rather than `resetPasswordForEmail`: the recovery
+ * template is Supabase's default (a link), while the OTP template already
+ * carries `{{ .Token }}` — which is why the code flow works today. Using it
+ * means no dashboard template edit is needed for reset-by-code.
+ *
+ * `shouldCreateUser:false` so typing an unknown address into a *reset* form
+ * cannot quietly mint an account.
+ */
+export async function sendPasswordResetCode(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim(),
-    // emailRedirectTo only matters if the template keeps {{ .ConfirmationURL }}
-    // alongside the code, but without it that link points at the project's Site
-    // URL rather than the host the buyer is signing in on.
-    options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback` },
+    options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/auth/callback` },
   });
-  if (error) throw new Error(friendlyAuthError(error.message));
+  // With signups off, GoTrue answers an unknown address with "Signups not
+  // allowed for otp" / "User not found". Surfacing that would turn the form into
+  // an email-enumeration oracle, so it is swallowed: the caller shows the same
+  // "if that email has an account…" copy either way and an address with no
+  // account simply never receives a code.
+  if (error && !/signups? not allowed|user not found/i.test(error.message)) {
+    throw new Error(friendlyAuthError(error.message));
+  }
 }
 
 /** Verify the emailed code; on success the browser holds a session. */
