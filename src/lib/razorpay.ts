@@ -118,7 +118,10 @@ export async function payWithRazorpay({
     const rzp = new window.Razorpay!({
       // Prefer the key the server used to create THIS order — it is guaranteed
       // valid and to match order_id. VITE_RAZORPAY_KEY_ID is only a fallback,
-      // so a misconfigured build-time var can't break checkout.
+      // so a misconfigured build-time var can't break checkout. This is also
+      // what makes the admin's emergency account switch work end to end: the
+      // order is opened on whichever merchant account is selected server-side,
+      // and the modal follows it without a rebuild.
       key: order.key_id || KEY_ID,
       order_id: order.order_id,
       amount: order.amount,

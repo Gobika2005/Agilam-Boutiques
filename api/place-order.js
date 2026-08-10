@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
-import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
 import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
 import { loadTerms } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
+import { clientFor, verifyPaymentSignature } from './_razorpay.js';
 
 /**
  * Vercel serverless function: create the real order(s) for a guest checkout.
@@ -18,6 +18,10 @@ import { enforceRateLimit } from './_rateLimit.js';
  *
  * For online payments we re-verify the Razorpay signature here (the same HMAC
  * as verify-payment.js) so an order can't be forged without a genuine payment.
+ * The signature is checked against every configured merchant account, and the
+ * account whose secret matched is the one this request then fetches, captures
+ * and refunds against — so a payment taken just before an emergency account
+ * switch still settles on the account that actually holds the money.
  *
  * Cash on Delivery is the one path that writes an order with no payment behind
  * it, so it is guarded on its own terms instead: every boutique in the cart
@@ -27,21 +31,8 @@ import { enforceRateLimit } from './_rateLimit.js';
  * reservation, the per-boutique split) is shared with the prepaid path.
  */
 
-const keyId = process.env.RAZORPAY_KEY_ID;
-const keySecret = process.env.RAZORPAY_KEY_SECRET;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
-  if (!keySecret || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return false;
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest('hex');
-  const a = Buffer.from(expected);
-  const b = Buffer.from(String(razorpay_signature));
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
 
 function orderNumber() {
   // Time component keeps numbers roughly sortable; 4 hex chars of CSPRNG entropy
@@ -154,11 +145,16 @@ export default async function handler(req, res) {
   // rather than quietly becoming an unpaid order.
   const isCod = paymentMethod === 'COD';
 
+  // Which merchant account signed this payment — and therefore which one holds
+  // the money. Null for COD, where there is no payment at all.
+  let paymentAccount = null;
+
   if (!isCod) {
     if (!payment) {
       return res.status(400).json({ error: 'Payment is required to place an order' });
     }
-    if (!verifySignature(payment)) {
+    paymentAccount = verifyPaymentSignature(payment);
+    if (!paymentAccount) {
       return res.status(400).json({ error: 'Payment could not be verified' });
     }
   } else {
@@ -176,8 +172,11 @@ export default async function handler(req, res) {
   }
 
   // One Razorpay client, reused for order lookup (amount binding) and any
-  // auto-refund. Null when the keys aren't configured.
-  const razorpay = keyId && keySecret ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : null;
+  // auto-refund — bound to the account the signature identified, NOT to whatever
+  // the admin switch points at now. If the switch moved between checkout opening
+  // and this request, the money is still sitting in the old account and every
+  // call below has to be made there. Null for COD.
+  const razorpay = clientFor(paymentAccount);
 
   // Replay guard: a genuine online payment maps to exactly one order-set. Without
   // this, replaying the same verified {order_id, payment_id, signature} to this

@@ -14,6 +14,14 @@ import { POLICY_TERMS, COMPANY } from '@/data/company';
  * admin form saved values nothing ever read, and the storefront quietly kept
  * charging the compile-time constants.
  */
+/**
+ * Which Razorpay merchant account collects money right now. The keys themselves
+ * live in the server environment (RAZORPAY_KEY_ID/_SECRET and the `_B` pair) —
+ * this only names the slot, which is why it is safe under the table's public
+ * read policy.
+ */
+export type RazorpayAccount = 'primary' | 'backup';
+
 export interface PlatformSettings {
   commission_pct: number;
   cod_fee: number;
@@ -24,6 +32,7 @@ export interface PlatformSettings {
   payout_hold_days: number;
   maintenance_mode: boolean;
   support_email: string;
+  razorpay_account: RazorpayAccount;
   updated_at: string | null;
 }
 
@@ -37,6 +46,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   payout_hold_days: 3,
   maintenance_mode: false,
   support_email: COMPANY.supportEmail,
+  razorpay_account: 'primary',
   updated_at: null,
 };
 
@@ -90,6 +100,40 @@ export async function saveSettings(patch: Partial<PlatformSettings>, updatedBy?:
   // Push the saved values into the live cache so pricing, the policy copy and
   // every open screen pick them up without a reload.
   publish({ ...current, ...patch });
+  return { ok: true };
+}
+
+/**
+ * Flip which Razorpay merchant account collects money, as its own write.
+ *
+ * Deliberately NOT folded into the commercial-terms form. Two reasons:
+ *
+ *   • It is an emergency control. It has to take effect the moment it is
+ *     tapped, not when someone remembers to press "Save changes" — and it must
+ *     not ride along with an unrelated half-finished edit to the COD fee.
+ *   • It writes a column added in migration 0064. Sending it inside the main
+ *     patch would make the ENTIRE settings form fail to save on any deployment
+ *     where 0064 hasn't been applied yet, taking commission and fees down with
+ *     it. Isolated, a missing column only breaks the switch, and says so.
+ *
+ * The next /api/create-order reads the new value, so the change is live for the
+ * following checkout — no redeploy.
+ */
+export async function setRazorpayAccount(account: RazorpayAccount, updatedBy?: string | null): Promise<SaveResult> {
+  const { error } = await supabase
+    .from('platform_settings')
+    .update({ razorpay_account: account, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null })
+    .eq('id', 1);
+  if (error) {
+    if (isMissingTable(error)) return { ok: false, error: 'Settings are not enabled yet — apply migration 0048.' };
+    // PGRST204 = "column not found in schema cache", i.e. 0064 hasn't been run.
+    if (error.code === 'PGRST204' || /razorpay_account/i.test(error.message ?? '')) {
+      return { ok: false, error: 'The payment-account switch needs migration 0064 applied first.' };
+    }
+    console.error('setRazorpayAccount failed:', error.message);
+    return { ok: false, error: 'Could not switch the payment account. Please try again.' };
+  }
+  publish({ ...current, razorpay_account: account });
   return { ok: true };
 }
 

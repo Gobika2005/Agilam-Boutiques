@@ -475,6 +475,9 @@ export interface Database {
           payout_hold_days: number;
           maintenance_mode: boolean;
           support_email: string;
+          /** Which Razorpay merchant account collects money (migration 0064).
+           *  Names an env-var slot, never a key. */
+          razorpay_account: 'primary' | 'backup';
           updated_at: string;
           updated_by: string | null;
         };

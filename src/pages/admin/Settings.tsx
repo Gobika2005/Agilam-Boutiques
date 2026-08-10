@@ -3,9 +3,12 @@ import { css } from '@/lib/css';
 import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
-import { fetchSettings, saveSettings, type PlatformSettings } from '@/data/settings';
+import {
+  fetchSettings, saveSettings, setRazorpayAccount,
+  type PlatformSettings, type RazorpayAccount,
+} from '@/data/settings';
 import { logAdminAction } from '@/data/activityLog';
-import { Card, GhostButton, Icon, T } from '@/components/admin/kit';
+import { Card, ConfirmDialog, GhostButton, Icon, T } from '@/components/admin/kit';
 
 type NumField = { key: keyof PlatformSettings; label: string; help: string; prefix?: string; suffix?: string };
 
@@ -50,7 +53,11 @@ export function Settings() {
 
   const save = async () => {
     setSaving(true);
-    const { updated_at: _u, ...patch } = form;
+    // `razorpay_account` is deliberately not part of this patch — it has its own
+    // immediate write (see PaymentAccountCard), so an emergency switch never
+    // waits on "Save changes", and a deployment without migration 0064 can still
+    // save commission and fees.
+    const { updated_at: _u, razorpay_account: _r, ...patch } = form;
     const res = await saveSettings(patch, profile?.id);
     setSaving(false);
     if (!res.ok) { showToast(res.error); return; }
@@ -93,6 +100,8 @@ export function Settings() {
         </div>
       </Card>
 
+      <PaymentAccountCard initial={form.razorpay_account} />
+
       {SECTIONS.map((sec) => (
         <Card key={sec.title}>
           <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:4px;')}>
@@ -133,6 +142,206 @@ export function Settings() {
         </button>
       </div>
     </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Razorpay account switch
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+type AccountProbe = {
+  account: RazorpayAccount;
+  label: string;
+  mode: 'live' | 'test' | 'unknown';
+  ok: boolean;
+  status?: number;
+  error?: string;
+};
+
+const ACCOUNT_COPY: Record<RazorpayAccount, { title: string; sub: string; env: string }> = {
+  primary: {
+    title: 'Primary account',
+    sub: 'The everyday merchant account.',
+    env: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET',
+  },
+  backup: {
+    title: 'Backup account',
+    sub: 'Standby, for when the primary is frozen or under review.',
+    env: 'RAZORPAY_KEY_ID_B / RAZORPAY_KEY_SECRET_B',
+  },
+};
+
+/**
+ * Which Razorpay account takes buyers' money — the emergency switch.
+ *
+ * Kept out of the main settings form on purpose: this has to take effect the
+ * instant it is tapped (the next /api/create-order reads it), not when someone
+ * remembers to press Save, and it must not be blocked by an unrelated
+ * half-finished edit elsewhere on the page.
+ *
+ * The tiles are backed by a live /api/health probe of BOTH accounts, because the
+ * one thing worse than a dead payment account is switching to a second one that
+ * was never configured. An account the server reports as unconfigured cannot be
+ * selected at all — the server would silently fall back to the working one and
+ * the console would be showing a lie.
+ */
+function PaymentAccountCard({ initial }: { initial: RazorpayAccount }) {
+  const { showToast } = useShop();
+  const { profile } = useAuth();
+  const [account, setAccount] = useState<RazorpayAccount>(initial);
+  const [probes, setProbes] = useState<AccountProbe[] | null>(null);
+  const [healthChecked, setHealthChecked] = useState(false);
+  const [pending, setPending] = useState<RazorpayAccount | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setAccount(initial); }, [initial]);
+
+  // Health is advisory: a failed fetch (offline, /api not served in plain `vite
+  // dev`) leaves the tiles unannotated rather than blocking the switch, which is
+  // the last thing this control should do in an emergency.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        const list = d?.razorpay?.accounts;
+        if (Array.isArray(list)) setProbes(list as AccountProbe[]);
+        setHealthChecked(true);
+      })
+      .catch(() => { if (!cancelled) setHealthChecked(true); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const probeOf = (key: RazorpayAccount) => probes?.find((p) => p.account === key) ?? null;
+  /** Only treat an account as missing once the server has actually told us so. */
+  const isConfigured = (key: RazorpayAccount) => !probes || !!probeOf(key);
+
+  const applySwitch = async (next: RazorpayAccount) => {
+    setBusy(true);
+    const res = await setRazorpayAccount(next, profile?.id);
+    setBusy(false);
+    setPending(null);
+    if (!res.ok) { showToast(res.error); return; }
+    setAccount(next);
+    // `meta` carries both ends of the move: "payments were switched" is not much
+    // use to whoever reconciles the day's takings across two dashboards.
+    void logAdminAction({
+      actor_id: profile?.id,
+      actor_name: profile?.full_name ?? 'Admin',
+      action: 'settings.razorpay_account',
+      entity_type: 'settings',
+      entity_id: 'razorpay_account',
+      meta: { from: account, to: next },
+    });
+    showToast(`Payments now go to the ${ACCOUNT_COPY[next].title.toLowerCase()}`);
+  };
+
+  const tile = (key: RazorpayAccount) => {
+    const copy = ACCOUNT_COPY[key];
+    const probe = probeOf(key);
+    const selected = account === key;
+    const configured = isConfigured(key);
+    const disabled = !configured || busy;
+
+    // Health line: what the server just found, in the operator's terms.
+    let health = healthChecked ? 'Status unavailable' : 'Checking…';
+    let healthColor = T.muted;
+    if (!configured) {
+      health = `Not configured — set ${copy.env}`;
+      healthColor = 'var(--ag-warn-text)';
+    } else if (probe?.ok) {
+      health = `Reachable · ${probe.mode === 'live' ? 'LIVE keys' : probe.mode === 'test' ? 'TEST keys' : 'unrecognised key format'}`;
+      healthColor = 'var(--ag-good-text)';
+    } else if (probe) {
+      health = probe.error ?? 'Razorpay rejected these keys';
+      healthColor = 'var(--ag-bad-text)';
+    }
+
+    return (
+      <button
+        key={key}
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        disabled={disabled}
+        onClick={() => { if (!selected) setPending(key); }}
+        style={css(`
+          display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;font-family:inherit;
+          border:1.5px solid ${selected ? 'var(--ag-crimson)' : T.field};border-radius:14px;padding:14px;
+          background:${selected ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};
+          cursor:${disabled || selected ? 'default' : 'pointer'};opacity:${configured ? 1 : 0.6};
+        `)}
+      >
+        <Icon
+          name={selected ? 'radio_button_checked' : 'radio_button_unchecked'}
+          size={20}
+          color={selected ? 'var(--ag-crimson)' : T.muted}
+        />
+        <span style={css('flex:1;min-width:0;')}>
+          <span style={css('display:flex;align-items:center;gap:8px;flex-wrap:wrap;')}>
+            <span style={css('font-weight:800;font-size:13.5px;')}>{copy.title}</span>
+            {selected && (
+              <span style={css('font-size:10.5px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--ag-crimson);border-radius:99px;padding:2px 8px;')}>
+                COLLECTING NOW
+              </span>
+            )}
+          </span>
+          <span style={css(`display:block;font-size:12px;color:${T.muted};margin-top:3px;`)}>{copy.sub}</span>
+          <span style={css(`display:block;font-size:11.5px;font-weight:700;color:${healthColor};margin-top:6px;`)}>
+            {health}
+          </span>
+        </span>
+      </button>
+    );
+  };
+
+  const target: RazorpayAccount = account === 'primary' ? 'backup' : 'primary';
+
+  return (
+    <Card>
+      <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:4px;')}>
+        <Icon name="sync_alt" size={19} color="var(--ag-crimson)" />
+        <div style={css('font-weight:800;font-size:15px;')}>Payment account</div>
+      </div>
+      <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.5;margin-bottom:14px;`)}>
+        Which Razorpay account collects buyer payments and seller ad purchases. The switch applies to the
+        very next checkout — no redeploy. Payments already in flight still settle on the account that took
+        them, so it is safe to flip mid-day.
+      </div>
+
+      <div role="radiogroup" aria-label="Razorpay account" style={css('display:flex;flex-direction:column;gap:10px;')}>
+        {tile('primary')}
+        {tile('backup')}
+      </div>
+
+      {/* The one-tap version of the same action, for when something is on fire. */}
+      <div style={css('display:flex;justify-content:flex-end;margin-top:14px;')}>
+        <GhostButton
+          icon="swap_horiz"
+          onClick={() => setPending(target)}
+          disabled={busy || !isConfigured(target)}
+          title={isConfigured(target) ? undefined : 'That account has no keys configured'}
+        >
+          Switch to {target}
+        </GhostButton>
+      </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title="Switch payment account?"
+        message={
+          pending
+            ? `Every new checkout and ad purchase will be collected by the ${ACCOUNT_COPY[pending].title.toLowerCase()} from the moment you confirm. Money already taken stays where it is, and payouts are unaffected. Make sure that account is active in the Razorpay dashboard first.`
+            : ''
+        }
+        confirmLabel="Switch account"
+        danger
+        busy={busy}
+        onConfirm={() => pending && applySwitch(pending)}
+        onCancel={() => setPending(null)}
+      />
+    </Card>
   );
 }
 
