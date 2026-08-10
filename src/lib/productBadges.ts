@@ -17,7 +17,9 @@ export const PRODUCT_BADGES: ProductBadge[] = [
   { id: 'breathable', label: 'Breathable', icon: 'air' },
   { id: 'premium_fabric', label: 'Premium Fabric', icon: 'diamond' },
   { id: 'pure_cotton', label: 'Pure Cotton', icon: 'eco' },
-  { id: 'lightweight', label: 'Lightweight', icon: 'feather' },
+  // `feather` was not a Material Symbols icon at all, so this badge has always
+  // drawn the literal word instead of a glyph. `weight` is the real one.
+  { id: 'lightweight', label: 'Lightweight', icon: 'weight' },
   { id: 'skin_friendly', label: 'Skin Friendly', icon: 'spa' },
   { id: 'colourfast', label: 'Colourfast', icon: 'palette' },
   { id: 'wrinkle_free', label: 'Wrinkle Free', icon: 'iron' },

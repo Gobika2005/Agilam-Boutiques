@@ -21,6 +21,9 @@ export type ProductFormValues = {
   stock: string;
   description: string;
   mrp: string;
+  /** Packed weight of one unit, in grams (migration 0065). Blank falls back to
+   *  the shop's default weight in Settings. */
+  weightGrams: string;
   sizes: string[];
   washCare: string;
   imageUrl: string;
@@ -36,7 +39,7 @@ export type ProductFormValues = {
 
 export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   title: '', category: '', color: '', occasion: '', fabric: '', price: '', stock: '',
-  description: '', mrp: '', sizes: [], washCare: '', imageUrl: '', images: [],
+  description: '', mrp: '', weightGrams: '', sizes: [], washCare: '', imageUrl: '', images: [],
   badges: [], feedingFriendly: false, feedingNote: '', shippingInfo: '', colorDisclaimer: '', specs: [],
 };
 
@@ -195,6 +198,13 @@ export function ProductForm({
     if (form.stock.trim() === '' || Number(form.stock) < 0) next.stock = 'Enter valid stock';
     if (!form.imageUrl) next.imageUrl = 'Add a cover photo';
     if (form.mrp.trim() && Number(form.mrp) < Number(form.price || 0)) next.mrp = 'MRP must be ≥ price';
+    // Optional — a blank falls back to the shop default so no existing product
+    // is blocked — but a nonsense value must not reach a courier booking, where
+    // an under-declared weight becomes a discrepancy charge weeks later.
+    if (form.weightGrams.trim()) {
+      const g = Number(form.weightGrams);
+      if (!Number.isFinite(g) || g <= 0 || g > 50000) next.weightGrams = 'Enter a weight between 1 and 50000 grams';
+    }
     // The three the buyer page can't fake convincingly. Everything else in the
     // detail section is an optional override with a sensible fallback.
     if (!form.description.trim()) next.description = 'Buyers read this first — describe the piece';
@@ -332,6 +342,26 @@ export function ProductForm({
         <input value={form.mrp} onChange={(e) => set('mrp', e.target.value)} inputMode="numeric" placeholder="5999" style={css(errors.mrp ? inputErrStyle : inputStyle)} />
         {errors.mrp && <span style={css(errStyle)}>{errors.mrp}</span>}
         {discountPct != null && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-good);')}>{discountPct}% off badge will show to buyers</span>}
+      </label>
+
+      <label style={css(labelStyle)}>
+        Packed weight (grams) — optional
+        <input
+          value={form.weightGrams}
+          onChange={(e) => set('weightGrams', e.target.value)}
+          inputMode="numeric"
+          placeholder="650"
+          style={css(errors.weightGrams ? inputErrStyle : inputStyle)}
+        />
+        {errors.weightGrams
+          ? <span style={css(errStyle)}>{errors.weightGrams}</span>
+          : (
+            <span style={css(hintStyle)}>
+              Weigh the piece packed, ready to hand over. Used to book couriers and price the freight —
+              leave it blank and we use your shop’s default weight from Settings. Under-declaring costs
+              you the difference when the courier weighs it themselves.
+            </span>
+          )}
       </label>
 
       <div>

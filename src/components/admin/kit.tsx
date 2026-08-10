@@ -158,6 +158,48 @@ export function EmptyState({ icon, title, sub }: { icon: string; title: string; 
   );
 }
 
+/**
+ * Tabs across the top of an admin screen.
+ *
+ * Extracted when a third page needed them. The admin sidebar had grown to 20
+ * entries, several of which were one table apiece; folding those in as tabs
+ * keeps the function while shortening the nav, and this is the one copy of the
+ * pill styling they all share.
+ *
+ * `count` renders a badge and is hidden at zero — a "0" badge is noise, and the
+ * badge is there to pull attention to work waiting.
+ */
+export function TabBar<K extends string>({
+  tabs, value, onChange,
+}: {
+  tabs: readonly { key: K; label: string; count?: number }[];
+  value: K;
+  onChange: (key: K) => void;
+}) {
+  return (
+    <div style={css('display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;')}>
+      {tabs.map((t) => {
+        const on = t.key === value;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            style={css(`height:38px;padding:0 15px;border-radius:11px;border:1.5px solid ${on ? T.accent2 : T.field};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? T.accent : T.muted};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;`)}
+          >
+            {t.label}
+            {t.count != null && t.count > 0 && (
+              <span style={css(`min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:${T.accent2};color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;`)}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export interface Column<T> {
   key: string;
   header: string;

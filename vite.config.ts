@@ -2,6 +2,8 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+// @ts-expect-error — plain .mjs build script, shared with the CLI entry point.
+import { collectIconNames, iconFontHref } from './scripts/icon-inventory.mjs';
 
 // The app prints its build version on the buyer profile screen; read it from
 // package.json so the two can never drift.
@@ -139,10 +141,47 @@ function devApi(env: Record<string, string>): Plugin {
   };
 }
 
+/**
+ * Rewrites the Material Symbols stylesheet URL in `index.html` to ask for only
+ * the icons this app actually draws.
+ *
+ * The unsubsetted font is a 457 kB woff2 — the single heaviest thing the page
+ * loads, on every cold visit, for about 265 glyphs. Naming them takes it to
+ * 32 kB. Both numbers are measured, not estimated: fetch the two URLs.
+ *
+ * The list is derived from the source on every build by
+ * `scripts/icon-inventory.mjs`, never maintained by hand, because the failure
+ * mode of an incomplete list is an icon that renders as its own name. Read that
+ * file before changing anything here.
+ */
+function iconSubset(): Plugin {
+  return {
+    name: 'icon-subset',
+    // `pre`, so the URL is rewritten before any other plugin reads the HTML.
+    enforce: 'pre',
+    transformIndexHtml(html) {
+      const names = collectIconNames();
+      const href = iconFontHref(names);
+      // Matches the async `<link>` and the `<noscript>` fallback alike.
+      const full = /https:\/\/fonts\.googleapis\.com\/css2\?family=Material\+Symbols\+Outlined[^"']*/g;
+      const hits = html.match(full)?.length ?? 0;
+      if (!hits) {
+        // Silence here would ship the full 457 kB font and look like a success.
+        throw new Error(
+          'icon-subset: no Material Symbols stylesheet link found in index.html — ' +
+            'the URL changed shape and the subset is no longer being applied.',
+        );
+      }
+      console.log(`  ✓ icon subset — ${names.length} icons, ${hits} link(s) rewritten`);
+      return html.replace(full, href);
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), devApi(env)],
+    plugins: [react(), devApi(env), iconSubset()],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },

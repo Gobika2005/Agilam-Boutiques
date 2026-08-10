@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { readSearchParams, sameSearchState, writeSearchParams } from '@/lib/searchParams';
 import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
+import { useGoBack } from '@/hooks/useGoBack';
 import { routes } from '@/lib/seo';
 import { breadcrumbSchema, collectionSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -25,6 +26,7 @@ const searchable = (p: { title: string; cat: string; occasion: string; fabric: s
 
 export function Results() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/');
   const { pathname, search } = useLocation();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS, error: catalogError, reload } = useCatalog();
@@ -175,22 +177,36 @@ export function Results() {
     <div className="agx-results-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-surface);')}>
       <div className="agx-results-inner" style={css('max-width:1480px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 140px;')}>
         <div style={css('flex:none;')}>
-          {/* Breadcrumb: Home / Collections / <what you're looking at>. The last
-              crumb is dropped on the unfiltered grid, where "Collections" is
-              already the page you're on. */}
-          <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);flex-wrap:wrap;')}>
-            <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} style={css('color:var(--ag-muted);')}>Home</a>
-            <span>/</span>
-            {isBaseCollection ? (
-              <span style={css('color:var(--ag-ink);font-weight:700;')}>Collections</span>
-            ) : (
-              <>
-                <a href="/shop" onClick={(e) => { e.preventDefault(); resetCollection(); }} style={css('color:var(--ag-muted);')}>Collections</a>
-                <span>/</span>
-                <span style={css('color:var(--ag-ink);font-weight:700;')}>{collectionTitle}</span>
-              </>
-            )}
-          </nav>
+          {/* Back + breadcrumb: Home / Collections / <what you're looking at>.
+              The last crumb is dropped on the unfiltered grid, where
+              "Collections" is already the page you're on.
+              Back matters more here than on other grids: below 960px this page
+              hides the tab dock (its Filter/Sort bar owns the bottom edge
+              instead), so this is the way out. It returns to whatever the buyer
+              searched from rather than to a fixed tab. */}
+          <div style={css('display:flex;align-items:center;gap:10px;')}>
+            <button
+              onClick={goBack}
+              aria-label="Go back"
+              title="Back"
+              style={css('flex:none;width:38px;height:38px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            >
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_back</span>
+            </button>
+            <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);flex-wrap:wrap;min-width:0;')}>
+              <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} style={css('color:var(--ag-muted);')}>Home</a>
+              <span>/</span>
+              {isBaseCollection ? (
+                <span style={css('color:var(--ag-ink);font-weight:700;')}>Collections</span>
+              ) : (
+                <>
+                  <a href="/shop" onClick={(e) => { e.preventDefault(); resetCollection(); }} style={css('color:var(--ag-muted);')}>Collections</a>
+                  <span>/</span>
+                  <span style={css('color:var(--ag-ink);font-weight:700;')}>{collectionTitle}</span>
+                </>
+              )}
+            </nav>
+          </div>
 
           <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:12px;')}>
             <div>

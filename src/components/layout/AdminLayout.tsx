@@ -8,18 +8,16 @@ import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 import { NotificationBellMenu } from '@/components/notifications/NotificationBellMenu';
 
 const NAV = [
-  { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health at a glance' },
+  { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health, trends and analytics' },
   { label: 'Approvals', icon: 'verified', to: '/admin/approvals', title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
   { label: 'Catalogue', icon: 'sell', to: '/admin/catalogue', title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
   { label: 'Boutiques', icon: 'storefront', to: '/admin/boutiques', title: 'Boutiques', sub: 'All boutiques on the platform' },
-  { label: 'Users', icon: 'group', to: '/admin/users', title: 'Users', sub: 'Buyers and sellers management' },
-  { label: 'Customers', icon: 'person_search', to: '/admin/customers', title: 'Customer 360°', sub: 'Search a buyer and see their full history' },
+  { label: 'Users', icon: 'group', to: '/admin/users', title: 'Users', sub: 'Accounts, and Customer 360° buyer history' },
   { label: 'Products', icon: 'shopping_bag', to: '/admin/products', title: 'Products', sub: 'Moderation and inventory' },
   { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
   { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
   { label: 'Deliveries', icon: 'local_shipping', to: '/admin/deliveries', title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
   { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
-  { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
   { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
   { label: 'Expenses', icon: 'savings', to: '/admin/expenses', title: 'Expenses', sub: 'What the platform spends, with proof attached' },
   { label: 'Advertisements', icon: 'campaign', to: '/admin/ads', title: 'Advertisements', sub: 'Campaigns and promotions' },
@@ -63,9 +61,13 @@ export function AdminLayout() {
         {/* admin sidebar — desktop only (hidden ≤900px, replaced by bottom tab bar) */}
         <div className="agx-scroll agx-admin-sidebar" style={css('width:238px;flex:none;background:var(--ag-surface-2);border-right:1px solid var(--ag-border);padding:20px 14px;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;')}>
           <div style={css('display:flex;align-items:center;gap:11px;padding:0 8px 18px;')}>
+            {/* 96px WebP, not the 1.7 MB source PNG: this is a 44px sidebar
+                mark, and it was the heaviest asset in the admin console. */}
             <img
-              src="/mangaimart-logo.png"
+              src="/mangaimart-logo-96.webp"
               alt="MangaiMart"
+              width={44}
+              height={44}
               style={css('width:44px;height:44px;border-radius:12px;object-fit:contain;flex:none;')}
             />
             <div>

@@ -65,6 +65,9 @@ export async function createProduct(input: {
   tone?: number;
   description?: string;
   mrp?: number | null;
+  /** Packed weight of one unit in grams (migration 0065). Null falls back to
+   *  the boutique default when a parcel is booked. */
+  weight_grams?: number | null;
   sizes?: string[];
   wash_care?: string;
   image_url?: string;
@@ -93,6 +96,7 @@ export async function updateProduct(
     fabric: string;
     description: string;
     mrp: number | null;
+    weight_grams: number | null;
     sizes: string[];
     wash_care: string;
     image_url: string;

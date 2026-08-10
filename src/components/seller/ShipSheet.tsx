@@ -11,6 +11,12 @@
  * URL, so many couriers have no template at all — the seller can paste the link
  * their courier gave them instead, and a parcel with no link still ships (the
  * buyer sees courier + AWB, which beats a dead URL).
+ *
+ * When Shiprocket is available for the shop (migration 0067) the sheet opens on
+ * a booking mode instead: we create the parcel, a courier is assigned and the
+ * AWB comes back, so the seller types nothing. Manual entry stays one tap away
+ * and is the ONLY mode on a COD order — Shiprocket's COD remittance would pay
+ * the platform rather than the seller, which is not the arrangement.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { css } from '@/lib/css';
@@ -21,14 +27,24 @@ const OTHER = '__other__';
 export function ShipSheet({
   couriers,
   busy,
+  canBook = false,
   onCancel,
   onConfirm,
+  onBook,
 }: {
   couriers: Courier[];
   busy: boolean;
+  /** Shiprocket is switched on platform-wide and for this shop, the shop has a
+   *  registered pickup location, and this order is prepaid. */
+  canBook?: boolean;
   onCancel: () => void;
   onConfirm: (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => void;
+  onBook?: () => void;
 }) {
+  // Booking is the default when it is available: it is fewer taps, and the AWB
+  // it produces is one a courier scan can drive, which is what eventually
+  // settles the seller's payout without anyone self-attesting delivery.
+  const [mode, setMode] = useState<'book' | 'manual'>(canBook ? 'book' : 'manual');
   const [courierKey, setCourierKey] = useState('');
   const [otherName, setOtherName] = useState('');
   const [awb, setAwb] = useState('');
@@ -65,6 +81,53 @@ export function ShipSheet({
           The courier and tracking number are required — they are what the customer follows, and what proves the parcel left your shop.
         </div>
 
+        {canBook && (
+          <div style={css('display:flex;gap:8px;margin-top:16px;')}>
+            {([['book', 'Book a courier'], ['manual', 'I shipped it myself']] as const).map(([key, text]) => {
+              const on = mode === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMode(key)}
+                  style={css(`flex:1;height:42px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;`)}
+                >
+                  {text}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {mode === 'book' ? (
+          <>
+            <div style={css('margin-top:16px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:14px;')}>
+              <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>We’ll book the parcel for you</div>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
+                A courier is picked on rate, the tracking number comes back straight away, and a pickup is
+                requested from your shop address. The weight comes from your products — set it on each item so
+                the declared weight matches what the courier weighs.
+              </div>
+            </div>
+
+            <div style={css('display:flex;gap:10px;margin-top:20px;')}>
+              <button
+                onClick={onCancel}
+                style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:13px;font-weight:800;cursor:pointer;font-family:inherit;')}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => onBook?.()}
+                style={css(`flex:1.4;height:50px;border:none;border-radius:13px;background:${busy ? 'var(--ag-surface-2)' : 'linear-gradient(135deg,#D6336C,#B02454)'};color:${busy ? 'var(--ag-muted)' : '#fff'};font-weight:800;cursor:${busy ? 'default' : 'pointer'};font-family:inherit;`)}
+              >
+                {busy ? 'Booking…' : 'Book & ship'}
+              </button>
+            </div>
+          </>
+        ) : (
+        <>
         <div style={css('margin-top:16px;')}>
           <div style={css(label)}>COURIER</div>
           <select
@@ -136,6 +199,8 @@ export function ShipSheet({
             {busy ? 'Shipping…' : 'Ship order'}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

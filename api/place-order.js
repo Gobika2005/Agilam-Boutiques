@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
 import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
-import { loadTerms } from './_settings.js';
+import { loadCodSwitch, loadTerms } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
 
@@ -287,6 +287,15 @@ export default async function handler(req, res) {
     // No payment to bind an amount against, so the checks are about whether
     // this unpaid order should be allowed to consume a seller's stock at all.
     if (isCod) {
+      // The platform-wide switch (migration 0066) beats every per-shop flag.
+      // Checked before anything else so a platform running prepaid-only never
+      // reaches the stock and cap logic on a payment method it does not offer.
+      if (!(await loadCodSwitch(supabase))) {
+        return res.status(400).json({
+          error: 'Cash on delivery is not available right now. Please pay online to place this order.',
+        });
+      }
+
       const codTotals = computeCartPricing(groupTotals, coupon, groups.size, terms);
 
       if (codTotals.total > terms.cod_max_order) {

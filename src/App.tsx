@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 import { ScrollManager } from '@/components/layout/ScrollManager';
@@ -10,42 +10,8 @@ import { LaunchNotice } from '@/components/layout/LaunchNotice';
 import { MaintenanceNotice } from '@/components/layout/MaintenanceNotice';
 import { EnvBadge } from '@/components/layout/EnvBadge';
 
-import { SignIn } from '@/pages/auth/SignIn';
-import { ResetPassword } from '@/pages/auth/ResetPassword';
-import { SignUp } from '@/pages/auth/SignUp';
-import { Otp } from '@/pages/auth/Otp';
-import { AuthCallback } from '@/pages/auth/AuthCallback';
-import { AdminLogin } from '@/pages/admin/AdminLogin';
-import { AdminResetPassword } from '@/pages/admin/AdminResetPassword';
-
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
 import { Home } from '@/pages/buyer/Home';
-import { Results } from '@/pages/buyer/Results';
-import { Boutiques } from '@/pages/buyer/Boutiques';
-import { BoutiqueProfile } from '@/pages/buyer/BoutiqueProfile';
-import { ProductDetail } from '@/pages/buyer/ProductDetail';
-import { Wishlist } from '@/pages/buyer/Wishlist';
-import { FilterSheet } from '@/pages/buyer/FilterSheet';
-import { SortSheet } from '@/pages/buyer/SortSheet';
-import { Cart } from '@/pages/buyer/Cart';
-import { Checkout } from '@/pages/buyer/Checkout';
-import { Payment } from '@/pages/buyer/Payment';
-import { OrderConfirmation } from '@/pages/buyer/OrderConfirmation';
-import { MyOrders } from '@/pages/buyer/MyOrders';
-import { TrackOrder } from '@/pages/buyer/TrackOrder';
-import { Coupons } from '@/pages/buyer/Coupons';
-import { Notifications as BuyerNotifications } from '@/pages/buyer/Notifications';
-import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
-import { Chat as BuyerChat } from '@/pages/buyer/Chat';
-import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
-import { Policy } from '@/pages/buyer/Policy';
-import { Inspire } from '@/pages/buyer/Inspire';
-import { Collections } from '@/pages/buyer/Collections';
-import { CategoryLanding } from '@/pages/buyer/CategoryLanding';
-import { NewArrivals } from '@/pages/buyer/NewArrivals';
-import { BestSellers } from '@/pages/buyer/BestSellers';
-import { TopBoutiques } from '@/pages/buyer/TopBoutiques';
-import { NotFound } from '@/pages/buyer/NotFound';
 import { POLICIES } from '@/data/policies';
 
 /**
@@ -57,6 +23,89 @@ import { POLICIES } from '@/data/policies';
  */
 const lazyNamed = <M, K extends keyof M>(loader: () => Promise<M>, name: K) =>
   lazy(() => loader().then((m) => ({ default: m[name] as ComponentType })));
+
+/*
+ * ── The buyer storefront is split the same way ──────────────────────────────
+ *
+ * It was not, and that was the single biggest thing on the home page's critical
+ * path: every buyer screen — checkout, the chat client, the order tracker, the
+ * seven policy pages — was a static import, so all of it landed in one 552 kB
+ * entry chunk that a first-time visitor had to download, parse and execute
+ * before the homepage could paint. None of it is reachable from the homepage
+ * without a tap.
+ *
+ * `Home` and `BuyerLayout` stay static on purpose: they are what `/` renders,
+ * and making them lazy would only trade bundle size for an extra round trip on
+ * the one route that must be fastest. Everything else is fetched on navigation,
+ * with the two most likely next screens warmed on idle (`RoutePrefetch`).
+ */
+const Results = lazyNamed(() => import('@/pages/buyer/Results'), 'Results');
+const Boutiques = lazyNamed(() => import('@/pages/buyer/Boutiques'), 'Boutiques');
+const BoutiqueProfile = lazyNamed(() => import('@/pages/buyer/BoutiqueProfile'), 'BoutiqueProfile');
+const ProductDetail = lazyNamed(() => import('@/pages/buyer/ProductDetail'), 'ProductDetail');
+const Wishlist = lazyNamed(() => import('@/pages/buyer/Wishlist'), 'Wishlist');
+const FilterSheet = lazyNamed(() => import('@/pages/buyer/FilterSheet'), 'FilterSheet');
+const SortSheet = lazyNamed(() => import('@/pages/buyer/SortSheet'), 'SortSheet');
+const Cart = lazyNamed(() => import('@/pages/buyer/Cart'), 'Cart');
+const Checkout = lazyNamed(() => import('@/pages/buyer/Checkout'), 'Checkout');
+const Payment = lazyNamed(() => import('@/pages/buyer/Payment'), 'Payment');
+const OrderConfirmation = lazyNamed(() => import('@/pages/buyer/OrderConfirmation'), 'OrderConfirmation');
+const MyOrders = lazyNamed(() => import('@/pages/buyer/MyOrders'), 'MyOrders');
+const TrackOrder = lazyNamed(() => import('@/pages/buyer/TrackOrder'), 'TrackOrder');
+const Coupons = lazyNamed(() => import('@/pages/buyer/Coupons'), 'Coupons');
+const BuyerNotifications = lazyNamed(() => import('@/pages/buyer/Notifications'), 'Notifications');
+const BuyerMessages = lazyNamed(() => import('@/pages/buyer/Messages'), 'Messages');
+const BuyerChat = lazyNamed(() => import('@/pages/buyer/Chat'), 'Chat');
+const BuyerProfile = lazyNamed(() => import('@/pages/buyer/Profile'), 'Profile');
+const Policy = lazyNamed(() => import('@/pages/buyer/Policy'), 'Policy');
+const Inspire = lazyNamed(() => import('@/pages/buyer/Inspire'), 'Inspire');
+const Collections = lazyNamed(() => import('@/pages/buyer/Collections'), 'Collections');
+/* Spelled out rather than via `lazyNamed`, which erases props: this is the one
+   split page that takes any (`kind`). */
+const CategoryLanding = lazy(() =>
+  import('@/pages/buyer/CategoryLanding').then((m) => ({ default: m.CategoryLanding })),
+);
+const NewArrivals = lazyNamed(() => import('@/pages/buyer/NewArrivals'), 'NewArrivals');
+const BestSellers = lazyNamed(() => import('@/pages/buyer/BestSellers'), 'BestSellers');
+const TopBoutiques = lazyNamed(() => import('@/pages/buyer/TopBoutiques'), 'TopBoutiques');
+const NotFound = lazyNamed(() => import('@/pages/buyer/NotFound'), 'NotFound');
+
+/* The login flows are their own destinations, never rendered inside another
+   screen, so they cost the storefront nothing until someone signs in. */
+const SignIn = lazyNamed(() => import('@/pages/auth/SignIn'), 'SignIn');
+const ResetPassword = lazyNamed(() => import('@/pages/auth/ResetPassword'), 'ResetPassword');
+const SignUp = lazyNamed(() => import('@/pages/auth/SignUp'), 'SignUp');
+const Otp = lazyNamed(() => import('@/pages/auth/Otp'), 'Otp');
+const AuthCallback = lazyNamed(() => import('@/pages/auth/AuthCallback'), 'AuthCallback');
+const AdminLogin = lazyNamed(() => import('@/pages/admin/AdminLogin'), 'AdminLogin');
+const AdminResetPassword = lazyNamed(() => import('@/pages/admin/AdminResetPassword'), 'AdminResetPassword');
+
+/**
+ * Warms the chunks for the two screens almost every session reaches next — the
+ * results grid and a product page — once the browser is idle and the current
+ * page has finished its own work. Splitting the storefront trades bundle size
+ * for a round trip on navigation; this pays that trip back before it is taken.
+ *
+ * Deliberately `requestIdleCallback` and not an effect on mount: on a slow
+ * connection the LCP image and the catalogue queries must not be made to
+ * compete with code for a screen nobody has asked for yet.
+ */
+function RoutePrefetch() {
+  useEffect(() => {
+    const warm = () => {
+      void import('@/pages/buyer/Results');
+      void import('@/pages/buyer/ProductDetail');
+    };
+    const ric = window.requestIdleCallback;
+    if (typeof ric === 'function') {
+      const handle = ric(warm, { timeout: 6000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const t = window.setTimeout(warm, 3000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return null;
+}
 
 const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'), 'SellerLayout');
 const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
@@ -93,12 +142,10 @@ const BoutiquesTable = lazyNamed(() => import('@/pages/admin/BoutiquesTable'), '
 const Users = lazyNamed(() => import('@/pages/admin/Users'), 'Users');
 const ProductsAdmin = lazyNamed(() => import('@/pages/admin/ProductsAdmin'), 'ProductsAdmin');
 const OrdersAdmin = lazyNamed(() => import('@/pages/admin/OrdersAdmin'), 'OrdersAdmin');
-const Reports = lazyNamed(() => import('@/pages/admin/Reports'), 'Reports');
 const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
 const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 const AdminCoupons = lazyNamed(() => import('@/pages/admin/Coupons'), 'Coupons');
 const AdminNotifications = lazyNamed(() => import('@/pages/admin/Notifications'), 'Notifications');
-const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
 const Refunds = lazyNamed(() => import('@/pages/admin/Refunds'), 'Refunds');
 const ReviewsAdmin = lazyNamed(() => import('@/pages/admin/ReviewsAdmin'), 'ReviewsAdmin');
 const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast');
@@ -127,6 +174,16 @@ export default function App() {
       {/* Corner ribbon that marks non-production (TEST/staging) builds. Renders
           nothing in production. See ENVIRONMENTS.md. */}
       <EnvBadge />
+      {/* Warms the next-most-likely storefront chunks once the browser is idle. */}
+      <RoutePrefetch />
+      {/*
+        The outer boundary only ever catches the full-page routes below (the
+        login flows and the seller wizard) — every screen inside a console shell
+        resolves against the `Suspense` that `AppShell` puts around its
+        `<Outlet>`, so a route change swaps the page content without tearing
+        down the header and the dock around it.
+      */}
+      <Suspense fallback={<FullscreenLoader />}>
       <Routes>
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
@@ -301,7 +358,10 @@ export default function App() {
         {/* Courier tracking's admin side (0063): disputes that freeze a payout,
             stalled parcels, and the courier list sellers pick from. */}
         <Route path="deliveries" element={<Deliveries />} />
-        <Route path="reports" element={<Reports />} />
+        {/* Folded into Overview and Users as tabs to shorten a 20-item sidebar.
+            Kept as redirects rather than deleted: both were linked from the nav
+            for months, so bookmarks and old notification links exist. */}
+        <Route path="reports" element={<Navigate to="/admin/overview" replace />} />
         <Route path="payments" element={<Payments />} />
         {/* The outgoing side of the ledger — spends with their receipts (0056). */}
         <Route path="expenses" element={<Expenses />} />
@@ -309,7 +369,7 @@ export default function App() {
         <Route path="coupons" element={<AdminCoupons />} />
         <Route path="notifications" element={<AdminNotifications />} />
         {/* New admin operations surfaces (backend: migration 0048 + admin_activity_log). */}
-        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="customers" element={<Navigate to="/admin/users" replace />} />
         <Route path="refunds" element={<Refunds />} />
         <Route path="reviews" element={<ReviewsAdmin />} />
         <Route path="broadcast" element={<Broadcast />} />
@@ -318,6 +378,7 @@ export default function App() {
       </Route>
 
       </Routes>
+      </Suspense>
     </>
   );
 }

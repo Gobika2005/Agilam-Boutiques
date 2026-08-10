@@ -4,13 +4,14 @@ import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import {
   T, Card, DataTable, EmptyState, GhostButton, IconButton, StatusPill,
-  Drawer, ConfirmDialog, type Column,
+  Drawer, ConfirmDialog, TabBar, type Column,
 } from '@/components/admin/kit';
 import { fmt } from '@/data/demo';
 import {
   fetchAllCouriers, saveCourier, fetchDeliveryDisputes, resolveDeliveryDispute,
   fetchStalledShipments, buildTrackingUrl,
-  type Courier, type DeliveryIssueRow, type StalledShipmentRow,
+  fetchShiprocketShops, saveBoutiqueShiprocket, fetchPlatformSwitches, savePlatformSwitches,
+  type Courier, type DeliveryIssueRow, type StalledShipmentRow, type ShiprocketShopRow,
 } from '@/data/shipments';
 
 /**
@@ -28,6 +29,14 @@ import {
  *      courier tracking pages are form-POST with no addressable URL, so many
  *      rows deliberately ship with no template; fill one in here once you have
  *      verified it opens.
+ *   4. **Shiprocket.** The master switch and each shop's pickup location
+ *      (migration 0067). A shop cannot book until BOTH switches are on and its
+ *      pickup nickname is filled in, so this tab is where an integration that
+ *      "does nothing" gets diagnosed.
+ *
+ * Deliberately a tab here rather than a new sidebar entry — the admin nav is
+ * already 20 items deep, and everything on this screen is one subject: getting
+ * a parcel from the shop to the buyer.
  */
 
 const fmtDate = (iso: string | null) =>
@@ -36,7 +45,7 @@ const fmtDate = (iso: string | null) =>
 const daysSince = (iso: string | null) =>
   iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : 0;
 
-type Tab = 'disputes' | 'stalled' | 'couriers';
+type Tab = 'disputes' | 'stalled' | 'couriers' | 'shiprocket';
 
 export function Deliveries() {
   const { showToast } = useShop();
@@ -46,9 +55,42 @@ export function Deliveries() {
   const { data: stalled, loading: sLoading } = useAsync(() => fetchStalledShipments(10), []);
   const { data: couriers, loading: cLoading, reload: reloadCouriers } = useAsync(fetchAllCouriers, []);
 
+  const { data: shops, loading: shLoading, reload: reloadShops } = useAsync(
+    () => fetchShiprocketShops().catch(() => [] as ShiprocketShopRow[]), []);
+  const { data: switches, reload: reloadSwitches } = useAsync(fetchPlatformSwitches, []);
+
   const [resolving, setResolving] = useState<DeliveryIssueRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Partial<Courier> | null>(null);
+  const [shop, setShop] = useState<ShiprocketShopRow | null>(null);
+
+  const toggleSwitch = async (key: 'shiprocket_enabled' | 'cod_enabled', on: boolean) => {
+    try {
+      await savePlatformSwitches({ [key]: on });
+      showToast(on ? 'Switched on' : 'Switched off');
+      reloadSwitches();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save that switch');
+    }
+  };
+
+  const persistShop = async () => {
+    if (!shop) return;
+    setBusy(true);
+    try {
+      await saveBoutiqueShiprocket(shop.id, {
+        shiprocket_enabled: shop.shiprocket_enabled,
+        shiprocket_pickup_location: shop.shiprocket_pickup_location,
+      });
+      showToast(`${shop.name} saved`);
+      setShop(null);
+      reloadShops();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save this boutique');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const resolve = async () => {
     if (!resolving) return;
@@ -139,18 +181,32 @@ export function Deliveries() {
     ) },
   ];
 
-  const tabBtn = (key: Tab, label: string, count?: number) => (
-    <button
-      key={key}
-      onClick={() => setTab(key)}
-      style={css(`height:38px;padding:0 15px;border-radius:11px;border:1.5px solid ${tab === key ? T.accent2 : T.field};background:${tab === key ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${tab === key ? T.accent : T.muted};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;`)}
-    >
-      {label}
-      {count != null && count > 0 && (
-        <span style={css(`min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:${T.accent2};color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;`)}>{count}</span>
-      )}
-    </button>
-  );
+  // "Ready" means all three conditions hold. Showing the reason rather than a
+  // bare cross is the whole point of the column — an admin whose sellers say
+  // "the button isn't there" needs to know which of the three is missing.
+  const shopCols: Column<ShiprocketShopRow>[] = [
+    { key: 'name', header: 'BOUTIQUE', width: '1.4fr', render: (b) => (
+      <div>
+        <div style={css('font-weight:800;')}>{b.name}</div>
+        <div style={css(`font-size:12px;color:${T.muted};`)}>{b.status}</div>
+      </div>
+    ) },
+    { key: 'pickup', header: 'PICKUP LOCATION', width: '1.4fr', render: (b) => (
+      b.shiprocket_pickup_location
+        ? <span style={css('font-size:13px;font-weight:700;')}>{b.shiprocket_pickup_location}</span>
+        : <span style={css(`font-size:12.5px;color:${T.muted};`)}>Not registered</span>
+    ) },
+    { key: 'ready', header: 'BOOKING', width: '150px', render: (b) => {
+      const ready = Boolean(switches?.shiprocket_enabled && b.shiprocket_enabled && b.shiprocket_pickup_location);
+      const why = !switches?.shiprocket_enabled ? 'Platform off'
+        : !b.shiprocket_enabled ? 'Shop off'
+        : !b.shiprocket_pickup_location ? 'No pickup' : 'Ready';
+      return <StatusPill status={ready ? 'paid' : 'cod'} label={why} />;
+    } },
+    { key: 'act', header: '', width: '60px', align: 'right', render: (b) => (
+      <IconButton icon="edit" title="Configure" onClick={() => setShop(b)} />
+    ) },
+  ];
 
   const preview = editing?.tracking_url_template
     ? buildTrackingUrl(editing.tracking_url_template, '1234567890')
@@ -161,11 +217,16 @@ export function Deliveries() {
 
   return (
     <div>
-      <div style={css('display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;')}>
-        {tabBtn('disputes', 'Disputes', disputes?.length ?? 0)}
-        {tabBtn('stalled', 'Stalled parcels', stalled?.length ?? 0)}
-        {tabBtn('couriers', 'Couriers')}
-      </div>
+      <TabBar<Tab>
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'disputes', label: 'Disputes', count: disputes?.length ?? 0 },
+          { key: 'stalled', label: 'Stalled parcels', count: stalled?.length ?? 0 },
+          { key: 'couriers', label: 'Couriers' },
+          { key: 'shiprocket', label: 'Shiprocket' },
+        ]}
+      />
 
       {tab === 'disputes' && (
         <>
@@ -221,6 +282,109 @@ export function Deliveries() {
           />
         </>
       )}
+
+      {tab === 'shiprocket' && (
+        <>
+          {switches === null ? (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css(`font-size:13px;color:${T.muted};line-height:1.6;`)}>
+                Migrations <strong>0066</strong> and <strong>0067</strong> have not been applied to this database yet,
+                so there is nothing to switch. Apply them in the Supabase SQL editor first — see
+                SHIPROCKET_INTEGRATION_2026-08-10.md.
+              </div>
+            </Card>
+          ) : (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;')}>
+                <div style={css('flex:1;min-width:240px;')}>
+                  <div style={css('font-weight:800;font-size:14px;')}>Courier booking</div>
+                  <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                    When on, sellers can book a parcel instead of typing a docket number, and a courier scan —
+                    not the seller — marks the order delivered. Needs the Edge Functions deployed and a funded
+                    Shiprocket wallet. Cash-on-delivery orders are never booked this way.
+                  </div>
+                </div>
+                <GhostButton
+                  icon={switches.shiprocket_enabled ? 'toggle_on' : 'toggle_off'}
+                  tone={switches.shiprocket_enabled ? 'primary' : undefined}
+                  onClick={() => toggleSwitch('shiprocket_enabled', !switches.shiprocket_enabled)}
+                >
+                  {switches.shiprocket_enabled ? 'On' : 'Off'}
+                </GhostButton>
+              </div>
+
+              <div style={css(`height:1px;background:${T.field};margin:16px 0;`)} />
+
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;')}>
+                <div style={css('flex:1;min-width:240px;')}>
+                  <div style={css('font-weight:800;font-size:14px;')}>Cash on delivery</div>
+                  <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                    The master switch. Turning it off refuses every COD checkout across the platform, whatever
+                    individual shops have set. New boutiques already default to prepaid — leave this on unless
+                    you want to stop cash orders everywhere at once.
+                  </div>
+                </div>
+                <GhostButton
+                  icon={switches.cod_enabled ? 'toggle_on' : 'toggle_off'}
+                  tone={switches.cod_enabled ? 'primary' : undefined}
+                  onClick={() => toggleSwitch('cod_enabled', !switches.cod_enabled)}
+                >
+                  {switches.cod_enabled ? 'On' : 'Off'}
+                </GhostButton>
+              </div>
+            </Card>
+          )}
+
+          <DataTable
+            columns={shopCols}
+            rows={shops ?? []}
+            loading={shLoading}
+            getId={(b) => b.id}
+            onRowClick={(b) => setShop(b)}
+            empty={<EmptyState icon="storefront" title="No boutiques" sub="Boutiques appear here once they sign up." />}
+          />
+        </>
+      )}
+
+      <Drawer
+        open={!!shop}
+        onClose={() => setShop(null)}
+        title={shop?.name ?? 'Boutique'}
+        footer={
+          <GhostButton icon="save" tone="primary" onClick={persistShop} disabled={busy}>
+            {busy ? 'Saving…' : 'Save'}
+          </GhostButton>
+        }
+      >
+        <div style={css(label)}>PICKUP LOCATION NICKNAME</div>
+        <input
+          value={shop?.shiprocket_pickup_location ?? ''}
+          onChange={(e) => setShop((s) => (s ? { ...s, shiprocket_pickup_location: e.target.value } : s))}
+          placeholder="e.g. mangaimart-coimbatore-01"
+          style={css(field)}
+        />
+        <div style={css(`font-size:12px;color:${T.muted};margin-top:7px;line-height:1.55;`)}>
+          Add this shop as a <strong>pickup location</strong> in the Shiprocket panel first, using the address on
+          its boutique profile, then paste the nickname Shiprocket gives it here. It must match exactly — booking
+          fails otherwise. Sellers never get their own Shiprocket account.
+        </div>
+
+        <div style={css('display:flex;align-items:center;gap:10px;margin-top:18px;')}>
+          <input
+            id="shop-shiprocket"
+            type="checkbox"
+            checked={shop?.shiprocket_enabled ?? false}
+            onChange={(e) => setShop((s) => (s ? { ...s, shiprocket_enabled: e.target.checked } : s))}
+            style={css('width:18px;height:18px;accent-color:#D6336C;')}
+          />
+          <label htmlFor="shop-shiprocket" style={css('font-size:13.5px;font-weight:700;cursor:pointer;')}>
+            Let this shop book couriers
+          </label>
+        </div>
+        <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
+          Turning this off leaves the shop on manual docket entry. Parcels already booked keep their tracking.
+        </div>
+      </Drawer>
 
       <ConfirmDialog
         open={!!resolving}

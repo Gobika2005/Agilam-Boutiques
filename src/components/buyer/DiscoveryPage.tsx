@@ -44,14 +44,13 @@ export function DiscoveryHeader({
   const goBack = useGoBack('/');
 
   return (
-    // `agx-discovery-root` is the marker index.css hangs the "this page brings
-    // its own navigation" rules on — it retires the five-tab dock on phones.
-    <div className="agx-discovery-root" style={css('padding:2px 0 0;')}>
-      {/* Back + breadcrumb. These pages are usually entered from a Home rail, so
-          the buyer needs a way back that is not the browser button — and on
-          phones this IS the navigation, since the dock is hidden here.
-          Back returns to wherever they came from (a rail, a search, a boutique);
-          the breadcrumb stays because Back alone doesn't say where you are. */}
+    <div style={css('padding:2px 0 0;')}>
+      {/* Back + breadcrumb. These pages are entered FROM somewhere — a Home
+          rail, a search — so the buyer needs a way back that is not the browser
+          button. Back returns to wherever they came from; the breadcrumb stays
+          because Back alone doesn't say where you are. The tab dock stays put on
+          these pages: they float no bottom furniture of their own, so nothing
+          was competing with it. */}
       <div style={css('display:flex;align-items:center;gap:10px;')}>
         <button
           onClick={goBack}

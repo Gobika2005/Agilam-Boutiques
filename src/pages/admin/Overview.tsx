@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { fetchDashboard, type WindowStat, type DashboardData } from '@/data/admin';
 import { useSettings } from '@/data/settings';
 import { fetchActivity } from '@/data/activityLog';
-import { SectionCard, StatusPill, Avatar, Icon, EmptyState, T } from '@/components/admin/kit';
+import { SectionCard, StatusPill, Avatar, Icon, EmptyState, TabBar, T } from '@/components/admin/kit';
+import { Reports } from '@/pages/admin/Reports';
 import { SkeletonTiles } from '@/components/ui/Skeleton';
 
 const compactInr = (n: number) =>
@@ -37,7 +38,30 @@ const RANGES: { key: RangeKey; label: string; cur: keyof DashboardData; prev: ke
   { key: 'year', label: 'Year', cur: 'year', prev: 'prevYear', vs: 'vs last year' },
 ];
 
+/**
+ * Overview — marketplace health, with Reports & Analytics as a tab.
+ *
+ * They were adjacent sidebar entries doing the same job at different depths:
+ * this one is the live snapshot, Reports is the longer trend view. Merged to
+ * shorten a 20-item nav without losing either. `/admin/reports` still resolves —
+ * App.tsx redirects it here.
+ */
+const OVERVIEW_TABS = [
+  { key: 'health' as const, label: 'Overview' },
+  { key: 'reports' as const, label: 'Reports & Analytics' },
+];
+
 export function Overview() {
+  const [tab, setTab] = useState<'health' | 'reports'>('health');
+  return (
+    <div>
+      <TabBar tabs={OVERVIEW_TABS} value={tab} onChange={setTab} />
+      {tab === 'health' ? <MarketplaceHealth /> : <Reports />}
+    </div>
+  );
+}
+
+function MarketplaceHealth() {
   const { commission_pct: commissionPct } = useSettings();
   const navigate = useNavigate();
   const { data, loading, reload } = useAsync(() => fetchDashboard(), []);

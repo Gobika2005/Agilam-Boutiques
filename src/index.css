@@ -139,6 +139,20 @@ select:-webkit-autofill {
 @keyframes agx-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 @keyframes agx-sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes agx-fade { from { opacity: 0; } to { opacity: 1; } }
+/* The hold shown by `AppShell`'s route Suspense while a code-split screen's
+   chunk arrives. It fades in after 220 ms rather than appearing at once: a
+   warm chunk resolves faster than that, and a spinner that flashes for one
+   frame on every tap reads as jank, not as progress. */
+@keyframes agx-route-spin { to { transform: rotate(360deg); } }
+@keyframes agx-route-in { from { opacity: 0; } to { opacity: 1; } }
+.agx-route-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2.5px solid var(--ag-border); border-top-color: var(--ag-crimson);
+  animation: agx-route-spin .8s linear infinite, agx-route-in .2s ease .22s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agx-route-spinner { animation: agx-route-in .2s ease .22s both; }
+}
 .agx-app { width: 100%; max-width: 1440px; margin: 0 auto; }
 .agx-nav-scroll { overflow-x: auto; }
 /* ---------- catalogue grids ----------
@@ -376,9 +390,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* The product page no longer stacks a dock on its action bar, so the toast only
    has to clear the bar itself (~78px) — at 160px it floated in open space. */
 @media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 96px; } }
-/* Discovery pages hide the dock on phones and have no bottom furniture of their
-   own, so nothing needs clearing. */
-@media (max-width:899px){ body:has(.agx-discovery-root) .agx-toast { bottom: 28px; } }
+/* The results grid drops its Filter/Sort bar to the bottom edge once the dock is
+   gone, so the toast has to clear that bar (~70px) instead of the dock. */
+@media (max-width:959px){ body:has(.agx-results-root) .agx-toast { bottom: 90px; } }
 @media (min-width:960px){ .agx-toast { bottom: 28px; } }
 body.agx-photo-open .agx-toast { bottom: 28px; }
 /* A chat has no dock, but it does have the composer pinned to the bottom edge —
@@ -409,16 +423,22 @@ body.agx-photo-open .agx-dock,
 body.agx-photo-open .agx-pdp-sticky { display: none !important; }
 body.agx-photo-open { overflow: hidden; }
 
-/* The four "See all" discovery pages (Collections, New arrivals, Best sellers,
-   Top boutiques) carry a Back button in their shared header, so on phones they
-   retire the dock the same way the product page and the chat do. These are
-   pages you enter FROM somewhere — a Home rail, a search — and leave the way you
-   came; a floating five-tab dock over a grid of tiles was chrome, not help.
-   Kept from 900px up, where the dock costs nothing and is the only navigation. */
-@media (max-width:899px){
-  body:has(.agx-discovery-root) .agx-dock { display:none !important; }
-  /* The 128px bottom reserve existed only to clear that dock. */
-  body:has(.agx-discovery-root) .agx-app-main { padding-bottom:28px !important; }
+/* The results grid (/shop, /search) floats its own Filter + Sort bar below
+   960px, and that bar sat at bottom:96px purely to clear the dock — two rows of
+   floating furniture over the same grid, with the bag stacked at 162px on top of
+   them. The dock goes; the bar drops to the bottom edge and becomes the page's
+   only bottom control. Results carries its own Back button next to the
+   breadcrumb, so nothing is stranded.
+   Scoped to the widths where that bar is actually visible: from 960px up the
+   filters live in the sidebar and the dock is the only navigation.
+   The four "See all" discovery pages (Collections, New arrivals, Best sellers,
+   Top boutiques) deliberately KEEP their dock — they have no bottom furniture of
+   their own, so nothing was competing with it there. */
+@media (max-width:959px){
+  body:has(.agx-results-root) .agx-dock { display:none !important; }
+  .agx-mob-actionbar { bottom: calc(24px + env(safe-area-inset-bottom)) !important; }
+  /* Was 140px, reserved for the bar AND the dock above it. */
+  .agx-results-inner { padding-bottom: 104px !important; }
 }
 
 /* The floating dock is the navigation at EVERY width — phone and desktop alike.
@@ -624,16 +644,12 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
    From 900px up the sticky bar is gone and the dock is back, hence 112px. */
 body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(96px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(112px + env(safe-area-inset-bottom)); } }
-/* Discovery pages have no bottom furniture at all on phones once the dock is
-   retired, so the bag can sit at the bottom edge like any other floating action. */
-@media (max-width: 899px) {
-  body:has(.agx-discovery-root) .agx-fab-bag { bottom: calc(28px + env(safe-area-inset-bottom)); }
-}
-/* Results/collection screens float their own Filter + Sort bar at 96px on
-   phones. The bag used to land on top of the Sort button; it stacks above the
-   pair instead. Scoped to the widths where that bar is actually visible. */
+/* Results screens float their own Filter + Sort bar. It now sits at the bottom
+   edge (24px) rather than at 96px above the dock, so the bag stacks just above
+   the pair — it was at 162px when it had to clear the bar AND the dock.
+   Scoped to the widths where that bar is actually visible. */
 @media (max-width: 959px) {
-  body:has(.agx-mob-actionbar) .agx-fab-bag { bottom: calc(162px + env(safe-area-inset-bottom)); }
+  body:has(.agx-mob-actionbar) .agx-fab-bag { bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 
 /* The bag capsule: frosted ivory, so it reads as a receipt sitting over the

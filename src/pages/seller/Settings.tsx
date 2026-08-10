@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
+import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WORKING_DAYS } from '@/data/types';
@@ -43,6 +44,13 @@ export function Settings() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
   const [saving, setSaving] = useState(false);
+  // Kept out of `Form` and loaded separately: these columns arrive with
+  // migration 0065, and null means "not applied yet", which hides the section
+  // rather than saving a value the database has nowhere to put.
+  const [parcel, setParcel] = useState<ParcelDefaults | null>(null);
+
+  const setParcelField = (key: keyof ParcelDefaults, raw: string) =>
+    setParcel((p) => (p ? { ...p, [key]: Number(raw.replace(/[^\d.]/g, '')) || 0 } : p));
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -70,6 +78,13 @@ export function Settings() {
       notifyMessages: boutique.notify_messages ?? true,
       notifyPromotions: boutique.notify_promotions ?? false,
     });
+  }, [boutique]);
+
+  useEffect(() => {
+    if (!boutique) return;
+    let live = true;
+    void fetchParcelDefaults(boutique.id).then((p) => { if (live) setParcel(p); });
+    return () => { live = false; };
   }, [boutique]);
 
   const save = async () => {
@@ -108,6 +123,15 @@ export function Settings() {
     setSaving(true);
     try {
       await updateBoutique(boutique.id, patch);
+      // Separate write, same button. A failure here must not roll back the rest
+      // of the settings, so it reports on its own rather than failing the save.
+      if (parcel) {
+        try {
+          await saveParcelDefaults(boutique.id, parcel);
+        } catch (e) {
+          showToast(e instanceof Error ? e.message : 'Parcel defaults could not be saved');
+        }
+      }
       reload();
       showToast('Settings saved');
     } catch (e) {
@@ -162,6 +186,34 @@ export function Settings() {
             </>
           )}
         </SectionCard>
+
+        {parcel && (
+          <SectionCard
+            title="Parcel defaults"
+            subtitle="Used when a courier is booked, for any product with no weight of its own."
+          >
+            <Field
+              label="Default weight (grams)"
+              value={String(parcel.default_weight_grams)}
+              onChange={(v) => setParcelField('default_weight_grams', v)}
+              inputMode="numeric"
+              placeholder="500"
+              hint="A typical packed piece from your shop. Set weights on individual products where they differ."
+            />
+            <Row>
+              <Field label="Box length (cm)" value={String(parcel.package_length_cm)} onChange={(v) => setParcelField('package_length_cm', v)} inputMode="numeric" placeholder="30" />
+              <Field label="Box breadth (cm)" value={String(parcel.package_breadth_cm)} onChange={(v) => setParcelField('package_breadth_cm', v)} inputMode="numeric" placeholder="24" />
+            </Row>
+            <Field
+              label="Box height (cm)"
+              value={String(parcel.package_height_cm)}
+              onChange={(v) => setParcelField('package_height_cm', v)}
+              inputMode="numeric"
+              placeholder="6"
+              hint="Couriers charge on whichever is greater — the real weight or the size of the box — so an oversized box costs you money."
+            />
+          </SectionCard>
+        )}
 
         <SectionCard title="Payments accepted">
           <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />

@@ -57,3 +57,31 @@ export async function loadTerms(supabase) {
     return { ...DEFAULT_TERMS };
   }
 }
+
+/**
+ * The platform-wide cash-on-delivery switch (migration 0066).
+ *
+ * Read in its OWN query rather than joining the list above, and that separation
+ * is deliberate. Postgres fails a SELECT naming a column that does not exist —
+ * the whole SELECT, not just that column — so folding `cod_enabled` into
+ * loadTerms would mean that on any deploy where 0066 has not been applied,
+ * every commercial term silently collapses to its default. Changing the COD
+ * flag must not be able to reprice a cart.
+ *
+ * Defaults to true on any failure: an unreadable switch leaves COD exactly as
+ * it was rather than cutting off a payment method nobody asked to disable.
+ */
+export async function loadCodSwitch(supabase) {
+  if (!supabase) return true;
+  try {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('cod_enabled')
+      .eq('id', 1)
+      .maybeSingle();
+    if (error || !data) return true;
+    return data.cod_enabled !== false;
+  } catch {
+    return true;
+  }
+}

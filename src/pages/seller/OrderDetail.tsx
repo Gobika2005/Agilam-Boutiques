@@ -14,7 +14,9 @@ import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImag
 import { BillReceipt } from '@/components/seller/BillReceipt';
 import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { createShipment, fetchCouriers, fetchShipment } from '@/data/shipments';
+import {
+  bookShiprocketShipment, createShipment, fetchCouriers, fetchShipment, fetchShiprocketAvailability,
+} from '@/data/shipments';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 
 export function OrderDetail() {
@@ -37,6 +39,13 @@ export function OrderDetail() {
   const { data: shipment, reload: reloadShipment } = useAsync(
     () => (orderId ? fetchShipment(orderId) : Promise.resolve(null)),
     [orderId],
+  );
+  // Both switches on and a registered pickup location, or the booking mode is
+  // never offered. Failing closed matters: the alternative is a seller tapping
+  // "Book & ship" and getting a refusal from the Edge Function instead.
+  const { data: canBookCourier } = useAsync(
+    () => (boutique ? fetchShiprocketAvailability(boutique.id).catch(() => false) : Promise.resolve(false)),
+    [boutique?.id],
   );
 
   if (!row && loading) {
@@ -99,6 +108,39 @@ export function OrderDetail() {
       reload();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not ship this order');
+    } finally {
+      setShipping(false);
+    }
+  };
+
+  /**
+   * Book the parcel with Shiprocket, which also ships the order.
+   *
+   * Everything happens server-side in the `shiprocket-book` Edge Function — it
+   * creates their order, gets an AWB assigned, writes the shipment row and
+   * flips the status — because the whole sequence needs the service role and
+   * must not be half-completed by a browser that navigated away mid-flight.
+   *
+   * There is no retry here on purpose. A failure after the AWB is issued means
+   * a real parcel exists, and a second attempt would book (and pay for) a
+   * second one; the function returns an explicit "do not book again" in that
+   * case and it is surfaced verbatim.
+   */
+  const bookOrder = async () => {
+    setShipping(true);
+    try {
+      const booked = await bookShiprocketShipment(o.id);
+      setShipOpen(false);
+      showToast(`Booked with ${booked.courierName} · ${booked.awb}`);
+      if (booked.weightEstimated) {
+        // Worth interrupting for: the courier weighs the parcel themselves and
+        // bills the difference, so a guessed weight becomes a real charge.
+        showToast('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.');
+      }
+      reloadShipment();
+      reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not book this parcel');
     } finally {
       setShipping(false);
     }
@@ -477,8 +519,14 @@ export function OrderDetail() {
         <ShipSheet
           couriers={couriers ?? []}
           busy={shipping}
+          // COD is deliberately excluded: Shiprocket remits collected cash to
+          // the account holder — us — which would make the platform the money
+          // handler. The seller keeps the cash and owes the commission, so a
+          // COD parcel goes out with their own courier.
+          canBook={Boolean(canBookCourier) && !o.isCod}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
+          onBook={bookOrder}
         />
       )}
     </div>

@@ -110,6 +110,17 @@ export interface Database {
           notify_orders: boolean;
           notify_messages: boolean;
           notify_promotions: boolean;
+          /** Parcel defaults (migration 0065) — the fallback weight for a
+           *  product with none of its own, and the box this shop packs in.
+           *  Granted in 0065; read via fetchParcelDefaults, NOT BOUTIQUE_COLUMNS. */
+          default_weight_grams: number;
+          package_length_cm: number;
+          package_breadth_cm: number;
+          package_height_cm: number;
+          /** Shiprocket (migration 0067). The pickup-location nickname registered
+           *  under the platform account; NULL means this shop cannot book. */
+          shiprocket_pickup_location: string | null;
+          shiprocket_enabled: boolean;
           /**
            * Withheld from anon/authenticated by 0021's column-level SELECT
            * grants: writable by the owner, but only readable through the
@@ -147,6 +158,9 @@ export interface Database {
           deleted_at: string | null;
           description: string;
           mrp: number | null;
+          /** Packed weight of one unit in grams (migration 0065). NULL falls
+           *  back to boutiques.default_weight_grams when a parcel is booked. */
+          weight_grams: number | null;
           sizes: string[];
           wash_care: string;
           images: string[];
@@ -478,6 +492,12 @@ export interface Database {
           /** Which Razorpay merchant account collects money (migration 0064).
            *  Names an env-var slot, never a key. */
           razorpay_account: 'primary' | 'backup';
+          /** Master COD switch (migration 0066). False makes api/place-order.js
+           *  refuse every cash order regardless of the per-boutique flag. */
+          cod_enabled: boolean;
+          /** Master Shiprocket switch (migration 0067). Off by default — an
+           *  admin turns it on once credentials are set. */
+          shiprocket_enabled: boolean;
           updated_at: string;
           updated_by: string | null;
         };
@@ -546,11 +566,48 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          // ── Aggregator booking (migration 0067) ───────────────────────────
+          /** 'manual' = the seller typed the docket. 'shiprocket' = we booked
+           *  it, so a courier scan drives the timeline instead of the seller. */
+          provider: 'manual' | 'shiprocket';
+          sr_order_id: string | null;
+          sr_shipment_id: string | null;
+          sr_courier_name: string | null;
+          label_url: string | null;
+          manifest_url: string | null;
+          /** What the aggregator charged US for this parcel. */
+          freight_charge: number | null;
+          declared_weight_kg: number | null;
+          /** Latest normalised scan, denormalised off shipment_events so an
+           *  order list needs no join per row. */
+          last_status: string | null;
+          last_status_at: string | null;
         };
         Insert: Partial<Database['public']['Tables']['shipments']['Row']> & {
           order_id: string; boutique_id: string; courier_name: string; awb: string;
         };
         Update: Partial<Database['public']['Tables']['shipments']['Row']>;
+        Relationships: [];
+      };
+      /** Courier scans, append-only (migration 0067). Written only by the
+       *  webhook Edge Function through the service role; readable by the buyer,
+       *  the seller and an admin. */
+      shipment_events: {
+        Row: {
+          id: string;
+          shipment_id: string;
+          order_id: string;
+          awb: string | null;
+          /** The courier's own wording, kept verbatim for support. */
+          raw_status: string;
+          stage: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+          location: string | null;
+          occurred_at: string | null;
+          payload: unknown;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['shipment_events']['Row']>;
+        Update: Partial<Database['public']['Tables']['shipment_events']['Row']>;
         Relationships: [];
       };
     };

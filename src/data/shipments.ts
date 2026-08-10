@@ -29,9 +29,24 @@ export type Shipment = {
   awb: string;
   tracking_url: string | null;
   shipped_at: string;
+  /** Migration 0067. 'manual' = the seller typed the docket; 'shiprocket' = we
+   *  booked it and a courier scan drives the timeline. Optional because the
+   *  column list falls back when 0067 has not been applied. */
+  provider?: 'manual' | 'shiprocket';
+  label_url?: string | null;
+  freight_charge?: number | null;
+  last_status?: string | null;
+  last_status_at?: string | null;
 };
 
 const SHIPMENT_COLUMNS = 'id, order_id, boutique_id, courier_id, courier_name, awb, tracking_url, shipped_at';
+
+/** The 0067 columns, requested separately for the same reason the whole module
+ *  is separate from `orders.ts`: naming a column that does not exist yet fails
+ *  the WHOLE query, so an un-migrated deploy would lose tracking entirely
+ *  rather than just losing the booking extras. */
+const SHIPMENT_COLUMNS_V2 =
+  `${SHIPMENT_COLUMNS}, provider, label_url, freight_charge, last_status, last_status_at`;
 
 /**
  * Substitute the AWB into a courier's template.
@@ -91,6 +106,13 @@ export async function saveCourier(
  * the order screens must still render, just without tracking.
  */
 export async function fetchShipment(orderId: string): Promise<Shipment | null> {
+  const wide = await supabase
+    .from('shipments')
+    .select(SHIPMENT_COLUMNS_V2)
+    .eq('order_id', orderId)
+    .maybeSingle();
+  if (!wide.error) return (wide.data as Shipment | null) ?? null;
+
   const { data, error } = await supabase
     .from('shipments')
     .select(SHIPMENT_COLUMNS)
@@ -156,6 +178,202 @@ export async function updateShipment(
   if (patch.trackingUrl !== undefined) payload.tracking_url = patch.trackingUrl?.trim() || null;
   const { error } = await supabase.from('shipments').update(payload).eq('id', id);
   if (error) throw error;
+}
+
+/* ── Parcel defaults (migration 0065) ──────────────────────────────────────── */
+
+export type ParcelDefaults = {
+  default_weight_grams: number;
+  package_length_cm: number;
+  package_breadth_cm: number;
+  package_height_cm: number;
+};
+
+/**
+ * The shop's fallback weight and the box it packs in.
+ *
+ * Read on its own rather than added to BOUTIQUE_COLUMNS: that list is one
+ * string, and naming a column that does not exist yet fails the WHOLE query —
+ * which would take down every screen that loads a boutique on any deploy where
+ * 0065 has not been applied. Null here just means the settings section hides.
+ */
+export async function fetchParcelDefaults(boutiqueId: string): Promise<ParcelDefaults | null> {
+  const { data, error } = await supabase
+    .from('boutiques')
+    .select('default_weight_grams, package_length_cm, package_breadth_cm, package_height_cm')
+    .eq('id', boutiqueId)
+    .maybeSingle();
+  if (error) return null;
+  return (data as ParcelDefaults | null) ?? null;
+}
+
+export async function saveParcelDefaults(boutiqueId: string, v: ParcelDefaults): Promise<void> {
+  const { error } = await supabase.from('boutiques').update(v).eq('id', boutiqueId);
+  if (error) throw error;
+}
+
+/* ── Shiprocket (migration 0067) ───────────────────────────────────────────── */
+
+export type ShipmentBooking = {
+  awb: string;
+  courierName: string;
+  labelUrl: string | null;
+  freightCharge: number | null;
+  weightKg: number;
+  /** True when at least one line item had no weight of its own and the shop
+   *  default was used. The seller is told, because THEY carry the weight
+   *  discrepancy charge if the parcel is heavier than we declared. */
+  weightEstimated: boolean;
+};
+
+/**
+ * Book the parcel with Shiprocket and ship the order in one call.
+ *
+ * Runs as a Supabase Edge Function, not a Vercel route: `api/` holds exactly 12
+ * functions, which is the Hobby ceiling, so a thirteenth would fail the deploy.
+ *
+ * COD orders are refused — by the function, and again by a trigger. Shiprocket
+ * remits COD to the wallet holder (us), which would make the platform the money
+ * handler and break the arrangement migration 0022 encodes.
+ */
+export async function bookShiprocketShipment(orderId: string): Promise<ShipmentBooking> {
+  const { data, error } = await supabase.functions.invoke('shiprocket-book', {
+    body: { orderId },
+  });
+
+  if (error) {
+    // supabase-js turns any non-2xx into an opaque "Edge Function returned a
+    // non-2xx status code" and hides the body on `error.context`. Every refusal
+    // this function makes is written to be read by a seller, so dig it out —
+    // "Check the wallet balance" is actionable, the generic message is not.
+    let message = error.message;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === 'function') {
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error as string;
+      } catch {
+        /* not JSON — keep the generic message */
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (!data?.ok) throw new Error(data?.error ?? 'Booking failed');
+  return data as ShipmentBooking;
+}
+
+/** Is Shiprocket booking available for this shop right now? Both switches must
+ *  be on and an admin must have registered the shop's pickup location. */
+export async function fetchShiprocketAvailability(boutiqueId: string): Promise<boolean> {
+  const [{ data: settings }, { data: shop }] = await Promise.all([
+    supabase.from('platform_settings').select('shiprocket_enabled').eq('id', 1).maybeSingle(),
+    supabase.from('boutiques').select('shiprocket_enabled, shiprocket_pickup_location').eq('id', boutiqueId).maybeSingle(),
+  ]);
+  return Boolean(
+    (settings as { shiprocket_enabled?: boolean } | null)?.shiprocket_enabled &&
+    (shop as { shiprocket_enabled?: boolean } | null)?.shiprocket_enabled &&
+    (shop as { shiprocket_pickup_location?: string | null } | null)?.shiprocket_pickup_location,
+  );
+}
+
+/* ── Shiprocket admin ──────────────────────────────────────────────────────── */
+
+export type ShiprocketShopRow = {
+  id: string;
+  name: string;
+  status: string;
+  shiprocket_enabled: boolean;
+  shiprocket_pickup_location: string | null;
+};
+
+/**
+ * Every boutique's booking readiness, for the admin console.
+ *
+ * Named columns only — `boutiques` cannot be read with select('*') since the
+ * column-level grants in 0021.
+ */
+export async function fetchShiprocketShops(): Promise<ShiprocketShopRow[]> {
+  const { data, error } = await supabase
+    .from('boutiques')
+    .select('id, name, status, shiprocket_enabled, shiprocket_pickup_location')
+    .order('name');
+  if (error) throw error;
+  return (data ?? []) as ShiprocketShopRow[];
+}
+
+/**
+ * Point a boutique at its pickup location in the Shiprocket panel.
+ *
+ * The nickname is created by an admin over there first — we cannot register it
+ * through the API without also collecting the address in their format, and the
+ * boutique already holds a perfectly good one. Blank clears it, which disables
+ * booking for that shop without touching the flag.
+ */
+export async function saveBoutiqueShiprocket(
+  boutiqueId: string,
+  patch: { shiprocket_enabled?: boolean; shiprocket_pickup_location?: string | null },
+): Promise<void> {
+  const payload: { shiprocket_enabled?: boolean; shiprocket_pickup_location?: string | null } = {};
+  if (patch.shiprocket_enabled !== undefined) payload.shiprocket_enabled = patch.shiprocket_enabled;
+  if (patch.shiprocket_pickup_location !== undefined) {
+    payload.shiprocket_pickup_location = patch.shiprocket_pickup_location?.trim() || null;
+  }
+  const { error } = await supabase.from('boutiques').update(payload).eq('id', boutiqueId);
+  if (error) throw error;
+}
+
+export type PlatformSwitches = { shiprocket_enabled: boolean; cod_enabled: boolean };
+
+/**
+ * The two master switches (0066 + 0067).
+ *
+ * Returns null when the columns are not there yet, which the console shows as
+ * "migration not applied" rather than as a pair of switches that silently do
+ * nothing when toggled.
+ */
+export async function fetchPlatformSwitches(): Promise<PlatformSwitches | null> {
+  const { data, error } = await supabase
+    .from('platform_settings')
+    .select('shiprocket_enabled, cod_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) return null;
+  return (data as PlatformSwitches | null) ?? null;
+}
+
+export async function savePlatformSwitches(patch: Partial<PlatformSwitches>): Promise<void> {
+  const { error } = await supabase.from('platform_settings').update(patch).eq('id', 1);
+  if (error) throw error;
+}
+
+export type ShipmentEvent = {
+  id: string;
+  raw_status: string;
+  stage: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+  location: string | null;
+  occurred_at: string | null;
+  created_at: string;
+};
+
+/**
+ * The courier's scan history for one order, newest first.
+ *
+ * Never throws: this is a detail panel on a screen that must render without it,
+ * both before migration 0067 and on any manually-shipped parcel, which has no
+ * scans at all and never will.
+ */
+export async function fetchShipmentEvents(orderId: string): Promise<ShipmentEvent[]> {
+  const { data, error } = await supabase
+    .from('shipment_events')
+    .select('id, raw_status, stage, location, occurred_at, created_at')
+    .eq('order_id', orderId)
+    .order('occurred_at', { ascending: false, nullsFirst: false });
+  if (error) {
+    console.error('fetchShipmentEvents failed:', error.message);
+    return [];
+  }
+  return (data ?? []) as ShipmentEvent[];
 }
 
 /**

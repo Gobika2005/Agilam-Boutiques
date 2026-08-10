@@ -28,6 +28,9 @@ export interface ProductWithBoutique {
   last_viewed_at?: string | null;
   description?: string | null;
   mrp?: number | null;
+  /** Packed weight in grams (migration 0065). Optional so a project that hasn't
+   *  run it still reads products; NULL means "use the boutique default". */
+  weight_grams?: number | null;
   sizes?: string[] | null;
   wash_care?: string | null;
   images?: string[] | null;

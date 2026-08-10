@@ -91,9 +91,30 @@ export function ScrollReveal() {
       return node;
     };
 
+    /**
+     * One `getBoundingClientRect()` per element per scan.
+     *
+     * Every read here forces the browser to flush layout, and the walk below
+     * used to measure the same element three or four times over — once in
+     * `eligible`, twice more while sorting a level by height, then again in
+     * `scan`. On a screen with a few dozen sections that is a few dozen
+     * synchronous layouts inside whatever interaction happened to schedule the
+     * scan, which is exactly what an INP measurement is counting. The cache is
+     * per-scan and thrown away after, so it can never go stale.
+     */
+    let rects = new WeakMap<HTMLElement, DOMRect>();
+    const rectOf = (el: HTMLElement) => {
+      let r = rects.get(el);
+      if (!r) {
+        r = el.getBoundingClientRect();
+        rects.set(el, r);
+      }
+      return r;
+    };
+
     /** Tall enough to be worth animating, and not already on screen. */
     const eligible = (el: HTMLElement) => {
-      const r = el.getBoundingClientRect();
+      const r = rectOf(el);
       return r.height >= MIN_HEIGHT && r.top >= window.innerHeight * 0.9;
     };
 
@@ -114,14 +135,16 @@ export function ScrollReveal() {
         const kids = Array.from(level.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
         if (kids.length > 60) return kids;
         if (kids.some(eligible)) return kids;
-        level = kids
-          .slice()
-          .sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0] ?? null;
+        level = kids.reduce<HTMLElement | null>(
+          (tallest, k) => (!tallest || rectOf(k).height > rectOf(tallest).height ? k : tallest),
+          null,
+        );
       }
       return [];
     };
 
     const scan = () => {
+      rects = new WeakMap();
       for (const node of targets()) {
         if (!(node instanceof HTMLElement) || seen.has(node)) continue;
 
@@ -135,7 +158,7 @@ export function ScrollReveal() {
         // NOT marked `seen`: a section measured while its data is still loading
         // is 0px tall, and marking it here excluded every asynchronously-filled
         // rail on Home from ever animating. Leave it for a later scan.
-        const rect = node.getBoundingClientRect();
+        const rect = rectOf(node);
         if (rect.height < MIN_HEIGHT) continue;
 
         // Above the fold right now — the page's own entrance animations already
@@ -149,10 +172,31 @@ export function ScrollReveal() {
       }
     };
 
+    /**
+     * At most one scan per frame.
+     *
+     * The observer below is `subtree: true` over the whole page, so it fires on
+     * every React commit — and a single interaction (opening a sheet, typing in
+     * search, expanding an accordion, a rail's data landing) is many commits.
+     * Wired straight to `scan`, each one dragged a full measuring pass into the
+     * same task as the interaction, and the reveal's own class changes fed more
+     * commits back in. Coalescing to a frame makes the cost of a hundred
+     * mutations the same as the cost of one, and moves it out of the event
+     * handler the browser is timing for INP.
+     */
+    let queued = 0;
+    const queueScan = () => {
+      if (queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        scan();
+      });
+    };
+
     // Content arrives asynchronously (catalogue, orders, analytics), so re-scan
     // as the page fills rather than only once on mount.
     scan();
-    const mo = new MutationObserver(scan);
+    const mo = new MutationObserver(queueScan);
     const main = document.querySelector('main.agx-app-main');
     // `subtree` because the sections live inside the page's own wrapper, so a
     // rail that finishes loading is not a mutation of `main` itself.
@@ -163,6 +207,7 @@ export function ScrollReveal() {
     return () => {
       io.disconnect();
       mo.disconnect();
+      if (queued) cancelAnimationFrame(queued);
       window.clearTimeout(settle);
       window.clearTimeout(settle2);
       cleanupTimers.forEach(window.clearTimeout);

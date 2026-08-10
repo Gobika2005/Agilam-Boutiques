@@ -21,12 +21,13 @@ deployed to Vercel.
 | `src/state/` | Contexts; `ShopContext.tsx` holds cart/wishlist/follows |
 | `src/data/` | DB access layer per domain (products, coupons, settings…) |
 | `api/` | Serverless endpoints. `_`-prefixed files are helpers, not routes |
-| `supabase/migrations/` | Numbered SQL, `0001`…`0059` |
+| `supabase/migrations/` | Numbered SQL, `0001`…`0067` |
+| `supabase/functions/` | Deno Edge Functions — the escape hatch when `api/` is full |
 | `middleware.js` | Injects SEO meta + JSON-LD, serves robots.txt & sitemap |
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0060`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0068`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
 2. **Pricing is mirrored and must stay in step.** `src/lib/pricing.ts` (client) and

@@ -14,9 +14,11 @@ import {
   Field,
   EmptyState,
   Icon,
+  TabBar,
   T,
   type Column,
 } from '@/components/admin/kit';
+import { Customers } from '@/pages/admin/Customers';
 import { logAdminAction } from '@/data/activityLog';
 import {
   fetchUsers,
@@ -47,7 +49,30 @@ const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
   admin: { bg: 'var(--ag-surface-2)', fg: '#D6336C' },
 };
 
+/**
+ * Users — the account directory, plus Customer 360° as a tab.
+ *
+ * The two were separate sidebar entries and were both a searchable list of
+ * people; this one is every account, the other ranks buyers by what they have
+ * spent. Merged rather than deleted, so the spend view survives while the nav
+ * gets shorter. `/admin/customers` still resolves — App.tsx redirects it here.
+ */
+const USER_TABS = [
+  { key: 'accounts' as const, label: 'Accounts' },
+  { key: 'customers' as const, label: 'Customer 360°' },
+];
+
 export function Users() {
+  const [tab, setTab] = useState<'accounts' | 'customers'>('accounts');
+  return (
+    <div>
+      <TabBar tabs={USER_TABS} value={tab} onChange={setTab} />
+      {tab === 'accounts' ? <UserDirectory /> : <Customers />}
+    </div>
+  );
+}
+
+function UserDirectory() {
   const { showToast } = useShop();
   const { profile } = useAuth();
   const [page, setPage] = useState(0);
