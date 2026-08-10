@@ -318,12 +318,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* PDP action buttons: inline on desktop, sticky bottom bar on mobile (≤899px) */
 .agx-pdp-sticky { display:none; }
 @media (max-width:899px){
-  /* Product page: a full-width action bar is pinned to the bottom edge and the
-     floating nav dock is lifted to sit just above it, so both stay visible and
-     clearly separated instead of overlapping. */
-  body:has(.agx-pdp-root) .agx-dock { bottom:84px !important; }
+  /* Product page: a full-width action bar is pinned to the bottom edge, and it
+     is the ONLY bottom furniture. The dock used to be lifted to bottom:84px so
+     it could sit above the bar — two stacked bars, ~160px of a phone screen
+     spent on chrome, with the app's five tabs and the page's own actions
+     competing for the same thumb. The bar now carries a Back button (see
+     ProductDetail), which is the only thing the dock was really being used for
+     here, and Back beats a tab because it returns to the grid the buyer was
+     browsing rather than a fixed destination. Same reasoning as the chat
+     surface below, which retired the dock for the same reason. */
+  body:has(.agx-pdp-root) .agx-dock { display:none !important; }
   .agx-pdp-actions { display:none !important; }
-  .agx-pdp-root { padding-bottom:184px !important; }
+  /* Reserve for the action bar alone (~78px) plus breathing room — was 184px
+     when the dock was stacked on top of it. */
+  .agx-pdp-root { padding-bottom:104px !important; }
   /* single-column: media has 0 right-padding for the desktop gutter, so add it
      back on mobile so the image is centred instead of flush to the right edge */
   .agx-pdp-media { padding-right: clamp(16px,4vw,44px) !important; }
@@ -336,6 +344,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     border-top:1px solid var(--ag-frost-border);
     box-shadow:0 -14px 36px -22px var(--ag-shadow);
   }
+  /* Three controls now share one row (Back, Chat, Add to Bag). The bag control
+     carries an inline `min-width:160px` that, added to the other two, overflowed
+     a 360px phone — so the wrapper relaxes it and the CTA simply takes whatever
+     is left. It stays the widest thing on the bar. */
+  .agx-pdp-bag > * { min-width:0 !important; }
+}
+/* Below ~400px "Chat" loses its label and becomes a square icon button, which
+   is what keeps Add to Bag from being squeezed to a stub on an SE-class phone.
+   Back is icon-only at every width — a bare arrow is unambiguous, and it is the
+   control people reach for without reading. */
+@media (max-width:399px){
+  .agx-pdp-chat { width:52px !important; gap:0 !important; }
+  .agx-pdp-chat-label { display:none; }
+  .agx-pdp-sticky { gap:9px; }
 }
 /* Chat: a focused full-screen conversation surface (buyer AND seller share it).
    It has its own back button, so the floating nav dock is redundant here and,
@@ -351,7 +373,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    page stacks its sticky action bar under the dock. */
 .agx-toast { bottom: 100px; }
 @media (max-width:640px){ .agx-toast { bottom: 90px; } }
-@media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 160px; } }
+/* The product page no longer stacks a dock on its action bar, so the toast only
+   has to clear the bar itself (~78px) — at 160px it floated in open space. */
+@media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 96px; } }
+/* Discovery pages hide the dock on phones and have no bottom furniture of their
+   own, so nothing needs clearing. */
+@media (max-width:899px){ body:has(.agx-discovery-root) .agx-toast { bottom: 28px; } }
 @media (min-width:960px){ .agx-toast { bottom: 28px; } }
 body.agx-photo-open .agx-toast { bottom: 28px; }
 /* A chat has no dock, but it does have the composer pinned to the bottom edge —
@@ -381,6 +408,18 @@ body.agx-chatting .agx-fab-bag { display: none !important; }
 body.agx-photo-open .agx-dock,
 body.agx-photo-open .agx-pdp-sticky { display: none !important; }
 body.agx-photo-open { overflow: hidden; }
+
+/* The four "See all" discovery pages (Collections, New arrivals, Best sellers,
+   Top boutiques) carry a Back button in their shared header, so on phones they
+   retire the dock the same way the product page and the chat do. These are
+   pages you enter FROM somewhere — a Home rail, a search — and leave the way you
+   came; a floating five-tab dock over a grid of tiles was chrome, not help.
+   Kept from 900px up, where the dock costs nothing and is the only navigation. */
+@media (max-width:899px){
+  body:has(.agx-discovery-root) .agx-dock { display:none !important; }
+  /* The 128px bottom reserve existed only to clear that dock. */
+  body:has(.agx-discovery-root) .agx-app-main { padding-bottom:28px !important; }
+}
 
 /* The floating dock is the navigation at EVERY width — phone and desktop alike.
    It used to be hidden from 960px up, on the assumption that a horizontal top
@@ -579,10 +618,17 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   z-index: 45;
 }
 @media (max-width: 640px) { .agx-fab-bag { bottom: calc(92px + env(safe-area-inset-bottom)); right: 14px; } }
-/* The product page already pins its own action bar to the bottom edge and lifts
-   the dock above it, so the bag has to clear both. */
-body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-bottom)); }
+/* The product page pins its own action bar to the bottom edge and, on phones,
+   now hides the dock entirely — so the bag has one bar to clear (~78px), not
+   two. It sat at 160px for as long as the dock was stacked on top of that bar.
+   From 900px up the sticky bar is gone and the dock is back, hence 112px. */
+body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(96px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(112px + env(safe-area-inset-bottom)); } }
+/* Discovery pages have no bottom furniture at all on phones once the dock is
+   retired, so the bag can sit at the bottom edge like any other floating action. */
+@media (max-width: 899px) {
+  body:has(.agx-discovery-root) .agx-fab-bag { bottom: calc(28px + env(safe-area-inset-bottom)); }
+}
 /* Results/collection screens float their own Filter + Sort bar at 96px on
    phones. The bag used to land on top of the Sort button; it stacks above the
    pair instead. Scoped to the widths where that bar is actually visible. */

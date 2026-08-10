@@ -15,6 +15,7 @@ import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
+import { useGoBack } from '@/hooks/useGoBack';
 import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
@@ -63,6 +64,9 @@ const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] 
 
 export function ProductDetail() {
   const navigate = useNavigate();
+  // Declared up here with the other hooks: the loading and not-found branches
+  // below return early, and a hook after them would change call order.
+  const goBack = useGoBack('/');
   /**
    * The route is `/products/:slug`, where slug is `title-slug-idprefix`. The id
    * prefix is read straight back out, so a product page resolves without a
@@ -422,13 +426,6 @@ export function ProductDetail() {
     if (bagQty > 0) setCartSize(ap.id, s);
   };
 
-  // `idx > 0` means this entry has somewhere to go back to inside the app; a
-  // cold deep link (a shared WhatsApp URL, a bookmark) starts at 0 and would
-  // otherwise navigate out of the site entirely.
-  const goBack = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/');
-  };
 
   const onAddToBag = () => {
     if (soldOut) {
@@ -958,12 +955,33 @@ export function ProductDetail() {
         </div>
       </div>
 
-      {/* STICKY MOBILE ACTION BAR */}
+      {/* STICKY MOBILE ACTION BAR
+          Also the page's navigation: on phones this bar REPLACES the five-tab
+          dock (see `body:has(.agx-pdp-root) .agx-dock` in index.css). Stacking a
+          floating dock on top of a full-width action bar spent ~160px of a phone
+          screen on chrome and put two competing bottom bars in the same thumb
+          zone. The dock's job here was only ever "get me out of this product",
+          which is what Back does — and it does it better, because it returns to
+          the grid the buyer was actually browsing instead of a fixed tab. */}
       <div className="agx-pdp-sticky">
-        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
+        <button
+          onClick={goBack}
+          aria-label="Go back"
+          title="Back"
+          className="agx-pdp-backbtn"
+          style={css('flex:none;width:52px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+        >
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>arrow_back</span>
         </button>
-        {renderBagControl(52)}
+        <button onClick={openChat} className="agx-pdp-chat" style={css('flex:none;width:116px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
+          <span className="agx-pdp-chat-label">Chat</span>
+        </button>
+        {/* Wrapper so the CSS can relax the bag control's 160px floor on narrow
+            phones without the inline style winning. */}
+        <div className="agx-pdp-bag" style={css('flex:1;min-width:0;display:flex;')}>
+          {renderBagControl(52)}
+        </div>
       </div>
 
       {/* FULL-SCREEN PHOTO VIEWER */}

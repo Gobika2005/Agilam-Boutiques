@@ -354,22 +354,37 @@ export function BoutiqueProfile() {
                     onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                     className="agx-card-wish"
                   />
-                  {p.reviews > 0 && (
-                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
-                      {p.rating}
-                    </div>
-                  )}
+                  {/* The rating used to sit here as a badge over the photo. It
+                      now lives opposite the price in the caption, the way every
+                      other grid in the app shows it — keeping both would print
+                      the same number twice on one card. */}
                   {p.stock === 0 && (
                     <div style={css('position:absolute;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;')}>
                       <span style={css('background:#241019;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:999px;')}>Sold out</span>
                     </div>
                   )}
                 </div>
-                <div style={css('padding:11px 2px 0;text-align:center;')}>
-                  <div className="agx-card-title" style={css('font-size:13.5px;font-weight:700;')}>{p.title}</div>
-                  <div style={css("display:inline-block;margin-top:8px;font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16px;border:1px solid var(--ag-border);border-radius:12px;padding:6px 16px;background:var(--ag-surface);")}>
-                    {fmt(p.price)}
+                {/* Caption matches the Home rails and every other product grid:
+                    left-aligned title, then price left / rating right on one
+                    row. This page was the last surface still centring its
+                    caption and boxing the price in a bordered chip, which made
+                    a boutique's own shelf read as a different product card from
+                    the one the buyer had just tapped on Home.
+                    The boutique name is the one line deliberately NOT carried
+                    over — on a boutique's own page it would repeat the shop
+                    name under every single tile. */}
+                <div style={css('padding:12px 2px 0;')}>
+                  <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
+                  <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                    {/* Guarded on `reviews`, as the old badge was: an unrated
+                        piece would otherwise advertise "★ 0". */}
+                    {p.reviews > 0 && (
+                      <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
+                        {p.rating}
+                      </span>
+                    )}
                   </div>
                 </div>
               </CardLink>
