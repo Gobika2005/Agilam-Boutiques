@@ -1035,9 +1035,7 @@ async function metaForBoutiquesHub(citySlug, origin) {
       )
     : STATIC_META["/boutiques"].description;
 
-  const rows = shops.slice(0, 60).map(
-    (b) => `<li><a href="${escapeHtml(`${origin}/boutique/${b.slug || b.id}`)}">${escapeHtml(b.name)}</a>${b.city ? ` — ${escapeHtml([b.area, b.city].filter(Boolean).join(", "))}` : ""}</li>`
-  );
+  const rows = boutiqueLinkRows(shops, origin, 60);
   const prerender = `<noscript>
 <h1>${escapeHtml(cityName ? `Boutiques in ${cityName}` : "Boutiques in India")}</h1>
 <p>${escapeHtml(description)}</p>
@@ -1087,6 +1085,112 @@ ${rows.join("\n")}
   };
 }
 
+/* ── The hub pages ────────────────────────────────────────────────────────
+ *
+ * `/`, `/collections`, `/new-arrivals`, `/best-sellers`, `/top-boutiques` and
+ * `/inspire` had a head and nothing under it. Product, boutique and facet pages
+ * were given a `<noscript>` body (see `boutiquePrerender` for the reasoning);
+ * these six were not, so the pages every other page links UP to — and the ones
+ * a crawler reaches first — offered a title, a description, and then an empty
+ * `<div id="root">`. On `/` that is the whole home page.
+ *
+ * The links matter more than the prose. The facet landings under
+ * /collections/*, /occasions/* and /fabrics/* were reachable from the sitemap
+ * and from nowhere else in crawlable HTML, and a URL that only a sitemap knows
+ * about is an orphan: Google will take it, but it discounts it and is slow to
+ * come back. `/collections` below is what actually links to them.
+ *
+ * Each hub costs ONE database read, inside the same 1500 ms abort as everything
+ * else here, and returns `undefined` if that read fails — a hub without its
+ * body is the status quo, whereas a hub that times out is a page that does not
+ * load at all.
+ */
+
+/** One live-catalogue read, ordered however the hub ranks. */
+async function hubProducts(order, limit) {
+  return dbProducts(
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=${order}&limit=${limit}`
+  );
+}
+
+/** `<li>` links for a run of products. Every hub below builds the same rows. */
+function productLinkRows(items, origin, limit = 30) {
+  return items.slice(0, limit).map(
+    (p) => `<li><a href="${escapeHtml(`${origin}${productPath(p)}`)}">${escapeHtml(p.title)}</a> — ${escapeHtml(inr(p.price))}${p.boutiques?.name ? ` · ${escapeHtml(p.boutiques.name)}` : ""}</li>`
+  );
+}
+
+/** `productLinkRows`, for shops. Shared with the `/boutiques` directory. */
+function boutiqueLinkRows(items, origin, limit = 30) {
+  return items.slice(0, limit).map(
+    (b) => `<li><a href="${escapeHtml(`${origin}/boutique/${b.slug || b.id}`)}">${escapeHtml(b.name)}</a>${b.city ? ` — ${escapeHtml([b.area, b.city].filter(Boolean).join(", "))}` : ""}</li>`
+  );
+}
+
+function linkList(rows) {
+  return rows.length ? `<ul>\n${rows.join("\n")}\n</ul>` : "";
+}
+
+/**
+ * The trailing line of internal links every hub carries.
+ *
+ * Self-excluded: a page linking to itself is noise, and on `/` it would be a
+ * second link to the root from the root.
+ */
+function hubNav(origin, self) {
+  return [
+    ["/shop", "Shop all"],
+    ["/collections", "Shop by collection"],
+    ["/boutiques", "All boutiques"],
+    ["/new-arrivals", "New arrivals"],
+    ["/best-sellers", "Best sellers"],
+    ["/top-boutiques", "Top boutiques"]
+  ]
+    .filter(([path]) => path !== self)
+    .map(([path, label]) => `<a href="${origin}${path}">${label}</a>`)
+    .join(" · ");
+}
+
+/** One H1, the page's own written copy, its sections, then the nav. */
+function hubDocument(heading, description, sections, origin, self) {
+  return `<noscript>
+<h1>${escapeHtml(heading)}</h1>
+<p>${escapeHtml(description)}</p>
+${sections.filter(Boolean).join("\n")}
+<p>${hubNav(origin, self)}</p>
+</noscript>`;
+}
+
+/**
+ * `/` — the page with the most inbound authority and, until now, no body.
+ *
+ * One read serves both halves: the newest pieces are the links into the
+ * catalogue, and their `category` values are the links into the facet landings,
+ * so the home page finally passes something down to the pages built to rank.
+ */
+async function homeHubPrerender(origin) {
+  const products = await hubProducts("created_at.desc", 40);
+  if (!products.length) return void 0;
+  const categories = /* @__PURE__ */ new Map();
+  for (const p of products) {
+    const slug = slugify(p.category || "");
+    if (slug) categories.set(slug, titleCase(p.category));
+  }
+  const categoryRows = [...categories].map(
+    ([slug, name]) => `<li><a href="${escapeHtml(`${origin}/collections/${slug}`)}">${escapeHtml(name)}</a></li>`
+  );
+  return hubDocument(
+    "Boutique Ethnic Wear Online",
+    STATIC_META["/"].description,
+    [
+      categoryRows.length ? `<h2>Shop by category</h2>\n${linkList(categoryRows)}` : "",
+      `<h2>New from our boutiques</h2>\n${linkList(productLinkRows(products, origin, 24))}`
+    ],
+    origin,
+    "/"
+  );
+}
+
 /**
  * `/shop` — the everything grid.
  *
@@ -1095,22 +1199,120 @@ ${rows.join("\n")}
  * executing an infinite-scroll grid.
  */
 async function shopHubPrerender(origin) {
-  const products = await dbProducts(
-    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=40`
-  );
+  const products = await hubProducts("created_at.desc", 40);
   if (!products.length) return void 0;
-  const rows = products.map(
-    (p) => `<li><a href="${escapeHtml(`${origin}${productPath(p)}`)}">${escapeHtml(p.title)}</a> — ${escapeHtml(inr(p.price))}</li>`
+  return hubDocument(
+    "Shop All Ethnic Wear",
+    STATIC_META["/shop"].description,
+    [linkList(productLinkRows(products, origin, 40))],
+    origin,
+    "/shop"
   );
-  return `<noscript>
-<h1>Shop All Ethnic Wear</h1>
-<p>${escapeHtml(STATIC_META["/shop"].description)}</p>
-<ul>
-${rows.join("\n")}
-</ul>
-<p><a href="${origin}/collections">Shop by collection</a> · <a href="${origin}/boutiques">All boutiques</a> · <a href="${origin}/new-arrivals">New arrivals</a></p>
-</noscript>`;
 }
+
+/**
+ * `/collections` — the index of every facet landing page.
+ *
+ * This is the one that repays the read. It names each category, occasion and
+ * fabric page in HTML, which is the only crawlable route to them that is not
+ * the sitemap. Reads three columns, so it never touches the migration-0057
+ * fallback and stays well inside the abort budget.
+ */
+async function collectionsHubPrerender(origin) {
+  const { ok, rows } = await dbTryTwice(
+    "products?select=category,occasion,fabric&status=eq.active&deleted_at=is.null&limit=5000"
+  );
+  if (!ok || !rows.length) return void 0;
+  // Slug → display name. A Map rather than a Set because the heading has to be
+  // the seller's own term, cased — the slug alone reads as "raw-silk".
+  const groups = {
+    collections: { label: "Categories", terms: /* @__PURE__ */ new Map() },
+    occasions: { label: "Occasions", terms: /* @__PURE__ */ new Map() },
+    fabrics: { label: "Fabrics", terms: /* @__PURE__ */ new Map() }
+  };
+  for (const p of rows) {
+    if (p.category) groups.collections.terms.set(slugify(p.category), titleCase(p.category));
+    if (p.occasion) groups.occasions.terms.set(slugify(p.occasion), occasionHeading(p.occasion));
+    if (p.fabric) groups.fabrics.terms.set(slugify(p.fabric), titleCase(p.fabric));
+  }
+  const sections = Object.entries(groups).map(([prefix, { label, terms }]) => {
+    const items = [...terms].filter(([slug]) => slug);
+    if (!items.length) return "";
+    const links = items.map(
+      ([slug, name]) => `<li><a href="${escapeHtml(`${origin}/${prefix}/${slug}`)}">${escapeHtml(name)}</a></li>`
+    );
+    return `<h2>${label}</h2>\n${linkList(links)}`;
+  });
+  return hubDocument(
+    "Shop by Collection",
+    STATIC_META["/collections"].description,
+    sections,
+    origin,
+    "/collections"
+  );
+}
+
+/**
+ * `/new-arrivals` and `/inspire` — the same read, ordered newest first.
+ *
+ * Two pages rather than one because they are two URLs in the sitemap with two
+ * descriptions; the body differs only in its heading.
+ */
+async function newestHubPrerender(origin, path, heading) {
+  const products = await hubProducts("created_at.desc", 30);
+  if (!products.length) return void 0;
+  return hubDocument(
+    heading,
+    STATIC_META[path].description,
+    [linkList(productLinkRows(products, origin))],
+    origin,
+    path
+  );
+}
+
+/**
+ * `/best-sellers` — ordered by `products.sold_count` (migration 0023).
+ *
+ * On a database where 0023 has not been applied, PostgREST rejects the order
+ * clause and the read comes back empty, so the page keeps its old bodyless
+ * shell rather than being served a list ranked by nothing.
+ */
+async function bestSellersPrerender(origin) {
+  const products = await hubProducts("sold_count.desc,rating.desc", 30);
+  if (!products.length) return void 0;
+  return hubDocument(
+    "Best Sellers",
+    STATIC_META["/best-sellers"].description,
+    [linkList(productLinkRows(products, origin))],
+    origin,
+    "/best-sellers"
+  );
+}
+
+/** `/top-boutiques` — `boutiques.units_sold` (0023), then rating. */
+async function topBoutiquesPrerender(origin) {
+  const { rows } = await dbTryTwice(
+    `boutiques?select=${BOUTIQUE_COLUMNS_CORE}&status=eq.approved&order=units_sold.desc,rating.desc&limit=30`
+  );
+  if (!rows.length) return void 0;
+  return hubDocument(
+    "Top Boutiques in India",
+    STATIC_META["/top-boutiques"].description,
+    [linkList(boutiqueLinkRows(rows, origin))],
+    origin,
+    "/top-boutiques"
+  );
+}
+
+const HUB_PRERENDERERS = {
+  "/": homeHubPrerender,
+  "/shop": shopHubPrerender,
+  "/collections": collectionsHubPrerender,
+  "/new-arrivals": (origin) => newestHubPrerender(origin, "/new-arrivals", "New Arrivals"),
+  "/best-sellers": bestSellersPrerender,
+  "/top-boutiques": topBoutiquesPrerender,
+  "/inspire": (origin) => newestHubPrerender(origin, "/inspire", "Inspire")
+};
 
 /**
  * The home page's LCP element: the image of the first live `home_hero` ad.
@@ -1154,7 +1356,7 @@ async function resolveMeta(pathname, origin) {
     return {
       ...staticMeta,
       type: "website",
-      prerender: pathname === "/shop" ? await shopHubPrerender(origin) : void 0,
+      prerender: HUB_PRERENDERERS[pathname] ? await HUB_PRERENDERERS[pathname](origin) : void 0,
       // The hero carousel is full-bleed — `sizes="100vw"` in Home.tsx.
       lcpImage: pathname === "/" ? await homeHeroImage() : void 0,
       lcpSizes: "100vw",
