@@ -105,8 +105,16 @@ async function check(label, pathname, assertions) {
         noscriptLinks: block.match(/<a href=/g)?.length || 0,
       };
     })(),
+    splashRetires: splashRetires(body),
   };
-  const problems = (assertions || []).filter((a) => !a.ok(out)).map((a) => a.name);
+  // Asserted on every HTML page rather than per caller: the splash covers the
+  // whole viewport at z-index 9999, so a page that fails this is unusable no
+  // matter how good its metadata is — and the pages that broke were exactly the
+  // ones nobody thought to write a splash assertion for.
+  const builtin = out.status === 200 && (out.contentType || '').includes('text/html')
+    ? [is('boot splash retires', (o) => o.splashRetires)]
+    : [];
+  const problems = [...builtin, ...(assertions || [])].filter((a) => !a.ok(out)).map((a) => a.name);
   if (problems.length) out.FAIL = problems.join('; ');
   results.push(out);
   // Returned so a caller can assert on fields that need more than a boolean —
@@ -115,6 +123,35 @@ async function check(label, pathname, assertions) {
 }
 
 const is = (n, f) => ({ name: n, ok: f });
+
+/**
+ * Will the boot splash actually go away on this page?
+ *
+ * index.html paints a full-screen `#ag-boot` splash at z-index 9999 and retires
+ * it with pure CSS the moment React fills `#root`. That rule is a sibling
+ * selector, and the edge injects the crawlable `<noscript>` body BETWEEN the
+ * two elements — so while the rule used `+` (next sibling) it quietly stopped
+ * matching on every prerendered page, and the site sat under a spinner forever
+ * with the app mounted and painted underneath.
+ *
+ * Nothing else in this file could have caught that: the metadata was perfect,
+ * the prerender was present, the `<h1>` was there, and the page was unusable.
+ * So the check is "given the DOM order actually served, does the rule still
+ * match?" — which fails both if someone reverts `~` to `+` and if someone adds
+ * another element between `#root` and `#ag-boot` while the rule needs adjacency.
+ */
+function splashRetires(body) {
+  const rule = (body.match(/#root:not\(:empty\)\s*([+~])\s*#ag-boot/) || [])[1];
+  // No splash in this shell at all — nothing to retire, nothing to break.
+  if (!rule) return !/id="ag-boot"/.test(body);
+  const root = body.indexOf('<div id="root"></div>');
+  const boot = body.indexOf('<div id="ag-boot"');
+  if (root < 0 || boot < 0) return false;
+  const between = body.slice(root + '<div id="root"></div>'.length, boot);
+  // `~` matches wherever the splash sits after #root; `+` only if nothing
+  // intervenes. A comment or whitespace is not an element and does not count.
+  return rule === '~' || !/<[a-zA-Z]/.test(between);
+}
 
 /** First capture of `re` in `body`, with HTML entities decoded. */
 function attr(body, re) {

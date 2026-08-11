@@ -6,6 +6,62 @@ The sitemaps were never broken. Search Console was pointed at the wrong host and
 fed the wrong URL. Two console-side corrections (yours to make) plus one real
 code gap (fixed here).
 
+Adding that missing body to the home page then surfaced a **separate, severe
+production bug that had been live since 2026-08-06** — see section 0.
+
+---
+
+## 0. P1 — the storefront was stuck behind the loading splash
+
+**Symptom:** the page never finishes loading. A full-screen spinner sits over
+everything, forever. The app underneath had actually mounted and painted — it
+was covered.
+
+**Cause.** `index.html` paints a boot splash (`#ag-boot`) and retires it with
+pure CSS the moment React fills `#root`:
+
+```css
+#root:not(:empty)+#ag-boot { opacity:0; pointer-events:none; visibility:hidden }
+```
+
+`+` is the *next-sibling* combinator. Commit `ab37ab0` (2026-08-06) started
+injecting the crawlable `<noscript>` body between those two elements:
+
+```html
+<div id="root"></div>
+<noscript>…the prerendered body…</noscript>   <!-- injected here -->
+<div id="ag-boot">…spinner…</div>
+```
+
+`<noscript>` is a real element node even with scripting enabled, so `#ag-boot`
+stopped being `#root`'s next sibling and the rule silently stopped matching. The
+splash is `position:fixed; inset:0; z-index:9999`, so the site became unusable
+on every page that had a prerender.
+
+**Affected since 2026-08-06:** `/shop`, `/products/*`, `/boutique/*`,
+`/boutiques`, `/boutiques/*`, `/collections/*`, `/occasions/*`, `/fabrics/*`.
+The home page had no prerender, which is the only reason the site looked alive
+at all. Adding one today (section 3) put `/` behind the spinner too — which is
+how it finally got noticed.
+
+**Fix.** One character, plus a comment explaining why it must stay:
+
+```css
+#root:not(:empty)~#ag-boot { … }
+```
+
+The general sibling combinator matches wherever `#ag-boot` sits after `#root`,
+so nothing injected between them can break it again.
+
+**Regression guard.** `npm run verify:seo` now asserts, on *every* HTML page it
+checks, that the splash rule still matches against the DOM order actually
+served. Reverting `~` to `+` fails 11 checks immediately. Nothing else in that
+suite could have caught this: the metadata was perfect, the prerender was
+present, the `<h1>` was there — and the page was unusable.
+
+**Not yet deployed.** `index.html` is the fix; it ships on the next Vercel
+deploy.
+
 ---
 
 ## 1. Why Search Console said "Sitemap is HTML"

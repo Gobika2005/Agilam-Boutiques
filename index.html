@@ -124,8 +124,18 @@
     animation:ag-boot-spin .8s linear infinite}
   html[data-theme="dark"] #ag-boot .ag-boot-ring{border-color:#3A2730;border-top-color:#E85088}
   @keyframes ag-boot-spin{to{transform:rotate(360deg)}}
-  /* The app has mounted — retire the splash. */
-  #root:not(:empty)+#ag-boot{opacity:0;pointer-events:none;visibility:hidden}
+  /* The app has mounted — retire the splash.
+
+     `~` and not `+`. The edge injects its crawlable <noscript> body directly
+     before #ag-boot (see the prerender block in middleware.js), and <noscript>
+     is a real element node even when scripting is on — so with `+` the splash
+     stopped being #root's NEXT sibling and the rule silently stopped matching.
+     Every prerendered page then sat under a full-screen spinner forever, with
+     the app mounted and painted underneath it at z-index 9999.
+
+     The general sibling combinator matches wherever #ag-boot sits after #root,
+     so nothing that gets injected between the two can break it again. */
+  #root:not(:empty)~#ag-boot{opacity:0;pointer-events:none;visibility:hidden}
   @media (prefers-reduced-motion:reduce){
     #ag-boot .ag-boot-ring{animation-duration:2s}
     #ag-boot{transition:none}

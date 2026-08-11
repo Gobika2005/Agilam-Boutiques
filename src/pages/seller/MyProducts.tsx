@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { errMessage } from '@/lib/errMessage';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
@@ -68,7 +69,7 @@ export function MyProducts() {
       setEditing(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not update product');
+      showToast(errMessage(e, 'Could not update product'));
     } finally {
       setBusy(false);
     }
@@ -84,7 +85,7 @@ export function MyProducts() {
       setConfirmDelete(false);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete product');
+      showToast(errMessage(e, 'Could not delete product'));
     } finally {
       setBusy(false);
     }

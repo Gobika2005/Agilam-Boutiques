@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { css } from '@/lib/css';
+import { errMessage } from '@/lib/errMessage';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
@@ -50,7 +51,7 @@ export function ProductsAdmin() {
       showToast(`${editData.title} updated`);
       setEditProduct(null);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    } catch (e) { showToast(errMessage(e, 'Update failed')); }
     finally { setBusy(false); }
   };
 
@@ -72,7 +73,7 @@ export function ProductsAdmin() {
       await log(`product.${next}`, p.id, { title: p.title });
       showToast(`${p.title} → ${next}`);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    } catch (e) { showToast(errMessage(e, 'Update failed')); }
   };
 
   const toggleFeatured = async (p: AdminProductRow) => {
@@ -81,7 +82,7 @@ export function ProductsAdmin() {
       await log(p.featured ? 'product.unfeature' : 'product.feature', p.id, { title: p.title });
       showToast(`${p.title} ${p.featured ? 'unfeatured' : 'featured'}`);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    } catch (e) { showToast(errMessage(e, 'Update failed')); }
   };
 
   const bulk = async (next: ProductStatus) => {
@@ -92,7 +93,7 @@ export function ProductsAdmin() {
       showToast(`${ids.length} products → ${next}`);
       setSelected(new Set());
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Bulk update failed'); }
+    } catch (e) { showToast(errMessage(e, 'Bulk update failed')); }
   };
 
   const doDelete = async () => {
@@ -111,7 +112,7 @@ export function ProductsAdmin() {
       }
       setConfirmDelete(null);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Delete failed'); }
+    } catch (e) { showToast(errMessage(e, 'Delete failed')); }
     finally { setBusy(false); }
   };
 
@@ -121,7 +122,7 @@ export function ProductsAdmin() {
       await log('product.restore', p.id, { title: p.title });
       showToast(`${p.title} restored`);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Restore failed'); }
+    } catch (e) { showToast(errMessage(e, 'Restore failed')); }
   };
 
   const columns: Column<AdminProductRow>[] = [
