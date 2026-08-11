@@ -8,7 +8,9 @@ import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { useShop } from '@/state/ShopContext';
 import { cancelCodOrder } from '@/data/orders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDate, formatOrderDateTime, patchLocalOrder, STATUS_STAGE, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDate, formatOrderDateTime, patchLocalOrder, trackStage, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchShipmentsForOrders, type Shipment } from '@/data/shipments';
 
 /** Order-list tabs. "Active" is everything the buyer is still waiting on. */
 const TABS = [
@@ -31,6 +33,19 @@ export function MyOrders() {
 
   const isActive = (o: PlacedOrder) => o.status === 'pending' || o.status === 'accepted' || o.status === 'shipped';
   const isClosed = (o: PlacedOrder) => o.status === 'rejected' || o.status === 'cancelled';
+
+  // The courier's latest scan, so a card reads "Out for Delivery" instead of
+  // sitting on "Shipped" — the list has to agree with the tracking screen, or
+  // the buyer is told two different things about the same parcel.
+  const shippedIds = useMemo(
+    () => allOrders.filter((o) => o.rowId && o.status === 'shipped').map((o) => o.rowId as string),
+    [allOrders],
+  );
+  const { data: shipments } = useAsync(
+    (): Promise<Record<string, Shipment>> => fetchShipmentsForOrders(shippedIds).catch(() => ({})),
+    [shippedIds.join(',')],
+  );
+  const stageOf = (o: PlacedOrder) => trackStage(o, o.rowId ? shipments?.[o.rowId]?.last_status : null);
 
   const counts = useMemo(() => ({
     active: allOrders.filter(isActive).length,
@@ -76,7 +91,7 @@ export function MyOrders() {
           tone: item?.tone ?? 0,
           qty: o.items.reduce((s, it) => s + it.qty, 0),
           amount: o.total,
-          status: isClosed(o) ? 'Cancelled' : TRACK_STAGES[STATUS_STAGE[o.status]].label,
+          status: isClosed(o) ? 'Cancelled' : TRACK_STAGES[stageOf(o)].label,
         },
       },
     });
@@ -172,7 +187,7 @@ export function MyOrders() {
               ? 'Cancelled'
               : o.status === 'rejected'
                 ? 'Declined'
-                : TRACK_STAGES[STATUS_STAGE[o.status]].label;
+                : TRACK_STAGES[stageOf(o)].label;
             // Cash still owed on this order: shown so the buyer knows to have
             // it ready, and hidden the moment the boutique records collection.
             const owes = o.paymentMethod === 'COD' && (o.paymentStatus ?? 'pending') === 'pending' && !rejected;

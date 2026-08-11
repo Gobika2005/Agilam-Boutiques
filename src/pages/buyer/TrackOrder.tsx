@@ -5,10 +5,10 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchShipment, reportDeliveryIssue } from '@/data/shipments';
+import { fetchShipment, fetchShipmentEvents, reportDeliveryIssue } from '@/data/shipments';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDateTime, STATUS_STAGE } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDateTime, isFailedShipment, trackStage } from '@/lib/orderHistory';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /**
@@ -39,8 +39,15 @@ export function TrackOrder() {
     () => (order?.rowId ? fetchShipment(order.rowId) : Promise.resolve(null)),
     [order?.rowId],
   );
+  // Every courier scan, newest first (migration 0067). Empty is normal — a
+  // manually-shipped parcel has no scans at all, only a courier and a docket.
+  const { data: scans } = useAsync(
+    () => (order?.rowId ? fetchShipmentEvents(order.rowId) : Promise.resolve([])),
+    [order?.rowId],
+  );
   const [disputing, setDisputing] = useState(false);
   const [disputed, setDisputed] = useState(false);
+  const [showAllScans, setShowAllScans] = useState(false);
 
   if (!order) {
     return (
@@ -73,9 +80,17 @@ export function TrackOrder() {
     );
   }
 
-  const stage = STATUS_STAGE[order.status];
+  // The order's own status can only ever reach "Shipped" — the two steps after
+  // it belong to the courier. `trackStage` lets the latest scan push the
+  // timeline further, which is what stops a moving parcel sitting on "Shipped"
+  // for four days with nothing to show the buyer.
+  const stage = trackStage(order, shipment?.last_status);
   const rejected = order.status === 'rejected' || order.status === 'cancelled';
   const delivered = order.status === 'delivered';
+  /** The parcel is going backwards — returning to the boutique, or lost. */
+  const failed = isFailedShipment(shipment?.last_status) && !delivered && !rejected;
+  const rto = shipment?.last_status === 'rto';
+  const latestScan = (scans ?? [])[0];
   const item = order.items[0];
   const totalQty = order.items.reduce((s, it) => s + it.qty, 0);
   const itemsTotal = order.items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -103,25 +118,47 @@ export function TrackOrder() {
     });
   };
 
-  // A real timestamp per stage — 0042 for accepted/shipped/delivered, 0063 for
-  // the two that never had a source. "Out for delivery" (4) can only honestly
-  // come from a courier scan, and nothing feeds that yet, so it stays blank
-  // rather than being invented from a timer.
+  // A real timestamp per step. 0042 gives accepted/shipped/delivered, 0063 gives
+  // packed, and 0067's courier scans give the two in between. "In Transit" has
+  // no column of its own — it IS the scan — so it reads the first movement scan
+  // rather than inventing a time.
+  const firstMovement = [...(scans ?? [])]
+    .filter((s) => s.stage === 'in_transit' || s.stage === 'picked_up')
+    .sort((a, b) => new Date(a.occurred_at ?? a.created_at).getTime() - new Date(b.occurred_at ?? b.created_at).getTime())[0];
+
   const stageTimes: Record<number, string | null | undefined> = {
     0: order.placedAt,
     1: order.acceptedAt,
     2: order.packedAt,
     3: order.shippedAt,
-    4: order.outForDeliveryAt,
-    5: order.deliveredAt,
+    4: firstMovement?.occurred_at ?? firstMovement?.created_at,
+    5: order.outForDeliveryAt,
+    6: order.deliveredAt,
   };
-  const steps = TRACK_STAGES.map((st, i) => ({
-    ...st,
-    done: !rejected && i <= stage,
-    current: !rejected && i === stage,
-    showLine: i < TRACK_STAGES.length - 1,
-    time: i <= stage ? formatOrderDateTime(stageTimes[i]) : '',
-  }));
+  /**
+   * Does anything actually report on this parcel's journey?
+   *
+   * Only a courier feed can produce "In Transit" and "Out for Delivery". A
+   * manually-shipped parcel — the seller typed a docket, nobody is streaming
+   * scans — has neither, and never will. Left in, those two steps would flip to
+   * "done" the moment the seller marked the order delivered, showing the buyer
+   * two courier events that never happened with no time beside them. So the
+   * timeline drops them entirely rather than claiming them: Placed → Confirmed
+   * → Packed → Shipped → Delivered is the whole truth for a manual parcel.
+   */
+  const hasCourierFeed = (scans ?? []).length > 0 || !!order.outForDeliveryAt;
+  const COURIER_ONLY_STEPS = [4, 5];
+
+  const steps = TRACK_STAGES
+    .map((st, i) => ({ ...st, index: i }))
+    .filter((st) => hasCourierFeed || !COURIER_ONLY_STEPS.includes(st.index))
+    .map((st, pos, visible) => ({
+      ...st,
+      done: !rejected && st.index <= stage,
+      current: !rejected && st.index === stage,
+      showLine: pos < visible.length - 1,
+      time: st.index <= stage ? formatOrderDateTime(stageTimes[st.index]) : '',
+    }));
 
   const card = 'background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);';
   const sectionTitle = "font-family:'Playfair Display',serif;font-weight:700;font-size:19px;";
@@ -173,37 +210,35 @@ export function TrackOrder() {
           )}
         </div>
 
-        {/* ---------- Courier tracking (migration 0063) ---------- */}
-        {shipment && !rejected && (
-          <div style={css(`${card}padding:18px;margin-top:16px;`)}>
-            <div style={css('display:flex;align-items:center;gap:12px;')}>
-              <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>local_shipping</span>
-              </span>
-              <div style={css('flex:1;min-width:0;')}>
-                <div style={css('font-size:11px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>SHIPPED WITH</div>
-                <div style={css('font-weight:800;font-size:15px;margin-top:2px;')}>{shipment.courier_name}</div>
-                <div style={css('font-size:12.5px;color:var(--ag-muted);word-break:break-all;')}>{shipment.awb}</div>
+        {/* ---------- Parcel going backwards (0067 RTO / failed scan) ---------- */}
+        {/* Without this the timeline sat on "Shipped" while the parcel was on
+            its way back to the boutique — the screen quietly telling the buyer
+            something that was no longer true. */}
+        {failed && (
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:18px;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#C0455E;font-size:22px;flex:none;")}>error</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-size:14px;font-weight:800;color:#7A4652;')}>
+                {rto ? 'Your parcel is on its way back to the boutique' : 'There’s a problem with this delivery'}
               </div>
-            </div>
-            {/* No link is a real outcome, not a bug: most Indian courier
-                tracking pages take no AWB in the URL. Courier + docket number
-                is still everything the buyer needs to ask the courier. */}
-            {shipment.tracking_url ? (
+              <div style={css('font-size:12.5px;color:#7A4652;line-height:1.6;margin-top:4px;')}>
+                {rto
+                  ? 'The courier couldn’t complete the delivery, so the parcel is being returned. You don’t need to do anything — we’re sorting out your refund, and support can tell you exactly where it stands.'
+                  : 'The courier has reported an issue with your parcel. Our team has been alerted and is looking into it.'}
+                {/* The courier's own wording, verbatim. When a parcel goes
+                    wrong this exact phrase is what support needs quoted. */}
+                {latestScan?.raw_status && (
+                  <><br /><span style={css('opacity:.8;')}>Courier update: “{latestScan.raw_status}”</span></>
+                )}
+              </div>
               <a
-                href={shipment.tracking_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:14px;height:46px;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;')}
+                href={CONTACT_LINKS.support}
+                style={css('display:inline-flex;align-items:center;gap:6px;margin-top:10px;height:40px;padding:0 15px;border-radius:12px;background:var(--ag-surface);border:1.5px solid var(--ag-border);color:var(--ag-crimson);font-weight:800;font-size:12.5px;text-decoration:none;')}
               >
-                Track shipment
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
+                Contact support
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
               </a>
-            ) : (
-              <div style={css('margin-top:12px;font-size:12.5px;color:var(--ag-muted);line-height:1.55;')}>
-                Quote this docket number to {shipment.courier_name} to check where your parcel is.
-              </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -302,9 +337,88 @@ export function TrackOrder() {
                   <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted);")}>{st.time}</span>
                 </div>
                 <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;')}>{st.sub}</div>
+
+                {/* Who has the parcel, and the way to follow it — attached to
+                    the step it belongs to rather than floating in its own card
+                    somewhere else on the page. */}
+                {st.index === 3 && st.done && shipment && (
+                  <div style={css('margin-top:10px;padding:12px;border-radius:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);')}>
+                    <div style={css('display:flex;align-items:center;gap:10px;')}>
+                      <div style={css('flex:1;min-width:0;')}>
+                        <div style={css('font-weight:800;font-size:13.5px;')}>{shipment.courier_name}</div>
+                        <div style={css('font-size:12px;color:var(--ag-muted);word-break:break-all;')}>{shipment.awb}</div>
+                      </div>
+                      <button
+                        onClick={() => { void navigator.clipboard?.writeText(shipment.awb); showToast('Tracking number copied'); }}
+                        aria-label="Copy tracking number"
+                        style={css('width:34px;height:34px;flex:none;border-radius:10px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                      >
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>content_copy</span>
+                      </button>
+                    </div>
+                    {/* No link is a real outcome, not a bug: most Indian courier
+                        tracking pages take no docket in the URL. */}
+                    {shipment.tracking_url ? (
+                      <a
+                        href={shipment.tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:10px;height:42px;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;text-decoration:none;')}
+                      >
+                        Track on {shipment.courier_name}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>open_in_new</span>
+                      </a>
+                    ) : (
+                      <div style={css('margin-top:8px;font-size:12px;color:var(--ag-muted);line-height:1.5;')}>
+                        Quote this number to {shipment.courier_name} to check where your parcel is.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* The courier's own scans. This is what a buyer refreshes for,
+                    and until now none of it reached them. Newest first; the
+                    rest folded away because some couriers post a scan at every
+                    hub and the list gets long fast. */}
+                {st.index === 4 && st.done && (scans ?? []).length > 0 && (
+                  <div style={css('margin-top:10px;')}>
+                    {(showAllScans ? (scans ?? []) : (scans ?? []).slice(0, 1)).map((sc) => (
+                      <div key={sc.id} style={css('display:flex;gap:9px;padding:7px 0;')}>
+                        <span style={css('width:6px;height:6px;flex:none;border-radius:50%;background:var(--ag-muted-soft);margin-top:6px;')} />
+                        <div style={css('flex:1;min-width:0;')}>
+                          <div style={css('font-size:12.5px;color:var(--ag-ink);font-weight:600;')}>{sc.raw_status}</div>
+                          <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:1px;')}>
+                            {[sc.location, formatOrderDateTime(sc.occurred_at ?? sc.created_at)].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(scans ?? []).length > 1 && (
+                      <button
+                        onClick={() => setShowAllScans((v) => !v)}
+                        style={css('margin-top:4px;border:none;background:none;padding:4px 0;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;')}
+                      >
+                        {showAllScans ? 'Show less' : `See all ${(scans ?? []).length} updates`}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>
+                          {showAllScans ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
+
+          {/* Having dropped the two courier steps above, say why they're absent
+              rather than leaving the buyer to wonder where "Out for delivery"
+              went. Honest about what we do and don't know. */}
+          {stage >= 3 && !delivered && !hasCourierFeed && shipment && (
+            <div style={css('margin:0 0 18px 52px;font-size:12px;color:var(--ag-muted);line-height:1.55;')}>
+              {shipment.courier_name} doesn’t send us live updates for this parcel, so we can’t show its position here —
+              use the tracking number above for their latest.
+            </div>
+          )}
         </div>
 
         {/* ---------- Items ---------- */}

@@ -76,10 +76,44 @@ export const STATUS_STAGE: Record<OrderStatus, number> = {
   pending: 0,
   accepted: 1,
   shipped: 3,
-  delivered: 5,
+  delivered: 6,
   rejected: 0,
   cancelled: 0,
 };
+
+/** Normalised courier scan stage (migration 0067's `mapStage`). */
+export type ScanStage = 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+
+/**
+ * How far along the timeline this order actually is.
+ *
+ * `STATUS_STAGE` alone can only ever reach "Shipped": the order's own status
+ * has no value for the two steps in between, because only the courier knows
+ * them. So the order status sets the floor and the courier's latest scan pushes
+ * it further — which is why a parcel moving through a hub finally shows the
+ * buyer something new instead of sitting on "Shipped" for four days.
+ *
+ * `packed_at` also lifts an accepted order to "Packed" without a status of its
+ * own; packing is a real event that deliberately isn't a lifecycle status.
+ *
+ * RTO and failed scans do NOT advance anything — the parcel is going backwards,
+ * and the screen says so separately rather than pretending it progressed.
+ */
+export function trackStage(order: PlacedOrder, lastScan?: string | null): number {
+  if (order.status === 'delivered') return 6;
+  let stage = STATUS_STAGE[order.status];
+  if (order.packedAt && stage < 2) stage = 2;
+  if (order.outForDeliveryAt) return Math.max(stage, 5);
+  const scan = (lastScan ?? '') as ScanStage;
+  if (scan === 'out_for_delivery') return Math.max(stage, 5);
+  if (scan === 'in_transit' || scan === 'picked_up') return Math.max(stage, 4);
+  return stage;
+}
+
+/** True when the parcel is heading back to the boutique or has failed outright. */
+export function isFailedShipment(lastScan?: string | null): boolean {
+  return lastScan === 'rto' || lastScan === 'failed';
+}
 
 /** True while a COD order can still be called off from the buyer's side. */
 export function isCancellable(o: PlacedOrder): boolean {

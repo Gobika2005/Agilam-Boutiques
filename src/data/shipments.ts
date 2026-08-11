@@ -125,9 +125,23 @@ export async function fetchShipment(orderId: string): Promise<Shipment | null> {
   return (data as Shipment | null) ?? null;
 }
 
-/** Shipments for a list of orders, keyed by order id — for order LISTS. */
+/**
+ * Shipments for a list of orders, keyed by order id — for order LISTS.
+ *
+ * Asks for the 0067 columns first so a list can show the same stage the detail
+ * screen does (`last_status` is what lifts an order past "Shipped"), falling
+ * back to the 0063 set when 0067 has not been applied.
+ */
 export async function fetchShipmentsForOrders(orderIds: string[]): Promise<Record<string, Shipment>> {
   if (orderIds.length === 0) return {};
+  const byOrder: Record<string, Shipment> = {};
+
+  const wide = await supabase.from('shipments').select(SHIPMENT_COLUMNS_V2).in('order_id', orderIds);
+  if (!wide.error) {
+    for (const s of (wide.data ?? []) as unknown as Shipment[]) byOrder[s.order_id] = s;
+    return byOrder;
+  }
+
   const { data, error } = await supabase
     .from('shipments')
     .select(SHIPMENT_COLUMNS)
@@ -136,7 +150,6 @@ export async function fetchShipmentsForOrders(orderIds: string[]): Promise<Recor
     console.error('fetchShipmentsForOrders failed:', error.message);
     return {};
   }
-  const byOrder: Record<string, Shipment> = {};
   for (const s of (data ?? []) as Shipment[]) byOrder[s.order_id] = s;
   return byOrder;
 }

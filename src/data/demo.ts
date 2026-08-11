@@ -161,12 +161,25 @@ export type Thread = {
   avatar?: string;
 };
 
+/**
+ * The buyer's tracking timeline.
+ *
+ * Every step here is now backed by something real. "Packed" comes from the
+ * seller's own action (migration 0063); "In Transit" and "Out for Delivery"
+ * come from courier scans (0067) and can only be set by the courier, never by
+ * the seller — which is the point. Anything we cannot evidence stays dim rather
+ * than being invented from a timer.
+ *
+ * INDEX-SENSITIVE: `STATUS_STAGE` and `trackStage()` in src/lib/orderHistory.ts
+ * map onto these positions. Inserting a step means updating both.
+ */
 export const TRACK_STAGES = [
   { label: 'Order Placed', icon: 'receipt_long', sub: 'We’ve received your order' },
   { label: 'Confirmed', icon: 'task_alt', sub: 'Boutique confirmed your order' },
   { label: 'Packed', icon: 'inventory_2', sub: 'Your item is packed & ready' },
-  { label: 'Shipped', icon: 'local_shipping', sub: 'Handed to the delivery partner' },
-  { label: 'Out for Delivery', icon: 'moped', sub: 'On the way to your address' },
+  { label: 'Shipped', icon: 'local_shipping', sub: 'Handed to the courier' },
+  { label: 'In Transit', icon: 'conveyor_belt', sub: 'On its way to your city' },
+  { label: 'Out for Delivery', icon: 'moped', sub: 'Arriving today' },
   { label: 'Delivered', icon: 'home', sub: 'Order delivered — enjoy!' },
 ];
 
