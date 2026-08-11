@@ -341,6 +341,9 @@ export interface Database {
           delivery_disputed_at: string | null;
           delivery_dispute_note: string | null;
           delivery_resolved_at: string | null;
+          /** "Don't ask me to review this one" (migration 0071). One flag, read
+           *  by all four prompt surfaces so answering silences every one. */
+          review_dismissed_at: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -515,6 +518,24 @@ export interface Database {
       };
       /** Platform spend, admin-only, with receipts in the private
        *  `expense-proofs` bucket (migration 0056). */
+      // Private post-delivery feedback about the platform itself (0071).
+      // Deliberately separate from `reviews`: those are public and feed
+      // `boutiques.rating`; this is confidential and affects no boutique.
+      platform_feedback: {
+        Row: {
+          id: string;
+          buyer_id: string;
+          /** Which order prompted it. Null once an order is deleted, or if
+           *  feedback is ever collected outside an order. */
+          order_id: string | null;
+          rating: number;
+          body: string;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['platform_feedback']['Row']> & { buyer_id: string; rating: number };
+        Update: Partial<Database['public']['Tables']['platform_feedback']['Row']>;
+        Relationships: [];
+      };
       expenses: {
         Row: {
           id: string;
@@ -785,6 +806,15 @@ export interface Database {
        */
       report_delivery_issue: {
         Args: { p_order_id: string; p_note?: string | null };
+        Returns: void;
+      };
+      /**
+       * "Stop asking me to review this order" (migration 0071). An RPC for the
+       * same reason as above — `orders` has no buyer update policy, and giving
+       * it one to set a single flag would also expose status and total.
+       */
+      dismiss_order_review: {
+        Args: { p_order_id: string };
         Returns: void;
       };
       settle_boutique_payout: {

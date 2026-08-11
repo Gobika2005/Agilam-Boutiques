@@ -9,6 +9,8 @@ import { fetchShipment, fetchShipmentEvents, reportDeliveryIssue } from '@/data/
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
 import { deliveryEstimate, formatOrderDateTime, isFailedShipment, trackStage } from '@/lib/orderHistory';
+import { useOrderFeedback } from '@/hooks/useOrderFeedback';
+import { OrderFeedbackSheet } from '@/components/buyer/OrderFeedbackSheet';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /**
@@ -48,6 +50,8 @@ export function TrackOrder() {
   const [disputing, setDisputing] = useState(false);
   const [disputed, setDisputed] = useState(false);
   const [showAllScans, setShowAllScans] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedback = useOrderFeedback(orders);
 
   if (!order) {
     return (
@@ -239,6 +243,28 @@ export function TrackOrder() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
               </a>
             </div>
+          </div>
+        )}
+
+        {/* ---------- How was it? (migration 0071) ---------- */}
+        {/* Sits above the "not received" row on purpose: for almost every
+            delivered order the parcel did arrive, and asking about the happy
+            case first is the honest ordering of likelihood. */}
+        {feedback.needsFeedback(order) && (
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;align-items:center;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>reviews</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-size:14px;font-weight:800;color:var(--ag-gold-text);')}>How was it?</div>
+              <div style={css('font-size:12.5px;color:var(--ag-gold-text);line-height:1.5;margin-top:2px;opacity:.9;')}>
+                Rate what you bought — it’s how other buyers find {order.boutique}.
+              </div>
+            </div>
+            <button
+              onClick={() => setFeedbackOpen(true)}
+              style={css('flex:none;height:40px;padding:0 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+            >
+              Rate
+            </button>
           </div>
         )}
 
@@ -512,6 +538,18 @@ export function TrackOrder() {
           <a href={CONTACT_LINKS.call} style={css('color:var(--ag-muted);font-weight:700;')}>{COMPANY.phone}</a>
         </div>
       </div>
+
+      {feedbackOpen && (
+        <OrderFeedbackSheet
+          order={order}
+          alreadyReviewed={feedback.reviewedProductIds}
+          onClose={(submitted) => {
+            setFeedbackOpen(false);
+            feedback.suppress(order.rowId ?? '');
+            if (submitted) feedback.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -80,6 +80,15 @@ async function check(label, pathname, assertions) {
       try { const j = JSON.parse(m[1].replace(/\\u003c/g, '<')); return (j['@graph'] ?? [j]).map((n) => n['@type']).join(','); }
       catch (e) { return 'PARSE_ERROR: ' + e.message; }
     })(),
+    // The parsed graph, so a check can assert on a node's CONTENTS rather than
+    // just which @types are present — `schema` above collapses to a type list,
+    // which cannot tell a complete Organization from a hollow one.
+    graph: (() => {
+      const m = body.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s);
+      if (!m) return [];
+      try { const j = JSON.parse(m[1].replace(/\\u003c/g, '<')); return j['@graph'] ?? [j]; }
+      catch { return []; }
+    })(),
     bodyLen: body.length,
     // Entity-decoded: `&` is correctly written as `&amp;` inside an attribute,
     // so the raw match never equals the URL the browser will actually request.
@@ -236,13 +245,50 @@ for (const child of ['/sitemap-pages.xml', '/sitemap-boutiques.xml', '/sitemap-p
     is('not empty', (o) => o.bodyLen > 300),
   ]);
 }
+/*
+ * The brand entity.
+ *
+ * `MangaiMart` has to win searches for its own name in every spelling people
+ * use it in — "Mangai Mart" as two words is a real share of them, and nothing
+ * on the site tied that string to this domain until `alternateName` did. The
+ * Organization node is also what a knowledge panel and an AI assistant read to
+ * answer "what is MangaiMart", so a hollow one (a name, a URL and nothing else)
+ * is a brand-SEO failure that no amount of product markup makes up for.
+ *
+ * Asserted on the CONTENTS of the node, not its presence: it was present and
+ * hollow for the whole of the previous audit.
+ */
+function orgProblems(o) {
+  const org = (o.graph || []).find((n) => n['@type'] === 'Organization');
+  if (!org) return ['no Organization node'];
+  const problems = [];
+  if (org.name !== 'MangaiMart') problems.push(`name is "${org.name}", expected MangaiMart`);
+  const alts = [].concat(org.alternateName || []);
+  if (!alts.includes('Mangai Mart')) problems.push('alternateName does not include the spaced "Mangai Mart"');
+  for (const field of ['email', 'telephone', 'logo', 'description', 'sameAs', 'contactPoint', 'address']) {
+    if (!org[field]) problems.push(`no ${field}`);
+  }
+  return problems;
+}
+
 const home = await check('homepage', '/', [
   is('200', (o) => o.status === 200),
   is('real title', (o) => o.title && o.title !== 'MangaiMart'),
   is('canonical', (o) => !!o.canonical),
   is('indexable', (o) => (o.robots || '').startsWith('index')),
   is('WebSite schema', (o) => (o.schema || '').includes('WebSite')),
+  is('complete Organization', (o) => !orgProblems(o).length),
 ]);
+// Reported separately so a failure names the missing field rather than just
+// "complete Organization".
+{
+  const problems = orgProblems(home);
+  results.push(
+    problems.length
+      ? { label: 'brand entity', FAIL: problems.join('; ') }
+      : { label: 'brand entity', status: 200, title: 'Organization: name, alternateName, contacts, sameAs all present' },
+  );
+}
 await check('collections hub', '/collections', [is('200', (o) => o.status === 200), is('title', (o) => !!o.title)]);
 
 /*

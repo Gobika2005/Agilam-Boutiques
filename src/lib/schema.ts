@@ -45,8 +45,22 @@ export function organizationSchema(): JsonLd {
   return compact({
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
-    name: COMPANY.legalName || SITE_NAME,
-    alternateName: SITE_NAME,
+    /*
+     * The trading name, not `COMPANY.legalName`.
+     *
+     * Two things were wrong with using the legal name here. It is still a TODO
+     * placeholder in src/data/company.ts, so this published an unverified
+     * registered-entity claim as structured data; and the edge middleware emits
+     * `name: "MangaiMart"` on this exact same `@id`, so the two nodes merged
+     * into one entity asserting two different names. The brand a shopper types
+     * is the one that has to win, and `legalName` is deliberately not emitted
+     * until the real incorporated entity is confirmed.
+     */
+    name: SITE_NAME,
+    // Mirrors BRAND_ALTERNATE_NAMES in middleware.js — change both together.
+    // "Mangai Mart" as two words is a real share of own-brand search and had
+    // nothing anywhere tying that spelling to this domain.
+    alternateName: ['Mangai Mart', 'MangaiMart Boutique', 'MangaiMart India'],
     url: SITE_URL,
     logo: {
       '@type': 'ImageObject',

@@ -163,11 +163,20 @@ export function usePageMeta(opts: PageMetaOptions): void {
     setProperty('og:url', url);
     setProperty('og:image', ogImage);
     setProperty('og:image:alt', title || SITE_NAME);
-    // Facebook and WhatsApp render a small thumbnail unless dimensions are
-    // declared up front, because they will not block the preview on measuring
-    // the file. 1200×630 is the large-card contract.
-    setProperty('og:image:width', '1200');
-    setProperty('og:image:height', '630');
+    /*
+     * No og:image:width/height.
+     *
+     * These were hardcoded to 1200×630, which is not the shape of any image
+     * this actually serves: a product photo is portrait, a boutique logo is
+     * square, and the brand fallback (mangaimart-logo.png) is 1254×1254. A
+     * declared size that does not match the file is worse than none — the
+     * scraper reserves the wrong box and then crops or drops the preview.
+     *
+     * `headFor()` in middleware.js dropped them for exactly this reason and
+     * documented it; this hook kept re-adding them on every SPA navigation, so
+     * the two halves of the SEO layer disagreed about the same page. Restore
+     * both together, and only alongside a purpose-built 1.91:1 share image.
+     */
 
     setMeta('twitter:card', 'summary_large_image');
     setMeta('twitter:title', fullTitle);

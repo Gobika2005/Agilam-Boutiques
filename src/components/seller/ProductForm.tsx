@@ -142,7 +142,7 @@ export function ProductForm({
       if (!file) continue;
       setUploading('gallery');
       try {
-        const url = await uploadProductImage(boutiqueId, file);
+        const url = await uploadProductImage(boutiqueId, file, form.title);
         setForm((f) => ({ ...f, images: [...f.images, url] }));
         slots--;
       } catch (e) {
@@ -164,7 +164,7 @@ export function ProductForm({
     if (file) {
       setUploading('cover');
       try {
-        const url = await uploadProductImage(boutiqueId, file);
+        const url = await uploadProductImage(boutiqueId, file, form.title);
         set('imageUrl', url);
         setErrors((e) => ({ ...e, imageUrl: undefined }));
       } catch (e) {

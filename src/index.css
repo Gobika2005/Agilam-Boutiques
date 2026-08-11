@@ -502,15 +502,21 @@ body.agx-photo-open { overflow: hidden; }
    the notice on top of the piece's own title and its carousel dots — the two
    things a buyer is looking at. The toast already steps up here; match it. */
 @media (max-width: 899px) { body:has(.agx-pdp-root) .agx-launch-notice { bottom: 174px !important; } }
-/* The chat is `position:fixed; inset:0`, so it is sized to the *layout* viewport
-   — which iOS Safari does not shrink when the on-screen keyboard opens. The
-   composer therefore stayed at the bottom of the page, underneath the keyboard,
-   and you typed into a field you could not see. `--ag-kb` is the keyboard's
-   height, measured from visualViewport by ChatView (0 when it is closed), and
-   reserving it here lifts the whole chat column clear of it.
-   `max()` rather than `+`: the home-indicator inset is under the keyboard while
-   it is open, so adding both would leave a gap. */
-.agx-chat-root { padding-bottom: max(var(--ag-kb, 0px), env(safe-area-inset-bottom, 0px)); }
+/* The chat is `position:fixed`, so it is sized to the *layout* viewport — which
+   no mobile browser shrinks when the on-screen keyboard opens. ChatView sizes
+   it to the visual viewport instead (`--ag-vv-top`/`--ag-vv-h` on the element);
+   what is left here is the bottom inset. The home indicator is *under* the
+   keyboard while it is open, so reserving it then would only leave a gap. */
+.agx-chat-root { padding-bottom: env(safe-area-inset-bottom, 0px); }
+body[data-kb-open] .agx-chat-root {
+  padding-bottom: 0;
+  /* The banner below is hidden while typing, so stop reserving its height. */
+  --ag-banner-h: 0px;
+}
+/* A keyboard leaves little enough of the screen as it is; spending 53px of it
+   on a notice the buyer has already read, at the moment they are mid-sentence,
+   is the wrong trade. It comes back as soon as the keyboard closes. */
+body[data-kb-open].agx-chatting .agx-maintenance-notice { display: none; }
 /* A page-level banner (maintenance mode) is `position:sticky`, so it occupies
    real height in the document — and the shell below it is already `min-height:
    100vh`. Together that made the page taller than the viewport underneath a

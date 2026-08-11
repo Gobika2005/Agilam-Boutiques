@@ -342,14 +342,50 @@ function supabasePreconnect() {
   }
 }
 
+/*
+ * The spellings people actually type.
+ *
+ * "Mangai Mart" as two words is a substantial share of the brand's own-name
+ * searches, and nothing on the site said the two strings are the same entity —
+ * so the spaced form had no signal tying it to this domain. `alternateName` is
+ * how a knowledge panel learns a brand's variants; it is not a keyword list,
+ * so only genuine spellings of the name belong here.
+ *
+ * Mirrors `organizationSchema()` in src/lib/schema.ts — the same rule as
+ * SOCIAL_PROFILES above: the edge copy is the one crawlers read, so the two
+ * must be changed together or the entity drifts.
+ */
+const BRAND_ALTERNATE_NAMES = ["Mangai Mart", "MangaiMart Boutique", "MangaiMart India"];
+// Mirrors COMPANY.email / COMPANY.phone in src/data/company.ts.
+const SUPPORT_EMAIL = "support@mangaimart.com";
+const SUPPORT_PHONE = "+91 93442 94969";
+
 function orgNode(origin) {
   return {
     "@type": "Organization",
     "@id": `${origin}/#organization`,
     name: SITE_NAME,
+    alternateName: BRAND_ALTERNATE_NAMES,
     url: origin,
     logo: `${origin}${DEFAULT_OG_IMAGE}`,
     description: DEFAULT_DESCRIPTION,
+    email: SUPPORT_EMAIL,
+    telephone: SUPPORT_PHONE,
+    foundingDate: "2024",
+    // A reachable contact is one of the trust signals Google weighs on a
+    // commerce domain, and the only structured place a buyer-facing support
+    // channel is stated. `availableLanguage` matters here: the catalogue is
+    // Tamil Nadu-weighted and support genuinely answers in both languages.
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        telephone: SUPPORT_PHONE,
+        email: SUPPORT_EMAIL,
+        areaServed: "IN",
+        availableLanguage: ["en", "ta"]
+      }
+    ],
     address: {
       "@type": "PostalAddress",
       addressLocality: "Coimbatore",
@@ -383,6 +419,48 @@ function priceValidUntil() {
   const d = new Date();
   d.setFullYear(d.getFullYear() + 1);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The newest few real reviews of a product, as schema.org `Review` nodes.
+ *
+ * `aggregateRating` was already emitted and is what earns the star rich result,
+ * but the individual reviews existed only in React state — fetched by
+ * `ProductReviews`, which is inside a collapsed accordion, so it does not even
+ * mount until a buyer opens it. Nothing a crawler or an AI assistant reads ever
+ * contained a single word a customer had written about a piece.
+ *
+ * Read separately rather than joined onto the product query: PostgREST can only
+ * embed `reviews` here if a foreign key is exposed, and naming a relationship
+ * that isn't there fails the WHOLE product query — which would blank the page's
+ * metadata, exactly the failure mode the column fallbacks above exist to avoid.
+ * A failed or slow read simply yields no review nodes; the page is unaffected.
+ *
+ * `hidden` is filtered the same way `fetchReviews()` does, so a review an admin
+ * has taken down (migration 0048) cannot reappear in the markup.
+ */
+async function productReviewNodes(productId) {
+  const { rows } = await dbTry(
+    `reviews?select=rating,body,author_name,created_at,hidden&product_id=eq.${productId}` +
+      "&order=created_at.desc&limit=5"
+  );
+  return rows
+    .filter((r) => !r.hidden && Number(r.rating) > 0 && String(r.body || "").trim())
+    .map((r) => ({
+      "@type": "Review",
+      // Google requires a named author. Reviews are posted by signed-in buyers
+      // and `author_name` is the display name they chose; where it is blank the
+      // honest answer is that the reviewer is anonymous, not a fabricated name.
+      author: { "@type": "Person", name: r.author_name?.trim() || "Verified buyer" },
+      datePublished: r.created_at ? r.created_at.slice(0, 10) : void 0,
+      reviewBody: clamp(r.body, 500),
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: Number(r.rating),
+        bestRating: 5,
+        worstRating: 1
+      }
+    }));
 }
 
 /** A full UUID, as opposed to a title slug. Decides which column to filter on. */
@@ -435,7 +513,7 @@ async function dbProducts(build) {
  * shop pages it goes in `<noscript>` rather than `#root`, which must stay empty
  * until React mounts or the `#root:not(:empty)` rule never retires the splash.
  */
-function productPrerender(p, origin, url, shop, city) {
+function productPrerender(p, origin, url, shop, city, reviews = []) {
   const inStock = (p.stock ?? 0) > 0;
   const specs = [
     p.category && `Category: ${p.category}`,
@@ -456,6 +534,26 @@ function productPrerender(p, origin, url, shop, city) {
     p.description?.trim() || `${p.title} from ${shop}, ${city}. Sold on ${SITE_NAME} by a verified independent boutique.`
   )}</p>
 ${specs.length ? `<ul>\n${specs.map((s) => `<li>${escapeHtml(s)}</li>`).join("\n")}\n</ul>` : ""}
+${
+    /*
+     * The reviews, in the body as well as in the JSON-LD.
+     *
+     * Review markup is only legitimate while the same review is visible on the
+     * page — the same rule the /help FAQ block follows. The React app does render
+     * these (inside the "Ratings & reviews" panel), so the markup was already
+     * honest, but a crawler that does not run JavaScript could not see either
+     * half. This is the same text, in the first response.
+     */
+    reviews.length
+      ? `<h2>What buyers say about ${escapeHtml(p.title)}</h2>
+${reviews
+          .map(
+            (r) =>
+              `<p>${"★".repeat(Math.round(r.reviewRating.ratingValue))} — ${escapeHtml(r.reviewBody)} <em>${escapeHtml(r.author.name)}</em></p>`
+          )
+          .join("\n")}`
+      : ""
+  }
 <p>Sold by ${shopPath ? `<a href="${escapeHtml(`${origin}${shopPath}`)}">${escapeHtml(shop)}</a>` : escapeHtml(shop)}, ${escapeHtml(city)}.</p>
 <p><a href="${escapeHtml(url)}">${escapeHtml(p.title)} on ${SITE_NAME}</a>${p.category ? ` · <a href="${escapeHtml(`${origin}/collections/${slugify(p.category)}`)}">More ${escapeHtml(titleCase(p.category))}</a>` : ""} · <a href="${origin}/shop">Shop all</a></p>
 </noscript>`;
@@ -493,6 +591,10 @@ async function metaForProduct(slug, origin) {
   if (!p) return attempt.ok ? notFoundMeta() : null;
   const shop = p.boutiques?.name || SITE_NAME;
   const city = p.boutiques?.city || "India";
+  // Only worth a round trip when the product actually has reviews on file —
+  // `reviews_count` is maintained on the row, so an unreviewed piece (most of
+  // the catalogue) costs nothing and the hot path is unchanged.
+  const reviews = (p.reviews_count ?? 0) > 0 ? await productReviewNodes(p.id) : [];
   const canonicalPath = productPath(p);
   const url = `${origin}${canonicalPath}`;
   const inStock = (p.stock ?? 0) > 0;
@@ -510,7 +612,7 @@ async function metaForProduct(slug, origin) {
     type: "product",
     // A bare id, or a stale title slug, is rewritten to the canonical URL.
     redirectTo: `/products/${slug}` !== canonicalPath ? canonicalPath : void 0,
-    prerender: productPrerender(p, origin, url, shop, city),
+    prerender: productPrerender(p, origin, url, shop, city, reviews),
     schema: {
       "@context": "https://schema.org",
       "@graph": [
@@ -551,7 +653,8 @@ async function metaForProduct(slug, origin) {
             reviewCount: p.reviews_count,
             bestRating: 5,
             worstRating: 1
-          } : void 0
+          } : void 0,
+          review: reviews.length ? reviews : void 0
         },
         {
           "@type": "BreadcrumbList",

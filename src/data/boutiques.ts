@@ -217,9 +217,18 @@ export async function submitBoutiqueForReview(id: string, patch: BoutiquePatch =
   if (error) throw error;
 }
 
-/** Uploads a boutique logo/cover to the public `boutique-images` bucket. */
-export async function uploadBoutiqueImage(boutiqueId: string, kind: 'logo' | 'cover', file: File): Promise<string> {
-  return uploadImage('boutique-images', `${boutiqueId}/${kind}`, file, '0019');
+/** Uploads a boutique logo/cover to the public `boutique-images` bucket.
+ *
+ *  `name` is the shop's own name where the caller has it, so the file lands as
+ *  `mangaimart-menmai-boutique-logo-<id>.png` — the one piece of text that
+ *  travels with the image if it is hotlinked or saved. */
+export async function uploadBoutiqueImage(
+  boutiqueId: string,
+  kind: 'logo' | 'cover',
+  file: File,
+  name?: string,
+): Promise<string> {
+  return uploadImage('boutique-images', `${boutiqueId}/${kind}`, file, '0019', `${name || 'boutique'} ${kind}`);
 }
 
 export interface AdminBoutiqueRow extends BoutiqueRow {

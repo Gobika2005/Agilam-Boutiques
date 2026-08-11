@@ -392,7 +392,7 @@ export function SellerOnboarding() {
     if (!file) return;
     setUploading(kind);
     try {
-      const url = await uploadBoutiqueImage(boutique.id, kind, file);
+      const url = await uploadBoutiqueImage(boutique.id, kind, file, boutique.name);
       set(kind === 'logo' ? 'logoUrl' : 'coverUrl', url);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Image upload failed');

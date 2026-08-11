@@ -11,6 +11,8 @@ import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
 import { deliveryEstimate, formatOrderDate, formatOrderDateTime, patchLocalOrder, trackStage, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchShipmentsForOrders, type Shipment } from '@/data/shipments';
+import { useOrderFeedback } from '@/hooks/useOrderFeedback';
+import { OrderFeedbackSheet } from '@/components/buyer/OrderFeedbackSheet';
 
 /** Order-list tabs. "Active" is everything the buyer is still waiting on. */
 const TABS = [
@@ -46,6 +48,9 @@ export function MyOrders() {
     [shippedIds.join(',')],
   );
   const stageOf = (o: PlacedOrder) => trackStage(o, o.rowId ? shipments?.[o.rowId]?.last_status : null);
+
+  const feedback = useOrderFeedback(allOrders);
+  const [rating, setRating] = useState<PlacedOrder | null>(null);
 
   const counts = useMemo(() => ({
     active: allOrders.filter(isActive).length,
@@ -260,6 +265,18 @@ export function MyOrders() {
                       {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}
                     </button>
                   )}
+                  {/* Delivered and unanswered — the same shared state the
+                      order screen and the pop-up read, so rating once here
+                      silences all of them. */}
+                  {feedback.needsFeedback(o) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRating(o); }}
+                      style={css('flex:1;min-width:140px;height:42px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
+                    >
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>reviews</span>
+                      Rate this order
+                    </button>
+                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); chatWithBoutique(o); }}
                     style={css('flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
@@ -279,6 +296,18 @@ export function MyOrders() {
           })}
         </div>
       </div>
+
+      {rating && (
+        <OrderFeedbackSheet
+          order={rating}
+          alreadyReviewed={feedback.reviewedProductIds}
+          onClose={(submitted) => {
+            feedback.suppress(rating.rowId ?? '');
+            setRating(null);
+            if (submitted) feedback.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

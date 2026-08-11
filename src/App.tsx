@@ -153,6 +153,7 @@ const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast'
 const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
 const Expenses = lazyNamed(() => import('@/pages/admin/Expenses'), 'Expenses');
 const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveries');
+const Feedback = lazyNamed(() => import('@/pages/admin/Feedback'), 'Feedback');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
 
 export default function App() {
@@ -363,6 +364,9 @@ export default function App() {
         {/* Courier tracking's admin side (0063): disputes that freeze a payout,
             stalled parcels, and the courier list sellers pick from. */}
         <Route path="deliveries" element={<Deliveries />} />
+        {/* Private post-delivery feedback about the platform itself (0071).
+            Public product reviews are moderated at /admin/reviews. */}
+        <Route path="feedback" element={<Feedback />} />
         {/* Folded into Overview and Users as tabs to shorten a 20-item sidebar.
             Kept as redirects rather than deleted: both were linked from the nav
             for months, so bookmarks and old notification links exist. */}

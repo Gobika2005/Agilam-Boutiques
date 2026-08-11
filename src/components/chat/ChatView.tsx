@@ -111,33 +111,50 @@ export function ChatView({
   }, []);
 
   /**
-   * Keep the composer above the on-screen keyboard.
+   * Keep the whole chat above the on-screen keyboard.
    *
-   * The chat is a fixed, full-viewport surface, and the *layout* viewport does
-   * not shrink when a phone keyboard opens (iOS Safari never does it; Android
-   * only in some modes). So the field the buyer was typing into sat underneath
-   * the keyboard, and the last messages went with it. The visual viewport does
-   * report the change, so measure the covered strip from it and publish it as
-   * `--ag-kb` for `.agx-chat-root` to reserve.
+   * The chat is a fixed surface, so it is sized to the *layout* viewport — and
+   * no mobile browser reliably shrinks that when the keyboard opens. iOS Safari
+   * never does. Android Chrome shrinks the *visual* viewport instead and then
+   * pans it (`offsetTop`) to bring the focused field into view, which pushes
+   * the header off the top of the screen while the composer is still under the
+   * keyboard at the bottom.
    *
-   * Written to the body so the toast — a fixed sibling, not a child — can clear
-   * the keyboard too. Both are cleaned up when the chat unmounts.
+   * So don't reserve a strip — position the surface on the visual viewport
+   * itself: `--ag-vv-top` is how far the browser has panned, `--ag-vv-h` the
+   * height actually on screen. Together they park the header, thread and
+   * composer inside the visible slice in every mode.
+   *
+   * `--ag-kb` is still published on the body for the toast, which is a fixed
+   * sibling rather than a child: it stays in layout coordinates, so what it has
+   * to clear is only the part of the keyboard the pan has not already absorbed.
+   * `data-kb-open` lets the stylesheet stand the banner and the home-indicator
+   * inset down while the keyboard is up. All three are cleaned up on unmount.
    */
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     let last = '';
     const apply = () => {
-      // offsetTop matters on iOS: the visual viewport can be scrolled within
-      // the layout viewport, and only what is below it is actually hidden.
-      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // Ignore the few pixels a collapsing URL bar accounts for — only a real
-      // keyboard should move the layout.
-      const kb = covered > 120 ? `${Math.round(covered)}px` : '0px';
-      if (kb === last) return;
-      last = kb;
-      rootRef.current?.style.setProperty('--ag-kb', kb);
-      document.body.style.setProperty('--ag-kb', kb);
+      // Pinch-zoom shrinks the visual viewport too. Only an interactive widget
+      // should move the chat, so sit still while the page is zoomed.
+      const zoomed = vv.scale > 1.05;
+      // The keyboard's own height. Deliberately *not* minus offsetTop: how much
+      // the widget covers is independent of how far the browser has panned, and
+      // subtracting it used to hide the keyboard from this measurement entirely.
+      const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height));
+      // Ignore the few pixels a collapsing URL bar accounts for.
+      const open = kb > 120;
+      const top = open ? Math.round(vv.offsetTop) : 0;
+      const key = `${open ? kb : 0}|${top}`;
+      if (key === last) return;
+      last = key;
+      const root = rootRef.current;
+      root?.style.setProperty('--ag-vv-top', `${top}px`);
+      root?.style.setProperty('--ag-vv-h', open ? `${Math.round(vv.height)}px` : '100%');
+      document.body.style.setProperty('--ag-kb', `${open ? Math.max(0, kb - top) : 0}px`);
+      if (open) document.body.dataset.kbOpen = '1';
+      else delete document.body.dataset.kbOpen;
       // The thread just got shorter; without this the message you were reading
       // when you tapped the field scrolls out of sight behind the keyboard.
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
@@ -149,6 +166,7 @@ export function ChatView({
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
       document.body.style.removeProperty('--ag-kb');
+      delete document.body.dataset.kbOpen;
     };
   }, []);
 
@@ -268,12 +286,15 @@ export function ChatView({
   const statusOn = live && peerOnline;
   const canSend = live && !!draft.trim() && !sending;
 
-  // `top` rather than `inset:0`: a page-level banner (maintenance mode) is a
-  // sticky element in the document flow and sits above this surface in the
-  // stacking order, so covering the whole viewport put the chat header
-  // underneath it. `--ag-banner-h` is 0px whenever no banner is showing.
+  // `top`/`height` rather than `inset:0`, for two reasons. A page-level banner
+  // (maintenance mode) is a sticky element in the document flow and sits above
+  // this surface in the stacking order, so covering the whole viewport put the
+  // chat header underneath it — `--ag-banner-h` (0px when no banner is showing)
+  // is reserved at the top instead. And `--ag-vv-top`/`--ag-vv-h` pin the
+  // surface to the visual viewport when a keyboard is open; they fall back to
+  // the full layout viewport, which is what every desktop browser gets.
   return (
-    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:var(--ag-banner-h,0px);left:0;right:0;bottom:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;height:calc(var(--ag-vv-h,100%) - var(--ag-banner-h,0px));z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>

@@ -17,6 +17,7 @@ const NAV = [
   { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
   { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
   { label: 'Deliveries', icon: 'local_shipping', to: '/admin/deliveries', title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
+  { label: 'Feedback', icon: 'rate_review', to: '/admin/feedback', title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart — private, never published' },
   { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
   { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
   { label: 'Expenses', icon: 'savings', to: '/admin/expenses', title: 'Expenses', sub: 'What the platform spends, with proof attached' },
