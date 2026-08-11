@@ -4,6 +4,7 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { useSignedIn, signInPath } from '@/auth/SignInGate';
 import { TONES, fmt } from '@/data/demo';
 
 export function Cart() {
@@ -15,6 +16,10 @@ export function Cart() {
     subtotal, discount, shipFee, total,
   } = useShop();
   const { productById } = useCatalog();
+  // Ordering needs a real account (see @/auth/SignInGate). The route guard on
+  // /checkout would catch it anyway, but saying so on the button is kinder than
+  // a silent bounce to a login screen the buyer didn't ask for.
+  const { signedIn, loading: authLoading } = useSignedIn();
 
   const items = Object.entries(cart)
     .map(([id, line]) => {
@@ -118,9 +123,19 @@ export function Cart() {
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
               </div>
 
-              <button onClick={() => navigate('/checkout')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-                Proceed to checkout<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+              <button
+                onClick={() => navigate(signedIn ? '/checkout' : signInPath('/checkout'))}
+                disabled={authLoading}
+                style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${authLoading ? 'wait' : 'pointer'};opacity:${authLoading ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}
+              >
+                {signedIn || authLoading ? 'Proceed to checkout' : 'Sign in to checkout'}
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{signedIn || authLoading ? 'arrow_forward' : 'lock'}</span>
               </button>
+              {!signedIn && !authLoading && (
+                <div style={css('text-align:center;font-size:12px;line-height:1.5;color:var(--ag-muted);font-weight:600;margin-top:10px;')}>
+                  You need an account to place an order — it keeps your order history, tracking and returns in one place. Your bag is saved.
+                </div>
+              )}
             </div>
           </div>
         ) : (

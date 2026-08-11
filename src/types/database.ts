@@ -121,6 +121,11 @@ export interface Database {
            *  under the platform account; NULL means this shop cannot book. */
           shiprocket_pickup_location: string | null;
           shiprocket_enabled: boolean;
+          /** Migration 0068. Set when the pickup address was created through
+           *  the Shiprocket API; NULL with a location set means an admin pasted
+           *  it in by hand. `_error` holds the last refusal, verbatim. */
+          shiprocket_pickup_registered_at: string | null;
+          shiprocket_pickup_error: string | null;
           /**
            * Withheld from anon/authenticated by 0021's column-level SELECT
            * grants: writable by the owner, but only readable through the

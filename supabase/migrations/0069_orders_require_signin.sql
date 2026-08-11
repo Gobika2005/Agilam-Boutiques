@@ -1,0 +1,43 @@
+-- Ordering requires a signed-in account, and only the server may write orders.
+--
+-- Idempotent and re-runnable in the Supabase SQL editor.
+--
+-- ── Why ─────────────────────────────────────────────────────────────────────
+-- Guest checkout is closed: the buyer app now gates /checkout and /payment on a
+-- real account (src/auth/SignInGate.tsx) and both api/create-order.js and
+-- api/place-order.js refuse a request without the buyer's access token. This
+-- migration closes the third door — the one that never went through either.
+--
+-- schema.sql grants the browser client:
+--   "orders: buyer insert"                  with check (buyer_id = auth.uid())
+--   "order_items: buyer insert with own order"
+--
+-- Nothing in the app uses them. Every real order is written by the service role
+-- in api/place-order.js (which bypasses RLS), and a POS/walk-in bill goes
+-- through the create_offline_sale SECURITY DEFINER function from 0009/0052.
+-- What the policies do provide is a way to skip all of that: `auth.uid()` is
+-- non-null for an ANONYMOUS user too — opening a chat signs the browser in
+-- anonymously (src/data/chat.ts) — so anyone could POST an order row straight to
+-- PostgREST with their own buyer_id, any boutique_id, any total, no payment
+-- verification and no stock reservation. That is a guest order by another name,
+-- and it also mints rows that sellers see and payouts count.
+--
+-- Dropping them costs nothing the app does and leaves exactly two writers:
+-- the service role, and the offline-sale function.
+--
+-- Reads are untouched: a buyer still sees their own orders through the existing
+-- select policy (buyer_id = auth.uid()), which is what "my orders" relies on.
+
+drop policy if exists "orders: buyer insert" on public.orders;
+drop policy if exists "order_items: buyer insert with own order" on public.order_items;
+
+-- ── Verify ──────────────────────────────────────────────────────────────────
+-- Both should return zero rows after this runs:
+--
+--   select polname from pg_policy
+--    where polrelid = 'public.orders'::regclass and polcmd = 'a';
+--   select polname from pg_policy
+--    where polrelid = 'public.order_items'::regclass and polcmd = 'a';
+--
+-- And a signed-in buyer attempting a direct insert should now get
+-- "new row violates row-level security policy for table \"orders\"".

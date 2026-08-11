@@ -573,12 +573,28 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     /** 'COD' writes an unpaid order; omitted means a verified prepaid one. */
     paymentMethod?: 'COD',
   ): Promise<string> => {
-    // A signed-in buyer sends their token so the order is tied to their account
-    // (readable cross-device via RLS); guests omit it and stay phone-keyed.
+    // Every order is tied to its buyer's account (readable cross-device via
+    // RLS), so the access token is required, not optional — the server refuses
+    // the request without it. getSession() refreshes a token that expired while
+    // the buyer was shopping.
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (!token || sessionData.session?.user?.is_anonymous) {
+      // Reached only if the session lapsed mid-checkout; the route guard keeps
+      // signed-out buyers off these screens in the first place. On the prepaid
+      // path the payment is already parked, so signing back in and tapping
+      // "Complete my order" settles it — nothing is lost and nothing is
+      // charged twice. COD has taken no money, so it says nothing about any.
+      throw new Error(
+        paymentMethod === 'COD'
+          ? 'Please sign in again to place your order.'
+          : 'Please sign in again to finish your order — your payment is safe.',
+      );
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
 
     // The server re-derives the discount/shipping from this code and binds the
     // paid amount to it — the browser's discount value is never trusted. On the
@@ -613,8 +629,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }
 
     // Mirror the just-paid cart into the buyer's local order history, grouped by
-    // boutique the same way the server split it. Guest orders can't be read back
-    // from Supabase (RLS), so this is what powers "My orders" and tracking.
+    // boutique the same way the server split it. The account copy is the real
+    // record; this local one shows the order instantly, before the DB read.
     const boutiqueIdByName = new Map(boutiques.map((b) => [b.name, b.id]));
     const itemsByBoutique = new Map<string, PlacedOrderItem[]>();
     for (const line of items) {

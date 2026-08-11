@@ -6,11 +6,17 @@ import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
 
 /**
- * Vercel serverless function: create the real order(s) for a guest checkout.
+ * Vercel serverless function: create the real order(s) for a checkout.
  *
- * Buyers browse without an account, so orders are written here with the Supabase
- * service role (bypasses RLS) instead of from the anonymous browser client. The
- * server is the source of truth for prices and boutique ownership: the client
+ * Buyers browse without an account, but they cannot order without one: this
+ * endpoint requires the buyer's Supabase access token and refuses the request
+ * without it (see the sign-in gate in the handler). The `guest_*` columns are
+ * still where the delivery details live — the name kept its original meaning of
+ * "typed at checkout" rather than "no account behind it".
+ *
+ * Orders are written with the Supabase service role (bypasses RLS) rather than
+ * from the browser client, so one request can create rows for several sellers.
+ * The server is the source of truth for prices and boutique ownership: the client
  * only sends product ids + quantities, and we look up the authoritative title,
  * price and boutique from the products table. A cart can span several
  * boutiques, so it is split into one order per boutique — that is what makes
@@ -203,21 +209,48 @@ export default async function handler(req, res) {
     }
   }
 
-  // A signed-in buyer (Google / email) sends their access token; tie the order
-  // to their account so they can read it back cross-device via RLS. Guests
-  // (no token / invalid) fall through to null, staying phone-keyed.
+  // ── Sign-in required ───────────────────────────────────────────────────
+  // Every order is owned by an account. The buyer's access token is what proves
+  // that, and it is mandatory: guest checkout is closed. This is the server half
+  // of the gate the UI enforces in src/auth/SignInGate.tsx — the browser can
+  // skip its own guard, this it cannot.
+  //
+  // An *anonymous* Supabase user does not count. Opening a chat signs the
+  // browser in anonymously (src/data/chat.ts), so a bare token is not evidence
+  // of an account; `is_anonymous` is what separates the two.
+  //
+  // Ordering matters: this sits AFTER the replay check so a re-sent settlement
+  // for an order that already exists still answers 409 ("already used") instead
+  // of a sign-in error, and the retry path in ShopContext stops rather than
+  // looping. It is otherwise as early as possible.
   let buyerId = null;
-  // Optional-chained on purpose: a runtime without `headers` must degrade to a
-  // guest checkout, never throw here — this runs after the buyer has paid.
-  const authHeader = req.headers?.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (token) {
-    try {
-      const { data } = await supabase.auth.getUser(token);
-      buyerId = data?.user?.id ?? null;
-    } catch {
-      /* invalid token — treat as a guest checkout */
+  {
+    // Optional-chained on purpose: a runtime without `headers` must not throw.
+    const authHeader = req.headers?.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    let user = null;
+    if (token) {
+      try {
+        const { data } = await supabase.auth.getUser(token);
+        user = data?.user ?? null;
+      } catch {
+        /* expired or malformed token — handled as signed out below */
+      }
     }
+    if (!user || user.is_anonymous) {
+      // Prepaid reaches here only if the session expired between opening
+      // checkout and settling, so the money may already be captured. Say so:
+      // the browser has parked the payment and the "Complete my order" retry
+      // will settle it once they are signed in again — being told to sign in
+      // with no word about the charge is how a buyer pays twice.
+      return res.status(401).json({
+        error: isCod
+          ? 'Please sign in to place your order.'
+          : 'Please sign in again to finish your order — your payment is safe and you will not be charged twice.',
+        code: 'SIGN_IN_REQUIRED',
+      });
+    }
+    buyerId = user.id;
   }
 
   try {

@@ -1357,7 +1357,10 @@ async function resolveMeta(pathname, origin) {
       ...staticMeta,
       type: "website",
       prerender: HUB_PRERENDERERS[pathname] ? await HUB_PRERENDERERS[pathname](origin) : void 0,
-      // The hero carousel is full-bleed — `sizes="100vw"` in Home.tsx.
+      // The hero is an inset card a little narrower than the viewport, but it
+      // still declares `sizes="100vw"` in Home.tsx and this must be the same
+      // string character-for-character or the preload picks a different
+      // candidate from the <img> and the image is fetched twice.
       lcpImage: pathname === "/" ? await homeHeroImage() : void 0,
       lcpSizes: "100vw",
       schema: { "@context": "https://schema.org", "@graph": graph }

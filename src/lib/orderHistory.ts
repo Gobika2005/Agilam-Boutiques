@@ -1,14 +1,14 @@
 /**
  * The buyer's own order history, held in memory for the current visit.
  *
- * Buyers browse and check out anonymously (no account), so the orders they
- * place can't be read back from Supabase — RLS only exposes an order to its
- * `buyer_id`, and guest orders leave that null (see supabase/schema.sql and
- * api/place-order.js). We therefore mirror each successfully-placed order into
- * memory at checkout time, so "My orders" and order-tracking work for the rest
- * of this visit. It's not persisted: a guest who refreshes or comes back later
- * only sees their orders again once they sign in, at which point the account's
- * DB-backed orders (see data/orders.ts) become the source of truth.
+ * Ordering requires an account, so the authoritative copy of an order lives in
+ * Supabase and is read back through the `buyer_id` RLS policy (see
+ * data/orders.ts). This mirror exists for the seconds either side of that: the
+ * just-placed order shows on "My orders" and the tracker immediately, without
+ * waiting on a round-trip, and it still carries the orders of anyone who
+ * checked out before the sign-in requirement (those rows have a null `buyer_id`
+ * and RLS will never hand them back). It is not persisted — a refresh falls
+ * through to the account's DB-backed orders, which are the source of truth.
  */
 
 export type { OrderStatus } from '@/types/database';

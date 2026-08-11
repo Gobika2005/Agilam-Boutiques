@@ -32,6 +32,26 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
+ * The signed-in buyer behind this request, or null.
+ *
+ * An *anonymous* Supabase user is not a buyer: opening a chat signs the browser
+ * in anonymously (src/data/chat.ts), so a token alone proves nothing about who
+ * is paying. Only a real account (email/password or Google) counts.
+ */
+async function authedBuyer(supabase, req) {
+  const authHeader = req.headers?.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    const user = data?.user;
+    return user && !user.is_anonymous ? user : null;
+  } catch {
+    return null; // expired or malformed token — treat as signed out
+  }
+}
+
+/**
  * Group the server-priced goods value for the given cart items by boutique.
  *
  * Returns `{ ok: true, groupTotals }` (a `{ boutiqueId: rupees }` map) when the
@@ -106,6 +126,18 @@ export default async function handler(req, res) {
     return res.status(503).json({
       error: 'We can’t take payments right now. Nothing has been charged — please try again in a few minutes.',
       code: 'CATALOGUE_UNAVAILABLE',
+    });
+  }
+
+  // ── Sign-in required ───────────────────────────────────────────────────
+  // Orders belong to accounts, so checkout does not open for a signed-out
+  // browser. Refusing here (before Razorpay is called) rather than only at
+  // settlement is deliberate: place-order rejecting the same request would do
+  // it with the money already captured. Nothing has been charged at this point.
+  if (!(await authedBuyer(supabase, req))) {
+    return res.status(401).json({
+      error: 'Please sign in to place your order.',
+      code: 'SIGN_IN_REQUIRED',
     });
   }
 

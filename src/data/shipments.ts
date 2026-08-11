@@ -285,7 +285,32 @@ export type ShiprocketShopRow = {
   status: string;
   shiprocket_enabled: boolean;
   shiprocket_pickup_location: string | null;
+  // Everything needed to register this shop as a pickup address in the
+  // Shiprocket panel. Carried on the row so the admin never has to leave the
+  // drawer to find an address — registering shop #12 should be paste, paste,
+  // paste, not three screens and a guess.
+  owner_name: string | null;
+  phone: string | null;
+  address_line: string | null;
+  district: string | null;
+  state: string | null;
+  pincode: string | null;
+  /** The seller's OWN pin, dropped by them in Settings. This is the only
+   *  first-hand evidence of where the shop physically is — an admin has never
+   *  been there. Without it the pickup pin is guesswork off a text address. */
+  map_url: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  /** Migration 0068 — set when the address was created through the API rather
+   *  than pasted in by an admin, and the last failure if it was refused. */
+  shiprocket_pickup_registered_at: string | null;
+  shiprocket_pickup_error: string | null;
 };
+
+const SHOP_COLUMNS =
+  'id, name, status, shiprocket_enabled, shiprocket_pickup_location, ' +
+  'owner_name, phone, address_line, district, state, pincode, map_url, open_time, close_time, ' +
+  'shiprocket_pickup_registered_at, shiprocket_pickup_error';
 
 /**
  * Every boutique's booking readiness, for the admin console.
@@ -296,10 +321,24 @@ export type ShiprocketShopRow = {
 export async function fetchShiprocketShops(): Promise<ShiprocketShopRow[]> {
   const { data, error } = await supabase
     .from('boutiques')
-    .select('id, name, status, shiprocket_enabled, shiprocket_pickup_location')
+    .select(SHOP_COLUMNS)
     .order('name');
   if (error) throw error;
-  return (data ?? []) as ShiprocketShopRow[];
+  // Through `unknown`: the column list is a built string, so supabase-js cannot
+  // infer the row shape from it. Same as fetchDeliveryDisputes above.
+  return (data ?? []) as unknown as ShiprocketShopRow[];
+}
+
+/** The address block, formatted the way Shiprocket's form wants it read. */
+export function pickupAddressText(b: ShiprocketShopRow): string {
+  return [
+    b.name,
+    b.address_line,
+    [b.district, b.state].filter(Boolean).join(', '),
+    b.pincode,
+    b.phone ? `Phone: ${b.phone}` : null,
+    b.owner_name ? `Contact: ${b.owner_name}` : null,
+  ].filter(Boolean).join('\n');
 }
 
 /**
@@ -321,6 +360,44 @@ export async function saveBoutiqueShiprocket(
   }
   const { error } = await supabase.from('boutiques').update(payload).eq('id', boutiqueId);
   if (error) throw error;
+}
+
+/**
+ * Create this shop's pickup address at Shiprocket and store the nickname.
+ *
+ * Admin only, enforced in the Edge Function against `profiles.role`. Safe to
+ * call twice — a shop that already has a nickname returns `alreadyRegistered`
+ * rather than opening a second collection point on the account.
+ *
+ * Caveat worth repeating at the call site: Shiprocket's API geocodes the text
+ * address and accepts no map pin, so the result is only as good as the seller's
+ * own address. Check the pin in their panel before letting a shop book.
+ */
+export async function registerShiprocketPickup(
+  boutiqueId: string,
+): Promise<{ nickname: string; alreadyRegistered: boolean }> {
+  const { data, error } = await supabase.functions.invoke('shiprocket-pickup', {
+    body: { boutiqueId },
+  });
+
+  if (error) {
+    // supabase-js hides the body behind an opaque "non-2xx" message; every
+    // refusal here is written to be read, so dig the real one out.
+    let message = error.message;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === 'function') {
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error as string;
+      } catch {
+        /* not JSON — keep the generic message */
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (!data?.ok) throw new Error(data?.error ?? 'Could not register the pickup address');
+  return { nickname: data.nickname as string, alreadyRegistered: Boolean(data.alreadyRegistered) };
 }
 
 export type PlatformSwitches = { shiprocket_enabled: boolean; cod_enabled: boolean };

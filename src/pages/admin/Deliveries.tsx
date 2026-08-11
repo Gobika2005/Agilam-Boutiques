@@ -11,6 +11,7 @@ import {
   fetchAllCouriers, saveCourier, fetchDeliveryDisputes, resolveDeliveryDispute,
   fetchStalledShipments, buildTrackingUrl,
   fetchShiprocketShops, saveBoutiqueShiprocket, fetchPlatformSwitches, savePlatformSwitches,
+  pickupAddressText, registerShiprocketPickup,
   type Courier, type DeliveryIssueRow, type StalledShipmentRow, type ShiprocketShopRow,
 } from '@/data/shipments';
 
@@ -63,6 +64,7 @@ export function Deliveries() {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Partial<Courier> | null>(null);
   const [shop, setShop] = useState<ShiprocketShopRow | null>(null);
+  const [registering, setRegistering] = useState(false);
 
   const toggleSwitch = async (key: 'shiprocket_enabled' | 'cod_enabled', on: boolean) => {
     try {
@@ -71,6 +73,25 @@ export function Deliveries() {
       reloadSwitches();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save that switch');
+    }
+  };
+
+  const registerPickup = async () => {
+    if (!shop) return;
+    setRegistering(true);
+    try {
+      const r = await registerShiprocketPickup(shop.id);
+      showToast(r.alreadyRegistered ? 'Already registered' : `Registered as ${r.nickname}`);
+      // Reflect it in the open drawer so the admin sees the nickname land,
+      // rather than having to close and reopen the row.
+      setShop((s) => (s ? { ...s, shiprocket_pickup_location: r.nickname, shiprocket_pickup_error: null } : s));
+      reloadShops();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not register this pickup address';
+      showToast(message);
+      setShop((s) => (s ? { ...s, shiprocket_pickup_error: message } : s));
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -194,7 +215,18 @@ export function Deliveries() {
     { key: 'pickup', header: 'PICKUP LOCATION', width: '1.4fr', render: (b) => (
       b.shiprocket_pickup_location
         ? <span style={css('font-size:13px;font-weight:700;')}>{b.shiprocket_pickup_location}</span>
-        : <span style={css(`font-size:12.5px;color:${T.muted};`)}>Not registered</span>
+        : (
+          <div>
+            <span style={css(`font-size:12.5px;color:${T.muted};`)}>Not registered</span>
+            {/* Surfaced before you open the row: registering without the
+                seller's pin means locating their shop from a text address. */}
+            {!b.map_url && (
+              <div style={css('font-size:11.5px;color:var(--ag-warn-text);font-weight:700;margin-top:2px;')}>
+                no map pin from seller
+              </div>
+            )}
+          </div>
+        )
     ) },
     { key: 'ready', header: 'BOOKING', width: '150px', render: (b) => {
       const ready = Boolean(switches?.shiprocket_enabled && b.shiprocket_enabled && b.shiprocket_pickup_location);
@@ -356,17 +388,97 @@ export function Deliveries() {
           </GhostButton>
         }
       >
+        {/* Registering a pickup address means retyping this shop's details into
+            Shiprocket's form. Showing them here — with the seller's own map pin
+            — turns that from a hunt across three screens into copy-paste. */}
+        {shop && (
+          <div style={css(`background:var(--ag-surface-2);border:1px solid ${T.field};border-radius:12px;padding:13px 14px;margin-bottom:18px;`)}>
+            <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;')}>
+              <div style={css(label + 'margin:0;')}>SHOP DETAILS — FOR THE SHIPROCKET FORM</div>
+              <GhostButton
+                icon="content_copy"
+                title="Copy the address block"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(pickupAddressText(shop));
+                  showToast('Address copied');
+                }}
+              >
+                Copy
+              </GhostButton>
+            </div>
+
+            <div style={css('font-size:13px;line-height:1.7;')}>
+              <div>{shop.address_line || <span style={css(`color:${T.muted};`)}>No address on file</span>}</div>
+              <div>{[shop.district, shop.state].filter(Boolean).join(', ')} {shop.pincode}</div>
+              <div style={css(`color:${T.muted};margin-top:5px;`)}>
+                {shop.owner_name || '—'} · {shop.phone || 'no phone'}
+              </div>
+              {(shop.open_time || shop.close_time) && (
+                <div style={css(`color:${T.muted};`)}>
+                  Open {shop.open_time || '—'} to {shop.close_time || '—'}
+                </div>
+              )}
+            </div>
+
+            {/* The seller's own pin. Shiprocket will not save a pickup address
+                without a confirmed map location, and an admin has never been to
+                this shop — so this link is the only first-hand evidence of where
+                it actually is. */}
+            <div style={css('margin-top:11px;')}>
+              {shop.map_url ? (
+                <a
+                  href={shop.map_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={css(`display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border-radius:10px;background:var(--ag-surface);border:1.5px solid ${T.accent2};color:${T.accent};font-weight:800;font-size:12.5px;text-decoration:none;`)}
+                >
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>location_on</span>
+                  Open the seller’s map pin
+                </a>
+              ) : (
+                <div style={css(`font-size:12px;color:${T.muted};line-height:1.55;background:var(--ag-warn-bg);border-radius:9px;padding:9px 11px;`)}>
+                  <strong style={css('color:var(--ag-warn-text);')}>No map link from this seller.</strong> Shiprocket
+                  needs a confirmed pin and you will have to find the shop from the address alone. Ask them to add their
+                  Google Maps link in Settings before you register the pickup address — a pin in the wrong place is a
+                  failed pickup, not a wrong label.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* The automatic path. Approving a shop already does this (0068); the
+            button is for shops approved before it existed, and for retrying a
+            registration that failed on an incomplete address. */}
+        {shop && !shop.shiprocket_pickup_location && (
+          <div style={css(`border:1.5px solid ${T.accent2};border-radius:12px;padding:13px 14px;margin-bottom:16px;`)}>
+            <div style={css('font-weight:800;font-size:13.5px;margin-bottom:4px;')}>Register it automatically</div>
+            <div style={css(`font-size:12px;color:${T.muted};line-height:1.55;margin-bottom:11px;`)}>
+              Sends this shop’s address to Shiprocket and fills in the nickname below. Shiprocket’s API places the
+              pin from the address text, so check it in their panel afterwards before letting the shop book.
+            </div>
+            <GhostButton icon="add_location_alt" tone="primary" onClick={registerPickup} disabled={registering}>
+              {registering ? 'Registering…' : 'Create pickup address'}
+            </GhostButton>
+            {shop.shiprocket_pickup_error && (
+              <div style={css('font-size:12px;color:var(--ag-danger-text);margin-top:10px;line-height:1.55;font-weight:600;')}>
+                Last attempt: {shop.shiprocket_pickup_error}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={css(label)}>PICKUP LOCATION NICKNAME</div>
         <input
           value={shop?.shiprocket_pickup_location ?? ''}
           onChange={(e) => setShop((s) => (s ? { ...s, shiprocket_pickup_location: e.target.value } : s))}
-          placeholder="e.g. mangaimart-coimbatore-01"
+          placeholder="e.g. mm-evalnila-desingers-a1b2c3"
           style={css(field)}
         />
         <div style={css(`font-size:12px;color:${T.muted};margin-top:7px;line-height:1.55;`)}>
-          Add this shop as a <strong>pickup location</strong> in the Shiprocket panel first, using the address on
-          its boutique profile, then paste the nickname Shiprocket gives it here. It must match exactly — booking
-          fails otherwise. Sellers never get their own Shiprocket account.
+          {shop?.shiprocket_pickup_registered_at
+            ? <>Created automatically on {fmtDate(shop.shiprocket_pickup_registered_at)}. Only change this if you renamed the location in Shiprocket — booking matches it literally.</>
+            : <>Or add the shop as a <strong>pickup location</strong> in the Shiprocket panel by hand and paste the nickname here. It must match exactly — booking fails otherwise. Sellers never get their own Shiprocket account.</>}
         </div>
 
         <div style={css('display:flex;align-items:center;gap:10px;margin-top:18px;')}>

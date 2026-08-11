@@ -55,15 +55,21 @@ export function friendlyAuthError(message: string): string {
 // OAuth loses the buyer/seller intent across the Google round-trip, so we stash
 // it here and read it back in the /auth/callback route.
 const OAUTH_ROLE_KEY = 'agx-oauth-role';
+// Same problem for the page the sign-in interrupted (`?next=/checkout`): Google
+// returns to /auth/callback, so the query string of the login page is gone.
+const OAUTH_NEXT_KEY = 'agx-oauth-next';
 
 /**
  * Kick off Google OAuth for the given role. Redirects to Google and back to
  * /auth/callback, which routes buyers to their profile and sellers to their
- * console (or boutique onboarding if they don't have one yet).
+ * console (or boutique onboarding if they don't have one yet) — or straight to
+ * `next` when the sign-in was a gate on the way somewhere (e.g. checkout).
  */
-export async function signInWithGoogle(role: 'buyer' | 'seller' = 'buyer'): Promise<void> {
+export async function signInWithGoogle(role: 'buyer' | 'seller' = 'buyer', next?: string | null): Promise<void> {
   try {
     localStorage.setItem(OAUTH_ROLE_KEY, role);
+    if (next) localStorage.setItem(OAUTH_NEXT_KEY, next);
+    else localStorage.removeItem(OAUTH_NEXT_KEY);
   } catch {
     /* storage unavailable — callback falls back to buyer */
   }
@@ -83,9 +89,19 @@ export function readPendingOAuthRole(): 'buyer' | 'seller' {
   }
 }
 
+/** The in-app path an in-flight Google sign-in should return to, if any. */
+export function readPendingOAuthNext(): string | null {
+  try {
+    return localStorage.getItem(OAUTH_NEXT_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function clearPendingOAuthRole(): void {
   try {
     localStorage.removeItem(OAUTH_ROLE_KEY);
+    localStorage.removeItem(OAUTH_NEXT_KEY);
   } catch {
     /* ignore */
   }

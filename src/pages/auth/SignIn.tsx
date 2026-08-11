@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
+import { safeNext } from '@/auth/SignInGate';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
@@ -27,6 +28,14 @@ export function SignIn() {
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
 
+  // Where the buyer was headed when the sign-in gate stopped them (?next=…),
+  // e.g. /checkout. Validated, because an unchecked value here is an open
+  // redirect. Absent for a normal visit to the login page.
+  const next = safeNext(searchParams.get('next'));
+  // Ordering is the one buyer action that needs an account, so it is also the
+  // one place a buyer meets this screen without asking for it — say why.
+  const gated = !!next && role === 'buyer';
+
   useEffect(() => {
     const seededEmail = searchParams.get('email');
     if (seededEmail) setEmail(seededEmail);
@@ -36,7 +45,9 @@ export function SignIn() {
   // onboarding if they don't have one yet), buyers on their profile.
   async function handleGoogle() {
     try {
-      await signInWithGoogle(role === 'seller' ? 'seller' : 'buyer');
+      // `next` survives the Google round-trip in localStorage — the OAuth
+      // redirect comes back to /auth/callback, not to this URL.
+      await signInWithGoogle(role === 'seller' ? 'seller' : 'buyer', next);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Google sign-in failed');
     }
@@ -53,11 +64,13 @@ export function SignIn() {
 
     setSending(true);
     try {
-      // Sign in as the role this page is for (only sellers/admins authenticate;
-      // buyers browse without an account), so a boutique owner reliably lands on
-      // the seller console instead of the buyer app.
+      // Sign in as the role this page is for, so a boutique owner reliably
+      // lands on the seller console instead of the buyer app. `role` only seeds
+      // a brand-new profile — an existing account keeps its own role.
       const profileRole = await signInWithPassword(trimmedEmail, password, role);
-      navigate(homeFor(profileRole), { replace: true });
+      // Back to whatever the gate interrupted (the bag → checkout run), or the
+      // account's own home when they simply came to sign in.
+      navigate(next ?? homeFor(profileRole), { replace: true });
     } catch (e) {
       toast(e instanceof Error ? friendlyAuthError(e.message) : 'Sign in failed');
     } finally {
@@ -84,10 +97,14 @@ export function SignIn() {
 
   return (
     <AuthModal
-      icon={roleIcon}
-      heading="Welcome back"
-      sub={`Sign in to continue to your ${roleWord} workspace.`}
-      onBack={() => navigate('/')}
+      icon={gated ? 'lock' : roleIcon}
+      heading={gated ? 'Sign in to order' : 'Welcome back'}
+      sub={
+        gated
+          ? 'Orders are placed from an account, so you can track them, chat with the boutique and raise a return. Your bag is saved.'
+          : `Sign in to continue to your ${roleWord} workspace.`
+      }
+      onBack={() => navigate(gated ? '/cart' : '/')}
     >
       {/* A real form, so Enter submits and password managers recognise the pair. */}
       <form onSubmit={handleSignIn} style={css('display:flex;flex-direction:column;gap:15px;')}>
@@ -139,7 +156,13 @@ export function SignIn() {
         New to MangaiMart?{' '}
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); navigate(role === 'seller' ? '/seller/register' : '/auth/signup/buyer'); }}
+          onClick={(e) => {
+            e.preventDefault();
+            // Carry `next` into signup too: a first-time buyer stopped at the
+            // checkout gate must land back on checkout, not on the homepage.
+            const signup = next ? `/auth/signup/buyer?next=${encodeURIComponent(next)}` : '/auth/signup/buyer';
+            navigate(role === 'seller' ? '/seller/register' : signup);
+          }}
           style={css('font-weight:700;')}
         >
           {role === 'seller' ? 'Open your boutique' : 'Create an account'}

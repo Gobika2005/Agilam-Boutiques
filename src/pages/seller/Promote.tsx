@@ -602,7 +602,10 @@ function AdPreview({
     );
   }
 
-  // Home hero — full-bleed banner. Links to a product or the boutique.
+  // Home hero — the wide banner card at the top of the homepage. Links to a
+  // product or the boutique. The swept end and the pill CTA are scaled-down
+  // copies of the real thing in buyer/Home.tsx: this is what the seller is
+  // buying, so it should not be a differently-shaped approximation.
   if (placementCode === 'home_hero') {
     if (subjectType === 'product' && !product) {
       return (
@@ -615,17 +618,18 @@ function AdPreview({
     const t = headline.trim() || (subjectType === 'product' ? product?.title ?? '' : boutique.name);
     return (
       <div style={css(frame)}>
-        <div style={css('width:100%;max-width:340px;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
+        <div style={css('width:100%;max-width:340px;border-radius:14px 40px 40px 14px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 22px 44px -30px var(--ag-shadow);')}>
           {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
-          <div style={css('position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,6,16,.72),rgba(30,6,16,.15));')} />
+          <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
             {tag.trim() && (
               <div style={css('align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{tag.trim()}</div>
             )}
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
-            <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:5px;')}>
-              {ctaLabel}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>arrow_forward</span>
+            <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:999px;padding:6px 7px 6px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px;')}>
+              {ctaLabel}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;width:20px;height:20px;border-radius:999px;background:var(--ag-surface-2);display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
             </span>
           </div>
         </div>

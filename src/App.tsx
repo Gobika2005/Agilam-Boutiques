@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
+import { RequireSignIn } from '@/auth/SignInGate';
 import { ScrollManager } from '@/components/layout/ScrollManager';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
@@ -270,8 +271,12 @@ export default function App() {
         {/* Private to one buyer or a step in a transaction — all noindex. */}
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="cart" element={<Cart />} />
-        <Route path="checkout" element={<Checkout />} />
-        <Route path="payment" element={<Payment />} />
+        {/* Checkout and payment need a real account behind the order — see
+            src/auth/SignInGate.tsx. The bag stays open to everyone; the two
+            screens that turn it into an order do not, and a signed-out buyer
+            deep-linking here is sent to sign in and returned afterwards. */}
+        <Route path="checkout" element={<RequireSignIn><Checkout /></RequireSignIn>} />
+        <Route path="payment" element={<RequireSignIn><Payment /></RequireSignIn>} />
         <Route path="order-confirmation" element={<OrderConfirmation />} />
         <Route path="orders" element={<MyOrders />} />
         {/* Order detail and tracking are one screen — the buyer's question is

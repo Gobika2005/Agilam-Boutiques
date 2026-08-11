@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
+import { safeNext } from '@/auth/SignInGate';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { ConsentCheckbox, CONSENT_REQUIRED } from '@/components/legal/Consent';
@@ -15,8 +16,16 @@ export function SignUp() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signUpWithPassword } = useAuth();
   const toast = useToast();
+
+  // Set when the buyer got here from the checkout sign-in gate (see
+  // @/auth/SignInGate) — they finish the account and carry on to their order.
+  const next = safeNext(searchParams.get('next'));
+  const signInHref = next
+    ? `/auth/signin/${role}?next=${encodeURIComponent(next)}`
+    : `/auth/signin/${role}`;
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -51,9 +60,9 @@ export function SignUp() {
       });
       if (confirmationRequired) {
         toast('Check your email to confirm your account, then sign in');
-        navigate(`/auth/signin/${role}`);
+        navigate(signInHref);
       } else {
-        navigate(homeFor(newRole), { replace: true });
+        navigate(next ?? homeFor(newRole), { replace: true });
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create account');
@@ -67,7 +76,7 @@ export function SignUp() {
       icon={roleIcon}
       heading="Create account"
       sub={`Join MangaiMart as a ${roleWord}.`}
-      onBack={() => navigate(`/auth/signin/${role}`)}
+      onBack={() => navigate(signInHref)}
     >
       <label style={css(labelStyle)}>
         Full name
@@ -98,7 +107,7 @@ export function SignUp() {
       </button>
 
       <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
-        Have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/auth/signin/${role}`); }} style={css('font-weight:700;')}>Sign in</a>
+        Have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate(signInHref); }} style={css('font-weight:700;')}>Sign in</a>
       </div>
     </AuthModal>
   );

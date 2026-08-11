@@ -387,7 +387,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Your account',
         blocks: [
-          'You may browse without an account. Chatting with a boutique and syncing your orders across devices require one.',
+          'You may browse, save items and fill a bag without an account. Placing an order requires one — as do chatting with a boutique and syncing your orders across devices.',
           'Keep your sign-in details to yourself — you are responsible for activity on your account. Tell us immediately if you believe it has been used without your permission.',
           'You agree to give accurate details, and to keep your delivery address and phone number up to date.',
         ],

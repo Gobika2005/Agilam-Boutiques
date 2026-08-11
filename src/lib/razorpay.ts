@@ -6,6 +6,8 @@
  * module only loads the hosted checkout widget and talks to those endpoints.
  */
 
+import { supabase } from '@/lib/supabase';
+
 const CHECKOUT_SRC = 'https://checkout.razorpay.com/v1/checkout.js';
 const KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
 
@@ -81,9 +83,19 @@ export async function payWithRazorpay({
   await loadCheckout();
   if (!window.Razorpay) throw new Error('Payment gateway unavailable');
 
+  // Ordering requires an account, so the buyer's token goes with the request —
+  // /api/create-order refuses to open checkout without it. getSession() also
+  // refreshes an access token that expired while they were shopping, which is
+  // what keeps a long browse from turning into a rejected payment.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
   const orderRes = await fetch('/api/create-order', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     // Send the cart so the server can price the order itself (defense-in-depth),
     // plus the displayed amount as a resilient fallback. The authoritative check
     // still happens at /api/place-order, which re-binds the paid amount.

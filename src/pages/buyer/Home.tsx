@@ -21,6 +21,20 @@ import { fetchTopReviews } from '@/data/reviews';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
+/**
+ * The hero's shape, in one place because three things have to agree on it: the
+ * live carousel, the placeholder that holds its space while the ads load, and
+ * the copy's side padding (which has to clear the curve).
+ *
+ * The ends are swept far harder than the leading corners — that asymmetry is
+ * the whole look, and a uniform radius reads as a rounded box instead.
+ */
+const HERO_H = 'clamp(300px,36vw,470px)';
+const HERO_R =
+  'clamp(22px,2.4vw,30px) clamp(46px,7vw,104px) clamp(46px,7vw,104px) clamp(22px,2.4vw,30px)';
+/** Clears the swept end so the copy never rides up against the curve. */
+const HERO_PAD = 'clamp(24px,4.5vw,60px)';
+
 export function Home() {
   /**
    * The homepage carries the two site-wide entities — `Organization` and
@@ -153,19 +167,22 @@ export function Home() {
         MangaiMart — boutique ethnic wear from across India
       </h1>
       {/* The hero's space, held open while we find out whether an ad is live.
-          Same box, same gradient, no creative and no impression — see
-          `heroPending` in useLiveAds for why the ad itself is never restored
-          from storage. */}
+          Same box, same shape, same gradient, no creative and no impression —
+          see `heroPending` in useLiveAds for why the ad itself is never
+          restored from storage. Every number here mirrors the live hero below;
+          they have to move together or the page shifts when the ad lands. */}
       {heroPending && SLIDES.length === 0 && (
-        <div aria-hidden="true" style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
-          <div style={css('height:clamp(340px,42vw,560px);background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')} />
-        </div>
+        <div aria-hidden="true" style={css(`height:${HERO_H};border-radius:${HERO_R};background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);`)} />
       )}
 
-      {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
+      {/* Hero carousel — paid home_hero ads only; hidden when none are live.
+
+          It is a contained card rather than a full-bleed band: the page's rose
+          ground shows down both sides and the ends carry a deep sweep of a
+          radius, which is what makes it read as a boutique placement instead of
+          a web banner. */}
       {SLIDES.length > 0 && (
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
-        <div className="agx-zoom" style={css('position:relative;height:clamp(340px,42vw,560px);overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
+        <div className="agx-zoom" style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 34px 64px -38px var(--ag-shadow),inset 0 0 0 1px rgba(255,255,255,.16);`)}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
             {SLIDES.map((h, i) => (
               // Off-screen slides are hidden from assistive tech: without this the
@@ -189,9 +206,14 @@ export function Home() {
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>
-                <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(45,8,24,.86) 0%,rgba(110,22,56,.5) 46%,rgba(110,22,56,.05) 100%);pointer-events:none;')} />
+                {/* Two scrims, not one: a soft wash across the copy side keeps
+                    the text legible on a pale creative, and a low vignette
+                    keeps the dots off a bright hem. Both stop well short of the
+                    swept end so the photograph is still the thing you see. */}
+                <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);pointer-events:none;')} />
+                <div style={css('position:absolute;inset:0;background:linear-gradient(0deg,rgba(38,6,20,.34) 0%,rgba(38,6,20,0) 26%);pointer-events:none;')} />
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
-                  <div style={css('max-width:1440px;width:100%;margin:0 auto;padding:0 clamp(20px,4vw,56px);color:#fff;')}>
+                  <div style={css(`width:100%;padding:0 ${HERO_PAD};color:#fff;`)}>
                     <div style={css('max-width:560px;')}>
                       {/* The seller's editable eyebrow tag. */}
                       {h.eyebrow && (
@@ -208,12 +230,15 @@ export function Home() {
                         an <h2> at most: the page still has exactly one <h1>,
                         which says what MangaiMart is.
                       */}
-                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin:16px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,5.2vw,64px);line-height:1;margin:14px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </h2>
-                      <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
-                        {h.cta}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+                      <div style={css('font-size:clamp(13.5px,1.3vw,16px);opacity:.92;margin-top:12px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
+                      {/* A full pill, not a rounded rectangle: it echoes the
+                          swept ends of the card it sits in. */}
+                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:22px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:999px;padding:13px 15px 13px 26px;font-weight:800;font-size:14.5px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
+                        {h.cta}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;width:28px;height:28px;border-radius:999px;background:var(--ag-surface-2);display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -222,7 +247,7 @@ export function Home() {
             ))}
           </div>
           <div style={css('position:absolute;left:0;right:0;bottom:22px;z-index:3;')}>
-            <div style={css('max-width:1440px;margin:0 auto;padding:0 clamp(20px,4vw,56px);display:flex;gap:6px;')}>
+            <div style={css(`padding:0 ${HERO_PAD};display:flex;gap:6px;`)}>
               {SLIDES.map((_, i) => (
                 <button
                   key={i}
@@ -239,7 +264,6 @@ export function Home() {
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Sponsored — paid product placements, clearly labelled. Hidden when none. */}
