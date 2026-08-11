@@ -116,6 +116,9 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     deliveryAvailable: b.delivery_available ?? true,
     deliveryAreas: b.delivery_areas ?? '',
     deliveryCharge: b.delivery_charge ?? 0,
+    freeDeliveryOver: b.free_delivery_over ?? 0,
+    codFee: b.cod_fee ?? 0,
+    codMaxOrder: b.cod_max_order ?? 0,
   };
 }
 

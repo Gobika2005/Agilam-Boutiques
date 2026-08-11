@@ -12,20 +12,24 @@ import { Card, ConfirmDialog, GhostButton, Icon, T } from '@/components/admin/ki
 
 type NumField = { key: keyof PlatformSettings; label: string; help: string; prefix?: string; suffix?: string };
 
+/**
+ * Delivery and cash-on-delivery are no longer set here.
+ *
+ * "Standard shipping", "Free delivery over", "COD fee" and "COD order cap" used
+ * to be four fields on this page. They belong to the boutique that packs the
+ * parcel and collects the cash, not to the marketplace, so since migration 0076
+ * each seller sets their own in the seller console (Settings → Delivery /
+ * Payments accepted) and the buyer is charged per boutique. Re-adding them here
+ * would have no effect: nothing reads those columns any more.
+ *
+ * What is left is genuinely platform-wide — the commission the marketplace
+ * takes, the returns window it publishes, and how long a payout is held.
+ */
 const SECTIONS: { title: string; icon: string; fields: NumField[] }[] = [
   {
-    title: 'Commission & fees', icon: 'percent',
+    title: 'Commission', icon: 'percent',
     fields: [
       { key: 'commission_pct', label: 'Platform commission', help: 'Deducted from every seller settlement.', suffix: '%' },
-      { key: 'standard_shipping', label: 'Standard shipping', help: 'Charged below the free-delivery threshold.', prefix: '₹' },
-      { key: 'free_delivery_over', label: 'Free delivery over', help: 'Cart value that unlocks free shipping.', prefix: '₹' },
-    ],
-  },
-  {
-    title: 'Cash on delivery', icon: 'payments',
-    fields: [
-      { key: 'cod_fee', label: 'COD fee', help: 'Flat fee added to cash-on-delivery orders.', prefix: '₹' },
-      { key: 'cod_max_order', label: 'COD order cap', help: 'Largest cart value allowed to pay by COD.', prefix: '₹' },
     ],
   },
   {
@@ -111,6 +115,22 @@ export function Settings() {
           {sec.fields.map(numInput)}
         </Card>
       ))}
+
+      {/* Says where the four fields that used to sit here went, so nobody spends
+          ten minutes looking for the COD fee. */}
+      <Card>
+        <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:8px;')}>
+          <Icon name="local_shipping" size={19} color={T.muted} />
+          <div style={css('font-weight:800;font-size:15px;')}>Delivery & cash on delivery</div>
+        </div>
+        <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.7;`)}>
+          Each boutique sets its own delivery charge, free-delivery threshold, cash-handling
+          fee and COD cap in its own console — the shop that packs the parcel and collects the
+          cash is the one that prices it. Buyers are charged per boutique, and each order stores
+          the fees it carried. The platform-wide switch for turning COD off everywhere is on the
+          Deliveries page.
+        </div>
+      </Card>
 
       <Card>
         <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:12px;')}>

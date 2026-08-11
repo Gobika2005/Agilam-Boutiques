@@ -27,7 +27,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0074`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0077`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
@@ -36,9 +36,13 @@ deployed to Vercel.
    `api/_pricing.js` (server) derive the same numbers, and `api/place-order.js`
    asserts the Razorpay payment matches to the paise. Change both together or
    legitimate checkouts start failing.
-3. **Commercial terms are admin-editable**, not constants — commission, COD fee,
-   COD cap, free-delivery threshold live in the `platform_settings` row and are
-   read via `api/_settings.js` / `src/data/settings.ts`.
+3. **Commercial terms split two ways.** The commission, returns window and payout
+   hold are platform-wide, admin-editable in the `platform_settings` row via
+   `api/_settings.js` / `src/data/settings.ts`. Delivery and cash-on-delivery are
+   **the seller's** (migration 0076) — `boutiques.delivery_charge`,
+   `free_delivery_over`, `cod_fee`, `cod_max_order` — charged per boutique and
+   read via `loadShopTerms` / `ShopTerms`. Don't add a delivery fee to the admin
+   console; nothing reads the old columns.
 4. **Colours are `--ag-*` CSS variables, never literal hex.** The app has a full
    light/dark theme; a hardcoded colour breaks dark mode. See `src/lib/tokens.ts`.
 5. **`boutiques` cannot be read with `select('*')`** — column-level grants since

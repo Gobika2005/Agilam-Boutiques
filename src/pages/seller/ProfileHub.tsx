@@ -102,8 +102,9 @@ export function ProfileHub() {
       <h1 className="agx-sr-only">Your profile</h1>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:24px 20px 30px;color:#fff;')}>
         {/* The whole identity card opens the profile editor — one tap to manage
-            "who am I" from the top of the hub — with an explicit Edit chip so the
-            affordance is discoverable, not hidden. */}
+            "who am I" from the top of the hub. The card itself is the control;
+            it carries an aria-label saying so, which is what the "Edit" chip
+            that used to sit beside it was duplicating. */}
         <div style={css('display:flex;align-items:center;gap:14px;')}>
           <button onClick={() => navigate('/seller/boutique')} aria-label="Edit boutique profile" style={css('flex:1;min-width:0;display:flex;align-items:center;gap:14px;border:none;background:none;color:inherit;cursor:pointer;text-align:left;padding:0;font-family:inherit;')}>
             <span style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>
@@ -118,9 +119,6 @@ export function ProfileHub() {
               {session?.user?.email && <span style={css('display:block;opacity:.7;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{session.user.email}</span>}
             </span>
           </button>
-          <span style={css('flex:none;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:7px 12px;border-radius:11px;font-size:12px;font-weight:800;')}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>edit</span>Edit
-          </span>
         </div>
 
         {/* Always-visible standing + shortcuts to the public shop, so a seller

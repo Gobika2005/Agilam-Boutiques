@@ -16,12 +16,17 @@
  * The leading underscore keeps this out of Vercel's /api routing.
  */
 
+/**
+ * Delivery and COD are NOT here any more. Since migration 0076 the delivery
+ * charge, the free-delivery threshold, the cash-handling fee and the COD cap
+ * are each boutique's own (`api/_pricing.js` → `loadShopTerms`), so the four
+ * columns they used to occupy in `platform_settings` are no longer read by
+ * anything. What remains is genuinely platform-wide: the commission the
+ * marketplace takes, the returns window it publishes, and how long a payout is
+ * held before it transfers.
+ */
 export const DEFAULT_TERMS = {
   commission_pct: 10,
-  cod_fee: 49,
-  cod_max_order: 10000,
-  free_delivery_over: 2000,
-  standard_shipping: 79,
   return_window_days: 7,
   payout_hold_days: 3,
 };

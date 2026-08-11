@@ -123,6 +123,13 @@ export interface BoutiqueRow {
   state: string;
   pincode: string;
   map_url: string | null;
+  /**
+   * The shop's map pin (migration 0076). Optional on the type because the
+   * columns are only selected when the migration has been applied — a link with
+   * no coordinates (a shortened maps.app.goo.gl share) leaves these null.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   // Step 4 — business
   category: string;
   years_in_business: number | null;
@@ -132,8 +139,21 @@ export interface BoutiqueRow {
   working_days: string[];
   delivery_available: boolean;
   delivery_areas: string;
+  /**
+   * What this boutique charges to deliver, and the terms around it. These are
+   * the seller's numbers, not the platform's: since migration 0076 the buyer is
+   * charged `delivery_charge` per boutique in the bag (waived once that
+   * boutique's goods reach `free_delivery_over`, where that is set), plus
+   * `cod_fee` per cash delivery, capped at `cod_max_order`.
+   *
+   * The three added in 0076 are optional on the type because the query drops
+   * them on a deployment where the migration has not been applied yet.
+   */
   delivery_charge: number;
+  free_delivery_over?: number;
   cod_enabled: boolean;
+  cod_fee?: number;
+  cod_max_order?: number;
   online_payment_enabled: boolean;
   // Step 7 — submission
   onboarding_step: number;

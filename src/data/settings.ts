@@ -22,12 +22,18 @@ import { POLICY_TERMS, COMPANY } from '@/data/company';
  */
 export type RazorpayAccount = 'primary' | 'backup';
 
+/**
+ * Delivery and cash-on-delivery are deliberately absent.
+ *
+ * The delivery charge, the free-delivery threshold, the cash-handling fee and
+ * the COD cap were platform-wide knobs here until migration 0076; they are now
+ * each boutique's own, set in the seller console and priced per boutique by
+ * src/lib/pricing.ts. The columns still exist in the table — dropping live
+ * columns is not worth the risk — but nothing reads them, and they are gone from
+ * this type so nothing accidentally starts to again.
+ */
 export interface PlatformSettings {
   commission_pct: number;
-  cod_fee: number;
-  cod_max_order: number;
-  free_delivery_over: number;
-  standard_shipping: number;
   return_window_days: number;
   payout_hold_days: number;
   maintenance_mode: boolean;
@@ -38,10 +44,6 @@ export interface PlatformSettings {
 
 export const DEFAULT_SETTINGS: PlatformSettings = {
   commission_pct: POLICY_TERMS.commissionPct,
-  cod_fee: POLICY_TERMS.codFee,
-  cod_max_order: POLICY_TERMS.codMaxOrder,
-  free_delivery_over: POLICY_TERMS.freeDeliveryOver,
-  standard_shipping: POLICY_TERMS.standardShipping,
   return_window_days: POLICY_TERMS.returnWindowDays,
   payout_hold_days: 3,
   maintenance_mode: false,

@@ -40,11 +40,13 @@ export function Checkout() {
   /**
    * What this boutique's despatch will cost the buyer.
    *
-   * Delivery is a platform charge — flat, once per cart, free over the threshold
-   * (see the delivery policy and `@/lib/pricing`). This block used to print the
-   * seller's own `delivery_charge` instead, so a buyer read "lilium · ₹150
-   * delivery" immediately above a summary that said FREE and a total that had
-   * added nothing. It now states the fee the summary is actually charging.
+   * Delivery is each boutique's own charge, waived once that boutique's goods
+   * reach whatever threshold it set (migration 0076, `@/lib/pricing`). This
+   * block prints `shipFee` — the bag's total delivery across every boutique in
+   * it — which is by construction the number the summary below charges. It used
+   * to print the seller's raw `delivery_charge` while the summary charged a
+   * platform fee, so a buyer read "lilium · ₹150 delivery" immediately above a
+   * line that said FREE. Both numbers now come from the same calculation.
    *
    * It also no longer reports `boutiques.delivery_available` as "Store pickup
    * only". That flag records whether the *seller* runs their own delivery; it

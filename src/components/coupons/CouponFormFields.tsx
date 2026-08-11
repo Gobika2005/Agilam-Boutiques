@@ -57,36 +57,23 @@ export function CouponFormFields({
         <Err msg={errors.type} />
       </label>
 
+      {/* There is no "Max discount" field: a coupon is the percentage or the
+          amount it says it is, with no second number quietly shrinking it at
+          checkout. Removed by request — `couponForm.ts` writes max_discount as
+          null on every save, so anything created or edited here is uncapped. */}
       {input.type !== 'ship' && (
-        <div style={css('display:flex;gap:12px;')}>
-          <label style={css(label + 'flex:1;')}>
-            {input.type === 'pct' ? 'Percentage (%)' : 'Amount off (₹)'}
-            <input
-              type="number"
-              inputMode="numeric"
-              value={Number.isFinite(input.off) ? input.off : ''}
-              onChange={(e) => onChange({ off: Number(e.target.value) })}
-              placeholder={input.type === 'pct' ? '10' : '500'}
-              style={css(field)}
-            />
-            <Err msg={errors.off} />
-          </label>
-
-          {input.type === 'pct' && (
-            <label style={css(label + 'flex:1;')}>
-              Max discount (₹)
-              <input
-                type="number"
-                inputMode="numeric"
-                value={input.max_discount ?? ''}
-                onChange={(e) => onChange({ max_discount: e.target.value === '' ? null : Number(e.target.value) })}
-                placeholder="Optional"
-                style={css(field)}
-              />
-              <Err msg={errors.max_discount} />
-            </label>
-          )}
-        </div>
+        <label style={css(label)}>
+          {input.type === 'pct' ? 'Percentage (%)' : 'Amount off (₹)'}
+          <input
+            type="number"
+            inputMode="numeric"
+            value={Number.isFinite(input.off) ? input.off : ''}
+            onChange={(e) => onChange({ off: Number(e.target.value) })}
+            placeholder={input.type === 'pct' ? '10' : '500'}
+            style={css(field)}
+          />
+          <Err msg={errors.off} />
+        </label>
       )}
 
       <label style={css(label)}>

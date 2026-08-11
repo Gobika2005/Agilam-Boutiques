@@ -93,6 +93,10 @@ export interface Database {
           state: string;
           pincode: string;
           map_url: string | null;
+          /** The shop's map pin (migration 0076). Null when the seller gave only
+           *  a shortened Maps share link, which carries no coordinates. */
+          latitude: number | null;
+          longitude: number | null;
           category: string;
           years_in_business: number | null;
           open_time: string;
@@ -100,8 +104,14 @@ export interface Database {
           working_days: string[];
           delivery_available: boolean;
           delivery_areas: string;
+          /** What this shop charges the buyer to deliver, and the terms around
+           *  it (migration 0076) — the platform charges nothing of its own.
+           *  `free_delivery_over` 0 = never waived; `cod_max_order` 0 = no cap. */
           delivery_charge: number;
+          free_delivery_over: number;
           cod_enabled: boolean;
+          cod_fee: number;
+          cod_max_order: number;
           online_payment_enabled: boolean;
           onboarding_step: number;
           onboarding_complete: boolean;
@@ -492,6 +502,14 @@ export interface Database {
         Row: {
           id: number;
           commission_pct: number;
+          /**
+           * DEAD since migration 0076 — nothing reads these four. Delivery and
+           * cash-on-delivery are each boutique's own now (`boutiques`
+           * .delivery_charge / free_delivery_over / cod_fee / cod_max_order),
+           * priced per boutique by src/lib/pricing.ts and api/_pricing.js. The
+           * columns are left in place rather than dropped; editing them changes
+           * nothing. Do not wire them back up.
+           */
           cod_fee: number;
           cod_max_order: number;
           free_delivery_over: number;

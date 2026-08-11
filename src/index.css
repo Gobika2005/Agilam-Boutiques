@@ -646,6 +646,19 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
    vanishes on the dark header — lift it to near-white so it stays legible. */
 :root[data-theme="dark"] .agx-brand-mark { filter: brightness(0) invert(1) opacity(.92); }
 
+/* The same knock-out in the footer, unconditionally: the footer's crimson
+   gradient is dark in both themes, so the coloured art would read as a smudge
+   on it whichever theme the buyer is in.
+
+   The negative margins crop the art's own transparent border. The source is
+   790x316 with the lettering occupying x 47–747, y 78–248 — so nearly half the
+   canvas height is padding, which at this size is ~20px of dead space above the
+   mark and ~17px below. Left as-is it pushed the description down and left the
+   mark looking indented against the column below it. The numbers are that
+   padding scaled to the 204px box (204/790), and they hold as long as the
+   artwork does; re-measure if the file is re-exported. */
+.agx-brand-mark-footer { filter: brightness(0) invert(1) opacity(.95); margin: -20px 0 -17px -12px; }
+
 /* ---------- wishlist heart ----------
    The app loads Material *Symbols*, where fill is the variable `FILL` axis —
    not a separate `favorite_border` ligature (that belongs to the older Material

@@ -100,13 +100,12 @@ export const CONTACT_LINKS = {
 /**
  * Commercial terms.
  *
- * ⚠ These are NO LONGER what the policy pages quote. The five admin-editable
- * ones — `freeDeliveryOver`, `standardShipping`, `returnWindowDays`, `codFee`,
- * `codMaxOrder`, `commissionPct` — are now read from the live
- * `platform_settings` row by both `src/lib/pricing.ts` (what the buyer is
- * charged) and `src/data/policies.ts` (what the buyer is promised), so the two
- * cannot drift apart again. Keeping them in step by hand is what failed: the
- * Delivery Policy advertised a ₹79 fee while checkout took ₹89.
+ * ⚠ These are NO LONGER what the policy pages quote. The two admin-editable
+ * ones — `returnWindowDays` and `commissionPct` — are read from the live
+ * `platform_settings` row by `src/data/policies.ts`, so what the buyer is
+ * promised cannot drift from what the console is set to. Keeping them in step
+ * by hand is what failed: the Delivery Policy advertised a ₹79 fee while
+ * checkout took ₹89.
  *
  * What remains live here is their role as the compile-time FALLBACK, via
  * `DEFAULT_SETTINGS` in src/data/settings.ts — the values in force for the
@@ -114,23 +113,24 @@ export const CONTACT_LINKS = {
  * 0048 has not been applied. Keep them plausible, but the database is the
  * authority.
  *
- * The copy-only terms below them (`refundWorkingDays`, `deliveryEstimate`,
+ * Delivery and cash-on-delivery are gone from this list entirely. Since
+ * migration 0076 each boutique sets its own delivery charge, free-delivery
+ * threshold, cash-handling fee and COD cap (`ShopTerms` in src/lib/pricing.ts),
+ * so there is no platform-wide figure left to fall back to — and a stale one
+ * sitting here would be the same trap as before, just quieter.
+ *
+ * The copy-only terms below (`refundWorkingDays`, `deliveryEstimate`,
  * `metroDeliveryEstimate`, `cancellationWindowHours`) have no settings column
  * and no pricing consequence — they are service promises, and this is still
  * the one place they are written.
  */
 export const POLICY_TERMS = {
-  freeDeliveryOver: 2000,
-  standardShipping: 79,
   returnWindowDays: 7,
   refundWorkingDays: '5–7 working days',
   deliveryEstimate: '3–7 working days',
   metroDeliveryEstimate: '2–4 working days',
   cancellationWindowHours: 24,
   commissionPct: 10,
-  /** Cash on delivery — mirrors COD_FEE / COD_MAX_ORDER in src/lib/pricing.ts. */
-  codFee: 49,
-  codMaxOrder: 10000,
 } as const;
 
 /** Build stamp shown on the profile screen. Injected by Vite from package.json. */

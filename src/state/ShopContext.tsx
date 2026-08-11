@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS } from '@/data/demo';
-import { computeTotals, codBlockedReason, findCoupon } from '@/lib/pricing';
-import { loadSettings, useSettings } from '@/data/settings';
+import { computeTotals, codBlockedReason, findCoupon, type ShopTermsMap } from '@/lib/pricing';
+import { loadSettings } from '@/data/settings';
 import { fetchActiveCoupons, type CouponRow } from '@/data/coupons';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
@@ -114,6 +114,10 @@ type ShopValue = {
   /** Goods value in the bag per boutique — a seller coupon measures against its
    *  own boutique's slice, so the coupon screen needs this to preview savings. */
   boutiqueSubtotals: Record<string, number>;
+  /** Each boutique's own delivery / COD terms, keyed by id (migration 0076).
+   *  Exposed because a free-delivery coupon is worth whatever the bag's
+   *  delivery actually costs, which is now a per-shop question. */
+  shopTerms: ShopTermsMap;
 
   /**
    * The cart as the server-priced order payload — product ids + quantities +
@@ -498,13 +502,36 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     return { deliveries: ids.size, allAcceptCod };
   }, [cart, productById, boutiques]);
 
+  /**
+   * Each boutique's own delivery and cash-on-delivery terms (migration 0076).
+   *
+   * Built for the whole catalogue rather than just the bag: it is a plain map
+   * over rows already in memory, and keying it off the cart would rebuild it on
+   * every add. The server derives the identical map in `loadShopTerms`
+   * (api/_pricing.js) and prices the payment from it, so a boutique missing
+   * here must fall back to exactly what the server falls back to — charging
+   * nothing — or checkout would reject its own quote as underpaid.
+   */
+  const shopTerms = useMemo(() => {
+    const map: ShopTermsMap = {};
+    for (const b of boutiques) {
+      map[b.id] = {
+        deliveryCharge: b.deliveryCharge ?? 0,
+        freeDeliveryOver: b.freeDeliveryOver ?? 0,
+        codFee: b.codFee ?? 0,
+        codMaxOrder: b.codMaxOrder ?? 0,
+        name: b.name,
+      };
+    }
+    return map;
+  }, [boutiques]);
+
   const payingCash = payMethod === 'cod';
 
-  // Commission, delivery and COD terms are admin-editable (Platform Settings).
-  // Fetch the row once at boot; until it lands `useSettings()` hands back the
-  // compile-time defaults, and every total below re-derives when it arrives.
+  // The commission and returns window are still admin-editable (Platform
+  // Settings); delivery and COD are the seller's, above. Fetch the row once at
+  // boot — the policy copy reads it, and nothing here can render a fee from it.
   useEffect(() => { void loadSettings(); }, []);
-  const terms = useSettings();
 
   // The applied code resolved to the coupon row that actually qualifies on this
   // bag (per-boutique aware), or undefined. Shared by the totals and the COD gate
@@ -516,8 +543,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   /** Why cash isn't offered on this bag, or null when it is. */
   const codUnavailableReason = useMemo(
-    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms),
-    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms],
+    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms),
+    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms],
   );
 
   // Adding one more item can push a bag past the COD cap. Silently leaving
@@ -535,8 +562,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // The COD handling fee is one per delivery, so it only enters the total once
   // the buyer has actually chosen to pay cash.
   const { discount, shipFee, codFee, total } = useMemo(
-    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash ? cartBoutiques.deliveries : 0, terms),
-    [subtotal, boutiqueSubtotals, coupon, payingCash, cartBoutiques.deliveries, terms],
+    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms),
+    [subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms],
   );
 
   const orderItems = useMemo(
@@ -748,7 +775,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     cart, cartCount, addToCart, buyNow, cartQty, setCartSize, removeCart, clearCart,
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,
-    appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals,
+    appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals, shopTerms,
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,

@@ -19,25 +19,94 @@
  * helper imported by create-order.js / place-order.js, not an endpoint.
  */
 
-// The commercial terms (COD fee and cap, delivery threshold and fee) are
-// admin-editable and come from the `platform_settings` row via
-// api/_settings.js — callers load them with `loadTerms(supabase)` and pass them
-// in. They used to be the hardcoded constants below, which meant the Platform
-// Settings page changed nothing and the client's `src/lib/pricing.ts` was the
-// only place a fee could be adjusted. `DEFAULT_TERMS` is the fallback.
-//
-// The COD fee is per delivery — one boutique order is one cash collection —
-// while the cap applies to the whole cart, so it cannot be dodged by splitting
-// a large bag across several boutiques.
-import { DEFAULT_TERMS } from './_settings.js';
+/**
+ * Delivery and cash-on-delivery are the SELLER's terms (migration 0076), read
+ * off the `boutiques` rows in the bag — not the admin-editable platform fees
+ * they used to be. See the long note on `ShopTerms` in src/lib/pricing.ts for
+ * why per-boutique changes the arithmetic; this file must mirror it exactly.
+ *
+ * `freeDeliveryOver: 0` means "never free", `codMaxOrder: 0` means "no cap", and
+ * a boutique we could not read terms for charges nothing — the same fallback the
+ * browser applies, which is what keeps the two totals equal on a deployment
+ * where 0076 has not been applied yet.
+ */
+const DEFAULT_SHOP_TERMS = { deliveryCharge: 0, freeDeliveryOver: 0, codFee: 0, codMaxOrder: 0, name: '' };
 
-// Mirror of baseShipFee() in src/lib/pricing.ts: flat, once per cart, free over
-// the threshold — the rule published in the buyer's delivery policy. A seller's
-// own `boutiques.delivery_charge` is a logistics setting on their side and is
-// deliberately NOT part of what the buyer pays.
-function shipFeeFor(groupTotals, terms) {
-  const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
-  return cartSubtotal === 0 || cartSubtotal >= terms.free_delivery_over ? 0 : terms.standard_shipping;
+function termsFor(shops, id) {
+  return shops?.[id] ?? DEFAULT_SHOP_TERMS;
+}
+
+/** Boutiques with something in the bag — one order, one parcel, one fee each. */
+function shopsInBag(groupTotals) {
+  return Object.keys(groupTotals).filter((id) => groupTotals[id] > 0);
+}
+
+/**
+ * The delivery/COD terms of the boutiques in this bag, keyed by id.
+ *
+ * Two queries deep on purpose: naming a column that does not exist fails the
+ * WHOLE select, so on a deployment without 0076 the first attempt errors and the
+ * retry asks only for the columns that have always been there. The browser's
+ * fallback (src/data/boutiques.ts) degrades to exactly the same numbers.
+ *
+ * Never throws — an unreadable boutique prices as "charges nothing", which can
+ * only ever under-charge, never over-charge someone.
+ */
+export async function loadShopTerms(supabase, boutiqueIds) {
+  const ids = [...new Set((boutiqueIds ?? []).filter(Boolean))];
+  const shops = {};
+  if (!supabase || ids.length === 0) return shops;
+
+  const build = (rows, full) => {
+    for (const b of rows ?? []) {
+      shops[b.id] = {
+        deliveryCharge: Number(b.delivery_charge) || 0,
+        freeDeliveryOver: full ? Number(b.free_delivery_over) || 0 : 0,
+        codFee: full ? Number(b.cod_fee) || 0 : 0,
+        codMaxOrder: full ? Number(b.cod_max_order) || 0 : 0,
+        name: b.name ?? '',
+      };
+    }
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('boutiques')
+      .select('id, name, delivery_charge, free_delivery_over, cod_fee, cod_max_order')
+      .in('id', ids);
+    if (!error) {
+      build(data, true);
+      return shops;
+    }
+    console.warn('loadShopTerms: seller terms unavailable, apply migration 0076 —', error.message ?? error);
+    const retry = await supabase.from('boutiques').select('id, name, delivery_charge').in('id', ids);
+    if (retry.error) {
+      console.error('loadShopTerms failed:', retry.error.message ?? retry.error);
+      return shops;
+    }
+    build(retry.data, false);
+    return shops;
+  } catch (e) {
+    console.error('loadShopTerms threw:', e?.message ?? e);
+    return shops;
+  }
+}
+
+// Mirror of shopShipFee() in src/lib/pricing.ts.
+function shopShipFee(subtotal, t) {
+  if (subtotal <= 0) return 0;
+  if (t.freeDeliveryOver > 0 && subtotal >= t.freeDeliveryOver) return 0;
+  return t.deliveryCharge;
+}
+
+// Mirror of baseShipFee(): each boutique ships its own parcel and charges for it.
+function shipFeeFor(groupTotals, shops) {
+  return shopsInBag(groupTotals).reduce((sum, id) => sum + shopShipFee(groupTotals[id], termsFor(shops, id)), 0);
+}
+
+// Mirror of baseCodFee(): one cash-handling fee per boutique, i.e. per delivery.
+function codFeeFor(groupTotals, shops) {
+  return shopsInBag(groupTotals).reduce((sum, id) => sum + Math.max(0, termsFor(shops, id).codFee), 0);
 }
 
 /**
@@ -124,15 +193,16 @@ function isEligible(coupon, cartSubtotal, groupTotals) {
   return base >= coupon.min_subtotal;
 }
 
-// Mirror of couponSavings() in src/lib/pricing.ts.
-function couponSavings(coupon, cartSubtotal, groupTotals, terms) {
+// Mirror of couponSavings() in src/lib/pricing.ts. `max_discount` is no longer
+// settable from either console, but rows created while it was still carry it.
+function couponSavings(coupon, cartSubtotal, groupTotals, shops) {
   if (!isEligible(coupon, cartSubtotal, groupTotals)) return 0;
   const base = couponBase(coupon, cartSubtotal, groupTotals);
   if (coupon.type === 'pct') {
     return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   }
   if (coupon.type === 'flat') return Math.min(coupon.off, base);
-  return shipFeeFor(groupTotals, terms); // 'ship' — the delivery fee waived
+  return shipFeeFor(groupTotals, shops); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -142,10 +212,10 @@ function couponSavings(coupon, cartSubtotal, groupTotals, terms) {
  * src/lib/pricing.ts so the value matches to the rupee.
  *
  * `perBoutiqueDiscount` is the seller-funded portion to net off each boutique's
- * order total (empty for a platform coupon). `codDeliveries` is the number of
- * boutique orders being paid in cash — 0 for a prepaid checkout. `terms` comes
- * from `loadTerms(supabase)`; it defaults to the published fallback so an older
- * caller still prices at the policy rates rather than NaN.
+ * order total (empty for a platform coupon). `payingCash` says whether this is a
+ * cash-on-delivery checkout, which is what adds each boutique's own handling
+ * fee. `shops` comes from `loadShopTerms(supabase, ids)`; an empty map prices
+ * delivery and COD at zero rather than at NaN.
  *
  * `perBoutiquePlatformDiscount` is the mirror of that for a PLATFORM coupon: it
  * is NOT netted off any order total (the platform funds it, so the seller is
@@ -154,12 +224,12 @@ function couponSavings(coupon, cartSubtotal, groupTotals, terms) {
  * a cash-on-delivery buyer was quoted the discounted total at checkout and then
  * asked for the undiscounted one at the door.
  */
-export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms = DEFAULT_TERMS) {
+export function computeCartPricing(groupTotals, coupon, payingCash = false, shops = {}) {
   const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
   const eligible = coupon && isEligible(coupon, cartSubtotal, groupTotals) ? coupon : null;
 
   const freeShip = eligible?.type === 'ship';
-  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals, terms) : 0;
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals, shops) : 0;
 
   // Only a seller coupon's discount is allocated to a boutique (and so funded by
   // that seller). A platform coupon reduces the buyer's payment but no order.
@@ -183,15 +253,41 @@ export function computeCartPricing(groupTotals, coupon, codDeliveries = 0, terms
     if (ids.length > 0) perBoutiquePlatformDiscount[ids[0]] = remaining;
   }
 
-  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, terms);
-  const codFee = Math.max(0, codDeliveries) * terms.cod_fee;
+  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, shops);
+  const codFee = payingCash ? codFeeFor(groupTotals, shops) : 0;
   const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
+
+  // What each boutique's own order comes to — its goods, less whichever discount
+  // was allocated to it, plus its own delivery and cash-handling fees. The
+  // per-boutique COD cap is checked against this, and src/lib/pricing.ts derives
+  // the identical map so the browser blocks (or allows) cash on exactly the same
+  // bags the server does.
+  const perBoutiquePayable = {};
+  // Each boutique's own fees, so place-order.js can store them on that
+  // boutique's order rather than piling the cart's delivery onto the first one
+  // — with a per-shop charge, "the cart's delivery fee" is no longer a single
+  // number that belongs to any one order.
+  const perBoutiqueShipFee = {};
+  const perBoutiqueCodFee = {};
+  for (const id of shopsInBag(groupTotals)) {
+    const t = termsFor(shops, id);
+    const allocated = (perBoutiqueDiscount[id] ?? 0) + (perBoutiquePlatformDiscount[id] ?? 0);
+    perBoutiqueShipFee[id] = freeShip ? 0 : shopShipFee(groupTotals[id], t);
+    perBoutiqueCodFee[id] = payingCash ? Math.max(0, t.codFee) : 0;
+    perBoutiquePayable[id] = Math.max(
+      0,
+      groupTotals[id] - allocated + perBoutiqueShipFee[id] + perBoutiqueCodFee[id],
+    );
+  }
 
   return {
     cartSubtotal,
     discount,
     perBoutiqueDiscount,
     perBoutiquePlatformDiscount,
+    perBoutiquePayable,
+    perBoutiqueShipFee,
+    perBoutiqueCodFee,
     shipFee,
     codFee,
     total,

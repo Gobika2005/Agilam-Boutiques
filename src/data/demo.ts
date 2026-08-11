@@ -110,7 +110,18 @@ export type Boutique = {
    */
   deliveryAvailable?: boolean;
   deliveryAreas?: string;
+  /**
+   * What this boutique charges the buyer to deliver, and the terms around it
+   * (migration 0076). `deliveryCharge` used to be a private logistics note the
+   * checkout ignored; it is now the actual charge, waived once this boutique's
+   * goods in the bag reach `freeDeliveryOver` (0 = never). `codFee` is charged
+   * per cash delivery and `codMaxOrder` caps a cash order (0 = no cap).
+   * Undefined on older rows, which are treated as charging nothing.
+   */
   deliveryCharge?: number;
+  freeDeliveryOver?: number;
+  codFee?: number;
+  codMaxOrder?: number;
 };
 
 export const CATEGORIES = [

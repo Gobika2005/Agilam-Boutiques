@@ -112,6 +112,10 @@ async function check(label, pathname, assertions) {
       return {
         noscriptH1: (block.match(/<h1>([^<]*)<\/h1>/) || [])[1],
         noscriptLinks: block.match(/<a href=/g)?.length || 0,
+        // The block itself, for checks that care WHICH links it carries rather
+        // than how many — internal linking is the only crawl path to a page
+        // that is otherwise sitemap-only.
+        noscriptHtml: block,
       };
     })(),
     splashRetires: splashRetires(body),
@@ -492,15 +496,40 @@ await check('unknown city', '/boutiques/definitely-not-a-city-zz99', [
   is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
 ]);
 
-// The two hubs that gained a database-backed body.
-await check('boutiques hub', '/boutiques', [
-  is('200', (o) => o.status === 200),
-  is('ItemList schema', (o) => (o.schema || '').includes('CollectionPage')),
-  is('crawlable <h1>', (o) => !!o.noscriptH1),
-]);
-await check('shop hub', '/shop', [
-  is('200', (o) => o.status === 200),
-  is('crawlable <h1>', (o) => !!o.noscriptH1),
+/*
+ * Every hub that gained a database-backed body.
+ *
+ * Only /boutiques and /shop were checked here, which is how the migration-0073
+ * breakage stayed invisible: /top-boutiques lost its body at the same moment
+ * /boutiques did, and nothing asked. A hub serving its <head> and an empty
+ * <div id="root"> is, to a crawler that does not run JavaScript, a blank page —
+ * indistinguishable from the soft 404s three checks up. Each of these is a URL
+ * in the sitemap, so each has to prove it carries a heading and a way onward.
+ */
+for (const [label, pathname, schemaType] of [
+  ['boutiques hub', '/boutiques', 'CollectionPage'],
+  ['shop hub', '/shop', null],
+  ['new-arrivals hub', '/new-arrivals', null],
+  ['best-sellers hub', '/best-sellers', null],
+  ['top-boutiques hub', '/top-boutiques', null],
+  ['inspire hub', '/inspire', null],
+]) {
+  await check(label, pathname, [
+    is('200', (o) => o.status === 200),
+    is('indexable', (o) => (o.robots || '').startsWith('index')),
+    is('crawlable <h1>', (o) => !!o.noscriptH1),
+    is('internal links', (o) => o.noscriptLinks >= 2),
+    ...(schemaType ? [is(`${schemaType} schema`, (o) => (o.schema || '').includes(schemaType))] : []),
+  ]);
+}
+
+/*
+ * /inspire shipped in the sitemap and in no crawlable link on the site, which
+ * is an orphan: Google accepts the URL, discounts it, and recrawls it rarely.
+ * `hubNav` in middleware.js is what fixed it, and this is what keeps it fixed.
+ */
+await check('inspire is linked, not orphaned', '/new-arrivals', [
+  is('a hub links to /inspire', (o) => /href="[^"]*\/inspire"/.test(o.noscriptHtml || '')),
 ]);
 
 // FAQ rich results on /help. The markup is only legitimate while the same Q&A

@@ -7,6 +7,8 @@ import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
+import { usePincodeLookup } from '@/hooks/usePincodeLookup';
+import { currentCoords, isMapsLink, mapsLinkFromAddress, mapsLinkFromCoords, parseMapCoords } from '@/lib/geolocate';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
@@ -68,9 +70,21 @@ const CATEGORIES = [
   'Kids Wear', 'Menswear', 'Accessories', 'Tailoring & Custom',
 ] as const;
 
+/**
+ * Every state and union territory, offered as suggestions rather than as the
+ * twelve chips this used to be. The pincode lookup fills this field in on its
+ * own, and it can legitimately answer with any of the 36 — a shop in Assam was
+ * previously unable to say so.
+ */
 const INDIAN_STATES = [
-  'Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra',
-  'Gujarat', 'Delhi', 'Puducherry', 'West Bengal', 'Rajasthan', 'Uttar Pradesh',
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+  'Ladakh', 'Lakshadweep', 'Puducherry',
 ] as const;
 
 const PIN_RE = /^[1-9][0-9]{5}$/;
@@ -83,10 +97,12 @@ type Form = {
   name: string; ownerName: string; description: string; logoUrl: string; coverUrl: string;
   phone: string; whatsapp: string; email: string; instagram: string;
   addressLine: string; area: string; city: string; district: string; state: string; pincode: string; mapUrl: string;
+  /** The map pin, when we could get one — see the note on step 3's location block. */
+  lat: string; lng: string;
   categories: string[]; gstNumber: string; businessReg: string; yearsInBusiness: string;
   openTime: string; closeTime: string; workingDays: string[];
-  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
-  codEnabled: boolean; onlinePaymentEnabled: boolean;
+  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string; freeDeliveryOver: string;
+  codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
 };
 
@@ -94,10 +110,11 @@ const EMPTY: Form = {
   name: '', ownerName: '', description: '', logoUrl: '', coverUrl: '',
   phone: '', whatsapp: '', email: '', instagram: '',
   addressLine: '', area: '', city: '', district: '', state: '', pincode: '', mapUrl: '',
+  lat: '', lng: '',
   categories: [], gstNumber: '', businessReg: '', yearsInBusiness: '',
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
-  codEnabled: true, onlinePaymentEnabled: true,
+  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0', freeDeliveryOver: '0',
+  codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
 
@@ -130,10 +147,20 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
   }
   if (step === 3) {
     if (f.addressLine.trim().length < 5) e.addressLine = 'Enter your shop address';
-    if (!f.city.trim()) e.city = 'Enter your city';
+    if (!f.city.trim()) e.city = 'Enter your city or town';
     if (!f.district.trim()) e.district = 'Enter your district';
-    if (!f.state.trim()) e.state = 'Select your state';
+    if (!f.state.trim()) e.state = 'Enter your state';
     if (!PIN_RE.test(f.pincode.trim())) e.pincode = 'Enter a valid 6-digit pincode';
+    // The map pin is required, not optional as it was.
+    //
+    // An address line alone is not a location: "12/4, Cross Cut Road" exists in
+    // several towns, and a courier pickup, a buyer driving over and the "Shop
+    // Location" button on the boutique page all need the actual point. The
+    // wizard offers three ways to produce one — stand in the shop and tap "Use
+    // my current location", paste a Maps share link, or drop a pin from the
+    // address already typed — so requiring it does not corner anyone.
+    if (!f.mapUrl.trim()) e.mapUrl = 'Set your exact shop location on the map';
+    else if (!isMapsLink(f.mapUrl)) e.mapUrl = 'That is not a Google Maps link — use the buttons below, or Maps → Share → Copy link';
   }
   if (step === 4) {
     if (f.categories.length === 0) e.categories = 'Pick at least one category';
@@ -210,6 +237,10 @@ function toPatch(f: Form): BoutiquePatch {
     state: f.state.trim(),
     pincode: f.pincode.trim(),
     map_url: orNull(f.mapUrl),
+    // Kept beside the link, not derived from it: a shortened maps.app.goo.gl
+    // link carries no coordinates, so the pin would be lost on every reload.
+    latitude: f.lat.trim() ? Number(f.lat) : null,
+    longitude: f.lng.trim() ? Number(f.lng) : null,
     category: joinCategories(f.categories),
     gst_number: orNull(f.gstNumber.toUpperCase()),
     business_reg_number: orNull(f.businessReg),
@@ -220,7 +251,10 @@ function toPatch(f: Form): BoutiquePatch {
     delivery_available: f.deliveryAvailable,
     delivery_areas: f.deliveryAreas.trim(),
     delivery_charge: Number(f.deliveryCharge || 0),
+    free_delivery_over: Number(f.freeDeliveryOver || 0),
     cod_enabled: f.codEnabled,
+    cod_fee: Number(f.codFee || 0),
+    cod_max_order: Number(f.codMaxOrder || 0),
     online_payment_enabled: f.onlinePaymentEnabled,
     bank_account_name: orNull(f.bankAccountName),
     bank_account_number: orNull(f.bankAccountNumber),
@@ -351,6 +385,8 @@ export function SellerOnboarding() {
           state: row.state ?? '',
           pincode: row.pincode ?? '',
           mapUrl: row.map_url ?? '',
+          lat: row.latitude != null ? String(row.latitude) : '',
+          lng: row.longitude != null ? String(row.longitude) : '',
           categories: splitCategories(row.category),
           gstNumber: priv?.gst_number ?? '',
           businessReg: priv?.business_reg_number ?? '',
@@ -361,7 +397,10 @@ export function SellerOnboarding() {
           deliveryAvailable: row.delivery_available ?? true,
           deliveryAreas: row.delivery_areas ?? '',
           deliveryCharge: row.delivery_charge != null ? String(row.delivery_charge) : '0',
+          freeDeliveryOver: row.free_delivery_over != null ? String(row.free_delivery_over) : '0',
           codEnabled: row.cod_enabled ?? true,
+          codFee: row.cod_fee != null ? String(row.cod_fee) : '0',
+          codMaxOrder: row.cod_max_order != null ? String(row.cod_max_order) : '0',
           onlinePaymentEnabled: row.online_payment_enabled ?? true,
           bankAccountName: priv?.bank_account_name ?? '',
           bankAccountNumber: priv?.bank_account_number ?? '',
@@ -400,6 +439,74 @@ export function SellerOnboarding() {
     } finally {
       setUploading(null);
     }
+  };
+
+  /* ── Where the shop actually is ──────────────────────────────────────────
+     The pincode is the one part of an address a shop owner cannot really get
+     wrong, so it drives the rest: India Post knows which district and state it
+     belongs to, and every locality inside it, which is what the city field
+     offers instead of a blank box. See src/lib/pincode.ts. */
+  const pinStatus = usePincodeLookup(form.pincode);
+  const pinArea = pinStatus.kind === 'found' ? pinStatus.area : null;
+  const [locating, setLocating] = useState(false);
+
+  // District and state are filled in from the pincode when the seller has not
+  // typed them — never over the top of what they did type, since a shop on a
+  // district boundary may legitimately disagree with the post office.
+  useEffect(() => {
+    if (!pinArea) return;
+    setForm((f) => {
+      if (f.pincode.trim() !== pinArea.pincode) return f;
+      const next = { ...f };
+      let changed = false;
+      if (!f.district.trim() && pinArea.district) { next.district = pinArea.district; changed = true; }
+      if (!f.state.trim() && pinArea.state) { next.state = pinArea.state; changed = true; }
+      // Only when the pincode covers exactly one place is the city unambiguous;
+      // otherwise the seller picks from the suggestion list.
+      if (!f.city.trim() && pinArea.places.length === 1) { next.city = pinArea.places[0]; changed = true; }
+      return changed ? next : f;
+    });
+  }, [pinArea]);
+
+  const clearError = (key: keyof Form) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+
+  /** Drop the pin where the seller is standing — the only source that is
+   *  accurate to a shopfront rather than to a street or a suburb. */
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    const c = await currentCoords();
+    setLocating(false);
+    if (!c) {
+      toast('Could not read your location. Allow location access for this site, or paste a Google Maps link.');
+      return;
+    }
+    setForm((f) => ({ ...f, mapUrl: mapsLinkFromCoords(c.lat, c.lng), lat: String(c.lat), lng: String(c.lng) }));
+    clearError('mapUrl');
+    toast(
+      c.accuracyM && c.accuracyM > 150
+        ? `Location saved, but it is only accurate to about ${Math.round(c.accuracyM)}m — open the link and check it points at your shop.`
+        : 'Shop location saved',
+    );
+  };
+
+  /** Fallback for a seller setting up from home: a Maps search for the address
+   *  they just typed. Weaker than a GPS pin — it resolves to whatever Maps finds
+   *  — so it does not claim to be one, and stores no coordinates. */
+  const pinFromAddress = () => {
+    setForm((f) => ({
+      ...f,
+      mapUrl: mapsLinkFromAddress([f.addressLine, f.area, f.city, f.district, f.state, f.pincode]),
+      lat: '', lng: '',
+    }));
+    clearError('mapUrl');
+    toast('Opened from your address — check the pin, and replace it with a shared link if it is off');
+  };
+
+  /** A pasted link may carry coordinates (`?q=`, `@lat,lng`); keep them if so. */
+  const setMapUrl = (v: string) => {
+    const c = parseMapCoords(v);
+    setForm((f) => ({ ...f, mapUrl: v, lat: c ? String(c.lat) : f.lat, lng: c ? String(c.lng) : f.lng }));
+    clearError('mapUrl');
   };
 
   // Resolves the typed IFSC to a real bank + branch so the seller can recognise
@@ -723,28 +830,117 @@ export function SellerOnboarding() {
         {step === 3 && (
           <SectionCard>
             <TextArea label="Shop address *" value={form.addressLine} onChange={(v) => set('addressLine', v)} placeholder="12/4, Cross Cut Road, Gandhipuram" error={errors.addressLine} />
+
+            {/* Pincode leads the block, because everything under it is derived
+                from it. It used to sit last, next to the district, and a seller
+                filled in three fields by hand that six digits can answer. */}
+            <Field
+              label="Pincode *"
+              value={form.pincode}
+              onChange={(v) => set('pincode', v.replace(/\D/g, '').slice(0, 6))}
+              placeholder="641002"
+              inputMode="numeric"
+              error={errors.pincode}
+              hint={errors.pincode ? undefined : 'Six digits — we fill in the district, state and nearby localities from it.'}
+            />
+            {pinStatus.kind === 'checking' && (
+              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>Looking up this pincode…</span>
+            )}
+            {pinArea && (
+              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-good);margin-top:-6px;')}>
+                {pinArea.district ? `${pinArea.district} district` : 'Found'}{pinArea.state ? `, ${pinArea.state}` : ''}
+                {pinArea.places.length > 1 ? ` · ${pinArea.places.length} localities to pick from` : ''}
+              </span>
+            )}
+            {pinStatus.kind === 'unknown' && (
+              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>
+                We could not look that pincode up — fill in the city, district and state yourself.
+              </span>
+            )}
+
             <Row>
-              <Field label="Area / locality" value={form.area} onChange={(v) => set('area', v)} placeholder="RS Puram" />
-              {/* The city is what files the shop into the buyer directory and its
-                  own /boutiques/<city> page, so a short form like "Cbe" splits
-                  one city in two. Suggestions first, and whatever is typed is
-                  canonicalised on save (src/lib/cities.ts). */}
+              {/* City and district are separate answers to separate questions —
+                  a city sits inside a district, and filing "Coimbatore" as both
+                  is only right for the district town. The city is what files the
+                  shop into the buyer directory and its own /boutiques/<city>
+                  page, so a short form like "Cbe" splits one city in two;
+                  whatever is typed is canonicalised on save (src/lib/cities.ts).
+                  The suggestions are the actual localities under the pincode,
+                  falling back to the known-city list before one is entered. */}
               <Field
-                label="City *"
+                label="City / town *"
                 value={form.city}
                 onChange={(v) => set('city', v)}
                 placeholder="Coimbatore"
                 error={errors.city}
-                suggestions={KNOWN_CITIES}
-                hint="Full name, not a short form — buyers browse boutiques by city."
+                suggestions={pinArea?.places.length ? pinArea.places : KNOWN_CITIES}
+                hint={pinArea?.places.length ? 'Pick the locality your shop is in.' : 'Full name, not a short form — buyers browse boutiques by city.'}
+              />
+              <Field
+                label="District *"
+                value={form.district}
+                onChange={(v) => set('district', v)}
+                placeholder="Coimbatore"
+                error={errors.district}
+                suggestions={pinArea?.district ? [pinArea.district] : undefined}
+                hint={pinArea?.district ? 'From your pincode — change it if your shop sits on a district boundary.' : undefined}
               />
             </Row>
             <Row>
-              <Field label="District *" value={form.district} onChange={(v) => set('district', v)} placeholder="Coimbatore" error={errors.district} />
-              <Field label="Pincode *" value={form.pincode} onChange={(v) => set('pincode', v.replace(/\D/g, '').slice(0, 6))} placeholder="641002" inputMode="numeric" error={errors.pincode} />
+              <Field label="Area / locality" value={form.area} onChange={(v) => set('area', v)} placeholder="RS Puram" suggestions={pinArea?.places} />
+              <Field
+                label="State *"
+                value={form.state}
+                onChange={(v) => set('state', v)}
+                placeholder="Tamil Nadu"
+                error={errors.state}
+                suggestions={INDIAN_STATES}
+              />
             </Row>
-            <ChipPicker label="State *" options={INDIAN_STATES} value={form.state ? [form.state] : []} onChange={(next) => set('state', next[0] ?? '')} error={errors.state} />
-            <Field label="Google Maps link" value={form.mapUrl} onChange={(v) => set('mapUrl', v)} placeholder="https://maps.app.goo.gl/…" inputMode="url" hint="Open your shop in Google Maps, tap Share, and paste the link here." />
+
+            {/* ── The map pin ──────────────────────────────────────────────
+                Required. Three ways in, strongest first: stand in the shop and
+                use GPS, paste the link from Maps → Share, or fall back to a
+                search for the address above. */}
+            <div style={css('display:flex;gap:10px;flex-wrap:wrap;')}>
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={locating}
+                style={css(`display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid #D6336C;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:${locating ? 'default' : 'pointer'};opacity:${locating ? 0.6 : 1};font-family:inherit;`)}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>my_location</span>
+                {locating ? 'Getting your location…' : 'Use my current location'}
+              </button>
+              <button
+                type="button"
+                onClick={pinFromAddress}
+                style={css('display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>pin_drop</span>
+                Find from my address
+              </button>
+            </div>
+            <Field
+              label="Google Maps location *"
+              value={form.mapUrl}
+              onChange={setMapUrl}
+              placeholder="https://maps.app.goo.gl/…"
+              inputMode="url"
+              error={errors.mapUrl}
+              hint="Stand in your shop and tap “Use my current location”, or open the shop in Google Maps → Share → Copy link."
+            />
+            {form.mapUrl.trim() && !errors.mapUrl && (
+              <a
+                href={form.mapUrl.trim()}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={css('display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--ag-crimson);text-decoration:none;margin-top:-6px;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>open_in_new</span>
+                {form.lat && form.lng ? `Check the pin (${Number(form.lat).toFixed(5)}, ${Number(form.lng).toFixed(5)})` : 'Check this opens at your shop'}
+              </a>
+            )}
           </SectionCard>
         )}
 
@@ -767,18 +963,29 @@ export function SellerOnboarding() {
               <ChipPicker label="Working days *" options={WORKING_DAYS} value={form.workingDays} onChange={(next) => set('workingDays', next)} multiple error={errors.workingDays} />
             </SectionCard>
 
-            <SectionCard title="Delivery">
+            {/* Your numbers, charged to the buyer at checkout — MangaiMart adds
+                no delivery fee of its own (migration 0076). */}
+            <SectionCard title="Delivery" subtitle="What buyers pay you to deliver.">
               <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
               {form.deliveryAvailable && (
                 <>
                   <TextArea label="Delivery areas *" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
-                  <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Enter 0 for free delivery." />
+                  <Row>
+                    <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per order from your shop. 0 = you deliver free." />
+                    <Field label="Free delivery over (₹)" value={form.freeDeliveryOver} onChange={(v) => set('freeDeliveryOver', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Your charge drops off above this. 0 = always charged." />
+                  </Row>
                 </>
               )}
             </SectionCard>
 
             <SectionCard title="Payments accepted">
               <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
+              {form.codEnabled && (
+                <Row>
+                  <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />
+                  <Field label="Cash order limit (₹)" value={form.codMaxOrder} onChange={(v) => set('codMaxOrder', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Largest order you will send unpaid. 0 = no limit." />
+                </Row>
+              )}
               <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
               {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
             </SectionCard>
@@ -934,7 +1141,7 @@ function ReviewStep({
     },
     {
       step: 3, title: 'Shop address',
-      rows: [['Address', dash(form.addressLine)], ['Area', dash(form.area)], ['City / district', `${dash(form.city)} · ${dash(form.district)}`], ['State / pincode', `${dash(form.state)} · ${dash(form.pincode)}`], ['Map link', form.mapUrl.trim() ? 'Added' : '—']],
+      rows: [['Address', dash(form.addressLine)], ['Area', dash(form.area)], ['City / district', `${dash(form.city)} · ${dash(form.district)}`], ['State / pincode', `${dash(form.state)} · ${dash(form.pincode)}`], ['Map location', form.mapUrl.trim() ? (form.lat && form.lng ? 'Pinned' : 'Link added') : '—']],
     },
     {
       step: 4, title: 'Business',
@@ -945,8 +1152,8 @@ function ReviewStep({
       rows: [
         ['Timing', form.openTime && form.closeTime ? `${form.openTime} – ${form.closeTime}` : '—'],
         ['Working days', form.workingDays.length ? form.workingDays.join(', ') : '—'],
-        ['Delivery', form.deliveryAvailable ? `${dash(form.deliveryAreas)} · ₹${form.deliveryCharge || 0}` : 'Store pickup only'],
-        ['Payments', [form.codEnabled && 'Cash on delivery', form.onlinePaymentEnabled && 'Online'].filter(Boolean).join(', ') || '—'],
+        ['Delivery', form.deliveryAvailable ? `${dash(form.deliveryAreas)} · ₹${form.deliveryCharge || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver}` : ''}` : 'Store pickup only'],
+        ['Payments', [form.codEnabled && `Cash on delivery${Number(form.codFee) > 0 ? ` (₹${form.codFee} fee)` : ''}`, form.onlinePaymentEnabled && 'Online'].filter(Boolean).join(', ') || '—'],
       ],
     },
     {

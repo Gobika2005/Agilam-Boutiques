@@ -61,9 +61,7 @@ export type PolicyPage = {
 };
 
 /** Shown as "Last updated" on every page. Bump when the copy changes. */
-export const POLICIES_UPDATED = '22 July 2026';
-
-const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
+export const POLICIES_UPDATED = '11 August 2026';
 
 const CONTACT_SECTION: PolicySection = {
   heading: 'Contact us',
@@ -82,11 +80,7 @@ const CONTACT_SECTION: PolicySection = {
  * commercial values are read from.
  */
 type PolicyCopyTerms = {
-  freeDeliveryOver: number;
-  standardShipping: number;
   returnWindowDays: number;
-  codFee: number;
-  codMaxOrder: number;
   commissionPct: number;
   refundWorkingDays: string;
   deliveryEstimate: string;
@@ -97,11 +91,15 @@ type PolicyCopyTerms = {
 function copyTerms(s: PlatformSettings): PolicyCopyTerms {
   return {
     // Live, admin-editable — these are what the buyer is actually charged.
-    freeDeliveryOver: s.free_delivery_over,
-    standardShipping: s.standard_shipping,
+    //
+    // Delivery and COD are no longer among them: since migration 0076 each
+    // boutique sets its own charge, threshold, cash-handling fee and cap, so
+    // there is no single figure this copy could quote that would be true for
+    // every shop. The sections below describe the rule instead and point at the
+    // number the checkout screen actually shows — which is the mistake that was
+    // made the other way round before, when these pages quoted a frozen ₹79
+    // while checkout charged ₹89.
     returnWindowDays: s.return_window_days,
-    codFee: s.cod_fee,
-    codMaxOrder: s.cod_max_order,
     commissionPct: s.commission_pct,
     // Copy-only: service promises with no settings column behind them.
     refundWorkingDays: POLICY_TERMS.refundWorkingDays,
@@ -125,7 +123,7 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
     title: 'Delivery Policy',
     eyebrow: 'Getting your order to you',
     icon: 'local_shipping',
-    summary: `Most orders reach you in ${T.deliveryEstimate}. Free delivery above ${inr(T.freeDeliveryOver)}.`,
+    summary: `Most orders reach you in ${T.deliveryEstimate}. Each boutique sets its own delivery charge, shown before you pay.`,
     sections: [
       {
         heading: 'Where we deliver',
@@ -146,9 +144,9 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
       {
         heading: 'Delivery charges',
         blocks: [
-          `- Orders of ${inr(T.freeDeliveryOver)} and above: free delivery.`,
-          `- Orders below ${inr(T.freeDeliveryOver)}: a flat ${inr(T.standardShipping)} delivery fee, shown on the payment screen before you pay.`,
-          'A cart containing items from several boutiques is split into one order per boutique. The delivery fee is charged once for the cart, not once per boutique.',
+          'Each boutique sets its own delivery charge, and many set it to zero. The exact amount for your bag is shown on the payment screen before you pay — that figure is what you are charged.',
+          'Some boutiques deliver free once your order from that shop reaches a value they choose. Where that applies, the charge simply drops off as you add items.',
+          'A cart containing items from several boutiques is split into one order per boutique, each packed and shipped by that shop. Each carries its own delivery charge, because each is a separate parcel.',
         ],
       },
       {
@@ -487,7 +485,7 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
       {
         heading: 'Cash on delivery',
         blocks: [
-          `Where the boutique offers it, you may pay in cash when your order is delivered. A handling fee of ${inr(T.codFee)} is added per delivery, and cash on delivery is available on orders up to ${inr(T.codMaxOrder)}. Both are shown before you confirm.`,
+          'Where the boutique offers it, you may pay in cash when your order is delivered. The boutique sets its own cash-handling fee and its own upper limit for cash orders; both are applied and shown on the payment screen before you confirm, and the total there is what you hand over at the door.',
           'Because a cart spanning several boutiques is delivered separately by each, the handling fee applies once per delivery, and each delivery is paid for on arrival.',
           'Please keep the exact amount ready — our delivery partners may not carry change. If payment is refused at the door the order is returned to the boutique and may count against future cash-on-delivery eligibility.',
           'A cash-on-delivery order can be cancelled free of charge from "My orders" at any time before it is dispatched. Nothing has been charged, so there is no refund to process.',

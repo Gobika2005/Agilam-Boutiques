@@ -6,6 +6,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { currentCoords, isMapsLink, mapsLinkFromCoords, parseMapCoords } from '@/lib/geolocate';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WORKING_DAYS } from '@/data/types';
 
@@ -20,18 +21,18 @@ import { WORKING_DAYS } from '@/data/types';
  */
 
 type Form = {
-  instagram: string; mapUrl: string; phone: string; whatsapp: string; email: string;
+  instagram: string; mapUrl: string; lat: string; lng: string; phone: string; whatsapp: string; email: string;
   openTime: string; closeTime: string; workingDays: string[];
-  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
-  codEnabled: boolean; onlinePaymentEnabled: boolean;
+  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string; freeDeliveryOver: string;
+  codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
 };
 
 const EMPTY: Form = {
-  instagram: '', mapUrl: '', phone: '', whatsapp: '', email: '',
+  instagram: '', mapUrl: '', lat: '', lng: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
-  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
-  codEnabled: true, onlinePaymentEnabled: true,
+  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0', freeDeliveryOver: '0',
+  codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
 
@@ -57,12 +58,41 @@ export function Settings() {
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
 
+  /** Drop the pin where the seller is standing — see the wizard's step 3 for
+   *  why a GPS fix beats anything derived from the typed address. */
+  const [locating, setLocating] = useState(false);
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    const c = await currentCoords();
+    setLocating(false);
+    if (!c) {
+      showToast('Could not read your location. Allow location access for this site, or paste a Google Maps link.');
+      return;
+    }
+    setForm((f) => ({ ...f, mapUrl: mapsLinkFromCoords(c.lat, c.lng), lat: String(c.lat), lng: String(c.lng) }));
+    setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
+    showToast(
+      c.accuracyM && c.accuracyM > 150
+        ? `Location saved, but only accurate to about ${Math.round(c.accuracyM)}m — open the link and check it points at your shop.`
+        : 'Shop location saved',
+    );
+  };
+
+  /** A pasted link may carry coordinates; keep them when it does. */
+  const setMapUrl = (v: string) => {
+    const c = parseMapCoords(v);
+    setForm((f) => ({ ...f, mapUrl: v, lat: c ? String(c.lat) : f.lat, lng: c ? String(c.lng) : f.lng }));
+    setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
+  };
+
   // Seed from the signed-in seller's own boutique row rather than sample copy.
   useEffect(() => {
     if (!boutique) return;
     setForm({
       instagram: boutique.instagram ?? '',
       mapUrl: boutique.map_url ?? '',
+      lat: boutique.latitude != null ? String(boutique.latitude) : '',
+      lng: boutique.longitude != null ? String(boutique.longitude) : '',
       phone: boutique.phone ?? '',
       whatsapp: boutique.whatsapp ?? '',
       email: boutique.email ?? '',
@@ -72,7 +102,10 @@ export function Settings() {
       deliveryAvailable: boutique.delivery_available ?? true,
       deliveryAreas: boutique.delivery_areas ?? '',
       deliveryCharge: boutique.delivery_charge != null ? String(boutique.delivery_charge) : '0',
+      freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
       codEnabled: boutique.cod_enabled ?? true,
+      codFee: boutique.cod_fee != null ? String(boutique.cod_fee) : '0',
+      codMaxOrder: boutique.cod_max_order != null ? String(boutique.cod_max_order) : '0',
       onlinePaymentEnabled: boutique.online_payment_enabled ?? true,
       notifyOrders: boutique.notify_orders ?? true,
       notifyMessages: boutique.notify_messages ?? true,
@@ -91,6 +124,12 @@ export function Settings() {
     if (!boutique) return showToast('No boutique linked to this account yet');
 
     const next: Partial<Record<keyof Form, string>> = {};
+    // The map pin is required here for the same reason it is in the setup wizard
+    // — a courier, and a buyer driving over, need the point rather than the
+    // street. An existing shop that never set one is asked for it on its next
+    // save, which is the only moment we can ask without nagging.
+    if (!form.mapUrl.trim()) next.mapUrl = 'Set your exact shop location on the map';
+    else if (!isMapsLink(form.mapUrl)) next.mapUrl = 'That is not a Google Maps link — use the button, or Maps → Share → Copy link';
     if (form.phone.trim() && !PHONE_RE.test(form.phone.trim())) next.phone = 'Enter a 10-digit mobile number';
     if (form.whatsapp.trim() && !PHONE_RE.test(form.whatsapp.trim())) next.whatsapp = 'Enter a 10-digit WhatsApp number';
     if (form.workingDays.length === 0) next.workingDays = 'Pick at least one working day';
@@ -104,6 +143,8 @@ export function Settings() {
     const patch: BoutiquePatch = {
       instagram: form.instagram.trim().replace(/^@/, '') || null,
       map_url: form.mapUrl.trim() || null,
+      latitude: form.lat.trim() ? Number(form.lat) : null,
+      longitude: form.lng.trim() ? Number(form.lng) : null,
       phone: form.phone.trim() || null,
       whatsapp: form.whatsapp.trim() || form.phone.trim() || null,
       email: form.email.trim() || null,
@@ -113,7 +154,10 @@ export function Settings() {
       delivery_available: form.deliveryAvailable,
       delivery_areas: form.deliveryAreas.trim(),
       delivery_charge: Number(form.deliveryCharge || 0),
+      free_delivery_over: Number(form.freeDeliveryOver || 0),
       cod_enabled: form.codEnabled,
+      cod_fee: Number(form.codFee || 0),
+      cod_max_order: Number(form.codMaxOrder || 0),
       online_payment_enabled: form.onlinePaymentEnabled,
       notify_orders: form.notifyOrders,
       notify_messages: form.notifyMessages,
@@ -166,7 +210,24 @@ export function Settings() {
           </Row>
           <Field label="Email address" value={form.email} onChange={(v) => set('email', v)} placeholder="you@boutique.com" inputMode="email" />
           <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @. Opens your profile from the Instagram button on your shop page." />
-          <Field label="Google Maps link" value={form.mapUrl} onChange={(v) => set('mapUrl', v)} placeholder="https://maps.app.goo.gl/…" inputMode="url" hint="Open your shop in Google Maps, tap Share, and paste the link. Powers the Shop Location button on your buyer page." />
+          <button
+            type="button"
+            onClick={useCurrentLocation}
+            disabled={locating}
+            style={css(`align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid #D6336C;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:${locating ? 'default' : 'pointer'};opacity:${locating ? 0.6 : 1};font-family:inherit;`)}
+          >
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>my_location</span>
+            {locating ? 'Getting your location…' : 'Use my current location'}
+          </button>
+          <Field
+            label="Google Maps location *"
+            value={form.mapUrl}
+            onChange={setMapUrl}
+            placeholder="https://maps.app.goo.gl/…"
+            inputMode="url"
+            error={errors.mapUrl}
+            hint="Stand in your shop and tap the button above, or open the shop in Google Maps → Share → Copy link. Powers the Shop Location button on your buyer page."
+          />
         </SectionCard>
 
         <SectionCard title="Store timing" subtitle="Shown to buyers, so they know when you are open.">
@@ -177,12 +238,17 @@ export function Settings() {
           <ChipPicker label="Working days" options={WORKING_DAYS} value={form.workingDays} onChange={(next) => set('workingDays', next)} multiple error={errors.workingDays} />
         </SectionCard>
 
-        <SectionCard title="Delivery">
+        {/* These are the buyer's actual charges, not notes to yourself — the
+            platform no longer sets a delivery fee of its own (migration 0076). */}
+        <SectionCard title="Delivery" subtitle="What buyers pay you to deliver. Your numbers, charged at checkout.">
           <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
           {form.deliveryAvailable && (
             <>
               <TextArea label="Delivery areas" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
-              <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Enter 0 for free delivery." />
+              <Row>
+                <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per order from your shop. 0 = you deliver free." />
+                <Field label="Free delivery over (₹)" value={form.freeDeliveryOver} onChange={(v) => set('freeDeliveryOver', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Your charge drops off above this. 0 = always charged." />
+              </Row>
             </>
           )}
         </SectionCard>
@@ -217,6 +283,12 @@ export function Settings() {
 
         <SectionCard title="Payments accepted">
           <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
+          {form.codEnabled && (
+            <Row>
+              <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />
+              <Field label="Cash order limit (₹)" value={form.codMaxOrder} onChange={(v) => set('codMaxOrder', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Largest order you will send unpaid. 0 = no limit." />
+            </Row>
+          )}
           <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
           {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
         </SectionCard>

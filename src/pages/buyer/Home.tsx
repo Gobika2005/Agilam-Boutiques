@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -134,7 +134,48 @@ export function Home() {
     timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % Math.max(1, countRef.current)), 4200);
   };
 
+  /* ── Swipe ────────────────────────────────────────────────────────────────
+     The hero looks like a carousel, so on a phone it gets swiped — and until
+     now a swipe did nothing but open whichever ad happened to be showing,
+     because the whole slide is a click target. Pointer events cover finger and
+     mouse-drag alike; `touch-action:pan-y` on the track lets the page keep
+     scrolling vertically while horizontal movement comes to us.
+
+     A drag past the threshold moves one slide and restarts the rotation (same
+     as tapping a dot). It also arms `swiped`, which the CTA checks — otherwise
+     the click the browser fires at the end of every drag would open the ad the
+     buyer was swiping away from. */
+  const SWIPE_MIN_PX = 44;
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const swiped = useRef(false);
+
+  const stepHero = (dir: 1 | -1) => {
+    const n = Math.max(1, countRef.current);
+    goHero((heroIndex + dir + n) % n);
+  };
+
+  const onHeroPointerDown = (e: ReactPointerEvent) => {
+    // Ignore secondary buttons and multi-touch (a pinch-zoom is not a swipe).
+    if (e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    swiped.current = false;
+  };
+
+  const onHeroPointerUp = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.id !== e.pointerId || SLIDES.length < 2) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    // Horizontal intent only: a diagonal flick while scrolling the page must
+    // not steal a slide.
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return;
+    swiped.current = true;
+    stepHero(dx < 0 ? 1 : -1);
+  };
+
   const heroCta = (h: { adId: string; target: 'product' | 'boutique'; productId: string | null; boutiqueId: string }) => {
+    if (swiped.current) { swiped.current = false; return; }
     void trackAdClick(h.adId);
     if (h.target === 'boutique') navigate(`/boutique/${h.boutiqueId}`);
     else if (h.productId) navigate(`/products/${h.productId}`);
@@ -189,7 +230,16 @@ export function Home() {
           which is what makes it read as a boutique placement instead of a web
           banner. */}
       {SLIDES.length > 0 && (
-        <div className="agx-zoom" style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 26px 54px -32px var(--ag-shadow),inset 0 0 0 1px rgba(226,190,120,.3);`)}>
+        <div
+          className="agx-zoom"
+          onPointerDown={onHeroPointerDown}
+          onPointerUp={onHeroPointerUp}
+          onPointerCancel={() => { drag.current = null; }}
+          // A mouse drag across a photo would otherwise start a native image
+          // drag, which cancels the pointer stream before we see the release.
+          onDragStart={(e) => e.preventDefault()}
+          style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 26px 54px -32px var(--ag-shadow),inset 0 0 0 1px rgba(226,190,120,.3);touch-action:pan-y;user-select:none;-webkit-user-select:none;`)}
+        >
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
             {SLIDES.map((h, i) => (
               // Off-screen slides are hidden from assistive tech: without this the

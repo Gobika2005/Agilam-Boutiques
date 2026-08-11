@@ -6,20 +6,23 @@ import { useShop } from '@/state/ShopContext';
 import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
 import { readPendingPayment, clearPendingPayment } from '@/lib/pendingPayment';
-import { useSettings } from '@/data/settings';
+import { baseCodFee } from '@/lib/pricing';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   usePageMeta({ title: 'Payment', description: 'Choose how to pay for your MangaiMart order.' });
   const navigate = useNavigate();
-  const terms = useSettings();
   const {
     payMethod, setPayMethod, subtotal, discount, shipFee, codFee, total,
-    guest, orderItems, appliedCoupon, coupon,
+    guest, orderItems, appliedCoupon, coupon, boutiqueSubtotals, shopTerms,
     placeOrder, placeCodOrder, retryPendingPayment, showToast,
     payingCash, codUnavailableReason, codDeliveries,
     cart,
   } = useShop();
+  // What cash would cost on this bag, priced before the buyer picks it — the
+  // live `codFee` is 0 until they do. Each boutique sets its own handling fee
+  // (migration 0076), so this is their sum, not one platform rate × deliveries.
+  const codFeePreview = baseCodFee(boutiqueSubtotals, shopTerms);
   // Same guard as checkout: an empty bag has nothing to pay for, and a step-3
   // screen quoting ₹0 is only a slower way of saying so.
   const bagIsEmpty = Object.keys(cart).length === 0;
@@ -174,11 +177,13 @@ export function Payment() {
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{m.label}</div>
                     <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;line-height:1.45;')}>
-                      {blocked ?? (m.kind === 'cod' && codDeliveries > 1
-                        ? `${m.sub} · ${fmt(terms.cod_fee)} handling fee × ${codDeliveries} deliveries`
-                        : m.kind === 'cod'
-                          ? `${m.sub} · ${fmt(terms.cod_fee)} handling fee`
-                          : m.sub)}
+                      {blocked ?? (m.kind !== 'cod'
+                        ? m.sub
+                        : codFeePreview <= 0
+                          ? `${m.sub} · no handling fee`
+                          : codDeliveries > 1
+                            ? `${m.sub} · ${fmt(codFeePreview)} handling across ${codDeliveries} deliveries`
+                            : `${m.sub} · ${fmt(codFeePreview)} handling fee`)}
                     </div>
                   </div>
                   {!blocked && (

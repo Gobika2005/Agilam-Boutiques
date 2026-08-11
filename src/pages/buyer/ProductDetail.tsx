@@ -19,7 +19,6 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
-import { useSettings } from '@/data/settings';
 import { POLICY_TERMS } from '@/data/company';
 import { badgesFor, DEFAULT_COLOR_DISCLAIMER } from '@/lib/productBadges';
 
@@ -76,9 +75,9 @@ export function ProductDetail() {
    */
   const { slug } = useParams();
   const idKey = productIdFromSlug(slug);
-  // Delivery copy must quote the fee checkout actually charges, so it reads the
-  // live admin settings rather than a compile-time constant.
-  const terms = useSettings();
+  // Delivery copy must quote the fee checkout actually charges — which since
+  // migration 0076 is this boutique's own, read off `boutique` below rather than
+  // from a platform setting.
   const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast, coupons } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   // Null until the buyer picks one, so the shown size can fall back to what the
@@ -306,6 +305,18 @@ export function ProductDetail() {
    * there is nothing to link to.
    */
   const boutiqueLink = boutique ? routes.boutique(boutique) : boutiqueId ? `/boutique/${boutiqueId}` : '';
+  /**
+   * What this shop charges to deliver — the same rule `shopShipFee` in
+   * `@/lib/pricing` applies at checkout, said in words: a flat charge, dropped
+   * once this boutique's items in the bag reach its threshold (0 = no threshold).
+   */
+  const deliveryNote = (() => {
+    const charge = boutique?.deliveryCharge ?? 0;
+    const freeOver = boutique?.freeDeliveryOver ?? 0;
+    if (charge <= 0) return 'Free delivery';
+    if (freeOver > 0) return `${fmt(charge)} delivery · free over ${fmt(freeOver)}`;
+    return `${fmt(charge)} delivery`;
+  })();
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -856,16 +867,20 @@ export function ProductDetail() {
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
                     <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
-                      {/* The platform's delivery rule, which is what the buyer
-                          is charged. This used to print the seller's private
-                          `delivery_charge` — a figure the checkout total never
-                          used, so the two contradicted each other. Nor does it
-                          branch on the seller's `delivery_available` any more:
-                          MangaiMart ships every order itself, so "Store pickup
-                          only" was telling buyers they could not have a piece
-                          delivered that the checkout then charged them ₹79 to
-                          deliver. See the note on `deliveryLine` in Checkout. */}
-                      {`${fmt(terms.standard_shipping)} delivery · free over ${fmt(terms.free_delivery_over)}`}
+                      {/* This boutique's own delivery rule — which since
+                          migration 0076 is exactly what checkout charges for
+                          its parcel. `delivery_charge` used to be printed here
+                          as a figure the checkout total never used, so the two
+                          contradicted each other; then it was replaced by the
+                          platform's flat fee, which contradicted the seller.
+                          Both screens now read the same numbers.
+
+                          It deliberately does not branch on the seller's
+                          `delivery_available`: that flag records whether the
+                          seller runs their own delivery, and showing "Store
+                          pickup only" told buyers they could not have a piece
+                          delivered that checkout then shipped anyway. */}
+                      {deliveryNote}
                     </div>
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>

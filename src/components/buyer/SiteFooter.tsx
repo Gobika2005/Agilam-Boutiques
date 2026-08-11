@@ -71,7 +71,35 @@ export function SiteFooter() {
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:36px;')}>
           {/* Identity + contact */}
           <div style={css('max-width:340px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;letter-spacing:-.01em;")}>{COMPANY.short}</div>
+            {/*
+              The wordmark, not the name set in Playfair.
+
+              Same file the header already loads on every screen, so it is served
+              from cache here and costs no extra request — and `width`/`height`
+              are attributes as well as styles so the box is reserved before the
+              stylesheet resolves, rather than the contact block jumping down
+              when the art lands.
+
+              `agx-brand-mark-footer` knocks the art out to white and crops its
+              transparent border. The mark is crimson-and-gold lettering on
+              transparency and the footer is a deep crimson gradient in BOTH
+              themes, so the colour version reads as a dark smudge on a dark
+              ground. It is the same treatment the header already uses in dark
+              mode (`agx-brand-mark`), applied unconditionally because this
+              ground never lightens.
+
+              204x82 is the source's own 2.5:1, so nothing is letterboxed.
+            */}
+            <img
+              className="agx-brand-mark-footer"
+              src="/mangaimart-wordmark.webp"
+              alt={COMPANY.short}
+              width={204}
+              height={82}
+              loading="lazy"
+              decoding="async"
+              style={css('display:block;width:204px;height:82px;max-width:100%;object-fit:contain;object-position:left center;')}
+            />
             <div style={css('font-size:13.5px;line-height:1.6;opacity:.82;margin-top:10px;')}>{COMPANY.description}</div>
 
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:18px;font-size:13px;opacity:.9;')}>

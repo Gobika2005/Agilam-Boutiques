@@ -8,9 +8,19 @@ import type { CouponInput, CouponRow, CouponType } from '@/data/coupons';
 
 const CODE_RE = /^[A-Z0-9]{3,20}$/;
 
-/** Above this, a percentage coupon must carry a max-discount cap. */
-export const MAX_UNCAPPED_PCT = 25;
-
+/**
+ * `max_discount` is no longer part of the form.
+ *
+ * A percentage coupon used to carry an optional cap, and above 25% the cap was
+ * compulsory. Both are gone by request: a coupon now gives exactly what its
+ * headline says. The DB column stays (nullable, and rows created before this
+ * still hold their caps — `src/lib/pricing.ts` keeps honouring those so an
+ * existing live coupon does not silently become more generous), but every save
+ * from here writes null, so anything created or re-saved is uncapped.
+ *
+ * The safety this used to provide now rests on the 1–90% bound below and on the
+ * redemption limit, which is the field that actually bounds total spend.
+ */
 export function emptyCouponInput(boutiqueId: string | null): CouponInput {
   return {
     code: '',
@@ -34,7 +44,9 @@ export function couponInputFromRow(row: CouponRow): CouponInput {
     type: row.type,
     off: row.off,
     min_subtotal: row.min_subtotal,
-    max_discount: row.max_discount,
+    // Not read back from the row: re-saving an old capped coupon clears its cap,
+    // which is what "no maximum discount" means for a coupon someone edits.
+    max_discount: null,
     usage_limit: row.usage_limit,
     description: row.description,
     expires_at: row.expires_at,
@@ -56,14 +68,6 @@ export function validateCouponInput(input: CouponInput, opts: { allowShip: boole
 
   if (input.type === 'pct') {
     if (!(input.off >= 1 && input.off <= 90)) e.off = 'Enter a percentage between 1 and 90';
-    if (input.max_discount != null && input.max_discount < 1) {
-      e.max_discount = 'Cap must be at least ₹1, or leave blank';
-    } else if (input.max_discount == null && input.off > MAX_UNCAPPED_PCT) {
-      // An uncapped percentage is unbounded spend: a live 90%-off platform code
-      // with no cap would take 90% off a ₹50,000 bag. Small percentages stay
-      // cap-optional so routine "10% off" codes are still one field.
-      e.max_discount = `Set a maximum discount — anything over ${MAX_UNCAPPED_PCT}% must be capped`;
-    }
   } else if (input.type === 'flat') {
     if (!(input.off >= 1)) e.off = 'Enter an amount of at least ₹1';
     // "₹200 off, orders over ₹1" cannot pay out what it advertises: the discount

@@ -1,6 +1,5 @@
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon } from './_pricing.js';
-import { loadTerms } from './_settings.js';
+import { computeCartPricing, loadCoupon, loadShopTerms } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { activeAccount, clientFor, configuredAccounts } from './_razorpay.js';
 
@@ -166,8 +165,10 @@ export default async function handler(req, res) {
   // The coupon (if any) is re-fetched and applied here so the Razorpay order is
   // opened for the exact discounted amount place-order will re-verify.
   const coupon = await loadCoupon(supabase, couponCode);
-  const terms = await loadTerms(supabase);
-  const paise = computeCartPricing(priced.groupTotals, coupon, 0, terms).totalPaise;
+  // Delivery is each boutique's own charge (migration 0076), so the terms come
+  // from the shops in the bag rather than from platform settings.
+  const shops = await loadShopTerms(supabase, Object.keys(priced.groupTotals));
+  const paise = computeCartPricing(priced.groupTotals, coupon, false, shops).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   //

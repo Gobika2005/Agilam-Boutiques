@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
-import { loadCodSwitch, loadTerms } from './_settings.js';
+import { computeCartPricing, loadCoupon, loadShopTerms, redeemCoupon } from './_pricing.js';
+import { loadCodSwitch } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
 import { sendEmail, layout, rowsTable, inr, esc, appUrl, isValidEmail } from './_email.js';
@@ -423,10 +423,11 @@ export default async function handler(req, res) {
     // only its own boutique's slice, a platform coupon the whole cart.
     const groupTotals = Object.fromEntries([...groups.values()].map((g) => [g.boutique_id, g.total]));
     const coupon = await loadCoupon(supabase, couponCode);
-    // Admin-editable commercial terms. Read once per request so every total
-    // below (COD cap, fees, the paise the payment is checked against) is priced
-    // from one consistent snapshot even if an admin saves mid-checkout.
-    const terms = await loadTerms(supabase);
+    // Each boutique's own delivery and cash-handling terms (migration 0076).
+    // Read once per request so every total below — the COD cap, the fees stored
+    // on each order, the paise the payment is checked against — is priced from
+    // one consistent snapshot even if a seller saves their settings mid-checkout.
+    const shops = await loadShopTerms(supabase, [...groups.keys()]);
 
     // ── Cash on Delivery ───────────────────────────────────────────────────
     // No payment to bind an amount against, so the checks are about whether
@@ -441,12 +442,18 @@ export default async function handler(req, res) {
         });
       }
 
-      const codTotals = computeCartPricing(groupTotals, coupon, groups.size, terms);
-
-      if (codTotals.total > terms.cod_max_order) {
-        return res.status(400).json({
-          error: `Cash on delivery is available on orders up to ₹${terms.cod_max_order.toLocaleString('en-IN')}. Please pay online for this order.`,
-        });
+      // The cap is now per boutique, because each shop sets its own and each
+      // collects its own cash — so it is measured against that shop's order,
+      // not the whole bag. Mirrors codBlockedReason() in src/lib/pricing.ts.
+      const codTotals = computeCartPricing(groupTotals, coupon, true, shops);
+      for (const [id, payable] of Object.entries(codTotals.perBoutiquePayable)) {
+        const cap = Number(shops[id]?.codMaxOrder) || 0;
+        if (cap > 0 && payable > cap) {
+          const who = shops[id]?.name || 'One of the boutiques in your bag';
+          return res.status(400).json({
+            error: `${who} accepts cash on delivery on orders up to ₹${cap.toLocaleString('en-IN')}. Please pay online for this order.`,
+          });
+        }
       }
 
       // A seller who switched COD off in their store settings must never have a
@@ -512,7 +519,7 @@ export default async function handler(req, res) {
       if (!razorpay) {
         return res.status(500).json({ error: 'Payment verification is not configured' });
       }
-      const expectedPaise = computeCartPricing(groupTotals, coupon, 0, terms).totalPaise;
+      const expectedPaise = computeCartPricing(groupTotals, coupon, false, shops).totalPaise;
 
       let rzPayment;
       try {
@@ -612,12 +619,12 @@ export default async function handler(req, res) {
       channel: 'online',
     };
 
-    // Delivery is a single cart-level charge, so it is recorded against the
-    // first order of the checkout. Summed across the orders this request
-    // creates, total + shipping_fee + cod_fee equals exactly what the buyer was
-    // quoted — which is what lets a seller collect the right cash at the door.
-    const cartTotals = computeCartPricing(groupTotals, coupon, isCod ? groups.size : 0, terms);
-    let shippingToAssign = cartTotals.shipFee;
+    // Delivery is each boutique's own charge now, so every order carries its own
+    // — no more assigning the whole cart's delivery to the first order of the
+    // checkout. Summed across the orders this request creates, total +
+    // shipping_fee + cod_fee still equals exactly what the buyer was quoted,
+    // which is what lets a seller collect the right cash at the door.
+    const cartTotals = computeCartPricing(groupTotals, coupon, isCod, shops);
 
     // Claim the redemption before writing the orders. Done here — after pricing,
     // before the rows exist — so a code that ran out between the buyer loading
@@ -652,8 +659,7 @@ export default async function handler(req, res) {
     const created = [];
     try {
       for (const g of groups.values()) {
-        const shippingForThisOrder = shippingToAssign;
-        shippingToAssign = 0;
+        const shippingForThisOrder = cartTotals.perBoutiqueShipFee[g.boutique_id] ?? 0;
         // A seller coupon is funded by that seller: its discount is netted off
         // this boutique's goods total here, so the existing payout math (0025)
         // settles — and takes commission on — the discounted amount unchanged. A
@@ -677,9 +683,10 @@ export default async function handler(req, res) {
             discount: orderDiscount,
             platform_discount: platformDiscount,
             status: 'pending',
-            // One handling fee per delivery, stored on the order it belongs to
-            // so the seller knows the exact cash to collect at that door.
-            cod_fee: isCod ? terms.cod_fee : 0,
+            // One handling fee per delivery — this boutique's own — stored on
+            // the order it belongs to so the seller knows the exact cash to
+            // collect at that door.
+            cod_fee: cartTotals.perBoutiqueCodFee[g.boutique_id] ?? 0,
             // Which code paid for this, so redemptions are auditable (0049).
             coupon_code: couponApplied,
             shipping_fee: shippingForThisOrder,

@@ -43,30 +43,57 @@ const BASE_COLUMNS = [
  */
 const COUNTER_COLUMNS = 'units_sold, orders_count';
 
-export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}`;
+/**
+ * The seller's own delivery/COD terms and map pin (migration 0076), in their own
+ * optional group for the same reason as the counters above.
+ *
+ * If they are missing the storefront still works: `shopTerms` in
+ * src/state/ShopContext.tsx falls back to charging `delivery_charge` with no
+ * free-delivery threshold and no COD fee — and api/_pricing.js falls back
+ * identically, which is what keeps the client and server totals in step on a
+ * deployment where 0076 has not been applied yet. A mismatch there would reject
+ * legitimate checkouts as underpaid.
+ */
+const TERMS_COLUMNS = 'latitude, longitude, free_delivery_over, cod_fee, cod_max_order';
+
+export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_COLUMNS}`;
 
 /**
- * Runs a boutique query with the counter columns, falling back to the base
- * column list once per session if the database does not have them yet. The
- * counters only feed ranking, so their absence should cost a slightly duller
- * "Best-selling boutiques" order — never an empty shop.
+ * Runs a boutique query with the optional column groups, dropping one group at a
+ * time if the database does not have it yet — because naming a column that does
+ * not exist fails the WHOLE query, and neither group is worth an empty shop.
+ * Each decision is remembered for the session, so the fallback costs one extra
+ * round trip in total rather than one per query.
  */
 let countersAvailable = true;
+let termsAvailable = true;
+
+function columnList(): string {
+  return [BASE_COLUMNS, countersAvailable ? COUNTER_COLUMNS : '', termsAvailable ? TERMS_COLUMNS : '']
+    .filter(Boolean)
+    .join(', ');
+}
 
 async function selectBoutiques<T>(
   run: (columns: string) => PromiseLike<{ data: T; error: { message?: string; code?: string } | null }>,
 ): Promise<T> {
-  if (countersAvailable) {
-    const { data, error } = await run(BOUTIQUE_COLUMNS);
+  for (;;) {
+    const { data, error } = await run(columnList());
     if (!error) return data;
     // 42703 = undefined_column, 42501 = insufficient_privilege (column not granted).
     if (error.code !== '42703' && error.code !== '42501') throw error;
-    countersAvailable = false;
-    console.warn('[boutiques] sales counters unavailable — apply migration 0023. Ranking will use ratings only.');
+    // Drop the newest group first — it is the likelier one to be missing, and
+    // dropping it may be enough on its own.
+    if (termsAvailable) {
+      termsAvailable = false;
+      console.warn('[boutiques] seller delivery terms unavailable — apply migration 0076. Delivery will be charged at each shop’s delivery_charge with no COD fee.');
+    } else if (countersAvailable) {
+      countersAvailable = false;
+      console.warn('[boutiques] sales counters unavailable — apply migration 0023. Ranking will use ratings only.');
+    } else {
+      throw error;
+    }
   }
-  const { data, error } = await run(BASE_COLUMNS);
-  if (error) throw error;
-  return data;
 }
 
 /**
@@ -219,6 +246,8 @@ export type BoutiquePatch = Partial<{
   state: string;
   pincode: string;
   map_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
   category: string;
   gst_number: string | null;
   business_reg_number: string | null;
@@ -230,7 +259,10 @@ export type BoutiquePatch = Partial<{
   delivery_available: boolean;
   delivery_areas: string;
   delivery_charge: number;
+  free_delivery_over: number;
   cod_enabled: boolean;
+  cod_fee: number;
+  cod_max_order: number;
   online_payment_enabled: boolean;
   bank_account_name: string | null;
   bank_account_number: string | null;

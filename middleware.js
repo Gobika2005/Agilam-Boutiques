@@ -175,20 +175,30 @@ async function dbTry(path) {
 }
 
 /**
- * Did the server reject this query because it named a column that isn't there?
+ * Did the server reject this query because of a column it names?
  *
- * PostgREST answers an unknown column with 400 (SQLSTATE 42703). Everything
- * else that makes a query fail — the 1500 ms abort above, a network blip, a 5xx
- * from Supabase — is transient and says nothing about the schema.
+ * Two ways that happens, and the fallbacks below have to key on both:
+ *   · 400 (SQLSTATE 42703) — the column does not exist. A deployment running
+ *     ahead of its migrations.
+ *   · 401/403 (SQLSTATE 42501) — the column exists but this role may not read
+ *     it. A migration revoked the grant; 0021 and 0073 both did exactly this.
  *
+ * Only 400 was recognised, so when 0073 took `phone` away from anon the ladder
+ * saw a plain failure, declined to downgrade, and every boutique page went
+ * blank until someone fetched one by hand. Both answers are deterministic —
+ * re-running the identical query cannot change either — which is also why
+ * `dbTryTwice` must not waste its retry on them.
+ *
+ * Everything else that makes a query fail — the 1500 ms abort above, a network
+ * blip, a 5xx from Supabase — is transient and says nothing about the columns.
  * The distinction matters because the two column fallbacks are sticky: they
  * remember the downgrade for the life of the edge instance. Treating "the
  * sitemap's 2000-row read timed out" as "this deployment predates migration
  * 0021" retired the rich columns permanently, and every shop page served by
  * that instance afterwards silently lost its address, hours and Instagram link.
  */
-function isSchemaRejection(attempt) {
-  return attempt.status === 400;
+function isColumnRejection(attempt) {
+  return attempt.status === 400 || attempt.status === 401 || attempt.status === 403;
 }
 
 /**
@@ -203,7 +213,7 @@ function isSchemaRejection(attempt) {
  */
 async function dbTryTwice(path) {
   const attempt = await dbTry(path);
-  if (attempt.ok || isSchemaRejection(attempt)) return attempt;
+  if (attempt.ok || isColumnRejection(attempt)) return attempt;
   return dbTry(path);
 }
 
@@ -234,11 +244,22 @@ const PRODUCT_COLUMNS = "id,slug,boutique_id,title,description,price,mrp,stock,c
  * a deployment where 0021 has not been applied, naming a column PostgREST does
  * not know fails the WHOLE query and would blank every shop page rather than
  * just dropping a field.
+ *
+ * ── `phone` and `whatsapp` are NOT here, and must never come back ────────
+ * Migration 0073 revoked `select (email, phone, whatsapp)` on `boutiques` from
+ * anon — scrapers were harvesting the seller contact book with a single REST
+ * call. Both lists still named `phone`, and PostgREST answers a revoked column
+ * by refusing the WHOLE query (401, SQLSTATE 42501), so from the moment 0073
+ * was applied every boutique read at the edge returned nothing: all nine shop
+ * pages and all six city landings served a bare shell with no title, and
+ * `sitemap-boutiques.xml` went out empty. src/data/boutiques.ts already moved
+ * these three to the `boutique_private()` RPC; the edge has no session to call
+ * it with, and a public shop page has no business printing the number anyway.
  */
 // The lean list: everything the sitemap and a link preview need. It doubles as
 // the fallback for a database where 0021's column grant has not been applied.
-const BOUTIQUE_COLUMNS_CORE = "id,name,slug,city,area,description,logo_url,cover_url,phone,rating,reviews_count,created_at";
-const BOUTIQUE_COLUMNS = `${BOUTIQUE_COLUMNS_CORE},instagram,whatsapp,established_year,address_line,district,state,pincode,open_time,close_time,working_days,delivery_areas,category`;
+const BOUTIQUE_COLUMNS_CORE = "id,name,slug,city,area,description,logo_url,cover_url,rating,reviews_count,created_at";
+const BOUTIQUE_COLUMNS = `${BOUTIQUE_COLUMNS_CORE},instagram,established_year,address_line,district,state,pincode,open_time,close_time,working_days,delivery_areas,category`;
 let boutiqueColumnsAvailable = true;
 
 /** `dbProductsTry`, for boutiques. Retries once on the pre-0021 column list. */
@@ -246,8 +267,8 @@ async function dbBoutiquesTry(build) {
   if (boutiqueColumnsAvailable) {
     const attempt = await dbTryTwice(build(BOUTIQUE_COLUMNS));
     // Succeeded, or failed for a reason that has nothing to do with the schema
-    // (see `isSchemaRejection`) — either way, do not downgrade.
-    if (attempt.ok || !isSchemaRejection(attempt)) return attempt;
+    // (see `isColumnRejection`) — either way, do not downgrade.
+    if (attempt.ok || !isColumnRejection(attempt)) return attempt;
     const legacy = await dbTry(build(BOUTIQUE_COLUMNS_CORE));
     if (legacy.ok) boutiqueColumnsAvailable = false;
     return legacy;
@@ -488,8 +509,8 @@ async function dbProductsTry(build) {
     // Succeeded — including a legitimate zero-row answer. Nothing to retry.
     // A timeout or a 5xx is not retried either: it is not evidence about the
     // schema, and acting on it would strip `slug` from every URL this instance
-    // builds from then on (see `isSchemaRejection`).
-    if (attempt.ok || !isSchemaRejection(attempt)) return attempt;
+    // builds from then on (see `isColumnRejection`).
+    if (attempt.ok || !isColumnRejection(attempt)) return attempt;
     // Rejected with 400 — "column products.slug does not exist", i.e. 0057 is
     // not applied. Drop to the legacy list and remember, so this costs one
     // extra round trip per cold edge instance rather than one per request.
@@ -831,7 +852,9 @@ async function metaForBoutique(slug, origin) {
           image: [b.cover_url, b.logo_url].filter(Boolean).length ? [b.cover_url, b.logo_url].filter(Boolean) : void 0,
           logo: b.logo_url || void 0,
           description: b.description?.trim() || `${b.name} is a verified boutique in ${locality || city}.`,
-          telephone: b.phone || void 0,
+          // No `telephone`: 0073 made the shop's number private (see
+          // BOUTIQUE_COLUMNS). The platform support line is not this shop's
+          // number and must not be substituted here.
           sameAs: boutiqueSameAs(b),
           foundingDate: b.established_year ? String(b.established_year) : void 0,
           address: {
@@ -1253,7 +1276,11 @@ function hubNav(origin, self) {
     ["/boutiques", "All boutiques"],
     ["/new-arrivals", "New arrivals"],
     ["/best-sellers", "Best sellers"],
-    ["/top-boutiques", "Top boutiques"]
+    ["/top-boutiques", "Top boutiques"],
+    // /inspire was in the sitemap and in no crawlable link anywhere, which is
+    // the definition of an orphan: Google will take the URL and then discount
+    // and rarely recrawl it. Every other hub carries it now.
+    ["/inspire", "Inspire feed"]
   ]
     .filter(([path]) => path !== self)
     .map(([path, label]) => `<a href="${origin}${path}">${label}</a>`)
