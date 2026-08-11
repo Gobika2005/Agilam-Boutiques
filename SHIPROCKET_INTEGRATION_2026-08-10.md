@@ -125,7 +125,7 @@ lose the argument in.
 |---|---|
 | `supabase/functions/_shared/shiprocket.ts` | Token cache (240 h — their login is rate-limited), API wrapper, pincode→state, status→stage mapping |
 | `supabase/functions/shiprocket-book/index.ts` | Verifies the seller's JWT, refuses COD/duplicates, creates order → assigns AWB → label → pickup, writes the shipment, ships the order |
-| `supabase/functions/shiprocket-webhook/index.ts` | Constant-time `x-api-key` check, normalises the scan, forwards to `apply_shipment_scan()` |
+| `supabase/functions/tracking/index.ts` | Constant-time `x-api-key` check, normalises the scan, forwards to `apply_shipment_scan()`. **The folder name is the URL** — renamed from `shiprocket-webhook`, so the endpoint is `/functions/v1/tracking` |
 
 ### App
 
@@ -168,12 +168,12 @@ lose the argument in.
 4. **Deploy the functions:**
    ```bash
    supabase functions deploy shiprocket-book
-   supabase functions deploy shiprocket-webhook --no-verify-jwt
+   supabase functions deploy tracking --no-verify-jwt
    ```
    `--no-verify-jwt` on the webhook is required — Shiprocket sends no Supabase JWT. It is
    protected by the `x-api-key` shared secret instead.
 5. **Configure the webhook** in the Shiprocket panel to
-   `https://<project>.supabase.co/functions/v1/shiprocket-webhook`, with the `x-api-key` header
+   `https://<project>.supabase.co/functions/v1/tracking`, with the `x-api-key` header
    set to the same `SHIPROCKET_WEBHOOK_TOKEN`.
 6. **Register a pickup location per boutique** in the Shiprocket panel using each shop's own
    address, then paste the nickname into **Admin → Deliveries → Shiprocket** and tick "Let this
