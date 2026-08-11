@@ -221,6 +221,16 @@ function subscribe(fn: () => void): () => void {
   return () => { listeners.delete(fn); };
 }
 
+/**
+ * Subscribe to settings changes from outside this module.
+ *
+ * Exported for `src/data/policies.ts`, which builds the buyer-facing legal copy
+ * from these same values and needs its own `useSyncExternalStore` over them.
+ * Importing `useSettings` there instead would be circular — settings.ts already
+ * imports the copy-only terms from company.ts, which policies.ts also uses.
+ */
+export const subscribeSettings = subscribe;
+
 /** Re-renders the component when the platform settings land or change. */
 export function useSettings(): PlatformSettings {
   return useSyncExternalStore(subscribe, currentSettings, currentSettings);

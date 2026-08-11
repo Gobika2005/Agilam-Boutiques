@@ -88,7 +88,16 @@ export interface BoutiqueRow {
   tone: number;
   cover_url: string | null;
   logo_url: string | null;
-  phone: string | null;
+  /**
+   * Contact details — present ONLY on a boutique the caller owns (or an admin
+   * read). Migration 0073 revoked these three columns from anon/authenticated
+   * because they made every seller's mobile number and email bulk-readable with
+   * the public anon key; `fetchMyBoutique` merges them back in from
+   * `boutique_private()`. Optional rather than nullable on purpose: on a
+   * buyer-facing read they are genuinely ABSENT, not null, and the type should
+   * say so rather than let a component render `undefined`.
+   */
+  phone?: string | null;
   instagram: string | null;
   established_year: number | null;
   verified: boolean;
@@ -106,8 +115,8 @@ export interface BoutiqueRow {
   // Step 1 — boutique information
   owner_name: string;
   // Step 2 — contact
-  whatsapp: string | null;
-  email: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
   // Step 3 — shop address
   address_line: string;
   district: string;
@@ -149,6 +158,14 @@ export interface BoutiquePrivate {
   /** Penny-drop state of the payout account (migration 0027). */
   payout_verification_status?: 'unverified' | 'pending' | 'verified' | 'failed' | null;
   payout_verification_note?: string | null;
+  /**
+   * Shop contact details (migration 0073). These used to be on the public
+   * column grant, which made every seller's mobile number and email
+   * bulk-readable with the anon key; they are owner-or-admin only now.
+   */
+  email?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface OrderWithDetails {

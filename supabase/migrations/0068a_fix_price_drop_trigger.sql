@@ -1,3 +1,10 @@
+-- ⚠ NUMBERING: this file and its sibling both shipped as `0068_`. Two
+-- migrations sharing a number is how one silently gets skipped when they are
+-- applied by hand in filename order, so they were split into `0068a` (this
+-- file) and `0068b_pickup_autoregister.sql`. Apply a before b. Both are
+-- idempotent, and both were already applied in production before the rename —
+-- re-running either is a no-op.
+--
 -- Repair the wishlist price-drop notification trigger.
 --
 -- 0044 added `notify_wishlist_price_drop()`, an AFTER UPDATE OF price trigger on

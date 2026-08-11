@@ -27,9 +27,11 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0071`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0074`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
+   (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
+   before b. Both are idempotent.)
 2. **Pricing is mirrored and must stay in step.** `src/lib/pricing.ts` (client) and
    `api/_pricing.js` (server) derive the same numbers, and `api/place-order.js`
    asserts the Razorpay payment matches to the paise. Change both together or

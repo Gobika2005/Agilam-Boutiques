@@ -13,7 +13,7 @@ import { EnvBadge } from '@/components/layout/EnvBadge';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
 import { Home } from '@/pages/buyer/Home';
-import { POLICIES } from '@/data/policies';
+import { POLICY_SLUGS } from '@/data/policies';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -294,8 +294,8 @@ export default function App() {
             `/privacy-policy`. Registered one route per known slug
             rather than as a `/:slug` catch-all, so an unknown path still
             reaches the 404 below instead of rendering an empty policy shell. */}
-        {POLICIES.map((p) => (
-          <Route key={p.slug} path={p.slug} element={<Policy />} />
+        {POLICY_SLUGS.map((slug) => (
+          <Route key={slug} path={slug} element={<Policy />} />
         ))}
 
         {/* A real 404. Every unknown URL used to soft-redirect to the splash,

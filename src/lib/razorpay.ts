@@ -111,7 +111,10 @@ export async function payWithRazorpay({
   // The endpoint can return HTML (e.g. an SPA fallback when /api isn't served),
   // so parse defensively rather than assuming JSON.
   const raw = await orderRes.text();
-  let order: { order_id?: string; amount?: number; currency?: string; key_id?: string; error?: string } = {};
+  let order: {
+    order_id?: string; amount?: number; currency?: string; key_id?: string;
+    error?: string; couponApplied?: boolean;
+  } = {};
   try {
     order = raw ? JSON.parse(raw) : {};
   } catch {
@@ -123,6 +126,27 @@ export async function payWithRazorpay({
     throw new Error(
       order.error ||
         `Could not start the payment (HTTP ${orderRes.status}). Make sure the /api routes are running.`,
+    );
+  }
+
+  /**
+   * Stop if the coupon the buyer applied did not survive the server's re-check.
+   *
+   * A code can be exhausted, expired or deactivated between the moment it was
+   * applied to the bag and the moment Pay is tapped, and the redemption cap in
+   * particular is invisible to the browser by design (`usage_limit` and
+   * `used_count` are withheld from the buyer's coupon columns). The server
+   * silently priced the order without it, so the modal would have opened for
+   * MORE than the total the buyer had just agreed to — money taken on terms
+   * they never saw.
+   *
+   * Aborting before the modal opens is the honest outcome: nothing is charged,
+   * and the bag can be re-priced with the coupon removed.
+   */
+  if (couponCode && order.couponApplied === false) {
+    throw new Error(
+      `The code ${couponCode.trim().toUpperCase()} is no longer available — it may have expired or been fully claimed. ` +
+        'Remove it from your bag to see the current total.',
     );
   }
 

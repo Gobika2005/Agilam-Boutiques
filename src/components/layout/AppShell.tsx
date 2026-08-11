@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { SellModal } from '@/components/SellModal';
 import { GlobalSearch } from '@/components/buyer/GlobalSearch';
 import { initialsFrom, resolveDisplayName } from '@/lib/displayName';
+import { RouteErrorBoundary } from './RouteErrorBoundary';
 
 /**
  * Premium header profile button — shows the user's initials in a gradient
@@ -241,9 +242,22 @@ export function AppShell({
             fallback reserves a screenful so the dock does not jump up to meet a
             momentarily empty <main>.
           */}
-          <Suspense fallback={<RouteFallback />}>
-            <Outlet />
-          </Suspense>
+          {/*
+            The shell survives a page that throws. Both the buyer storefront and
+            the seller console render through here, so this one boundary covers
+            both — previously only the admin console had one, and an uncaught
+            render error on a buyer route took down the whole tree, header, dock
+            and all, on the surface that takes money.
+
+            Keyed on the pathname because React never resets a boundary on its
+            own: without the key, one crash would pin the error card over every
+            route the buyer navigated to afterwards.
+          */}
+          <RouteErrorBoundary key={pathname} surface="Page">
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
         </main>
 
         {/* A real navigation landmark: screen readers can jump straight to the

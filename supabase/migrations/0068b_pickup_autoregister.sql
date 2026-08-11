@@ -1,3 +1,8 @@
+-- ⚠ NUMBERING: this file and its sibling both shipped as `0068_`. See
+-- `0068a_fix_price_drop_trigger.sql`. Apply 0068a before this one. Both are
+-- idempotent, and both were already applied in production before the rename —
+-- re-running either is a no-op.
+--
 -- Register a shop's pickup address with Shiprocket automatically on approval.
 --
 -- 0067 stored `shiprocket_pickup_location` but expected an admin to create the

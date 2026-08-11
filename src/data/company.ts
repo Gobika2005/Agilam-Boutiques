@@ -98,9 +98,26 @@ export const CONTACT_LINKS = {
 };
 
 /**
- * Commercial terms the buyer-facing screens and the policy pages both quote.
- * Keep these aligned with `src/lib/pricing.ts` and `api/_pricing.js` — the
- * policy pages state them as the promise, the pricing module enforces it.
+ * Commercial terms.
+ *
+ * ⚠ These are NO LONGER what the policy pages quote. The five admin-editable
+ * ones — `freeDeliveryOver`, `standardShipping`, `returnWindowDays`, `codFee`,
+ * `codMaxOrder`, `commissionPct` — are now read from the live
+ * `platform_settings` row by both `src/lib/pricing.ts` (what the buyer is
+ * charged) and `src/data/policies.ts` (what the buyer is promised), so the two
+ * cannot drift apart again. Keeping them in step by hand is what failed: the
+ * Delivery Policy advertised a ₹79 fee while checkout took ₹89.
+ *
+ * What remains live here is their role as the compile-time FALLBACK, via
+ * `DEFAULT_SETTINGS` in src/data/settings.ts — the values in force for the
+ * instant before the settings row loads, and on a deployment where migration
+ * 0048 has not been applied. Keep them plausible, but the database is the
+ * authority.
+ *
+ * The copy-only terms below them (`refundWorkingDays`, `deliveryEstimate`,
+ * `metroDeliveryEstimate`, `cancellationWindowHours`) have no settings column
+ * and no pricing consequence — they are service promises, and this is still
+ * the one place they are written.
  */
 export const POLICY_TERMS = {
   freeDeliveryOver: 2000,

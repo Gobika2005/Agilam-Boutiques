@@ -817,6 +817,22 @@ export interface Database {
         Args: { p_order_id: string };
         Returns: void;
       };
+      /**
+       * Raise a return on a delivered order (migration 0074). SECURITY DEFINER:
+       * it re-derives the boutique from the order, checks the caller owns it,
+       * and applies the return window server-side — a fault reason bypasses the
+       * window, a goodwill reason does not. Returns the new request's id, or
+       * raises with a message written to be shown to the buyer verbatim.
+       */
+      request_return: {
+        Args: { p_order_id: string; p_reason: string; p_note?: string; p_photos?: string[] };
+        Returns: string;
+      };
+      /** Seller/admin answer to a return request (migration 0074). */
+      resolve_return_request: {
+        Args: { p_request_id: string; p_status: string; p_note?: string | null };
+        Returns: void;
+      };
       settle_boutique_payout: {
         Args: { p_boutique_id: string; p_note?: string | null };
         Returns: {

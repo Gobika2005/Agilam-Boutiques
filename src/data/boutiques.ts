@@ -10,13 +10,21 @@ import type { BoutiqueRow, BoutiquePrivate, BoutiqueStatus } from './types';
  * cannot be read off the public API. A bare `select('*')` now fails with a
  * permission error — always select this list, and add any new column to the
  * grant in 0021 first.
+ *
+ * `email`, `phone` and `whatsapp` are NOT here. They were, because this one list
+ * served both the storefront and the seller reading its own shop — which meant
+ * every seller's mobile number and email were readable in bulk by anyone with
+ * the anon key, and that key ships in the browser bundle. Migration 0073 revoked
+ * all three and moved them behind `boutique_private()`; naming any of them in a
+ * query here now fails with a permission error, which is the point. Owner and
+ * admin surfaces get them through `fetchBoutiquePrivate()`.
  */
 const BASE_COLUMNS = [
   'id', 'owner_id', 'name', 'slug', 'city', 'area', 'description', 'tone',
-  'cover_url', 'logo_url', 'phone', 'instagram', 'established_year',
+  'cover_url', 'logo_url', 'instagram', 'established_year',
   'verified', 'status', 'featured', 'rating', 'reviews_count',
   'followers_count', 'positive_rating', 'created_at',
-  'owner_name', 'whatsapp', 'email',
+  'owner_name',
   'address_line', 'district', 'state', 'pincode', 'map_url',
   'category', 'years_in_business',
   'open_time', 'close_time', 'working_days',
@@ -104,10 +112,40 @@ export function subscribeToBoutiqueFollowers(id: string, onChange: (count: numbe
   };
 }
 
+/**
+ * The signed-in seller's own shop, contact details included.
+ *
+ * Two reads, because migration 0073 moved `email`/`phone`/`whatsapp` out of the
+ * public column grant: the base row, then `boutique_private()` for the columns
+ * only the owner (or an admin) may see. Merged here rather than at each screen
+ * so Settings, the profile editor, Billing and the order detail all keep
+ * reading `boutique.phone` exactly as they did.
+ *
+ * The private read is best-effort. If it fails — most likely because 0073 has
+ * not been applied yet, in which case the columns are still on the base row
+ * anyway — the seller gets their shop with blank contact fields instead of an
+ * error page.
+ */
 export async function fetchMyBoutique(ownerId: string): Promise<BoutiqueRow | null> {
   const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('owner_id', ownerId).maybeSingle();
   if (error) throw error;
-  return data as unknown as BoutiqueRow | null;
+  const row = data as unknown as BoutiqueRow | null;
+  if (!row) return null;
+  return { ...row, ...(await contactFields(row.id)) };
+}
+
+/**
+ * Owner-or-admin contact details for one shop, or blanks. Never throws: these
+ * are display fields, and losing them should not take a console screen down.
+ */
+async function contactFields(boutiqueId: string): Promise<Pick<BoutiqueRow, 'email' | 'phone' | 'whatsapp'>> {
+  try {
+    const priv = await fetchBoutiquePrivate(boutiqueId);
+    return { email: priv?.email ?? null, phone: priv?.phone ?? null, whatsapp: priv?.whatsapp ?? null };
+  } catch (e) {
+    console.warn('[boutiques] contact details unavailable — apply migration 0073.', e);
+    return { email: null, phone: null, whatsapp: null };
+  }
 }
 
 /**

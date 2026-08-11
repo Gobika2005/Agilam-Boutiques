@@ -11,6 +11,8 @@ import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
 import { deliveryEstimate, formatOrderDateTime, isFailedShipment, trackStage } from '@/lib/orderHistory';
 import { useOrderFeedback } from '@/hooks/useOrderFeedback';
 import { OrderFeedbackSheet } from '@/components/buyer/OrderFeedbackSheet';
+import { ReturnRequestSheet } from '@/components/buyer/ReturnRequestSheet';
+import { fetchReturnForOrder, RETURN_REASON_LABEL, RETURN_STATUS_LABEL } from '@/data/returns';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /**
@@ -52,6 +54,16 @@ export function TrackOrder() {
   const [showAllScans, setShowAllScans] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const feedback = useOrderFeedback(orders);
+
+  // The return on this order, if one has been raised (migration 0074).
+  // `returnBump` re-reads it after the sheet submits, so the card flips from
+  // "Request a return" to "Awaiting the boutique" without a reload.
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnBump, setReturnBump] = useState(0);
+  const { data: returnReq } = useAsync(
+    () => (order?.rowId ? fetchReturnForOrder(order.rowId) : Promise.resolve(null)),
+    [order?.rowId, returnBump],
+  );
 
   if (!order) {
     return (
@@ -265,6 +277,36 @@ export function TrackOrder() {
             >
               Rate
             </button>
+          </div>
+        )}
+
+        {/* ---------- Returns (migration 0074) ---------- */}
+        {/* Below "How was it?" and above "not received": a return is the least
+            likely of the three outcomes, and leading with it would suggest we
+            expect something to be wrong. */}
+        {delivered && order.rowId && (
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:18px;align-items:center;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted);font-size:22px;flex:none;")}>autorenew</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-size:13.5px;font-weight:800;')}>
+                {returnReq ? RETURN_STATUS_LABEL[returnReq.status] : 'Something wrong with it?'}
+              </div>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.5;margin-top:2px;')}>
+                {returnReq
+                  ? returnReq.seller_note
+                    ? `${RETURN_REASON_LABEL[returnReq.reason]} — ${returnReq.seller_note}`
+                    : `${RETURN_REASON_LABEL[returnReq.reason]} · raised ${formatOrderDateTime(returnReq.created_at)}`
+                  : 'Damaged, faulty or not what you ordered? Ask the boutique for a return.'}
+              </div>
+            </div>
+            {!returnReq && (
+              <button
+                onClick={() => setReturnOpen(true)}
+                style={css('flex:none;height:40px;padding:0 16px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+              >
+                Return
+              </button>
+            )}
           </div>
         )}
 
@@ -547,6 +589,18 @@ export function TrackOrder() {
             setFeedbackOpen(false);
             feedback.suppress(order.rowId ?? '');
             if (submitted) feedback.reload();
+          }}
+        />
+      )}
+
+      {returnOpen && order.rowId && (
+        <ReturnRequestSheet
+          orderId={order.rowId}
+          orderNumber={order.id}
+          onClose={() => setReturnOpen(false)}
+          onDone={() => {
+            setReturnOpen(false);
+            setReturnBump((n) => n + 1);
           }}
         />
       )}

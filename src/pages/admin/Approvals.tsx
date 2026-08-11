@@ -188,10 +188,14 @@ function ReviewDrawer({
     },
     {
       title: 'Contact',
+      // From `priv`, not the row: migration 0073 moved these three off the
+      // public column grant (they were readable in bulk with the anon key) and
+      // behind `boutique_private()`, which is the same call this panel already
+      // makes for the GST and payout details below.
       rows: [
-        ['Mobile', dash(boutique.phone)],
-        ['WhatsApp', dash(boutique.whatsapp)],
-        ['Email', dash(boutique.email)],
+        ['Mobile', dash(priv?.phone)],
+        ['WhatsApp', dash(priv?.whatsapp)],
+        ['Email', dash(priv?.email)],
         ['Instagram', boutique.instagram ? `@${boutique.instagram}` : '—'],
       ],
     },

@@ -19,10 +19,13 @@ import { FullscreenLoader } from './RequireRole';
 /**
  * Is this a real, signed-in account?
  *
- * A Supabase *anonymous* session is not one. Opening a chat calls
- * `ensureBuyerIdentity()`, which signs the browser in anonymously — so a plain
- * `!!session` is true for a buyer who has never entered a credential. Every
- * gate therefore asks this instead of testing the session for existence.
+ * A Supabase *anonymous* session is not one, and this asks for both. The
+ * project now has anonymous sign-ins disabled and `ensureBuyerIdentity()` no
+ * longer mints them, so in practice `!!session` and this agree today — but the
+ * check is kept deliberately, because it is one dashboard toggle away from
+ * mattering again, and an anonymous session reaching checkout is exactly the
+ * failure migration 0069 exists to prevent. Prefer this over `!!session`
+ * everywhere.
  */
 export function isSignedIn(session: Session | null): boolean {
   return !!session && !session.user.is_anonymous;

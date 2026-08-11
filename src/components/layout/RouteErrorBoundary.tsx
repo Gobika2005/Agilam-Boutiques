@@ -3,10 +3,23 @@ import { css } from '@/lib/css';
 
 /**
  * Catches render/runtime errors in a routed page so one broken screen shows a
- * recoverable message instead of blanking the whole console. Without this, an
+ * recoverable message instead of blanking the whole app. Without this, an
  * uncaught error unmounts the entire React tree — a white page with no clue.
+ *
+ * Mounted in `AdminLayout` and in `AppShell`, which is the shell both the buyer
+ * storefront and the seller console render through — so all three consoles are
+ * covered. It used to guard only the admin console, which left an uncaught
+ * render error on the storefront white-screening the one surface that takes
+ * money.
+ *
+ * IMPORTANT: React never clears a boundary by itself. Callers key this on the
+ * current pathname so navigating away from a broken screen recovers; without
+ * that key a single crash pins the error card over every subsequent route.
  */
-export class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+export class RouteErrorBoundary extends Component<
+  { children: ReactNode; surface?: string },
+  { error: Error | null }
+> {
   state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) {
@@ -14,7 +27,7 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { err
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Admin page crashed:', error, info);
+    console.error(`${this.props.surface ?? 'Page'} crashed:`, error, info);
   }
 
   render() {
@@ -28,7 +41,8 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { err
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin-top:14px;")}>This page hit an error</div>
         <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;line-height:1.5;')}>
-          The rest of the console still works. Try again, or reload — if it keeps happening, send this message across:
+          Everything else still works — the navigation below will take you anywhere else. Try again, or
+          reload; if it keeps happening, send this message across:
         </div>
         <pre style={css('margin-top:12px;background:var(--ag-bg);border:1px solid var(--ag-border);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--ag-crimson);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:180px;')}>
           {error.message || String(error)}

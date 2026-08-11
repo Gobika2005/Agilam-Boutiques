@@ -47,30 +47,57 @@ export function presenceId(): string {
   return sessionPresenceId;
 }
 
-/** Turn a route into a human-readable "what they're doing" label. */
+/**
+ * Turn a route into a human-readable "what they're doing" label.
+ *
+ * The matchers are the CURRENT routes as registered in src/App.tsx. Migration
+ * 0057 moved the storefront to root URLs and four of these were left behind,
+ * which made the admin's live roster actively wrong rather than merely vague:
+ *
+ *   • `p === '/'` was treated as the sign-in splash, so every shopper on the
+ *     home page — the single busiest route in the app — was reported as
+ *     "Signing in" and filed under the `auth` section.
+ *   • `/product/` (singular) never matched `/products/:slug`, so "Viewing a
+ *     product" was unreachable and PDP traffic showed as generic "Browsing".
+ *     Same for the legacy `/b/` boutique prefix, now `/boutique/:slug`.
+ *   • `/results` was the old grid path; it is `/shop` and `/search` now.
+ *   • `/home` no longer exists at all.
+ *
+ * Order matters: the specific paths are tested before the prefixes they sit
+ * under, and `/` is matched LAST of the buyer routes because every path starts
+ * with it.
+ */
 export function describePage(path: string): { page: string; section: PresenceSection } {
   const p = path.toLowerCase();
   if (p.startsWith('/admin')) return { page: 'Admin console', section: 'admin' };
   if (p.startsWith('/seller')) return { page: 'Seller console', section: 'seller' };
-  if (p.startsWith('/auth') || p === '/') return { page: 'Signing in', section: 'auth' };
+  if (p.startsWith('/auth')) return { page: 'Signing in', section: 'auth' };
 
   // Buyer surface — the public storefront.
-  if (p.includes('/product/') || p.startsWith('/b/')) return { page: 'Viewing a product', section: 'buyer' };
-  if (p.includes('/boutique')) return { page: 'Viewing a boutique', section: 'buyer' };
-  if (p.includes('/checkout')) return { page: 'At checkout', section: 'buyer' };
-  if (p.includes('/payment')) return { page: 'Paying', section: 'buyer' };
-  if (p.includes('/order-confirmation')) return { page: 'Order placed', section: 'buyer' };
-  if (p.includes('/orders')) return { page: 'Viewing orders', section: 'buyer' };
-  if (p.includes('/cart')) return { page: 'In their cart', section: 'buyer' };
-  if (p.includes('/wishlist')) return { page: 'Browsing wishlist', section: 'buyer' };
-  if (p.includes('/results') || p.includes('/filter') || p.includes('/sort')) return { page: 'Searching products', section: 'buyer' };
-  if (p.includes('/messages') || p.includes('/chat')) return { page: 'Chatting', section: 'buyer' };
-  if (p.includes('/inspire')) return { page: 'On the Inspire feed', section: 'buyer' };
-  if (p.includes('/collections') || p.includes('/new-arrivals') || p.includes('/best-sellers') || p.includes('/top-boutiques')) {
+  if (p.startsWith('/products/')) return { page: 'Viewing a product', section: 'buyer' };
+  // `/boutique/:slug` is one shop; `/boutiques` (and `/boutiques/:city`) is the
+  // directory. Both are "looking at shops", so one label covers them.
+  if (p.startsWith('/boutique')) return { page: 'Viewing a boutique', section: 'buyer' };
+  if (p.startsWith('/top-boutiques')) return { page: 'Viewing a boutique', section: 'buyer' };
+  if (p.startsWith('/checkout')) return { page: 'At checkout', section: 'buyer' };
+  if (p.startsWith('/payment')) return { page: 'Paying', section: 'buyer' };
+  if (p.startsWith('/order-confirmation')) return { page: 'Order placed', section: 'buyer' };
+  if (p.startsWith('/orders')) return { page: 'Viewing orders', section: 'buyer' };
+  if (p.startsWith('/cart')) return { page: 'In their cart', section: 'buyer' };
+  if (p.startsWith('/wishlist')) return { page: 'Browsing wishlist', section: 'buyer' };
+  // `/shop` covers `/shop/filter` and `/shop/sort` too.
+  if (p.startsWith('/shop') || p.startsWith('/search')) return { page: 'Searching products', section: 'buyer' };
+  if (p.startsWith('/messages') || p.startsWith('/chat')) return { page: 'Chatting', section: 'buyer' };
+  if (p.startsWith('/inspire')) return { page: 'On the Inspire feed', section: 'buyer' };
+  if (p.startsWith('/collections') || p.startsWith('/occasions') || p.startsWith('/fabrics')
+      || p.startsWith('/new-arrivals') || p.startsWith('/best-sellers')) {
     return { page: 'Exploring collections', section: 'buyer' };
   }
-  if (p.includes('/profile')) return { page: 'On their profile', section: 'buyer' };
-  if (p.includes('/home')) return { page: 'Browsing home', section: 'buyer' };
+  if (p.startsWith('/profile')) return { page: 'On their profile', section: 'buyer' };
+  if (p.startsWith('/notifications')) return { page: 'Reading notifications', section: 'buyer' };
+  if (p.startsWith('/coupons')) return { page: 'Looking at offers', section: 'buyer' };
+  // Last: the storefront home page, which is the root URL.
+  if (p === '/') return { page: 'Browsing home', section: 'buyer' };
   return { page: 'Browsing', section: 'buyer' };
 }
 

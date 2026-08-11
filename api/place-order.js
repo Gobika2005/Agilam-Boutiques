@@ -4,6 +4,7 @@ import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
 import { loadCodSwitch, loadTerms } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
+import { sendEmail, layout, rowsTable, inr, esc, appUrl, isValidEmail } from './_email.js';
 
 /**
  * Vercel serverless function: create the real order(s) for a checkout.
@@ -123,6 +124,113 @@ async function notifySellers(supabase, created, guestFields) {
   }
 }
 
+/**
+ * Email the buyer their confirmation, and each seller their new order.
+ *
+ * Until this existed the platform sent no transactional email whatsoever: a
+ * buyer who had just paid received nothing outside the app, and a seller only
+ * found out about an order if they happened to open the console. In-app
+ * notifications (notifySellers above, plus 0018's status triggers) are real but
+ * they are not a channel you can rely on reaching someone.
+ *
+ * Entirely best-effort, like everything else past the order write. Every send is
+ * awaited so failures land in the logs with a reason, but nothing here can fail
+ * the request — `sendEmail` never throws and the whole body is wrapped anyway.
+ *
+ * One email per boutique order rather than one per checkout: a bag spanning two
+ * shops becomes two orders that ship, track and can be cancelled separately, so
+ * one combined receipt would misrepresent what the buyer actually has.
+ */
+async function emailOrderPlaced(supabase, created, guestFields, buyerEmail, isCod) {
+  try {
+    // Seller addresses come from the service-role client, which bypasses the
+    // column grants migration 0073 put on `boutiques.email` — the whole reason
+    // those columns are safe to withhold from the browser.
+    const boutiqueIds = [...new Set(created.map((o) => o.boutique_id))];
+    const { data: boutiques } = await supabase
+      .from('boutiques')
+      .select('id, name, email')
+      .in('id', boutiqueIds);
+    const shopById = new Map((boutiques ?? []).map((b) => [b.id, b]));
+
+    const buyerName = guestFields.guest_name || 'there';
+    const payLine = isCod ? 'Cash on delivery' : 'Paid online';
+
+    for (const order of created) {
+      const shop = shopById.get(order.boutique_id);
+      // What the buyer actually hands over or was charged, for THIS order.
+      const payable =
+        order.total + (order.shipping_fee ?? 0) + (order.cod_fee ?? 0) - (order.platform_discount ?? 0);
+
+      const itemsHtml = order.lines
+        .map(
+          (l) =>
+            `<tr><td style="padding:8px 0;border-bottom:1px solid #EFDCE4;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#241019;">` +
+            `${esc(l.title)}${l.size ? ` <span style="color:#775D66;">· ${esc(l.size)}</span>` : ''}` +
+            `<span style="color:#775D66;"> × ${Number(l.qty) || 1}</span></td>` +
+            `<td align="right" style="padding:8px 0;border-bottom:1px solid #EFDCE4;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#241019;font-weight:700;">${esc(inr(Number(l.price) * (Number(l.qty) || 1)))}</td></tr>`,
+        )
+        .join('');
+      const itemsTable = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemsHtml}</table>`;
+
+      const summary = rowsTable([
+        ['Items', inr(order.total + (order.platform_discount ?? 0))],
+        ...(order.platform_discount ? [['Discount', '−' + inr(order.platform_discount)]] : []),
+        ['Delivery', order.shipping_fee ? inr(order.shipping_fee) : 'Free'],
+        ...(order.cod_fee ? [['Cash handling', inr(order.cod_fee)]] : []),
+        [isCod ? 'To pay on delivery' : 'Paid', inr(payable)],
+      ]);
+
+      // ── Buyer ──────────────────────────────────────────────────────────────
+      if (isValidEmail(buyerEmail)) {
+        const r = await sendEmail({
+          to: buyerEmail,
+          subject: `Order ${order.order_number} confirmed · ${shop?.name ?? 'MangaiMart'}`,
+          html: layout({
+            heading: `Thanks, ${buyerName} — your order is in.`,
+            intro: `${shop?.name ?? 'The boutique'} has your order ${order.order_number} and will start getting it ready. We'll let you know the moment it ships.`,
+            bodyHtml: `${itemsTable}<div style="height:14px"></div>${summary}`,
+            ctaLabel: 'Track this order',
+            ctaHref: `${appUrl}/orders/${order.id}`,
+            footerNote: isCod
+              ? `Please keep ${inr(payable)} in cash ready for the delivery agent.`
+              : 'Your payment has been received in full.',
+          }),
+          text:
+            `Order ${order.order_number} confirmed.\n` +
+            `${shop?.name ?? 'The boutique'} is getting it ready.\n` +
+            `${payLine}: ${inr(payable)}\n` +
+            `Track it: ${appUrl}/orders/${order.id}\n`,
+        });
+        if (!r.ok) console.error('place-order: buyer email failed:', order.order_number, r.error);
+      }
+
+      // ── Seller ─────────────────────────────────────────────────────────────
+      if (isValidEmail(shop?.email)) {
+        const units = order.lines.reduce((sum, l) => sum + (Number(l.qty) || 1), 0);
+        const r = await sendEmail({
+          to: shop.email,
+          subject: `${isCod ? 'New COD order' : 'New order'} ${order.order_number} · ${inr(payable)}`,
+          html: layout({
+            heading: `You have a new order — ${order.order_number}`,
+            intro: `${guestFields.guest_name || 'A customer'} ordered ${units} item${units === 1 ? '' : 's'}. ${isCod ? `Collect ${inr(payable)} in cash on delivery.` : 'Already paid online.'}`,
+            bodyHtml: `${itemsTable}<div style="height:14px"></div>${summary}`,
+            ctaLabel: 'Open in your console',
+            ctaHref: `${appUrl}/seller/orders/${order.id}`,
+            footerNote: 'Accept the order in your console to let the buyer know it is being prepared.',
+          }),
+          text:
+            `New order ${order.order_number} — ${units} item${units === 1 ? '' : 's'}, ${inr(payable)} (${payLine}).\n` +
+            `Open it: ${appUrl}/seller/orders/${order.id}\n`,
+        });
+        if (!r.ok) console.error('place-order: seller email failed:', order.order_number, r.error);
+      }
+    }
+  } catch (err) {
+    console.error('place-order: order emails failed (order still placed):', err?.message ?? err);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -224,6 +332,9 @@ export default async function handler(req, res) {
   // of a sign-in error, and the retry path in ShopContext stops rather than
   // looping. It is otherwise as early as possible.
   let buyerId = null;
+  // The address for the order-confirmation email. Every order has a real
+  // account behind it (migration 0069), so this is normally present.
+  let buyerEmail = null;
   {
     // Optional-chained on purpose: a runtime without `headers` must not throw.
     const authHeader = req.headers?.authorization || '';
@@ -251,6 +362,7 @@ export default async function handler(req, res) {
       });
     }
     buyerId = user.id;
+    buyerEmail = user.email ?? null;
   }
 
   try {
@@ -616,6 +728,7 @@ export default async function handler(req, res) {
     // The order exists — everything from here is best-effort and must never
     // turn a successful checkout into an error for the buyer.
     await notifySellers(supabase, created, guestFields);
+    await emailOrderPlaced(supabase, created, guestFields, buyerEmail, isCod);
 
     return res.status(200).json({
       orders: created.map(({ id, order_number, boutique_id, total, platform_discount, cod_fee, shipping_fee, created_at }) => ({

@@ -192,7 +192,21 @@ export function ProductForm({
     if (!form.title.trim()) next.title = 'Required';
     if (!form.category.trim()) next.category = 'Required';
     if (!form.fabric.trim()) next.fabric = 'Required';
+    // The pickers are comboboxes over the approved vocabulary, so a NEW product
+    // cannot carry an off-list value. An OLD one can: products predating the
+    // pickers (and anything loaded by seed, CSV or straight SQL) hold free text
+    // like "Desert Rose" or "Olive Brown with Orange Floral Design". Those are
+    // unreachable by the colour filter — it matches the taxonomy exactly — so
+    // the product is quietly invisible to anyone browsing by colour.
+    //
+    // Catching it here means the next edit of an old listing is where it gets
+    // fixed, by the one person who knows what colour the garment actually is.
+    // Only colour is checked: it is the only picker whose vocabulary the buyer
+    // filter matches exactly, and the only one with off-list values in the wild.
     if (!form.color.trim()) next.color = 'Required';
+    else if (!taxonomy.isApproved('color', form.color)) {
+      next.color = 'Pick a colour from the list so buyers can filter by it';
+    }
     if (!form.occasion.trim()) next.occasion = 'Required';
     if (!form.price.trim() || Number(form.price) <= 0) next.price = 'Enter a valid price';
     if (form.stock.trim() === '' || Number(form.stock) < 0) next.stock = 'Enter valid stock';

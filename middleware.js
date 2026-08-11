@@ -130,7 +130,13 @@ function notFoundMeta() {
     title: "Page Not Found",
     description: "That page isn\u2019t available. Browse the full catalogue of verified independent boutiques on MangaiMart instead.",
     type: "website",
-    noindex: true
+    noindex: true,
+    // Suppresses the canonical + og:url tags in headFor(). A canonical that
+    // points AT a URL whose subject does not exist is a contradiction: it tells
+    // a crawler this is the preferred version of a page we are simultaneously
+    // asking it not to index. `noindex` does the real work; the self-reference
+    // was only ever noise.
+    notFound: true
   };
 }
 /**
@@ -1546,13 +1552,13 @@ function headFor(meta, canonical, origin, pathname, forceNoindex) {
     // between the `ag:shell-meta` markers in index.html has to be re-emitted
     // here, or it is simply lost on the pages crawlers actually read.
     `<meta name="author" content="${SITE_NAME}" />`,
-    `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
+    ...(meta?.notFound ? [] : [`<link rel="canonical" href="${escapeHtml(canonical)}" />`]),
     `<meta property="og:site_name" content="${SITE_NAME}" />`,
     `<meta property="og:locale" content="en_IN" />`,
     `<meta property="og:type" content="${meta?.type || "website"}" />`,
     `<meta property="og:title" content="${escapeHtml(title)}" />`,
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
-    `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
+    ...(meta?.notFound ? [] : [`<meta property="og:url" content="${escapeHtml(canonical)}" />`]),
     `<meta property="og:image" content="${escapeHtml(image)}" />`,
     // No og:image:width/height. They were hardcoded to 1200x630, which is not
     // the shape of ANY image this actually serves: a product photo is portrait,

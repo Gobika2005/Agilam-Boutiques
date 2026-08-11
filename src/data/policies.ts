@@ -1,13 +1,37 @@
-import { COMPANY, COMPANY_ADDRESS_LINE, POLICY_TERMS as T } from './company';
+import { useSyncExternalStore } from 'react';
+import { COMPANY, COMPANY_ADDRESS_LINE, POLICY_TERMS } from './company';
+import { currentSettings, subscribeSettings, type PlatformSettings } from './settings';
 
 /**
  * Buyer-facing legal & informational pages.
  *
  * Every page is data, not markup: `src/pages/buyer/Policy.tsx` renders whichever
  * entry matches the `:slug` route param, so adding a page is a matter of adding
- * an entry here. Terms quoted in the copy (delivery window, return window, free
- * delivery threshold) come from `POLICY_TERMS` so the promises stay in step with
- * what `src/lib/pricing.ts` actually charges.
+ * an entry here.
+ *
+ * ── Where the numbers come from ─────────────────────────────────────────────
+ *
+ * The commercial terms quoted in the copy — delivery fee, free-delivery
+ * threshold, return window, COD cap, commission — are read from the LIVE
+ * `platform_settings` row, the same source `src/lib/pricing.ts` prices a bag
+ * from. They used to be the compile-time `POLICY_TERMS` constants, and the two
+ * drifted: the Delivery Policy promised a ₹79 delivery fee while checkout
+ * charged ₹89, the Return Policy advertised a 7-day window against a configured
+ * window of zero, and the COD cap on the Terms page was double the one the bag
+ * actually enforced. Those are published contractual terms, so a buyer was
+ * being charged something other than what the site promised.
+ *
+ * Keeping them in step "by hand" is what failed. Now the promise and the charge
+ * are the same value by construction: change the fee in Platform Settings and
+ * the policy page says the new number on the next render. `POLICY_TERMS` is
+ * still the fallback (via DEFAULT_SETTINGS) for the moments before the row
+ * loads, and still owns the copy-only terms — refund timings, delivery
+ * estimates, the cancellation window — which are promises rather than
+ * calculations and have no settings column.
+ *
+ * Because the copy now depends on state, `POLICIES` is a function of the terms
+ * rather than a module constant. Components should use `usePolicies()` /
+ * `usePolicy(slug)` so they re-render when the row lands.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *  ⚠  These are drafted to standard Indian marketplace practice and to the
@@ -49,7 +73,52 @@ const CONTACT_SECTION: PolicySection = {
   ],
 };
 
-export const POLICIES: PolicyPage[] = [
+/**
+ * The numbers the copy quotes: the admin-editable ones straight off the live
+ * settings row, plus the copy-only promises that have no settings column.
+ *
+ * Naming it `T` keeps every `${T.x}` interpolation below unchanged from when
+ * these came from `POLICY_TERMS` — the only thing that moved is where the
+ * commercial values are read from.
+ */
+type PolicyCopyTerms = {
+  freeDeliveryOver: number;
+  standardShipping: number;
+  returnWindowDays: number;
+  codFee: number;
+  codMaxOrder: number;
+  commissionPct: number;
+  refundWorkingDays: string;
+  deliveryEstimate: string;
+  metroDeliveryEstimate: string;
+  cancellationWindowHours: number;
+};
+
+function copyTerms(s: PlatformSettings): PolicyCopyTerms {
+  return {
+    // Live, admin-editable — these are what the buyer is actually charged.
+    freeDeliveryOver: s.free_delivery_over,
+    standardShipping: s.standard_shipping,
+    returnWindowDays: s.return_window_days,
+    codFee: s.cod_fee,
+    codMaxOrder: s.cod_max_order,
+    commissionPct: s.commission_pct,
+    // Copy-only: service promises with no settings column behind them.
+    refundWorkingDays: POLICY_TERMS.refundWorkingDays,
+    deliveryEstimate: POLICY_TERMS.deliveryEstimate,
+    metroDeliveryEstimate: POLICY_TERMS.metroDeliveryEstimate,
+    cancellationWindowHours: POLICY_TERMS.cancellationWindowHours,
+  };
+}
+
+/**
+ * Build the full set of pages for a given set of terms.
+ *
+ * Exported for the rare non-React caller (and for tests); components should
+ * reach for `usePolicies()` so the copy re-renders when the settings row lands.
+ */
+export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
+  return [
   /* ------------------------------------------------------------------ */
   {
     slug: 'delivery-policy',
@@ -146,15 +215,30 @@ export const POLICIES: PolicyPage[] = [
     title: 'Return & Refund Policy',
     eyebrow: 'If something is not right',
     icon: 'autorenew',
-    summary: `${T.returnWindowDays}-day returns on eligible items. Refunds land in ${T.refundWorkingDays}.`,
+    summary: T.returnWindowDays > 0
+      ? `${T.returnWindowDays}-day returns on eligible items. Refunds land in ${T.refundWorkingDays}.`
+      : `Returns on damaged, defective or wrong items. Refunds land in ${T.refundWorkingDays}.`,
     sections: [
-      {
-        heading: `The ${T.returnWindowDays}-day window`,
-        blocks: [
-          `You may request a return within ${T.returnWindowDays} days of delivery if the item is damaged, defective, materially different from what was listed, or the wrong item was sent.`,
-          'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
-        ],
-      },
+      // A zero return window is a real configuration — it means the platform
+      // offers no goodwill returns, only the statutory remedy for an item that
+      // arrived damaged, defective or wrong. Printing "the 0-day window" and
+      // "within 0 days of delivery" would have been nonsense, and quietly
+      // hard-coding 7 here is exactly the drift this file was rewritten to end.
+      T.returnWindowDays > 0
+        ? {
+            heading: `The ${T.returnWindowDays}-day window`,
+            blocks: [
+              `You may request a return within ${T.returnWindowDays} days of delivery if the item is damaged, defective, materially different from what was listed, or the wrong item was sent.`,
+              'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
+            ],
+          }
+        : {
+            heading: 'When you can return an item',
+            blocks: [
+              'We do not offer change-of-mind returns. You may still request a return if the item arrived damaged, is defective, is materially different from what was listed, or the wrong item was sent — report it as soon as you receive the parcel.',
+              'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
+            ],
+          },
       {
         heading: 'Condition of returned items',
         blocks: [
@@ -523,7 +607,9 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'How do I return something?',
         blocks: [
-          `Within ${T.returnWindowDays} days of delivery, open the order and message the boutique with photographs. See the Return & Refund Policy for what is eligible.`,
+          T.returnWindowDays > 0
+            ? `Within ${T.returnWindowDays} days of delivery, open the order and message the boutique with photographs. See the Return & Refund Policy for what is eligible.`
+            : 'Open the order as soon as it arrives and message the boutique with photographs. See the Return & Refund Policy for what is eligible.',
         ],
       },
       {
@@ -535,10 +621,7 @@ export const POLICIES: PolicyPage[] = [
       CONTACT_SECTION,
     ],
   },
-];
-
-export function findPolicy(slug: string | undefined): PolicyPage | undefined {
-  return POLICIES.find((p) => p.slug === slug);
+  ];
 }
 
 /** The seven legal pages, in the order they are listed in the footer and profile. */
@@ -552,5 +635,47 @@ export const LEGAL_SLUGS = [
   'terms',
 ] as const;
 
-export const legalPages = (): PolicyPage[] =>
-  LEGAL_SLUGS.map((s) => findPolicy(s)).filter((p): p is PolicyPage => !!p);
+/**
+ * Every page slug, in route order. Static — `src/App.tsx` registers one route
+ * per slug at mount and must not depend on a settings row that has not loaded.
+ * The page CONTENT is what varies with the terms, never the set of pages.
+ */
+export const POLICY_SLUGS: string[] = buildPolicies(copyTerms(currentSettings())).map((p) => p.slug);
+
+// ── React bindings ──────────────────────────────────────────────────────────
+
+/**
+ * The policy pages under the terms in force right now, re-rendering when the
+ * live settings row lands or an admin changes a fee.
+ *
+ * The snapshot is memoised on the settings object identity: `useSyncExternalStore`
+ * demands a stable reference between publishes, and rebuilding the array on every
+ * call would loop forever.
+ */
+let cachedFor: PlatformSettings | null = null;
+let cachedPolicies: PolicyPage[] = [];
+
+function policiesSnapshot(): PolicyPage[] {
+  const s = currentSettings();
+  if (cachedFor !== s) {
+    cachedFor = s;
+    cachedPolicies = buildPolicies(copyTerms(s));
+  }
+  return cachedPolicies;
+}
+
+/** All policy pages, under the terms currently in force. */
+export function usePolicies(): PolicyPage[] {
+  return useSyncExternalStore(subscribeSettings, policiesSnapshot, policiesSnapshot);
+}
+
+/** One policy page by slug, or undefined. */
+export function usePolicy(slug: string | undefined): PolicyPage | undefined {
+  return usePolicies().find((p) => p.slug === slug);
+}
+
+/** The seven legal pages, in footer order, under the terms currently in force. */
+export function useLegalPages(): PolicyPage[] {
+  const all = usePolicies();
+  return LEGAL_SLUGS.map((s) => all.find((p) => p.slug === s)).filter((p): p is PolicyPage => !!p);
+}

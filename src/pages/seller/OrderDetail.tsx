@@ -18,6 +18,7 @@ import {
   bookShiprocketShipment, createShipment, fetchCouriers, fetchShipment, fetchShiprocketAvailability,
 } from '@/data/shipments';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
+import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -30,12 +31,42 @@ export function OrderDetail() {
   const [sharing, setSharing] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
+  // The buyer's return request on this order, if any (migration 0074).
+  const [returnBump, setReturnBump] = useState(0);
+  const [rejectNote, setRejectNote] = useState('');
+  const [askingReject, setAskingReject] = useState(false);
+  const [returnBusy, setReturnBusy] = useState(false);
   const [shipping, setShipping] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   // Both read separately from the order (see src/data/shipments.ts): an
   // un-migrated deploy must degrade to "no tracking", never to a dead screen.
   const { data: couriers } = useAsync(() => fetchCouriers().catch(() => []), []);
+  const { data: returnReq } = useAsync(
+    () => (orderId ? fetchReturnForOrder(orderId) : Promise.resolve(null)),
+    [orderId, returnBump],
+  );
+
+  /**
+   * Record the seller's decision. `resolve_return_request` is the authority —
+   * it re-checks shop ownership and refuses a rejection with no reason — so a
+   * failure here is shown verbatim rather than translated.
+   */
+  const answerReturn = async (status: 'approved' | 'rejected', note?: string) => {
+    if (!returnReq) return;
+    setReturnBusy(true);
+    try {
+      await resolveReturnRequest(returnReq.id, status, note);
+      showToast(status === 'approved' ? 'Return approved — the buyer has been told' : 'Buyer notified');
+      setAskingReject(false);
+      setRejectNote('');
+      setReturnBump((n) => n + 1);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save that decision');
+    } finally {
+      setReturnBusy(false);
+    }
+  };
   const { data: shipment, reload: reloadShipment } = useAsync(
     () => (orderId ? fetchShipment(orderId) : Promise.resolve(null)),
     [orderId],
@@ -213,6 +244,85 @@ export function OrderDetail() {
       </div>
 
       <div style={css('flex:1;padding:4px 20px 0;')}>
+        {/* ---------- Return request (migration 0074) ---------- */}
+        {/* First card on the page when there is one: a buyer waiting on a
+            return answer is the most time-sensitive thing on this screen, and
+            it used to have no seller-side surface at all. */}
+        {returnReq && (
+          <div style={css(`background:var(--ag-surface);border:1.5px solid ${returnReq.status === 'requested' ? 'var(--ag-warn-text)' : 'var(--ag-border)'};border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);`)}>
+            <div style={css('display:flex;align-items:center;gap:8px;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-gold-text);")}>autorenew</span>
+              <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>
+                RETURN {returnReq.status === 'requested' ? 'REQUESTED' : returnReq.status.toUpperCase()}
+              </div>
+            </div>
+            <div style={css('font-size:14px;font-weight:800;margin-top:9px;')}>{RETURN_REASON_LABEL[returnReq.reason]}</div>
+            {returnReq.note && (
+              <div style={css('font-size:13px;color:var(--ag-ink-2);line-height:1.5;margin-top:4px;')}>{returnReq.note}</div>
+            )}
+            {returnReq.photos.length > 0 && (
+              <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;')}>
+                {returnReq.photos.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer" style={css('width:64px;height:64px;border-radius:11px;overflow:hidden;border:1px solid var(--ag-border);display:block;')}>
+                    <img src={url} alt="Buyer's photo of the problem" style={css('width:100%;height:100%;object-fit:cover;')} />
+                  </a>
+                ))}
+              </div>
+            )}
+            {returnReq.status === 'requested' ? (
+              askingReject ? (
+                <div style={css('margin-top:12px;')}>
+                  <textarea
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value.slice(0, 300))}
+                    rows={2}
+                    placeholder="Tell the buyer why — this is required."
+                    style={css('display:block;width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-bg);color:var(--ag-ink);font-family:inherit;font-size:13.5px;resize:vertical;')}
+                  />
+                  <div style={css('display:flex;gap:9px;margin-top:9px;')}>
+                    <button
+                      onClick={() => { setAskingReject(false); setRejectNote(''); }}
+                      style={css('flex:1;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;font-weight:700;font-size:13px;color:var(--ag-label);cursor:pointer;font-family:inherit;')}
+                    >
+                      Back
+                    </button>
+                    <button
+                      disabled={returnBusy || !rejectNote.trim()}
+                      onClick={() => void answerReturn('rejected', rejectNote)}
+                      style={css(`flex:1;height:42px;border:none;border-radius:12px;background:var(--ag-danger-text);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;opacity:${returnBusy || !rejectNote.trim() ? 0.6 : 1};`)}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={css('display:flex;gap:9px;margin-top:13px;')}>
+                  <button
+                    disabled={returnBusy}
+                    onClick={() => setAskingReject(true)}
+                    style={css('flex:1;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;font-weight:700;font-size:13px;color:var(--ag-label);cursor:pointer;font-family:inherit;')}
+                  >
+                    Can't accept
+                  </button>
+                  <button
+                    disabled={returnBusy}
+                    onClick={() => void answerReturn('approved')}
+                    style={css('flex:1;height:44px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+                  >
+                    Approve return
+                  </button>
+                </div>
+              )
+            ) : (
+              returnReq.seller_note && (
+                <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:9px;line-height:1.5;')}>
+                  Your reply: {returnReq.seller_note}
+                </div>
+              )
+            )}
+          </div>
+        )}
+
         <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
           <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>CUSTOMER</div>
           <div style={css('display:flex;align-items:center;gap:11px;margin-top:8px;')}>

@@ -170,8 +170,21 @@ export default async function handler(req, res) {
   const paise = computeCartPricing(priced.groupTotals, coupon, 0, terms).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
+  //
+  // The interesting case is a bag whose payable total is legitimately zero — a
+  // 100%-off coupon on an order that already ships free. That is a coupon
+  // configuration the admin console permits, and the buyer met every condition,
+  // so blaming them with the gateway's raw "amount must be an integer of at
+  // least 100 paise" was both unintelligible and unfair. Say which of the two
+  // it is, and point at the coupon when the coupon is the reason.
   if (!Number.isFinite(paise) || paise < 100) {
-    return res.status(400).json({ error: 'amount must be an integer of at least 100 paise' });
+    const zeroedByCoupon = coupon && paise === 0;
+    return res.status(400).json({
+      error: zeroedByCoupon
+        ? 'This coupon covers your whole order, so there is nothing left to pay online. Please remove the coupon, or ask the boutique to complete this order for you.'
+        : 'This order is below the ₹1 minimum we can charge online. Please add something else to your bag.',
+      code: zeroedByCoupon ? 'COUPON_ZEROES_TOTAL' : 'AMOUNT_TOO_LOW',
+    });
   }
 
   // The account the admin switch currently points at. Resolved from the same
@@ -194,6 +207,16 @@ export default async function handler(req, res) {
       amount: order.amount,
       currency: order.currency,
       key_id: account.keyId, // publishable id — safe to expose to the browser
+      // Whether the code the browser sent actually priced this order.
+      //
+      // It can legitimately not have: `loadCoupon` returns null for a code that
+      // is expired, deactivated, or has hit its redemption cap since the buyer
+      // applied it. The cap is the one the browser CANNOT see — `usage_limit`
+      // and `used_count` are deliberately withheld from the buyer's column list
+      // so a stranger can't count redemptions — so the bag went on showing a
+      // discount that no longer existed and the buyer was quietly charged the
+      // full amount. Reporting it lets the client stop and say so instead.
+      couponApplied: Boolean(coupon),
     });
   } catch (err) {
     // 401 from Razorpay means bad credentials; everything else is a server-side failure.

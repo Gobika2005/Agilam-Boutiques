@@ -133,7 +133,9 @@ export function AdminLayout() {
           {/* `agx-scroll-main` marks this as the page's scroller, so ScrollManager
               resets it on navigation — the window never scrolls in the console. */}
           <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:var(--ag-bg);')}>
-            <RouteErrorBoundary>
+            {/* Keyed on the route so navigating away from a crashed page
+                recovers — React never clears a boundary by itself. */}
+            <RouteErrorBoundary key={location.pathname} surface="Admin page">
               <Outlet />
             </RouteErrorBoundary>
           </div>
