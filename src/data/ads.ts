@@ -267,6 +267,59 @@ export async function approveCampaign(id: string) {
   if (error) throw error;
 }
 
+/** What the admin composes when publishing an ad themselves. */
+export interface HouseAdInput extends CreativeInput {
+  boutique_id: string;
+  placement_code: AdPlacementCode;
+  days: number;
+  /** ISO yyyy-mm-dd. Today when omitted. */
+  start_date?: string | null;
+  /** Publish immediately (default) or leave it scheduled for `start_date`. */
+  go_live?: boolean;
+}
+
+/**
+ * Create and publish an ad as the platform — no payment, no review queue.
+ *
+ * This is the house-ad path (migration 0070): the seller purchase flow is the
+ * only other way a campaign is born, and it requires a captured Razorpay
+ * payment, so with nobody buying ads the slots stay empty. The admin is the
+ * reviewer, so the campaign is written straight to 'live' (or 'scheduled' for a
+ * future start) with `house_ad = true` and `amount = 0`, which keeps it out of
+ * ad revenue. Everything after that — serving, the 24h × days window, counters,
+ * pause and expiry — is identical to a paid campaign.
+ *
+ * Throws with the server's own message when the placement is full; the fix is
+ * the Max active slots field on the rate card.
+ */
+export async function adminCreateCampaign(input: HouseAdInput): Promise<AdCampaign> {
+  const { data, error } = await supabase.rpc('admin_create_ad_campaign', {
+    p_boutique_id: input.boutique_id,
+    p_placement_code: input.placement_code,
+    p_subject_type: input.subject_type,
+    p_product_id: input.product_id ?? null,
+    p_headline: input.headline ?? '',
+    p_subtext: input.subtext ?? '',
+    p_image_url: input.image_url ?? '',
+    p_tag: input.tag ?? '',
+    p_cta_label: input.cta_label ?? '',
+    p_days: input.days,
+    p_start: input.start_date ?? null,
+    p_go_live: input.go_live ?? true,
+  });
+  if (error) throw new Error(friendlyAdError(error.message));
+  return data as AdCampaign;
+}
+
+/**
+ * Postgres prefixes a raise'd message with nothing, but supabase-js hands back
+ * the raw `ads: …` text the function used as its own namespace. Strip that so
+ * the toast reads as a sentence rather than a log line.
+ */
+function friendlyAdError(message: string): string {
+  return message.replace(/^ads:\s*/i, '').replace(/^./, (c) => c.toUpperCase());
+}
+
 /**
  * Admin edit of a campaign's creative (headline, subtext, banner image, tag,
  * CTA, linked product/subject). Unlike the seller path this does NOT change the

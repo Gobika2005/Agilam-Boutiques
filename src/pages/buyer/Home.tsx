@@ -29,11 +29,16 @@ const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : Strin
  * The same generous radius on all four corners — it scales with the viewport so
  * the curve stays proportional rather than shrinking to a hairline on a wide
  * screen.
+ *
+ * The height is the number that matters on a phone. A floor of 300px against a
+ * ~355px-wide card gave a nearly square slab that ate the fold; 236px keeps it
+ * a banner — wider than it is tall at every width — which is why the type below
+ * scales down with it rather than sitting at desktop size in a shorter box.
  */
-const HERO_H = 'clamp(300px,36vw,470px)';
-const HERO_R = 'clamp(24px,3vw,44px)';
+const HERO_H = 'clamp(236px,42vw,470px)';
+const HERO_R = 'clamp(26px,3.2vw,44px)';
 /** Clears the curve so the copy never rides up against it. */
-const HERO_PAD = 'clamp(24px,4.5vw,60px)';
+const HERO_PAD = 'clamp(22px,4.5vw,60px)';
 
 export function Home() {
   /**
@@ -182,7 +187,7 @@ export function Home() {
           which is what makes it read as a boutique placement instead of a web
           banner. */}
       {SLIDES.length > 0 && (
-        <div className="agx-zoom" style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 34px 64px -38px var(--ag-shadow),inset 0 0 0 1px rgba(255,255,255,.16);`)}>
+        <div className="agx-zoom" style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 26px 54px -32px var(--ag-shadow),inset 0 0 0 1px rgba(226,190,120,.3);`)}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
             {SLIDES.map((h, i) => (
               // Off-screen slides are hidden from assistive tech: without this the
@@ -217,9 +222,9 @@ export function Home() {
                     <div style={css('max-width:560px;')}>
                       {/* The seller's editable eyebrow tag. */}
                       {h.eyebrow && (
-                        <div style={css('display:inline-flex;align-items:center;gap:7px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:6px 13px;border-radius:999px;backdrop-filter:blur(4px);')}>
-                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
-                          <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
+                        <div style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:clamp(4px,.5vw,6px) clamp(10px,1.2vw,13px);border-radius:999px;backdrop-filter:blur(4px);')}>
+                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:clamp(13px,1.2vw,15px);")}>auto_awesome</span>
+                          <span className="agx-eyebrow" style={css('font-size:clamp(8.5px,.85vw,10px);')}>{h.eyebrow}</span>
                         </div>
                       )}
                       {/*
@@ -230,10 +235,10 @@ export function Home() {
                         an <h2> at most: the page still has exactly one <h1>,
                         which says what MangaiMart is.
                       */}
-                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,5.2vw,64px);line-height:1;margin:14px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,4.6vw,60px);line-height:1.04;margin:clamp(9px,1.2vw,14px) 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </h2>
-                      <div style={css('font-size:clamp(13.5px,1.3vw,16px);opacity:.92;margin-top:12px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
+                      <div style={css('font-size:clamp(12.5px,1.25vw,16px);line-height:1.4;opacity:.92;margin-top:clamp(7px,1vw,12px);font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
                       {/*
                         A full pill, not a rounded rectangle: it echoes the
                         curve of the card it sits in.
@@ -247,9 +252,9 @@ export function Home() {
                         interior is always "on dark" — it is the one surface in
                         the app that does not flip.
                       */}
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:22px;background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:13px 15px 13px 26px;font-weight:800;font-size:14.5px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
+                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:clamp(14px,2vw,22px);background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:clamp(7px,.9vw,10px) clamp(8px,1vw,12px) clamp(7px,.9vw,10px) clamp(18px,2vw,26px);font-weight:800;font-size:clamp(13px,1.2vw,14.5px);cursor:pointer;display:inline-flex;align-items:center;gap:clamp(8px,1vw,12px);box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
                         {h.cta}
-                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;width:28px;height:28px;border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:clamp(15px,1.4vw,17px);width:clamp(26px,2.6vw,30px);height:clamp(26px,2.6vw,30px);border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;flex:none;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>

@@ -122,7 +122,11 @@ export function Promote() {
                   <div style={css('min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{rate?.name ?? c.placement_code}</div>
                     <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>
-                      {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
+                      {/* A house ad (migration 0070) was placed by MangaiMart and
+                          costs the seller nothing. Its `amount` is 0, and the
+                          rate-card fallback below would otherwise quote them a
+                          price for an ad they were given. */}
+                      {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {c.house_ad ? 'Placed by MangaiMart · free' : money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
                       {status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : status === 'expired' && c.end_at ? ` · ended ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
                   </div>

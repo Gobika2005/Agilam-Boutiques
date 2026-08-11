@@ -468,6 +468,9 @@ export interface Database {
           reviewed_by: string | null;
           reviewed_at: string | null;
           reject_reason: string | null;
+          /** Published by an admin with no payment (migration 0070). `amount`
+           *  stays 0 and it is left out of ad revenue. */
+          house_ad: boolean;
           impressions: number;
           clicks: number;
           created_at: string;
@@ -693,6 +696,25 @@ export interface Database {
           p_image_url: string;
           p_tag: string;
           p_cta_label: string;
+        };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
+      /** Admin publishes an ad itself — no payment, no review (migration 0070). */
+      admin_create_ad_campaign: {
+        Args: {
+          p_boutique_id: string;
+          p_placement_code: AdPlacementCode;
+          p_subject_type: AdSubjectType;
+          p_product_id: string | null;
+          p_headline: string;
+          p_subtext: string;
+          p_image_url: string;
+          p_tag: string;
+          p_cta_label: string;
+          p_days: number;
+          /** ISO yyyy-mm-dd; null means today. */
+          p_start: string | null;
+          p_go_live: boolean;
         };
         Returns: Database['public']['Tables']['ad_campaigns']['Row'];
       };

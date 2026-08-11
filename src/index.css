@@ -441,6 +441,44 @@ body.agx-photo-open { overflow: hidden; }
   .agx-results-inner { padding-bottom: 104px !important; }
 }
 
+/* Cart: below 840px the order summary stops being a sticky sidebar (see
+   `.agx-cart-sticky` above) and falls to the very bottom of the page, taking the
+   checkout button with it — so the one action the screen exists for sat below
+   however many items the bag happened to hold, and the buyer had to scroll past
+   all of them to find it. It moves to a bar pinned to the bottom edge, and the
+   dock goes for exactly the reason it goes on the product page: two stacked bars
+   is most of a phone's thumb reach, and nobody opens their bag in order to
+   switch tabs. Continue shopping is still in the page, so nothing is stranded.
+
+   Only when there is something to check out — Cart.tsx puts `.agx-cart-root` on
+   the page only when the bag has items, so an empty bag keeps its dock. */
+.agx-cart-bar { display:none; }
+@media (max-width:839px){
+  body:has(.agx-cart-root) .agx-dock { display:none !important; }
+  /* The summary card's own button and sign-in note; the bar carries both now. */
+  .agx-cart-cta { display:none !important; }
+  /* Clears the bar (~76px, ~104px with the sign-in note) plus breathing room. */
+  .agx-cart-root { padding-bottom:150px !important; }
+  .agx-cart-bar {
+    display:block;
+    position:fixed; left:0; right:0; bottom:0; z-index:60;
+    padding:11px clamp(14px,4vw,20px) calc(12px + env(safe-area-inset-bottom));
+    background:var(--ag-frost-strong);
+    backdrop-filter:blur(20px) saturate(1.2);
+    border-top:1px solid var(--ag-frost-border);
+    box-shadow:0 -14px 36px -22px var(--ag-shadow);
+  }
+  /* The toast's default 100px clears the dock, not this bar — removing a line
+     or a coupon would have dropped the confirmation behind the CTA. */
+  body:has(.agx-cart-root) .agx-toast { bottom: calc(124px + env(safe-area-inset-bottom)) !important; }
+}
+/* On an SE-class phone the total and a full CTA can't share a row without the
+   button becoming a stub, so the total moves above it. */
+@media (max-width:379px){
+  .agx-cart-bar-row { flex-wrap:wrap; }
+  .agx-cart-bar-row > button { flex:1 0 100% !important; }
+}
+
 /* The floating dock is the navigation at EVERY width — phone and desktop alike.
    It used to be hidden from 960px up, on the assumption that a horizontal top
    nav took over there; no such nav existed, so desktop had no navigation at all.
