@@ -475,8 +475,11 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                     <button onClick={() => setHeroImage('')} disabled={uploading} style={css('flex:none;height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;')}>Reset</button>
                   )}
                 </div>
-                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;')}>
+                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
                   Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB.
+                  {' '}The banner is wider than it is tall on a laptop, so keep faces and the
+                  garment in the <b>upper middle</b> — the bottom of the photo is what gets
+                  cropped.
                   {!heroBoutique && ' Leave it and we’ll use the product’s own photo.'}
                 </div>
               </div>
@@ -623,7 +626,9 @@ function AdPreview({
     return (
       <div style={css(frame)}>
         <div style={css('width:100%;max-width:340px;border-radius:20px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 22px 44px -30px var(--ag-shadow);')}>
-          {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
+          {/* Same upward crop bias as the live hero (see buyer/Home.tsx), so a
+              tall upload is previewed the way a buyer will actually see it. */}
+          {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 25%;')} />}
           <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
             {tag.trim() && (

@@ -60,6 +60,7 @@ export function ImageSlot({
   height,
   sizes,
   detail = false,
+  objectPosition,
 }: {
   placeholder?: string;
   src?: string;
@@ -105,6 +106,14 @@ export function ImageSlot({
    * thumbnail default, which holds embroidery and zari together at full width.
    */
   detail?: boolean;
+  /**
+   * Which part of the photo survives the `cover` crop, as a CSS
+   * `object-position`. The default centres it, which quietly takes equal bites
+   * off the top and the bottom — fine for a square-ish tile, wrong for a wide
+   * banner, where the top of the frame is where heads are. Surfaces much wider
+   * than the photos they're given should bias this upward.
+   */
+  objectPosition?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = !!src && !failed && isEmbeddable(src);
@@ -141,7 +150,11 @@ export function ImageSlot({
           // the hint would never reach the browser at all.
           {...{ fetchpriority: priority ? 'high' : 'auto' }}
           onError={() => setFailed(true)}
-          style={css('width:100%;height:100%;object-fit:cover;display:block;')}
+          style={
+            objectPosition
+              ? { ...css('width:100%;height:100%;object-fit:cover;display:block;'), objectPosition }
+              : css('width:100%;height:100%;object-fit:cover;display:block;')
+          }
         />
       ) : fallback === 'brand' ? (
         <span

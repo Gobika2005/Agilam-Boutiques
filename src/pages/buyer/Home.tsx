@@ -199,7 +199,17 @@ export function Home() {
                 style={css('flex:0 0 100%;position:relative;height:100%;')}
               >
                 <div style={css('position:absolute;inset:0;')}>
-                  {/* The visible hero slide is the homepage's LCP element. */}
+                  {/* The visible hero slide is the homepage's LCP element.
+
+                      `objectPosition` is what stops the crop eating heads on a
+                      laptop. Sellers are asked for a 16:10 banner, but the slot
+                      is close to 3:1 once the window is wide, so `cover` scales
+                      the photo well past the box and a centred crop takes ~19%
+                      off the top — which is exactly where the model's face is.
+                      Biasing to 25% keeps the top of the frame and spends the
+                      crop on the floor instead. It has no effect on a phone,
+                      where the card is narrow enough that the photo is cropped
+                      horizontally rather than vertically. */}
                   <ImageSlot
                     src={h.image}
                     placeholder="Drop a collection photo"
@@ -208,6 +218,7 @@ export function Home() {
                     width={1600}
                     height={900}
                     sizes="100vw"
+                    objectPosition="center 25%"
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>
