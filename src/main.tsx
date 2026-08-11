@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/auth/AuthContext';
 import { ThemeProvider } from '@/state/ThemeContext';
 import { CatalogProvider } from '@/state/CatalogContext';
@@ -57,6 +58,8 @@ createRoot(document.getElementById('root')!).render(
                       <App />
                       {/* Offers the new build; never takes the page away mid-task. */}
                       <UpdateNotice />
+                      {/* Vercel Web Analytics — no-ops outside a Vercel deployment. */}
+                      <Analytics />
                     </ToastProvider>
                   </NotificationProvider>
                 </ShopProvider>

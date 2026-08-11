@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { css } from '@/lib/css';
+import { csvDocument } from '@/lib/csv';
 import { fmtInr } from '@/lib/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchCategoryStats, fetchRevenueByCity, fetchDashboard } from '@/data/admin';
@@ -28,10 +29,13 @@ const RANGES: { value: Range; label: string }[] = [
 
 const panel = 'background:var(--ag-surface);border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);';
 
-/** Downloads rows as a CSV file, quoting every field so commas survive. */
+/**
+ * Downloads rows as a CSV file. Every field is quoted so commas survive, and
+ * formula-neutralised so a category or city name a seller chose cannot execute
+ * in the admin's spreadsheet (src/lib/csv.ts).
+ */
 function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
-  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  const csv = [header, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
+  const csv = csvDocument(header, rows);
   // Leading BOM so Excel opens the ₹ symbol and Tamil names as UTF-8.
   const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }));
   const a = document.createElement('a');

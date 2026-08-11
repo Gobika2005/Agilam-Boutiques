@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -15,11 +16,27 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * The one-time password a newly created account signs in with — including an
+ * ADMIN account, which is why this is a CSPRNG.
+ *
+ * `Math.random()` is not one. V8 implements it as xorshift128+, seeded once per
+ * isolate and never reseeded, so a handful of observed outputs is enough to
+ * recover the generator's internal state and predict the rest — and a warm
+ * serverless instance serves many requests from a single isolate. Someone who
+ * can trigger any Math.random()-derived value from that same instance could
+ * therefore derive the next admin's temporary password without ever seeing the
+ * email that carried it.
+ *
+ * `randomInt` also avoids the modulo bias that `bytes[i] % chars.length` would
+ * introduce (52 does not divide 256), which is what keeps the real entropy at
+ * the full 12 × log2(52) ≈ 68 bits rather than something quietly lower.
+ */
 function generateTempPassword() {
   const chars = 'ABCDEFGHJKMNPQRSTVWXYZabcdefghjkmnpqrstvwxyz23456789';
   let password = '';
   for (let i = 0; i < 12; i += 1) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(crypto.randomInt(chars.length));
   }
   return password;
 }

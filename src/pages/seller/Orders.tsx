@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { csvDocument } from '@/lib/csv';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
@@ -61,15 +62,23 @@ export function Orders() {
   const outstanding = all.reduce((sum, { view }) => sum + view.collectAmount, 0);
 
   const exportCsv = () => {
+    // The customer name and the item titles are text other people typed, so
+    // every cell is formula-neutralised as well as quoted (src/lib/csv.ts).
     const head = ['Order', 'Date', 'Customer', 'Phone', 'Items', 'Qty', 'Amount', 'Status', 'Payment'];
-    const lines = filtered.map(({ view: o }) => {
-      const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-      const items = (o.items ?? []).map((it) => `${it.title} x${it.qty}`).join('; ');
-      return [o.number, o.date, o.customer, o.phone ?? '', items, o.qty, o.grandTotal, o.status, o.paymentMethod ?? 'Online']
-        .map(cell)
-        .join(',');
-    });
-    const csv = [head.join(','), ...lines].join('\n');
+    const csv = csvDocument(
+      head,
+      filtered.map(({ view: o }) => [
+        o.number,
+        o.date,
+        o.customer,
+        o.phone ?? '',
+        (o.items ?? []).map((it) => `${it.title} x${it.qty}`).join('; '),
+        o.qty,
+        o.grandTotal,
+        o.status,
+        o.paymentMethod ?? 'Online',
+      ]),
+    );
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;

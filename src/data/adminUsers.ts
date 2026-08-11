@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { csvDocument } from '@/lib/csv';
 import type { Role } from '@/types/database';
 
 export interface AdminUserRow {
@@ -168,10 +169,13 @@ export async function fetchUserDetail(id: string): Promise<UserDetail> {
 }
 
 export function usersToCsv(rows: AdminUserRow[]): string {
+  // Name, email, phone and city are all typed by the user themselves, so every
+  // cell goes through csvCell — which neutralises a leading `=`/`+`/`-`/`@` as
+  // well as quoting. See src/lib/csv.ts for why quoting alone is not enough.
   const head = ['Name', 'Email', 'Phone', 'City', 'Role', 'Status', 'Orders', 'Spent', 'Joined'];
-  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = rows.map((r) =>
-    [
+  return csvDocument(
+    head,
+    rows.map((r) => [
       r.full_name,
       r.email,
       r.phone,
@@ -181,9 +185,8 @@ export function usersToCsv(rows: AdminUserRow[]): string {
       r.orders,
       r.spent,
       new Date(r.created_at).toLocaleDateString('en-IN'),
-    ].map(esc).join(','),
+    ]),
   );
-  return [head.join(','), ...lines].join('\n');
 }
 
 export interface CreateUserInput {
