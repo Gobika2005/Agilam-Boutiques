@@ -37,8 +37,10 @@ const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : Strin
  */
 const HERO_H = 'clamp(236px,42vw,470px)';
 const HERO_R = 'clamp(26px,3.2vw,44px)';
-/** Clears the curve so the copy never rides up against it. */
-const HERO_PAD = 'clamp(22px,4.5vw,60px)';
+/** The copy's inset from the card edge. Enough to clear the curve, no more —
+ *  the corners are rounded, but the edge beside the text is straight, so a
+ *  gutter sized to the radius only pushed the headline into the middle. */
+const HERO_PAD = 'clamp(18px,3vw,40px)';
 
 export function Home() {
   /**
