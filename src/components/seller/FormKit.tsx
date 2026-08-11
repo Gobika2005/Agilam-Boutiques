@@ -16,7 +16,7 @@ const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color
 const HINT = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);';
 
 export function Field({
-  label, value, onChange, placeholder, error, hint, type = 'text', inputMode, maxLength, disabled,
+  label, value, onChange, placeholder, error, hint, type = 'text', inputMode, maxLength, disabled, suggestions,
 }: {
   label: string;
   value: string;
@@ -28,7 +28,16 @@ export function Field({
   inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'url';
   maxLength?: number;
   disabled?: boolean;
+  /**
+   * Offered spellings, shown as the browser's native autocomplete list. The
+   * field stays free text — a shop in a town that isn't listed must still be
+   * able to sign up — but picking from the list is one tap, which is what keeps
+   * "Cbe" and "Coimbatore" from both ending up in the city column.
+   */
+  suggestions?: readonly string[];
 }) {
+  // Stable per label so two fields on one screen can't share a list.
+  const listId = suggestions?.length ? `agx-dl-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
   return (
     <label style={css(LABEL)}>
       {label}
@@ -40,8 +49,14 @@ export function Field({
         inputMode={inputMode}
         maxLength={maxLength}
         disabled={disabled}
+        list={listId}
         style={css(`${error ? INPUT_ERR : INPUT}${disabled ? 'opacity:.6;' : ''}`)}
       />
+      {listId && (
+        <datalist id={listId}>
+          {suggestions?.map((s) => <option key={s} value={s} />)}
+        </datalist>
+      )}
       {error ? <span style={css(ERR)}>{error}</span> : hint ? <span style={css(HINT)}>{hint}</span> : null}
     </label>
   );

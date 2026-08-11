@@ -6,6 +6,7 @@ import { FullscreenLoader } from '@/auth/RequireRole';
 import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
+import { KNOWN_CITIES } from '@/lib/cities';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
@@ -724,7 +725,19 @@ export function SellerOnboarding() {
             <TextArea label="Shop address *" value={form.addressLine} onChange={(v) => set('addressLine', v)} placeholder="12/4, Cross Cut Road, Gandhipuram" error={errors.addressLine} />
             <Row>
               <Field label="Area / locality" value={form.area} onChange={(v) => set('area', v)} placeholder="RS Puram" />
-              <Field label="City *" value={form.city} onChange={(v) => set('city', v)} placeholder="Coimbatore" error={errors.city} />
+              {/* The city is what files the shop into the buyer directory and its
+                  own /boutiques/<city> page, so a short form like "Cbe" splits
+                  one city in two. Suggestions first, and whatever is typed is
+                  canonicalised on save (src/lib/cities.ts). */}
+              <Field
+                label="City *"
+                value={form.city}
+                onChange={(v) => set('city', v)}
+                placeholder="Coimbatore"
+                error={errors.city}
+                suggestions={KNOWN_CITIES}
+                hint="Full name, not a short form — buyers browse boutiques by city."
+              />
             </Row>
             <Row>
               <Field label="District *" value={form.district} onChange={(v) => set('district', v)} placeholder="Coimbatore" error={errors.district} />

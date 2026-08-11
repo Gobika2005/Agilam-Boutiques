@@ -7,16 +7,22 @@ import { breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { FeedPostCard } from '@/components/buyer/FeedPostCard';
 import { StoryRail } from '@/components/buyer/StoryRail';
 import { useInspireFeed } from '@/hooks/useInspireFeed';
+import type { FeedSort } from '@/data/feed';
 
 /**
- * Inspire — a scrolling feed of new pieces, straight from the catalogue.
+ * Inspire — a scrolling feed of pieces, straight from the catalogue.
  *
- * There is no separate posting step: whatever a boutique lists shows up here for
- * its followers, with the shop's own photos, price and description. The feed
- * runs in two halves — everything from the shops you follow, then everyone else
- * once those run out — with a divider marking the hand-over, so the bottom is
- * never a dead end. The next page loads as the sentinel comes into view, so the
- * buyer never taps "load more".
+ * There is no separate posting step: whatever a boutique lists shows up here,
+ * with the shop's own photos, price and description. The next page loads as the
+ * sentinel comes into view, so the buyer never taps "load more".
+ *
+ * Two tabs, and they answer different questions:
+ *
+ *   • For You is the whole market, with a row of lenses to reorder it — newest,
+ *     most liked, most viewed, most ordered. It used to lead with the shops you
+ *     follow and only widen once those ran out, which made "For You" a slightly
+ *     longer version of "Following" for anyone who followed a few boutiques.
+ *   • Following is exactly the shops you follow, newest first.
  *
  * The screen has no title of its own: the tab bar already says Inspire, and the
  * story rail is a better use of the first 90px than a heading.
@@ -27,6 +33,18 @@ const TABS = [
   { key: 'following', label: 'Following', icon: 'favorite' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
+
+/**
+ * How For You is ranked. Every one of these reads a counter the catalogue
+ * already maintains, so nothing here needs a new table — and none of them are
+ * app-writable, so a boutique cannot rank itself.
+ */
+const SORTS: { key: FeedSort; label: string; icon: string }[] = [
+  { key: 'new', label: 'New', icon: 'auto_awesome' },
+  { key: 'liked', label: 'Most liked', icon: 'favorite' },
+  { key: 'viewed', label: 'Most viewed', icon: 'visibility' },
+  { key: 'ordered', label: 'Most ordered', icon: 'shopping_bag' },
+];
 
 export function Inspire() {
   usePageMeta({
@@ -41,9 +59,12 @@ export function Inspire() {
   const navigate = useNavigate();
   // A social-feed lens (For You / Following) as the primary filter.
   const [tab, setTab] = useState<TabKey>('foryou');
+  // How For You is ranked. Kept while the buyer dips into Following and back,
+  // rather than snapping to "New" every time the tab changes.
+  const [sort, setSort] = useState<FeedSort>('new');
 
   const { items, followsAnyone, loading, loadingMore, exhausted, error, loadMore, likes, toggleLike } =
-    useInspireFeed({ followingOnly: tab === 'following' });
+    useInspireFeed({ followingOnly: tab === 'following', sort });
 
   // Infinite scroll. An IntersectionObserver on a sentinel below the last card
   // beats a scroll listener: no per-frame work, and it keeps firing correctly
@@ -59,11 +80,6 @@ export function Inspire() {
     io.observe(el);
     return () => io.disconnect();
   }, [loadMore, exhausted]);
-
-  // Where the followed half ends and discovery begins. Only meaningful when the
-  // buyer follows someone *and* both halves have cards.
-  const firstDiscoverIndex = items.findIndex((p) => p.phase === 'discover');
-  const showDivider = followsAnyone && firstDiscoverIndex > 0;
 
   return (
     <>
@@ -100,6 +116,34 @@ export function Inspire() {
             );
           })}
         </div>
+
+        {/* ── For You lenses ── loose pills, deliberately unlike the segmented
+            control above: that one picks which feed you are in, this one only
+            reorders the feed you are already in. Hidden on Following, which is
+            a chronology of the shops you follow and has nothing to reorder. */}
+        {tab === 'foryou' && (
+          <div
+            className="agx-scroll"
+            role="group"
+            aria-label="Sort the feed"
+            style={css('display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;')}
+          >
+            {SORTS.map((s) => {
+              const on = sort === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setSort(s.key)}
+                  aria-pressed={on}
+                  style={css(`display:flex;align-items:center;gap:6px;flex:none;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
+                >
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{s.icon}</span>
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── Feed ── */}
         {loading && (
@@ -160,26 +204,14 @@ export function Inspire() {
           );
         })()}
 
-        {items.map((p, i) => (
-          <div key={p.id}>
-            {/* The hand-over from "shops you follow" to the rest of the market. */}
-            {showDivider && i === firstDiscoverIndex && (
-              <div style={css('display:flex;align-items:center;gap:12px;margin:6px 0 18px;')}>
-                <span style={css('flex:1;height:1px;background:var(--ag-surface-2);')} />
-                <span style={css('display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;')}>
-                  <span className="agx-eyebrow" style={css('font-size:9px;color:var(--ag-crimson);')}>You’re all caught up</span>
-                  <span style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;')}>More from other boutiques</span>
-                </span>
-                <span style={css('flex:1;height:1px;background:var(--ag-surface-2);')} />
-              </div>
-            )}
-            <FeedPostCard
-              product={p}
-              liked={!!likes[p.id]}
-              likes={p.likes_count ?? 0}
-              onToggleLike={() => toggleLike(p.id)}
-            />
-          </div>
+        {items.map((p) => (
+          <FeedPostCard
+            key={p.id}
+            product={p}
+            liked={!!likes[p.id]}
+            likes={p.likes_count ?? 0}
+            onToggleLike={() => toggleLike(p.id)}
+          />
         ))}
 
         {/* Infinite-scroll trigger. Sits below the last card so the next page is

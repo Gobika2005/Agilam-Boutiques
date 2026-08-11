@@ -195,10 +195,23 @@ export function Home() {
               // Off-screen slides are hidden from assistive tech: without this the
               // carousel would announce every slide at once, and the page would
               // report one <h1> per slide instead of the one heading it has.
+              //
+              // The whole slide is the click target, not just the pill. A
+              // full-bleed photograph with a headline over it reads as one
+              // banner, so tapping the picture — which is what most people tap —
+              // did nothing, and the buyer had to find the small pill to reach
+              // the boutique that paid for the slot. Only the on-screen slide
+              // takes the click, or a stray tap could open the ad either side.
+              //
+              // No `role`/`tabIndex` here on purpose: the pill inside is already
+              // a real, focusable, named button to the same destination, and
+              // wrapping it in a second control would announce the placement
+              // twice and put an unnamed stop in the tab order.
               <div
                 key={h.slotId}
                 aria-hidden={i !== heroIndex}
-                style={css('flex:0 0 100%;position:relative;height:100%;')}
+                onClick={i === heroIndex ? () => heroCta(h) : undefined}
+                style={css(`flex:0 0 100%;position:relative;height:100%;${i === heroIndex ? 'cursor:pointer;' : ''}`)}
               >
                 <div style={css('position:absolute;inset:0;')}>
                   {/* The visible hero slide is the homepage's LCP element.
@@ -265,7 +278,10 @@ export function Home() {
                         interior is always "on dark" — it is the one surface in
                         the app that does not flip.
                       */}
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:clamp(14px,2vw,22px);background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:clamp(7px,.9vw,10px) clamp(8px,1vw,12px) clamp(7px,.9vw,10px) clamp(18px,2vw,26px);font-weight:800;font-size:clamp(13px,1.2vw,14.5px);cursor:pointer;display:inline-flex;align-items:center;gap:clamp(8px,1vw,12px);box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
+                      {/* stopPropagation: the slide behind it now handles the
+                          same click, and without this one tap would track two
+                          clicks and navigate twice. */}
+                      <button onClick={(e) => { e.stopPropagation(); heroCta(h); }} style={css('pointer-events:auto;margin-top:clamp(14px,2vw,22px);background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:clamp(7px,.9vw,10px) clamp(8px,1vw,12px) clamp(7px,.9vw,10px) clamp(18px,2vw,26px);font-weight:800;font-size:clamp(13px,1.2vw,14.5px);cursor:pointer;display:inline-flex;align-items:center;gap:clamp(8px,1vw,12px);box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
                         {h.cta}
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:clamp(15px,1.4vw,17px);width:clamp(26px,2.6vw,30px);height:clamp(26px,2.6vw,30px);border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;flex:none;")}>arrow_forward</span>
                       </button>

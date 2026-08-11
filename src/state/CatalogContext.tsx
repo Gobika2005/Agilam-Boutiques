@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProducts } from '@/data/products';
 import { fetchApprovedBoutiques } from '@/data/boutiques';
+import { normalizeCity } from '@/lib/cities';
 import type { ProductWithBoutique, BoutiqueRow } from '@/data/types';
 import type { Product, Boutique } from '@/data/demo';
 
@@ -40,7 +41,11 @@ function toProduct(p: ProductWithBoutique): Product {
     boutique: p.boutique?.name ?? '',
     slug: p.slug ?? null,
     boutiqueId: p.boutique_id,
-    city: p.boutique?.city ?? '',
+    // The product carries its shop's city through a join, which does not go
+    // through the boutique reader that canonicalises it — so it is folded here
+    // too, or the same shop reads "Cbe" on a product card and "Coimbatore" in
+    // the directory. See src/lib/cities.ts.
+    city: normalizeCity(p.boutique?.city),
     color: p.color ?? '',
     occasion: p.occasion ?? '',
     rating: Number(p.rating),

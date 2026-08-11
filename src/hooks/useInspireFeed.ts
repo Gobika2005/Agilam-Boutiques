@@ -8,39 +8,42 @@ import {
   subscribeToProductLikes,
   toggleProductLike,
   type FeedProduct,
+  type FeedSort,
 } from '@/data/feed';
 import { readLocalLikes, writeLocalLikes } from '@/lib/feedLocal';
 
 const PAGE = 6;
 
-/**
- * Which half of the feed a card belongs to. `following` is everything from the
- * shops the buyer follows; `discover` is everyone else, appended once the first
- * half runs out.
- */
-export type FeedPhase = 'following' | 'discover';
-
-export type FeedItem = FeedProduct & { phase: FeedPhase };
+export type FeedItem = FeedProduct;
 
 /**
- * The Inspire feed: the shops you follow first, then the rest of the market.
+ * The Inspire feed.
  *
  * The feed reads straight from the catalogue — a boutique lists a piece and it
- * appears here, with no separate posting step. It pages through the followed
- * shops until they're exhausted, then keeps going with every other approved
- * boutique, so the buyer never hits a dead end at the bottom. The page marks the
- * hand-over with a divider.
+ * appears here, with no separate posting step. Two lenses, and they are
+ * genuinely different feeds rather than two orderings of one:
+ *
+ *   • For You (`followingOnly: false`) is the whole approved market, ranked by
+ *     the chosen `sort`. It used to run the followed shops first and hand over
+ *     to everyone else at a divider, which meant a buyer who follows three
+ *     boutiques saw those three boutiques and little else — the opposite of
+ *     what a discovery feed is for. Following now has its own tab, so For You
+ *     is free to be discovery.
+ *   • Following (`followingOnly: true`) is strictly the shops the buyer follows,
+ *     newest first, and never widens.
  *
  * Likes are local-first (buyers browse anonymously) and reconciled with the
  * account when there is one.
  */
-export function useInspireFeed(opts: { category?: string; followingOnly?: boolean } = {}) {
-  const { category, followingOnly = false } = opts;
+export function useInspireFeed(opts: { category?: string; followingOnly?: boolean; sort?: FeedSort } = {}) {
+  const { category, followingOnly = false, sort = 'new' } = opts;
+  // The Following tab is a chronology by definition — "what the shops I follow
+  // posted" — so its ordering is fixed regardless of the For You lens.
+  const activeSort: FeedSort = followingOnly ? 'new' : sort;
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
   const [items, setItems] = useState<FeedItem[]>([]);
-  const [phase, setPhase] = useState<FeedPhase>('following');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
@@ -57,7 +60,10 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
 
   // A stable identity for the id set, so the loader re-runs when the buyer
   // follows or unfollows a shop but not on every unrelated catalogue render.
-  const idsKey = followedIds.join(',');
+  // For You is the whole market either way, so the follow set is not part of its
+  // identity — tapping Follow on a card there must not rebuild the feed under
+  // the buyer's thumb.
+  const scopeKey = followingOnly ? followedIds.join(',') : 'all';
   const idsRef = useRef(followedIds);
   idsRef.current = followedIds;
 
@@ -66,7 +72,20 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
       ? 'The feed isn’t set up yet — apply migration 0020 in Supabase.'
       : 'Couldn’t load the feed. Check your connection and try again.';
 
-  // First page (and a reload whenever the followed set changes).
+  /**
+   * The query behind whichever tab is showing.
+   *
+   * For You asks for everything — an empty id list with `exclude` is not a
+   * filter at all — while Following asks for exactly the followed shops, and
+   * gets nothing when the buyer follows nobody (which is the empty state the
+   * page renders a prompt for).
+   */
+  const scope = followingOnly
+    ? { boutiqueIds: followedIds, exclude: false }
+    : { boutiqueIds: [] as string[], exclude: true };
+
+  // First page (and a reload whenever the followed set, the lens or the sort
+  // changes).
   useEffect(() => {
     // Nothing to ask for until the catalogue has resolved which shops exist.
     if (catalogLoading && boutiques.length === 0) return;
@@ -75,40 +94,12 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     setError(null);
     setExhausted(false);
 
-    // "Following" tab: only ever shops you follow — never hand over to discover.
-    // Otherwise someone following nobody starts straight in discover, since
-    // there is no first phase to run out of.
-    const startPhase: FeedPhase = followingOnly || followsAnyone ? 'following' : 'discover';
-
-    (async () => {
-      const first = await fetchFeed({
-        boutiqueIds: followedIds,
-        exclude: startPhase === 'discover',
-        limit: PAGE,
-        category,
-      });
-      if (!active) return;
-      setItems(first.map((p) => ({ ...p, phase: startPhase })));
-
-      // A followed set that returns a short first page has already run dry, so
-      // roll straight into discover rather than making the buyer scroll to find
-      // out there's nothing more — but not on the "Following" tab, where that
-      // hand-over is exactly what the buyer asked us not to do.
-      if (!followingOnly && startPhase === 'following' && first.length < PAGE) {
-        const rest = await fetchFeed({ boutiqueIds: followedIds, exclude: true, limit: PAGE, category });
+    fetchFeed({ ...scope, limit: PAGE, category, sort: activeSort })
+      .then((first) => {
         if (!active) return;
-        const seen = new Set(first.map((p) => p.id));
-        setItems([
-          ...first.map((p) => ({ ...p, phase: 'following' as FeedPhase })),
-          ...rest.filter((r) => !seen.has(r.id)).map((p) => ({ ...p, phase: 'discover' as FeedPhase })),
-        ]);
-        setPhase('discover');
-        setExhausted(rest.length < PAGE);
-      } else {
-        setPhase(startPhase);
-        setExhausted(followingOnly ? first.length < PAGE : startPhase === 'discover' && first.length < PAGE);
-      }
-    })()
+        setItems(first);
+        setExhausted(first.length < PAGE);
+      })
       .catch((e: unknown) => {
         if (!active) return;
         setItems([]);
@@ -118,50 +109,36 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey, catalogLoading, category, followingOnly]);
+  }, [scopeKey, catalogLoading, category, followingOnly, activeSort]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || exhausted || loading || items.length === 0) return;
     setLoadingMore(true);
     try {
-      const followed = idsRef.current;
-      // Page within the current phase from the last card *of that phase* — the
-      // two halves have independent cursors.
-      const lastOfPhase = [...items].reverse().find((p) => p.phase === phase);
       const rows = await fetchFeed({
-        boutiqueIds: followed,
-        exclude: phase === 'discover',
+        boutiqueIds: followingOnly ? idsRef.current : [],
+        exclude: !followingOnly,
         limit: PAGE,
-        before: lastOfPhase?.created_at,
+        // Newest-first seeks from the last card on screen; the popularity
+        // lenses count from how many are already shown (see fetchFeed).
+        before: activeSort === 'new' ? items[items.length - 1]?.created_at : undefined,
+        offset: activeSort === 'new' ? 0 : items.length,
         category,
+        sort: activeSort,
       });
 
+      // The offset-paged lenses can repeat a card when a counter moves
+      // mid-scroll, and React would throw on the duplicate key.
       const seen = new Set(items.map((p) => p.id));
-      const fresh = rows.filter((r) => !seen.has(r.id)).map((p) => ({ ...p, phase }));
-
-      if (!followingOnly && rows.length < PAGE && phase === 'following') {
-        // The followed shops are done. Hand over to discover in the same tick so
-        // the scroll never stalls — except on the "Following" tab, which stays
-        // strictly the shops you follow.
-        const rest = await fetchFeed({ boutiqueIds: followed, exclude: true, limit: PAGE, category });
-        const seenNow = new Set([...seen, ...fresh.map((p) => p.id)]);
-        setItems((prev) => [
-          ...prev,
-          ...fresh,
-          ...rest.filter((r) => !seenNow.has(r.id)).map((p) => ({ ...p, phase: 'discover' as FeedPhase })),
-        ]);
-        setPhase('discover');
-        setExhausted(rest.length < PAGE);
-      } else {
-        setItems((prev) => [...prev, ...fresh]);
-        if (rows.length < PAGE) setExhausted(true);
-      }
+      const fresh = rows.filter((r) => !seen.has(r.id));
+      setItems((prev) => [...prev, ...fresh]);
+      if (rows.length < PAGE) setExhausted(true);
     } catch {
       setExhausted(true);
     } finally {
       setLoadingMore(false);
     }
-  }, [items, phase, loadingMore, exhausted, loading, category, followingOnly]);
+  }, [items, loadingMore, exhausted, loading, category, followingOnly, activeSort]);
 
   // Pull the account's likes once signed in.
   useEffect(() => {

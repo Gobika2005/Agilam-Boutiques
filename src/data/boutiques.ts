@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { uploadImage } from '@/lib/uploadImage';
+import { normalizeCity } from '@/lib/cities';
 import type { BoutiqueRow, BoutiquePrivate, BoutiqueStatus } from './types';
 
 /**
@@ -68,18 +69,31 @@ async function selectBoutiques<T>(
   return data;
 }
 
+/**
+ * Canonicalise the typed city on the way out.
+ *
+ * The buyer directory groups shops by city and gives each one a landing page, so
+ * "Cbe" and "Coimbatore" being two strings means two chips and two competing
+ * pages for one place. Writes are normalised below and migration 0075 fixes the
+ * rows already stored, but this read stays in place for anything written before
+ * either landed — the storefront must never show a half-typed city.
+ */
+const withCity = <T extends { city?: string | null }>(row: T): T =>
+  ({ ...row, city: normalizeCity(row.city) });
+
 export async function fetchApprovedBoutiques(): Promise<BoutiqueRow[]> {
   const data = await selectBoutiques((cols) =>
     supabase.from('boutiques').select(cols).eq('status', 'approved').order('rating', { ascending: false }),
   );
-  return (data ?? []) as unknown as BoutiqueRow[];
+  return ((data ?? []) as unknown as BoutiqueRow[]).map(withCity);
 }
 
 export async function fetchBoutique(id: string): Promise<BoutiqueRow | null> {
   const data = await selectBoutiques((cols) =>
     supabase.from('boutiques').select(cols).eq('id', id).maybeSingle(),
   );
-  return data as unknown as BoutiqueRow | null;
+  const row = data as unknown as BoutiqueRow | null;
+  return row ? withCity(row) : null;
 }
 
 /**
@@ -170,7 +184,8 @@ export async function createMyBoutique(ownerId: string, input: { name: string; c
     .insert({
       owner_id: ownerId,
       name: input.name,
-      city: input.city,
+      // Canonical from the first keystroke it is stored under — see withCity.
+      city: normalizeCity(input.city),
       owner_name: input.owner_name ?? '',
       status: 'draft',
       tone: Math.floor(Math.random() * 8),
@@ -227,8 +242,16 @@ export type BoutiquePatch = Partial<{
   notify_promotions: boolean;
 }>;
 
+/**
+ * Every seller-side write to the row goes through here, so this is the one place
+ * that has to canonicalise the city. `city` is only touched when the patch
+ * actually carries one — writing `''` on an unrelated patch would wipe it.
+ */
+const patchWithCity = (patch: BoutiquePatch): BoutiquePatch =>
+  patch.city === undefined ? patch : { ...patch, city: normalizeCity(patch.city) };
+
 export async function updateBoutique(id: string, patch: BoutiquePatch) {
-  const { error } = await supabase.from('boutiques').update(patch).eq('id', id);
+  const { error } = await supabase.from('boutiques').update(patchWithCity(patch)).eq('id', id);
   if (error) throw error;
 }
 
@@ -243,7 +266,7 @@ export async function submitBoutiqueForReview(id: string, patch: BoutiquePatch =
   const { error } = await supabase
     .from('boutiques')
     .update({
-      ...patch,
+      ...patchWithCity(patch),
       onboarding_step: 7,
       onboarding_complete: true,
       status: 'pending',
