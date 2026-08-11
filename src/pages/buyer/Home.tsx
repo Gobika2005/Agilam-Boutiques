@@ -26,13 +26,13 @@ const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : Strin
  * live carousel, the placeholder that holds its space while the ads load, and
  * the copy's side padding (which has to clear the curve).
  *
- * The ends are swept far harder than the leading corners — that asymmetry is
- * the whole look, and a uniform radius reads as a rounded box instead.
+ * The same generous radius on all four corners — it scales with the viewport so
+ * the curve stays proportional rather than shrinking to a hairline on a wide
+ * screen.
  */
 const HERO_H = 'clamp(300px,36vw,470px)';
-const HERO_R =
-  'clamp(22px,2.4vw,30px) clamp(46px,7vw,104px) clamp(46px,7vw,104px) clamp(22px,2.4vw,30px)';
-/** Clears the swept end so the copy never rides up against the curve. */
+const HERO_R = 'clamp(24px,3vw,44px)';
+/** Clears the curve so the copy never rides up against it. */
 const HERO_PAD = 'clamp(24px,4.5vw,60px)';
 
 export function Home() {
@@ -178,9 +178,9 @@ export function Home() {
       {/* Hero carousel — paid home_hero ads only; hidden when none are live.
 
           It is a contained card rather than a full-bleed band: the page's rose
-          ground shows down both sides and the ends carry a deep sweep of a
-          radius, which is what makes it read as a boutique placement instead of
-          a web banner. */}
+          ground shows down both sides and all four corners carry a deep curve,
+          which is what makes it read as a boutique placement instead of a web
+          banner. */}
       {SLIDES.length > 0 && (
         <div className="agx-zoom" style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 34px 64px -38px var(--ag-shadow),inset 0 0 0 1px rgba(255,255,255,.16);`)}>
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
@@ -209,7 +209,7 @@ export function Home() {
                 {/* Two scrims, not one: a soft wash across the copy side keeps
                     the text legible on a pale creative, and a low vignette
                     keeps the dots off a bright hem. Both stop well short of the
-                    swept end so the photograph is still the thing you see. */}
+                    trailing edge so the photograph is still the thing you see. */}
                 <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);pointer-events:none;')} />
                 <div style={css('position:absolute;inset:0;background:linear-gradient(0deg,rgba(38,6,20,.34) 0%,rgba(38,6,20,0) 26%);pointer-events:none;')} />
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
@@ -234,11 +234,22 @@ export function Home() {
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </h2>
                       <div style={css('font-size:clamp(13.5px,1.3vw,16px);opacity:.92;margin-top:12px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      {/* A full pill, not a rounded rectangle: it echoes the
-                          swept ends of the card it sits in. */}
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:22px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:999px;padding:13px 15px 13px 26px;font-weight:800;font-size:14.5px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
+                      {/*
+                        A full pill, not a rounded rectangle: it echoes the
+                        curve of the card it sits in.
+
+                        Deliberately literal colours, against the usual rule.
+                        Everything inside the hero sits on a photograph under a
+                        dark scrim in BOTH themes, so the theme tokens are the
+                        wrong ground here: `--ag-surface` is white on light and
+                        near-black on dark, which turned this button into dark
+                        text on a dark pill over a dark photo. The hero's
+                        interior is always "on dark" — it is the one surface in
+                        the app that does not flip.
+                      */}
+                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:22px;background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:13px 15px 13px 26px;font-weight:800;font-size:14.5px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
                         {h.cta}
-                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;width:28px;height:28px;border-radius:999px;background:var(--ag-surface-2);display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;width:28px;height:28px;border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -246,6 +257,10 @@ export function Home() {
               </div>
             ))}
           </div>
+          {/* One live ad is the common case, and a carousel of one is just a
+              stray dash in the corner — the dots only appear once there is
+              somewhere to go. */}
+          {SLIDES.length > 1 && (
           <div style={css('position:absolute;left:0;right:0;bottom:22px;z-index:3;')}>
             <div style={css(`padding:0 ${HERO_PAD};display:flex;gap:6px;`)}>
               {SLIDES.map((_, i) => (
@@ -263,6 +278,7 @@ export function Home() {
               ))}
             </div>
           </div>
+          )}
         </div>
       )}
 

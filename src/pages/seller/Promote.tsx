@@ -603,9 +603,9 @@ function AdPreview({
   }
 
   // Home hero — the wide banner card at the top of the homepage. Links to a
-  // product or the boutique. The swept end and the pill CTA are scaled-down
-  // copies of the real thing in buyer/Home.tsx: this is what the seller is
-  // buying, so it should not be a differently-shaped approximation.
+  // product or the boutique. The curve and the pill CTA are scaled-down copies
+  // of the real thing in buyer/Home.tsx: this is what the seller is buying, so
+  // it should not be a differently-shaped approximation.
   if (placementCode === 'home_hero') {
     if (subjectType === 'product' && !product) {
       return (
@@ -618,7 +618,7 @@ function AdPreview({
     const t = headline.trim() || (subjectType === 'product' ? product?.title ?? '' : boutique.name);
     return (
       <div style={css(frame)}>
-        <div style={css('width:100%;max-width:340px;border-radius:14px 40px 40px 14px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 22px 44px -30px var(--ag-shadow);')}>
+        <div style={css('width:100%;max-width:340px;border-radius:20px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 22px 44px -30px var(--ag-shadow);')}>
           {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
           <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
@@ -627,9 +627,12 @@ function AdPreview({
             )}
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
-            <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:999px;padding:6px 7px 6px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px;')}>
+            {/* Literal colours, matching buyer/Home.tsx: the inside of the hero
+                is a dark scrim over a photo in both themes, so the theme
+                tokens would put a near-black pill on it in dark mode. */}
+            <span style={css('align-self:flex-start;margin-top:12px;background:#FFFFFF;color:#A81F4E;border-radius:999px;padding:6px 7px 6px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px;')}>
               {ctaLabel}
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;width:20px;height:20px;border-radius:999px;background:var(--ag-surface-2);display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;width:20px;height:20px;border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
             </span>
           </div>
         </div>
