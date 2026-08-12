@@ -29,6 +29,10 @@ export const DEFAULT_TERMS = {
   commission_pct: 10,
   return_window_days: 7,
   payout_hold_days: 3,
+  /** Hours after delivery within which a payout is promised (migration 0078).
+   *  Drives the seller-facing commitment and the admin overdue clock; it is not
+   *  a settlement lock, so a payout may legitimately go out sooner. */
+  payout_sla_hours: 8,
 };
 
 const NUMERIC = Object.keys(DEFAULT_TERMS);

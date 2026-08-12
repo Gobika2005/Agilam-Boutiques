@@ -36,6 +36,11 @@ export interface PlatformSettings {
   commission_pct: number;
   return_window_days: number;
   payout_hold_days: number;
+  /** Hours after delivery within which a seller payout is promised (migration
+   *  0078). The admin Payouts console counts down against it and flags anything
+   *  past it; the seller console publishes it. Delivery decides what is payable
+   *  — this only decides when it is late. */
+  payout_sla_hours: number;
   maintenance_mode: boolean;
   support_email: string;
   razorpay_account: RazorpayAccount;
@@ -46,6 +51,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   commission_pct: POLICY_TERMS.commissionPct,
   return_window_days: POLICY_TERMS.returnWindowDays,
   payout_hold_days: 3,
+  payout_sla_hours: 8,
   maintenance_mode: false,
   support_email: COMPANY.supportEmail,
   razorpay_account: 'primary',

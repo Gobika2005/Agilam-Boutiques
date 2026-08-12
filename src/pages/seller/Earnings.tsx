@@ -7,6 +7,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { fetchBoutiquePrivate } from '@/data/boutiques';
+import { PayoutHistory } from '@/components/seller/PayoutHistory';
 import type { OrderWithDetails } from '@/data/types';
 
 /**
@@ -64,7 +65,7 @@ const maskAccount = (n: string | null) => (n && n.length > 4 ? `•••• ${n
 export function Earnings() {
   // The platform commission is admin-editable, so the seller's take-home is
   // derived from the live rate rather than a compile-time constant.
-  const { commission_pct: commissionPct } = useSettings();
+  const { commission_pct: commissionPct, payout_sla_hours: slaHours } = useSettings();
   const COMMISSION = commissionPct / 100;
   const navigate = useNavigate();
   const { boutique } = useMyBoutique();
@@ -134,8 +135,9 @@ export function Earnings() {
   // reimburses them for, minus what they owe on that cash.
   const netEarnings = prepaidNet + codCash + codPlatformCredit - codCommissionOwed;
 
-  // Settled once the buyer has the goods; anything still in flight is money
-  // MangaiMart is holding, which is what the seller wants to see as "pending".
+  // Delivery is the line. Everything still in flight is money MangaiMart is
+  // holding by design (migration 0078); everything delivered has been released
+  // to the seller or is inside the payout promise.
   const settledGross = prepaid.filter((o) => o.status === 'delivered').reduce((s, o) => s + Number(o.total), 0);
   const pendingPayout = Math.round((prepaidGross - settledGross) * (1 - COMMISSION));
   // The COD debt comes out of the payout MangaiMart is about to make, which is why
@@ -150,10 +152,14 @@ export function Earnings() {
   const bars = lastSevenDays(live);
   const peak = Math.max(...bars.map((b) => b.total), 1);
 
+  // "Pending payout" and "Settled to you" both overstated what had happened:
+  // the first is money we are HOLDING because the parcel has not arrived, and
+  // the second is money released by delivery, which is not the same as a
+  // transfer that has cleared. Both are named for the rule that governs them.
   const TILES = [
     { label: 'Orders this month', value: String(thisMonth.length), color: 'var(--ag-ink)' },
-    { label: 'Pending payout', value: fmt(pendingPayout), color: 'var(--ag-gold-text)' },
-    { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
+    { label: 'Held until delivered', value: fmt(pendingPayout), color: 'var(--ag-gold-text)' },
+    { label: 'Released after delivery', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
     { label: `Commission (${commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
   ];
 
@@ -279,6 +285,9 @@ export function Earnings() {
           </div>
         )}
       </div>
+
+      {/* Payout statements --------------------------------------------------- */}
+      <PayoutHistory boutiqueId={boutique?.id} slaHours={slaHours} />
 
       {/* Payout destination -------------------------------------------------- */}
       <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Payout account</div>

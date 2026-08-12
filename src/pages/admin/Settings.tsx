@@ -37,6 +37,7 @@ const SECTIONS: { title: string; icon: string; fields: NumField[] }[] = [
     fields: [
       { key: 'return_window_days', label: 'Return window', help: 'Days a buyer can request a return.', suffix: 'days' },
       { key: 'payout_hold_days', label: 'Payout hold', help: 'Hold window before an automatic seller transfer.', suffix: 'days' },
+      { key: 'payout_sla_hours', label: 'Payout promise', help: 'Hours after delivery within which a seller is paid. Shown to sellers and used to flag an overdue payout.', suffix: 'hours' },
     ],
   },
 ];

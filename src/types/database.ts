@@ -354,6 +354,10 @@ export interface Database {
           /** "Don't ask me to review this one" (migration 0071). One flag, read
            *  by all four prompt surfaces so answering silences every one. */
           review_dismissed_at: string | null;
+          /** Which payout settled this order (migration 0025). Null = still
+           *  outstanding, which is what makes double-paying impossible: the
+           *  balance is simply the settleable orders with no stamp. */
+          payout_id: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -527,6 +531,10 @@ export interface Database {
           standard_shipping: number;
           return_window_days: number;
           payout_hold_days: number;
+          /** Hours after delivery within which a payout is promised
+           *  (migration 0078). A published commitment and an overdue clock, not
+           *  a settlement lock. */
+          payout_sla_hours: number;
           maintenance_mode: boolean;
           support_email: string;
           /** Which Razorpay merchant account collects money (migration 0064).

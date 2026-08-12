@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { COMPANY, CONTACT_LINKS, POLICY_TERMS } from '@/data/company';
+import { COMPANY, CONTACT_LINKS } from '@/data/company';
+import { useSettings } from '@/data/settings';
 
 /**
  * Seller help & support.
@@ -14,18 +15,29 @@ import { COMPANY, CONTACT_LINKS, POLICY_TERMS } from '@/data/company';
  * and optional ads only.
  */
 
-const FAQS: { q: string; a: string }[] = [
+/**
+ * Built per render rather than frozen at module scope, because two of these
+ * answers quote commercial terms the admin can change — the commission and the
+ * payout promise. A hardcoded FAQ that contradicts what the console actually
+ * does is worse than no FAQ, which is the failure the policy pages already had
+ * to be rescued from.
+ */
+const buildFaqs = (commissionPct: number, slaHours: number): { q: string; a: string }[] => [
   {
     q: 'How do I add a new product?',
     a: 'Open the Products tab and tap "Add product". Add clear photos, a title, price, sizes and a short description, then publish. Your listing goes live to buyers the moment your boutique is approved.',
   },
   {
     q: 'When do I receive my payouts?',
-    a: `Payouts are released to your registered bank account after each order is delivered and past its return window. MangaiMart keeps an ${POLICY_TERMS.commissionPct}% commission; the rest is yours. Track every payout under Profile → Earnings & payouts.`,
+    a: `Only delivered orders are paid out — while a parcel is on its way, that money is held. Once an order is marked delivered, your share is transferred to your registered bank account within ${slaHours} hours. MangaiMart keeps a ${commissionPct}% commission; the rest is yours. Every payout, with the orders and items it covered, is under Profile → Earnings & payouts.`,
+  },
+  {
+    q: 'Why is my payout less than I expected?',
+    a: `Three things reduce a transfer, and all of them are itemised order by order under Profile → Earnings & payouts. First, the ${commissionPct}% commission. Second, any order not yet delivered — it is held, not lost, and appears in your next payout. Third, cash-on-delivery orders: you already collected that money at the door, so MangaiMart's commission and the delivery fees you collected on our behalf are subtracted from your bank transfer instead of being billed to you.`,
   },
   {
     q: 'What does it cost to sell on MangaiMart?',
-    a: `There is no monthly fee. MangaiMart takes a flat ${POLICY_TERMS.commissionPct}% commission on each delivered order. Advertising your boutique on the marketplace is optional and priced per day — set it up under Profile → Promote & Ads.`,
+    a: `There is no monthly fee. MangaiMart takes a flat ${commissionPct}% commission on each delivered order. Advertising your boutique on the marketplace is optional and priced per day — set it up under Profile → Promote & Ads.`,
   },
   {
     q: 'How do I get the Verified badge?',
@@ -44,6 +56,8 @@ const FAQS: { q: string; a: string }[] = [
 export function Help() {
   const navigate = useNavigate();
   const [open, setOpen] = useState<number | null>(0);
+  const { commission_pct: commissionPct, payout_sla_hours: slaHours } = useSettings();
+  const FAQS = buildFaqs(commissionPct, slaHours);
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
