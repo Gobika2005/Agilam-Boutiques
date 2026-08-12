@@ -140,3 +140,32 @@ export function shareBoutique(input: ShareBoutiqueInput): Promise<ShareResult> {
     fallbackName: 'boutique',
   });
 }
+
+export type ShareBoardInput = {
+  title: string;
+  url: string;
+  count: number;
+  /** The first piece's photo — what the family sees before they tap. */
+  image?: string;
+};
+
+/**
+ * A shortlist asks for something, which is what makes its caption different
+ * from the other two: a product share says "look at this", a board share says
+ * "help me pick". The number matters — "4 options" tells the reader how long
+ * this will take before they open it.
+ */
+function boardCaption({ title, count, url }: ShareBoardInput): string {
+  const options = `${count} ${count === 1 ? 'option' : 'options'}`;
+  return `Help me pick 👇\n${title} — ${options}\nTap a piece to say yes or no. No app, no sign-up.\n${url}`;
+}
+
+export function shareBoard(input: ShareBoardInput): Promise<ShareResult> {
+  return shareWithImage({
+    title: input.title,
+    text: boardCaption(input),
+    url: input.url,
+    image: input.image,
+    fallbackName: 'shortlist',
+  });
+}

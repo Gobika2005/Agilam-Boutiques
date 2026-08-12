@@ -413,7 +413,18 @@ export interface Database {
         Relationships: [];
       };
       notifications: {
-        Row: { id: string; profile_id: string; type: string; title: string; body: string; read: boolean; created_at: string };
+        Row: {
+          id: string;
+          profile_id: string;
+          type: string;
+          title: string;
+          body: string;
+          read: boolean;
+          /** In-app path this row opens, when it is not about an order
+           *  (migration 0077). Preferred over `order_id` by the inbox. */
+          link: string | null;
+          created_at: string;
+        };
         Insert: Partial<Database['public']['Tables']['notifications']['Row']> & { profile_id: string; title: string };
         Update: Partial<Database['public']['Tables']['notifications']['Row']>;
         Relationships: [];
@@ -657,6 +668,73 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['shipment_events']['Row']>;
         Relationships: [];
       };
+
+      // ── "Ask my people" shortlist boards (migration 0077) ───────────────
+      // Only SELECT is ever reachable from the browser: 0077 gives these tables
+      // no insert or update policy at all, and every write goes through one of
+      // the SECURITY DEFINER functions below. `Insert`/`Update` are typed as
+      // `never` to say so at compile time rather than at the 403.
+      shortlist_boards: {
+        Row: {
+          id: string;
+          buyer_id: string;
+          title: string;
+          note: string;
+          /** The share credential. Never leaves the owner's own read. */
+          token: string;
+          status: 'open' | 'closed';
+          decided_product_id: string | null;
+          created_at: string;
+          expires_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_items: {
+        Row: {
+          id: string;
+          board_id: string;
+          product_id: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_votes: {
+        Row: {
+          id: string;
+          board_id: string;
+          item_id: string;
+          /** A uuid from the voter's localStorage. Not authentication. */
+          voter_key: string;
+          voter_name: string;
+          verdict: 'love' | 'no';
+          note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_comments: {
+        Row: {
+          id: string;
+          board_id: string;
+          voter_key: string;
+          voter_name: string;
+          /** Set only when the signed-in owner posts — earns the "you" badge. */
+          profile_id: string | null;
+          body: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -872,6 +950,65 @@ export interface Database {
           utr: string | null;
           failure_reason: string | null;
         };
+      };
+
+      // ── "Ask my people" (migration 0077) ────────────────────────────────
+      // The first three are the ONLY things an anonymous visitor can call, and
+      // each takes the board's token as its first argument: RLS cannot see a
+      // URL, so the token is what stands in for a credential. The rest are
+      // owner-only and re-check `auth.uid()` inside the function.
+
+      /** Create a board and return `{ id, token }` so the share sheet can open
+       *  on the same tap. */
+      create_shortlist_board: {
+        Args: { p_title: string; p_note?: string; p_product_ids?: string[] };
+        Returns: { id: string; token: string };
+      };
+      update_shortlist_board: {
+        Args: {
+          p_board_id: string;
+          p_title?: string | null;
+          p_note?: string | null;
+          p_status?: 'open' | 'closed' | null;
+        };
+        Returns: void;
+      };
+      /** Returns how many were actually added — hidden or duplicate pieces are
+       *  skipped rather than raising. */
+      add_shortlist_items: {
+        Args: { p_board_id: string; p_product_ids: string[] };
+        Returns: number;
+      };
+      remove_shortlist_item: {
+        Args: { p_item_id: string };
+        Returns: void;
+      };
+      /** Record the winner and close voting, so everyone who helped sees it. */
+      decide_shortlist: {
+        Args: { p_board_id: string; p_product_id: string };
+        Returns: void;
+      };
+      /** The anonymous read. Returns the board, its pieces, the votes and the
+       *  comment thread in one round trip — and never the owner's id, email or
+       *  phone, only a first name. */
+      get_shared_board: {
+        Args: { p_token: string };
+        Returns: unknown;
+      };
+      cast_board_vote: {
+        Args: {
+          p_token: string;
+          p_item_id: string;
+          p_voter_key: string;
+          p_voter_name: string;
+          p_verdict: 'love' | 'no';
+          p_note?: string;
+        };
+        Returns: void;
+      };
+      post_board_comment: {
+        Args: { p_token: string; p_voter_key: string; p_voter_name: string; p_body: string };
+        Returns: string;
       };
     };
     Enums: Record<string, never>;

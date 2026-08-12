@@ -59,9 +59,29 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
 
   const notifs = items.filter((n) => tab === 'All' || n.type === tab);
 
+  /**
+   * Where a row goes when tapped.
+   *
+   * `link` (migration 0077) first: it is an explicit in-app path written by the
+   * notification's author, and it covers everything that is not an order — a
+   * shortlist someone voted on, for instance. `order_id` stays the fallback so
+   * every row written before that column existed behaves exactly as it did.
+   *
+   * Only same-origin paths are followed. The column is written by triggers, not
+   * by users, but a notification is a link the app clicks on the user's behalf,
+   * and "starts with a single slash" is the whole guard needed to keep it from
+   * ever becoming an off-site redirect.
+   */
+  const destination = (n: (typeof items)[number]): string | null => {
+    if (n.link && /^\/[^/]/.test(n.link)) return n.link;
+    if (n.order_id && orderBasePath) return `${orderBasePath}/orders/${encodeURIComponent(n.order_id)}`;
+    return null;
+  };
+
   const open = async (n: (typeof items)[number]) => {
     if (!n.read) await markRead(n.id);
-    if (n.order_id && orderBasePath) navigate(`${orderBasePath}/orders/${encodeURIComponent(n.order_id)}`);
+    const to = destination(n);
+    if (to) navigate(to);
   };
 
   return (
@@ -118,7 +138,7 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
             <div
               key={n.id}
               onClick={() => open(n)}
-              style={css(`background:${n.read ? 'var(--ag-surface)' : 'var(--ag-unread)'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${n.order_id && orderBasePath ? 'pointer' : 'default'};`)}
+              style={css(`background:${n.read ? 'var(--ag-surface)' : 'var(--ag-unread)'};border-radius:16px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);cursor:${destination(n) ? 'pointer' : 'default'};`)}
             >
               <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${s.tint};display:flex;align-items:center;justify-content:center;`)}>
                 <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${s.ic};`)}>{s.icon}</span>

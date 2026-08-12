@@ -8,6 +8,13 @@ export interface NotificationRow {
   body: string;
   /** Set on order notifications so the row can deep-link to /seller/orders/:id. */
   order_id: string | null;
+  /**
+   * An in-app path for notifications that are not about an order (migration
+   * 0077) — a shortlist someone voted on, say. Null on every row written before
+   * that migration, and on a database where it has not been applied, which is
+   * why the inbox falls back to `order_id` rather than requiring this.
+   */
+  link?: string | null;
   read: boolean;
   created_at: string;
 }

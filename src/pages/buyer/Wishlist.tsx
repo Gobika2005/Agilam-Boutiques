@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
 import { routes } from '@/lib/seo';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { Icon } from '@/components/ui/Icon';
 import { WishButton, WishHeart } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
+import { AskMyPeopleSheet } from '@/components/buyer/AskMyPeopleSheet';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
@@ -14,6 +17,7 @@ export function Wishlist() {
   const navigate = useNavigate();
   const { wishlist, toggleWish } = useShop();
   const { products: PRODUCTS } = useCatalog();
+  const [asking, setAsking] = useState(false);
 
   const items = PRODUCTS.filter((p) => wishlist[p.id]);
 
@@ -33,6 +37,28 @@ export function Wishlist() {
           </span>
         )}
       </div>
+
+      {/* The wishlist is where someone is already torn between two pieces —
+          which makes it the natural place to ask. Only offered once there is
+          genuinely something to choose between. */}
+      {items.length > 1 && (
+        <button
+          type="button"
+          onClick={() => setAsking(true)}
+          style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:16px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);cursor:pointer;font-family:inherit;text-align:left;')}
+        >
+          <span style={css('flex:none;width:38px;height:38px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+            <Icon name="groups" style={{ fontSize: 21, color: 'var(--ag-crimson)' }} />
+          </span>
+          <span style={css('flex:1;min-width:0;')}>
+            <span style={css('display:block;font-size:14px;font-weight:800;color:var(--ag-ink);')}>Can't decide? Ask my people</span>
+            <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;line-height:1.4;')}>
+              Share a link — your family votes without signing up
+            </span>
+          </span>
+          <Icon name="chevron_right" style={{ fontSize: 20, color: 'var(--ag-muted)' }} />
+        </button>
+      )}
 
       {items.length > 0 ? (
         <div className="agx-rgrid" style={css('margin-top:20px;')}>
@@ -69,6 +95,8 @@ export function Wishlist() {
           <button onClick={() => navigate('/')} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>Browse collections</button>
         </div>
       )}
+
+      {asking && <AskMyPeopleSheet onClose={() => setAsking(false)} />}
     </div>
   );
 }

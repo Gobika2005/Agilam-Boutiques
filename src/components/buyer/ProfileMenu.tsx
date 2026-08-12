@@ -37,6 +37,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
   const links = [
     { label: 'My orders', icon: 'receipt_long', to: '/orders' },
     { label: 'Wishlist', icon: 'favorite', to: '/wishlist' },
+    { label: 'My shortlists', icon: 'groups', to: '/shortlists' },
     { label: 'Coupons & offers', icon: 'confirmation_number', to: '/coupons' },
     { label: 'Messages', icon: 'chat', to: '/messages' },
   ];

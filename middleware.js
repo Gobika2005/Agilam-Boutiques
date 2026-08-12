@@ -70,6 +70,12 @@ const NOINDEX_PREFIXES = [
   "/notifications",
   "/coupons",
   "/search",
+  // "Ask my people" boards (migration 0077). `/shortlists` is her own private
+  // list; `/shortlist/<token>` is a link shared with four relatives, and a
+  // private family conversation is the last thing that should be indexable —
+  // the token is a credential, and an indexed one is a leaked one.
+  "/shortlists",
+  "/shortlist",
   "/buyer"
 ];
 function escapeHtml(value) {

@@ -351,6 +351,24 @@ await check('checkout is noindex', '/checkout', [
 await check('admin is noindex', '/admin/overview', [is('noindex', (o) => (o.robots || '').includes('noindex'))]);
 
 /*
+ * "Ask my people" boards (migration 0077).
+ *
+ * A shared board is a private family conversation reached by an unguessable
+ * token, and that token IS the credential — an indexed one is a leaked one.
+ * Asserted here rather than trusted to the prefix list, because the cost of
+ * someone later reordering NOINDEX_PREFIXES is not a ranking wobble, it is
+ * every buyer's shortlist in a search index.
+ */
+await check('shared shortlist is noindex', '/shortlist/00000000000000000000000000000000', [
+  is('noindex meta', (o) => (o.robots || '').includes('noindex')),
+  is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
+]);
+await check('my shortlists is noindex', '/shortlists', [
+  is('noindex meta', (o) => (o.robots || '').includes('noindex')),
+  is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
+]);
+
+/*
  * Soft 404s.
  *
  * A path whose subject does not exist still returns the SPA shell with HTTP

@@ -11,6 +11,7 @@ import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/share';
+import { AskMyPeopleSheet } from '@/components/buyer/AskMyPeopleSheet';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
@@ -84,6 +85,7 @@ export function ProductDetail() {
   // bag already holds for this piece (see `selectedSize` below).
   const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ description: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
@@ -791,6 +793,28 @@ export function ProductDetail() {
             {renderBagControl(56)}
           </div>
 
+          {/* ASK MY PEOPLE (migration 0077) — sits directly under the buy
+              actions because that is exactly where the hesitation is. A buyer
+              who isn't sure enough to tap "Add to Bag" is about to leave and
+              screenshot this into a family WhatsApp group; this is the same
+              act, as a link that leads back here. */}
+          <button
+            type="button"
+            onClick={() => setAsking(true)}
+            style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:14px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);cursor:pointer;font-family:inherit;text-align:left;')}
+          >
+            <span style={css('flex:none;width:38px;height:38px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-crimson);")}>groups</span>
+            </span>
+            <span style={css('flex:1;min-width:0;')}>
+              <span style={css('display:block;font-size:14px;font-weight:800;color:var(--ag-ink);')}>Not sure? Ask my people</span>
+              <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;line-height:1.4;')}>
+                Your family votes on a link — no app, no sign-up for them
+              </span>
+            </span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-muted);")}>chevron_right</span>
+          </button>
+
           {/* FEATURE BADGES — the seller's own picks (migration 0054), never a
               claim the app invented. A product listed before the seller form
               grew this simply has no grid. */}
@@ -1063,6 +1087,10 @@ export function ProductDetail() {
           </div>
         </div>
       )}
+
+      {/* Opens with this piece already ticked — she can add the others she
+          saved without leaving the page. */}
+      {asking && <AskMyPeopleSheet initialProductIds={[ap.id]} onClose={() => setAsking(false)} />}
     </div>
   );
 }

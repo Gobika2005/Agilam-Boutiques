@@ -45,6 +45,9 @@ const Boutiques = lazyNamed(() => import('@/pages/buyer/Boutiques'), 'Boutiques'
 const BoutiqueProfile = lazyNamed(() => import('@/pages/buyer/BoutiqueProfile'), 'BoutiqueProfile');
 const ProductDetail = lazyNamed(() => import('@/pages/buyer/ProductDetail'), 'ProductDetail');
 const Wishlist = lazyNamed(() => import('@/pages/buyer/Wishlist'), 'Wishlist');
+const Shortlists = lazyNamed(() => import('@/pages/buyer/Shortlists'), 'Shortlists');
+const ShortlistDetail = lazyNamed(() => import('@/pages/buyer/ShortlistDetail'), 'ShortlistDetail');
+const SharedBoard = lazyNamed(() => import('@/pages/buyer/SharedBoard'), 'SharedBoard');
 const FilterSheet = lazyNamed(() => import('@/pages/buyer/FilterSheet'), 'FilterSheet');
 const SortSheet = lazyNamed(() => import('@/pages/buyer/SortSheet'), 'SortSheet');
 const Cart = lazyNamed(() => import('@/pages/buyer/Cart'), 'Cart');
@@ -271,6 +274,15 @@ export default function App() {
 
         {/* Private to one buyer or a step in a transaction — all noindex. */}
         <Route path="wishlist" element={<Wishlist />} />
+        {/* "Ask my people" (migration 0077). Her own boards are private; the
+            share link is not private-by-auth but private-by-token, and it sits
+            inside this tree on purpose — a relative who opened it to judge four
+            sarees is a shopper standing in the shop, with the storefront's
+            header and nav around them and a real PDP behind every piece. Both
+            prefixes are noindex in middleware.js. */}
+        <Route path="shortlists" element={<Shortlists />} />
+        <Route path="shortlists/:id" element={<ShortlistDetail />} />
+        <Route path="shortlist/:token" element={<SharedBoard />} />
         <Route path="cart" element={<Cart />} />
         {/* Checkout and payment need a real account behind the order — see
             src/auth/SignInGate.tsx. The bag stays open to everyone; the two
