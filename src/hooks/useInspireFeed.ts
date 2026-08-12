@@ -10,6 +10,14 @@ import {
   type FeedProduct,
 } from '@/data/feed';
 import { rankFeed } from '@/lib/ranking';
+import {
+  NO_FEED_FILTERS,
+  boutiqueIdsForCity,
+  feedFilterKey,
+  feedQueryFor,
+  matchesShopFilters,
+  type FeedFilters,
+} from '@/lib/feedFilters';
 import { readLocalLikes, writeLocalLikes } from '@/lib/feedLocal';
 
 /** Cards revealed per step of the infinite scroll. */
@@ -48,11 +56,16 @@ export type FeedItem = FeedProduct;
  *     newest first, never reordered and never widened. It answers "what have my
  *     shops posted", and a shuffle would make that unanswerable.
  *
+ * `filters` is the buyer's filter sheet and applies to both tabs. Most of it is
+ * translated into the query (see `feedQueryFor`); the shop-level part is applied
+ * here against the boutique list the catalogue already holds, which is why the
+ * feed needs no join and no extra granted column to offer it.
+ *
  * Likes are local-first (buyers browse anonymously) and reconciled with the
  * account when there is one.
  */
-export function useInspireFeed(opts: { category?: string; followingOnly?: boolean } = {}) {
-  const { category, followingOnly = false } = opts;
+export function useInspireFeed(opts: { followingOnly?: boolean; filters?: FeedFilters } = {}) {
+  const { followingOnly = false, filters = NO_FEED_FILTERS } = opts;
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
@@ -96,44 +109,70 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
   );
   const followsAnyone = followedIds.length > 0;
 
-  // A stable identity for the id set, so the loader re-runs when the buyer
-  // follows or unfollows a shop but not on every unrelated catalogue render.
-  // For You is the whole market either way, so the follow set is not part of its
-  // identity — tapping Follow on a card there must not rebuild the feed under
-  // the buyer's thumb.
-  const scopeKey = followingOnly ? followedIds.join(',') : 'all';
-  const idsRef = useRef(followedIds);
-  idsRef.current = followedIds;
+  /** The boutiques in the filtered city, or null when no city filter is on. */
+  const cityIds = useMemo(
+    () => boutiqueIdsForCity(boutiques, filters.city),
+    [boutiques, filters.city],
+  );
+
+  /**
+   * The shops this fetch is allowed to return, as `fetchFeed` wants them.
+   *
+   * For You asks for everything — an empty id list with `exclude` is not a
+   * filter at all. Following asks for exactly the followed shops, and gets
+   * nothing when the buyer follows nobody (which is the empty state the page
+   * renders a prompt for). A city filter intersects with either: on Following
+   * that is "shops I follow, in this city", which can legitimately be empty.
+   */
+  const scope = useMemo(() => {
+    if (followingOnly) {
+      const ids = cityIds ? followedIds.filter((id) => cityIds.includes(id)) : followedIds;
+      return { boutiqueIds: ids, exclude: false };
+    }
+    return cityIds
+      ? { boutiqueIds: cityIds, exclude: false }
+      : { boutiqueIds: [] as string[], exclude: true };
+  }, [followingOnly, followedIds, cityIds]);
+
+  // A stable identity for everything the query depends on, so the loader re-runs
+  // when the buyer follows a shop or moves a filter, but not on every unrelated
+  // catalogue render. For You is the whole market either way, so the follow set
+  // is not part of its identity — tapping Follow on a card there must not
+  // rebuild the feed under the buyer's thumb.
+  const scopeKey = `${followingOnly ? followedIds.join(',') : 'all'}|${scope.boutiqueIds.join(',')}|${feedFilterKey(filters)}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
 
   const describeError = (e: unknown) =>
     e instanceof Error && /likes_count|product_likes|schema cache/i.test(e.message)
       ? 'The feed isn’t set up yet — apply migration 0020 in Supabase.'
       : 'Couldn’t load the feed. Check your connection and try again.';
 
-  /**
-   * The query behind whichever tab is showing.
-   *
-   * For You asks for everything — an empty id list with `exclude` is not a
-   * filter at all — while Following asks for exactly the followed shops, and
-   * gets nothing when the buyer follows nobody (which is the empty state the
-   * page renders a prompt for).
-   */
-  const scope = followingOnly
-    ? { boutiqueIds: followedIds, exclude: false }
-    : { boutiqueIds: [] as string[], exclude: true };
+  /** Boutique by id, for the filters the query does not express. */
+  const shopById = useMemo(() => new Map(boutiques.map((b) => [b.id, b])), [boutiques]);
 
   /**
    * Put a freshly fetched batch into feed order.
    *
-   * For You is ranked and spread; Following is left exactly as the database
+   * Verified-only and cash-on-delivery are applied here rather than in the
+   * query: they live on the boutique, they remove a small fraction at most, and
+   * the app already holds the shop list — so this costs a map lookup instead of
+   * a join and an extra column grant.
+   *
+   * For You is then ranked and spread; Following is left exactly as the database
    * returned it, newest first. `after` carries the last boutique of what is
    * already on screen, so the "no two cards from one shop in a row" rule holds
    * across the seam between batches too.
    */
   const order = useCallback(
-    (rows: FeedProduct[], after?: string) =>
-      followingOnly ? rows : rankFeed(rows, seedRef.current, after),
-    [followingOnly],
+    (rows: FeedProduct[], after?: string) => {
+      const kept = rows.filter((r) => matchesShopFilters(shopById.get(r.boutique_id), filters));
+      return followingOnly ? kept : rankFeed(kept, seedRef.current, after);
+    },
+    // `filters` is compared by the same key the loader uses, so an equal-but-new
+    // object cannot re-order a feed the buyer is looking at.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [followingOnly, shopById, feedFilterKey(filters)],
   );
 
   // First batch (and a reload whenever the tab or the followed set changes).
@@ -146,9 +185,12 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     setBatchesLeft(true);
     setShown(PAGE);
 
-    fetchFeed({ ...scope, limit: BATCH, category })
+    fetchFeed({ ...scope, limit: BATCH, where: feedQueryFor(filters) })
       .then((first) => {
         if (!active) return;
+        // The cursor is the oldest row the DATABASE returned, not the oldest
+        // kept — the shop-level filters below drop rows, and paging from a kept
+        // row would silently skip everything between the two.
         cursorRef.current = first[first.length - 1]?.created_at;
         setRanked(order(first));
         setBatchesLeft(first.length === BATCH);
@@ -162,13 +204,16 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeKey, catalogLoading, category, followingOnly]);
+  }, [scopeKey, catalogLoading, followingOnly]);
 
   /** Nothing on screen, nothing left to fetch. */
   const exhausted = shown >= ranked.length && !batchesLeft;
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || loading || exhausted || ranked.length === 0) return;
+    // Deliberately no "nothing on screen yet" guard: the shop-level filters can
+    // empty a whole batch, and refusing to fetch the next one would strand the
+    // buyer on an empty feed with more pieces waiting behind the cursor.
+    if (loadingMore || loading || exhausted) return;
 
     // The common step: the batch already holds more than is on screen, so the
     // next page is a reveal, not a round trip.
@@ -180,11 +225,10 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     setLoadingMore(true);
     try {
       const rows = await fetchFeed({
-        boutiqueIds: followingOnly ? idsRef.current : [],
-        exclude: !followingOnly,
+        ...scopeRef.current,
         limit: BATCH,
         before: cursorRef.current,
-        category,
+        where: feedQueryFor(filters),
       });
       cursorRef.current = rows[rows.length - 1]?.created_at ?? cursorRef.current;
 
@@ -204,7 +248,8 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     } finally {
       setLoadingMore(false);
     }
-  }, [ranked, shown, loadingMore, loading, exhausted, category, followingOnly, order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ranked, shown, loadingMore, loading, exhausted, order, feedFilterKey(filters)]);
 
   // Pull the account's likes once signed in.
   useEffect(() => {

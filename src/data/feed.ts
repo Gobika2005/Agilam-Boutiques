@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { FeedQuery } from '@/lib/feedFilters';
 import type { ProductWithBoutique } from './types';
 
 /**
@@ -49,6 +50,11 @@ const shape = (rows: unknown): FeedProduct[] => (rows ?? []) as unknown as FeedP
  * batch of the catalogue; `rankFeed` in src/lib/ranking.ts decides what leads
  * it. That split is deliberate — the blend is recency, likes, views, orders and
  * a per-visit random term, and no single `order by` expresses it.
+ *
+ * `where` is the buyer's filter sheet, translated by `feedQueryFor`. It belongs
+ * in the query rather than in a pass over the fetched batch: a fabric or size
+ * filter can exclude most of the catalogue, and post-filtering would hand the
+ * buyer two cards out of a batch of sixty with nothing to say more exist.
  */
 export async function fetchFeed(opts: {
   boutiqueIds: string[];
@@ -56,10 +62,9 @@ export async function fetchFeed(opts: {
   exclude?: boolean;
   limit?: number;
   before?: string;
-  /** Narrow the feed to one catalogue category — the Inspire filter row. */
-  category?: string;
+  where?: FeedQuery;
 }): Promise<FeedProduct[]> {
-  const { boutiqueIds, exclude = false, limit = 6, before, category } = opts;
+  const { boutiqueIds, exclude = false, limit = 6, before, where } = opts;
   // An include-query with nothing to include returns nothing, rather than
   // silently widening to every boutique. An exclude-query with nothing to
   // exclude is simply "everything", which is correct.
@@ -79,7 +84,17 @@ export async function fetchFeed(opts: {
     q = q.in('boutique_id', boutiqueIds);
   }
 
-  if (category) q = q.eq('category', category);
+  if (where?.categories?.length) q = q.in('category', where.categories);
+  if (where?.occasions?.length) q = q.in('occasion', where.occasions);
+  if (where?.fabrics?.length) q = q.in('fabric', where.fabrics);
+  if (where?.colors?.length) q = q.in('color', where.colors);
+  // `products.sizes` is a text[] (migration 0008), so a size filter is an array
+  // overlap — "has any of these", not "has all of them".
+  if (where?.sizes?.length) q = q.overlaps('sizes', where.sizes);
+  if (where?.maxPrice != null) q = q.lte('price', where.maxPrice);
+  if (where?.inStockOnly) q = q.gt('stock', 0);
+  if (where?.newerThan) q = q.gte('created_at', where.newerThan);
+
   if (before) q = q.lt('created_at', before);
 
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);

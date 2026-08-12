@@ -7,6 +7,8 @@ import { breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { FeedPostCard } from '@/components/buyer/FeedPostCard';
 import { StoryRail } from '@/components/buyer/StoryRail';
 import { useInspireFeed } from '@/hooks/useInspireFeed';
+import { InspireFilterSheet } from '@/components/buyer/InspireFilterSheet';
+import { NO_FEED_FILTERS, feedFilterCount, type FeedFilters } from '@/lib/feedFilters';
 
 /**
  * Inspire — a scrolling feed of pieces, straight from the catalogue.
@@ -56,8 +58,23 @@ export function Inspire() {
   // A social-feed lens (For You / Following) as the primary filter.
   const [tab, setTab] = useState<TabKey>('foryou');
 
+  /**
+   * The filter sheet's value, and whether it is open.
+   *
+   * Held here, in the screen, and nowhere else: leaving Inspire unmounts this
+   * component and the filters go with it, so the feed is always the whole market
+   * again when the buyer comes back. That is deliberate — a filter left on from
+   * a previous session is the commonest way a feed comes to look broken.
+   *
+   * It applies to both tabs, so "cotton sarees from the shops I follow" is a
+   * thing the buyer can ask for.
+   */
+  const [filters, setFilters] = useState<FeedFilters>(NO_FEED_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const activeFilters = feedFilterCount(filters);
+
   const { items, followsAnyone, loading, loadingMore, exhausted, error, loadMore, likes, toggleLike } =
-    useInspireFeed({ followingOnly: tab === 'following' });
+    useInspireFeed({ followingOnly: tab === 'following', filters });
 
   // Infinite scroll. An IntersectionObserver on a sentinel below the last card
   // beats a scroll listener: no per-frame work, and it keeps firing correctly
@@ -85,30 +102,68 @@ export function Inspire() {
         {/* ── Stories ── */}
         <StoryRail />
 
-        {/* ── Feed lens: For You / Following ── the primary, social-feed-style
-            filter. A segmented control (not loose pills) so it reads as "which
-            feed am I in", distinct from the category refinement below it. */}
-        <div style={css('display:flex;gap:4px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:15px;padding:4px;margin:2px 0 10px;')}>
-          {TABS.map((t) => {
-            const on = tab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                style={css(
-                  `flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;border:none;cursor:pointer;border-radius:11px;font-family:inherit;font-weight:800;font-size:13.5px;transition:background .25s ease,color .25s ease,box-shadow .25s ease;background:${
-                    on ? 'linear-gradient(135deg,#C62A60,#B02454 70%,#8E1C44)' : 'transparent'
-                  };color:${on ? '#fff' : 'var(--ag-muted)'};box-shadow:${
-                    on ? '0 1px 0 rgba(255,255,255,.3) inset,0 10px 22px -12px rgba(176,36,84,.9)' : 'none'
-                  };`,
-                )}
-              >
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{t.icon}</span>
-                {t.label}
-              </button>
-            );
-          })}
+        {/* ── Feed lens: For You / Following, then Filter ──
+            The two tabs are a segmented control (not loose pills) so they read
+            as "which feed am I in". The filter button sits OUTSIDE that control
+            rather than as a third segment, because it is not a third feed: it
+            narrows whichever one you are in, and putting it inside would make
+            the pair look like a choice of three. */}
+        <div style={css('display:flex;align-items:stretch;gap:8px;margin:2px 0 10px;')}>
+          <div style={css('flex:1;min-width:0;display:flex;gap:4px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:15px;padding:4px;')}>
+            {TABS.map((t) => {
+              const on = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  style={css(
+                    `flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;border:none;cursor:pointer;border-radius:11px;font-family:inherit;font-weight:800;font-size:13.5px;transition:background .25s ease,color .25s ease,box-shadow .25s ease;background:${
+                      on ? 'linear-gradient(135deg,#C62A60,#B02454 70%,#8E1C44)' : 'transparent'
+                    };color:${on ? '#fff' : 'var(--ag-muted)'};box-shadow:${
+                      on ? '0 1px 0 rgba(255,255,255,.3) inset,0 10px 22px -12px rgba(176,36,84,.9)' : 'none'
+                    };`,
+                  )}
+                >
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{t.icon}</span>
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setSheetOpen(true)}
+            aria-label={activeFilters ? `Filter the feed — ${activeFilters} active` : 'Filter the feed'}
+            aria-haspopup="dialog"
+            style={css(`position:relative;width:48px;flex:none;border-radius:15px;border:1px solid ${activeFilters ? 'transparent' : 'var(--ag-border-soft)'};cursor:pointer;display:flex;align-items:center;justify-content:center;background:${activeFilters ? 'linear-gradient(135deg,#C62A60,#B02454 70%,#8E1C44)' : 'var(--ag-surface-2)'};box-shadow:${activeFilters ? '0 10px 22px -12px rgba(176,36,84,.9)' : 'none'};`)}
+          >
+            <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${activeFilters ? '#fff' : 'var(--ag-crimson)'};`)}>tune</span>
+            {/* The count, so a filter left on is never invisible — the commonest
+                way a feed comes to look broken is one nobody remembers setting. */}
+            {!!activeFilters && (
+              <span style={css('position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--ag-surface);color:var(--ag-crimson);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid #B02454;')}>
+                {activeFilters}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* A filtered feed says so, with the one control that undoes it. Without
+            this the buyer has to reopen the sheet to find out why the feed is
+            short. */}
+        {activeFilters > 0 && (
+          <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 10px;font-size:12.5px;')}>
+            <span style={css('color:var(--ag-muted);font-weight:600;')}>
+              {activeFilters} {activeFilters === 1 ? 'filter' : 'filters'} on{filters.city ? ` · ${filters.city}` : ''}
+            </span>
+            <button
+              onClick={() => setFilters(NO_FEED_FILTERS)}
+              style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
 
         {/* ── Feed ── */}
         {loading && (
@@ -140,12 +195,16 @@ export function Inspire() {
         )}
 
         {!loading && !error && items.length === 0 && (() => {
-          // The empty state speaks to *why* it's empty: an un-followed Following
-          // tab, or a followed one with no new pieces — each with the one action
-          // that actually helps.
+          // The empty state speaks to *why* it's empty: filters that match
+          // nothing, an un-followed Following tab, or a followed one with no new
+          // pieces — each with the one action that actually helps. The filter
+          // case comes first because it is the only one the buyer caused, and
+          // the only one they can undo from here.
           const followingEmpty = tab === 'following';
-          const notFollowing = followingEmpty && !followsAnyone;
-          const empty = notFollowing
+          const notFollowing = followingEmpty && !followsAnyone && activeFilters === 0;
+          const empty = activeFilters > 0
+            ? { icon: 'filter_alt_off', title: 'Nothing matches those filters', sub: `No ${tab === 'following' ? 'piece from the shops you follow' : 'piece on the feed'} matches all ${activeFilters === 1 ? 'of that filter' : `${activeFilters} of those filters`} right now. Try loosening one.`, cta: 'Clear filters', act: () => setFilters(NO_FEED_FILTERS) }
+            : notFollowing
             ? { icon: 'favorite', title: 'Follow your favourite boutiques', sub: 'Pieces from the shops you follow show up here first. Find a few you love to fill this feed.', cta: 'Discover boutiques', act: () => navigate('/boutiques') }
             : followingEmpty
               ? { icon: 'auto_awesome', title: 'You’re all caught up', sub: 'No new pieces from the shops you follow right now — see what else is new in For You.', cta: 'Switch to For You', act: () => setTab('foryou') }
@@ -191,11 +250,21 @@ export function Inspire() {
 
         {!loading && exhausted && items.length > 0 && (
           <div style={css('text-align:center;padding:18px 20px 6px;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;')}>
-            That’s everything for now ✦
+            {activeFilters > 0 ? 'That’s everything matching those filters ✦' : 'That’s everything for now ✦'}
           </div>
         )}
       </div>
     </div>
+
+    {/* Mounted only while open, so the sheet always opens on the committed
+        filters rather than on a draft the buyer abandoned last time. */}
+    {sheetOpen && (
+      <InspireFilterSheet
+        value={filters}
+        onApply={setFilters}
+        onClose={() => setSheetOpen(false)}
+      />
+    )}
     </>
   );
 }
