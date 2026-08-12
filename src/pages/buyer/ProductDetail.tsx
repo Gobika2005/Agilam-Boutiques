@@ -12,6 +12,8 @@ import { CardLink } from '@/components/buyer/CardLink';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/share';
 import { AskMyPeopleSheet } from '@/components/buyer/AskMyPeopleSheet';
+import { AccountSheet } from '@/components/buyer/AccountSheet';
+import { useQuickAsk } from '@/hooks/useQuickAsk';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
@@ -86,6 +88,7 @@ export function ProductDetail() {
   const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [asking, setAsking] = useState(false);
+  const quickAsk = useQuickAsk();
   const [zoomOpen, setZoomOpen] = useState(false);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ description: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
@@ -797,23 +800,40 @@ export function ProductDetail() {
               actions because that is exactly where the hesitation is. A buyer
               who isn't sure enough to tap "Add to Bag" is about to leave and
               screenshot this into a family WhatsApp group; this is the same
-              act, as a link that leads back here. */}
-          <button
-            type="button"
-            onClick={() => setAsking(true)}
-            style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:14px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);cursor:pointer;font-family:inherit;text-align:left;')}
-          >
+              act, as a link that leads back here.
+
+              One tap goes straight to the share sheet. She is looking at the
+              piece she wants to ask about, so there is nothing to choose and
+              nothing to confirm — a picker in between would only be friction at
+              the moment she was about to leave. "Add more pieces" below opens
+              the full sheet for the times she does want to compare. */}
+          <div style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:14px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);')}>
             <span style={css('flex:none;width:38px;height:38px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-crimson);")}>groups</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-size:14px;font-weight:800;color:var(--ag-ink);')}>Not sure? Ask my people</span>
               <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;line-height:1.4;')}>
-                Your family votes on a link — no app, no sign-up for them
+                They vote on a link — no app, no sign-up for them.{' '}
+                <button
+                  type="button"
+                  onClick={() => setAsking(true)}
+                  style={css('border:none;background:none;padding:0;font-family:inherit;font-size:12px;font-weight:800;color:var(--ag-crimson);cursor:pointer;text-decoration:underline;')}
+                >
+                  Add more pieces
+                </button>
               </span>
             </span>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-muted);")}>chevron_right</span>
-          </button>
+            <button
+              type="button"
+              disabled={quickAsk.busy}
+              onClick={() => void quickAsk.ask({ productIds: [ap.id], images: [ap.image] })}
+              style={css(`flex:none;height:40px;padding:0 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;opacity:${quickAsk.busy ? 0.6 : 1};`)}
+            >
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>share</span>
+              {quickAsk.busy ? 'Opening…' : 'Ask'}
+            </button>
+          </div>
 
           {/* FEATURE BADGES — the seller's own picks (migration 0054), never a
               claim the app invented. A product listed before the seller form
@@ -1091,6 +1111,17 @@ export function ProductDetail() {
       {/* Opens with this piece already ticked — she can add the others she
           saved without leaving the page. */}
       {asking && <AskMyPeopleSheet initialProductIds={[ap.id]} onClose={() => setAsking(false)} />}
+
+      {/* The one prompt a direct share cannot avoid: a board has to belong to
+          someone, and the votes have to reach a person. */}
+      {quickAsk.needsSignIn && (
+        <AccountSheet
+          title="Sign in to ask your people"
+          subtitle="A shortlist is yours to keep and share — sign in and we'll tell you the moment someone votes."
+          onDone={quickAsk.closeSignIn}
+          onClose={quickAsk.closeSignIn}
+        />
+      )}
     </div>
   );
 }

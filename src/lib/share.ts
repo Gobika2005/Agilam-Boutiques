@@ -175,23 +175,35 @@ export type ShareBoardInput = {
 /**
  * A shortlist asks for something, which is what makes its caption different
  * from the other two: a product share says "look at this", a board share says
- * "help me pick".
+ * "help me choose".
  *
  * It is also the only one of the three that is a message from HER to people who
  * know her, rather than the app talking to a stranger — so it reads like a
- * person asking a favour, not like a product explaining itself. The one piece
- * of instruction that survives ("no sign-up") is there because it answers the
- * question that would otherwise stop an aunt from tapping at all.
+ * person asking a favour, not like a product explaining itself. Each line is
+ * doing a job:
  *
- * The count earns its place too: "4 options" tells the reader how long this
- * will take before they commit to opening it.
+ *   • the occasion, because "for Divya's wedding" is what makes a relative stop
+ *     scrolling and care;
+ *   • the count, because it tells them how long this will take before they
+ *     commit to opening anything;
+ *   • "no sign-up required", because that is the question that would otherwise
+ *     stop an aunt from tapping at all;
+ *   • "Vote here", because a bare link in a family group gets ignored.
+ *
+ * One piece is a different message. "Help me choose" between one thing is
+ * nonsense, and the product page's one-tap ask makes exactly that board — so it
+ * asks for an opinion rather than a vote.
  */
 function boardCaption({ occasion, count, url }: ShareBoardInput): string {
-  const options = `${count} ${count === 1 ? 'option' : 'options'}`;
-  const what = occasion?.trim()
-    ? `${occasion.trim()} — ${options}\nNo sign-up, just tap the one you like.`
-    : `${options} — no sign-up, just tap the one you like.`;
-  return `Help me pick? 🙏\n${what}\n${url}`;
+  const where = occasion?.trim() ? ` for ${occasion.trim()}` : '';
+
+  const message =
+    count === 1
+      ? `What do you think of this one${where}?🩷\nJust tap to tell me—no sign-up required. 😊`
+      : `Help me choose${where}!🩷\nI've shortlisted ${count} beautiful outfits.\n` +
+        `Just tap your favourite—no sign-up required. 😊`;
+
+  return `${message}\n👇 Vote here:\n${url}`;
 }
 
 export function shareBoard(input: ShareBoardInput): Promise<ShareResult> {

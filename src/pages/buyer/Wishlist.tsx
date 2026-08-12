@@ -8,6 +8,8 @@ import { Icon } from '@/components/ui/Icon';
 import { WishButton, WishHeart } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { AskMyPeopleSheet } from '@/components/buyer/AskMyPeopleSheet';
+import { AccountSheet } from '@/components/buyer/AccountSheet';
+import { useQuickAsk } from '@/hooks/useQuickAsk';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
@@ -18,6 +20,7 @@ export function Wishlist() {
   const { wishlist, toggleWish } = useShop();
   const { products: PRODUCTS } = useCatalog();
   const [asking, setAsking] = useState(false);
+  const quickAsk = useQuickAsk();
 
   const items = PRODUCTS.filter((p) => wishlist[p.id]);
 
@@ -40,24 +43,44 @@ export function Wishlist() {
 
       {/* The wishlist is where someone is already torn between two pieces —
           which makes it the natural place to ask. Only offered once there is
-          genuinely something to choose between. */}
+          genuinely something to choose between.
+
+          The primary button shares everything saved in one tap, because that is
+          what she means most of the time. "Choose which ones" is there for a
+          wishlist that has grown past one decision. */}
       {items.length > 1 && (
-        <button
-          type="button"
-          onClick={() => setAsking(true)}
-          style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:16px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);cursor:pointer;font-family:inherit;text-align:left;')}
-        >
+        <div style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:16px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);')}>
           <span style={css('flex:none;width:38px;height:38px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
             <Icon name="groups" style={{ fontSize: 21, color: 'var(--ag-crimson)' }} />
           </span>
           <span style={css('flex:1;min-width:0;')}>
             <span style={css('display:block;font-size:14px;font-weight:800;color:var(--ag-ink);')}>Can't decide? Ask my people</span>
             <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;line-height:1.4;')}>
-              Share a link — your family votes without signing up
+              They vote without signing up.{' '}
+              <button
+                type="button"
+                onClick={() => setAsking(true)}
+                style={css('border:none;background:none;padding:0;font-family:inherit;font-size:12px;font-weight:800;color:var(--ag-crimson);cursor:pointer;text-decoration:underline;')}
+              >
+                Choose which ones
+              </button>
             </span>
           </span>
-          <Icon name="chevron_right" style={{ fontSize: 20, color: 'var(--ag-muted)' }} />
-        </button>
+          <button
+            type="button"
+            disabled={quickAsk.busy}
+            onClick={() =>
+              void quickAsk.ask({
+                productIds: items.map((p) => p.id),
+                images: items.map((p) => p.image),
+              })
+            }
+            style={css(`flex:none;height:40px;padding:0 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;opacity:${quickAsk.busy ? 0.6 : 1};`)}
+          >
+            <Icon name="share" style={{ fontSize: 17 }} />
+            {quickAsk.busy ? 'Opening…' : 'Ask all'}
+          </button>
+        </div>
       )}
 
       {items.length > 0 ? (
@@ -97,6 +120,17 @@ export function Wishlist() {
       )}
 
       {asking && <AskMyPeopleSheet onClose={() => setAsking(false)} />}
+
+      {/* The one prompt a direct share cannot avoid: a board has to belong to
+          someone, and the votes have to reach a person. */}
+      {quickAsk.needsSignIn && (
+        <AccountSheet
+          title="Sign in to ask your people"
+          subtitle="A shortlist is yours to keep and share — sign in and we'll tell you the moment someone votes."
+          onDone={quickAsk.closeSignIn}
+          onClose={quickAsk.closeSignIn}
+        />
+      )}
     </div>
   );
 }

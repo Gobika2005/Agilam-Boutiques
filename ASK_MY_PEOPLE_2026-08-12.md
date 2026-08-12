@@ -24,14 +24,20 @@ sign up:
 2. It goes into WhatsApp with **all the pieces drawn into one numbered square**
    (`src/lib/boardCollage.ts`), captioned in her voice rather than the app's:
 
-   > Help me pick? 🙏
-   > Divya's wedding — 4 options
-   > No sign-up, just tap the one you like.
+   > Help me choose for my sister's wedding!🩷
+   > I've shortlisted 4 beautiful outfits.
+   > Just tap your favourite—no sign-up required. 😊
+   > 👇 Vote here:
    > `https://mangaimart.com/shortlist/…`
 
-   The occasion line disappears when she skipped that field, because the board's
-   stored title then falls back to "Which one should I get?" and printing that
-   under "Help me pick?" asks her family the same thing twice.
+   The "for …" disappears when she skipped the occasion field, because the
+   board's stored title then falls back to "Which one should I get?" and
+   printing that inside "Help me choose for …" reads as nonsense.
+
+   A one-piece board — which is what the product page's one-tap ask makes —
+   sends a different message, because "help me choose" between one thing is not
+   a question: *"What do you think of this one?🩷 / Just tap to tell me—no
+   sign-up required. 😊"*
 
    Attaching only the *first* photo would have misrepresented the ask — the
    caption says "4 options" and the picture shows one saree, so nobody learns
@@ -122,13 +128,36 @@ and still route through `order_id`.
 | `src/lib/voterIdentity.ts` | The relative's localStorage name + voter key |
 | `src/lib/boardCollage.ts` | Draws every piece into one numbered square for the share |
 | `src/lib/share.ts` | `shareBoard()` — image-attached WhatsApp share |
-| `src/components/buyer/AskMyPeopleSheet.tsx` | Pick → name → share, in one sheet |
+| `src/hooks/useQuickAsk.ts` | **One-tap ask** — makes the board and opens the share sheet, no picker |
+| `src/components/buyer/AskMyPeopleSheet.tsx` | Pick → name → share, for when she does want to choose |
 | `src/pages/buyer/SharedBoard.tsx` | **The public board.** `/shortlist/:token` |
 | `src/pages/buyer/Shortlists.tsx` | Her boards. `/shortlists` |
 | `src/pages/buyer/ShortlistDetail.tsx` | Votes as they land. `/shortlists/:id` |
 
 Entry points: the wishlist (once there are 2+ saved pieces), the product page
 directly under the buy actions, and the profile menu.
+
+**Both entry points share in one tap.** On a product page she is already looking
+at the piece she wants to ask about, and on the wishlist "all of them" is what
+she means most of the time — so there is nothing to pick and nothing to confirm,
+and a picker in between would only be friction at the moment she was about to
+leave and screenshot into WhatsApp instead. The full sheet is still one tap away
+("Add more pieces" / "Choose which ones") for the times she does want to curate.
+
+Two consequences of doing it inside the tap, both handled:
+
+- **A signed-out buyer still gets one prompt.** A board belongs to someone and
+  the votes have to reach a person, so the sign-in sheet is the one popup a
+  direct share cannot remove. Browsing and voting stay anonymous.
+- **The share can degrade to a copied link.** Creating the board is a round trip
+  and the collage is a fetch per piece, so the browser may have dropped the
+  transient user activation `navigator.share` requires by the time it is called
+  — Safari is strict here, Chrome is not. `shareWithImage` already falls through
+  to the clipboard, so the worst case is "Link copied — paste it in your family
+  group", never a dead button.
+
+Repeated taps reuse the board made for that same set of pieces rather than
+leaving duplicates in her list.
 
 `voter_key` is **not** authentication and the migration does not treat it as
 any. It lets one person change their mind instead of voting twice, and shows
