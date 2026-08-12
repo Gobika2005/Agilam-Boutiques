@@ -245,11 +245,17 @@ export default function App() {
 
         {/* The collection hub, and the landing pages it links into. These are
             the site's commercial keyword surface — one indexable page per
-            category, occasion and fabric the admin has approved. */}
+            category, occasion, fabric, colour and budget rung.
+            Colour and budget were the two tiles on the hub that still only set a
+            filter and pushed the buyer to the shared grid, so they had nothing
+            to share and nothing to rank ("red silk saree", "saree under 2000"
+            are both real queries). Same screen, same schema, one more kind. */}
         <Route path="collections" element={<Collections />} />
         <Route path="collections/:slug" element={<CategoryLanding kind="category" />} />
         <Route path="occasions/:slug" element={<CategoryLanding kind="occasion" />} />
         <Route path="fabrics/:slug" element={<CategoryLanding kind="fabric" />} />
+        <Route path="colours/:slug" element={<CategoryLanding kind="colour" />} />
+        <Route path="budget/:slug" element={<CategoryLanding kind="budget" />} />
 
         <Route path="boutiques" element={<Boutiques />} />
         {/* The per-city directory — `/boutiques/coimbatore`. Same screen; the

@@ -568,6 +568,33 @@ if (collectionUrl) {
 } else results.push({ label: 'collection landing', FAIL: 'no /collections/<slug> in the page sitemap' });
 
 /*
+ * Colour and budget landings.
+ *
+ * These two facets were the last tiles on /collections that only set a filter
+ * and pushed the buyer to the shared grid — no URL, nothing to share, nothing to
+ * rank, while category/occasion/fabric each had a real page. They are route
+ * families now, so they are checked like the others: in the sitemap, answering
+ * 200, with the same schema and a crawlable heading.
+ */
+for (const [label, prefix] of [['colour landing', '/colours/'], ['budget landing', '/budget/']]) {
+  const url = (pagesXml.match(new RegExp(`<loc>[^<]*(${prefix}[^<]+)</loc>`)) || [])[1];
+  if (url) {
+    await check(label, url, [
+      is('200', (o) => o.status === 200),
+      is('CollectionPage schema', (o) => (o.schema || '').includes('CollectionPage')),
+      is('crawlable <h1>', (o) => !!o.noscriptH1),
+      is('product links', (o) => o.noscriptLinks >= 2),
+    ]);
+  } else results.push({ label, FAIL: `no ${prefix}<slug> in the page sitemap` });
+}
+
+// A budget rung that does not exist must not be served as a page — otherwise
+// /budget/under-7 is an indexable soft 404 for every number anyone types.
+await check('unknown budget rung 404s', '/budget/under-7', [
+  is('noindex', (o) => (o.robots || '').includes('noindex')),
+]);
+
+/*
  * The preview guard.
  *
  * `isPreviewHost` used to lead with `!!CANONICAL_HOST &&`, so with VITE_SITE_URL

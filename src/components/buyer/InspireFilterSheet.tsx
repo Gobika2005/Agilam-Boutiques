@@ -5,6 +5,7 @@ import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { sortSizes } from '@/lib/sizes';
 import { distinctCities } from '@/lib/cities';
+import { hasTerm, termKey } from '@/lib/vocabulary';
 import { fmt } from '@/data/demo';
 import {
   FEED_MAX_PRICE,
@@ -76,11 +77,11 @@ export function InspireFilterSheet({
   const present = <T,>(options: T[], has: (o: T) => boolean, on: (o: T) => boolean) =>
     options.filter((o) => has(o) || on(o));
 
-  const catsPresent = useMemo(() => new Set(PRODUCTS.map((p) => p.cat)), [PRODUCTS]);
-  const occasionsPresent = useMemo(() => new Set(PRODUCTS.map((p) => p.occasion)), [PRODUCTS]);
-  const fabricsPresent = useMemo(() => new Set(PRODUCTS.map((p) => p.fabric)), [PRODUCTS]);
-  const colorsPresent = useMemo(() => new Set(PRODUCTS.map((p) => p.color)), [PRODUCTS]);
-  const sizesPresent = useMemo(() => new Set(PRODUCTS.flatMap((p) => p.sizes ?? [])), [PRODUCTS]);
+  const catsPresent = useMemo(() => new Set(PRODUCTS.map((p) => termKey(p.cat))), [PRODUCTS]);
+  const occasionsPresent = useMemo(() => new Set(PRODUCTS.map((p) => termKey(p.occasion))), [PRODUCTS]);
+  const fabricsPresent = useMemo(() => new Set(PRODUCTS.map((p) => termKey(p.fabric))), [PRODUCTS]);
+  const colorsPresent = useMemo(() => new Set(PRODUCTS.map((p) => termKey(p.color))), [PRODUCTS]);
+  const sizesPresent = useMemo(() => new Set(PRODUCTS.flatMap((p) => (p.sizes ?? []).map(termKey))), [PRODUCTS]);
 
   // Cities that have a shop, canonical and de-duplicated, with a count each —
   // the same searched control as the boutique directory rather than a wall of
@@ -105,7 +106,7 @@ export function InspireFilterSheet({
     return top;
   }, [cities, cityQuery, draft.city]);
 
-  const sizeOptions = sortSizes(present(names('size'), (s) => sizesPresent.has(s), (s) => draft.sizes.includes(s)));
+  const sizeOptions = sortSizes(present(names('size'), (s) => sizesPresent.has(termKey(s)), (s) => hasTerm(draft.sizes, s)));
 
   // One chip, one look — the sheet is a grid of them and they must not drift.
   const chip = (on: boolean) =>
@@ -118,7 +119,7 @@ export function InspireFilterSheet({
   const chipRow = (options: string[], key: 'categories' | 'occasions' | 'fabrics', picked: string[]) => (
     <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
       {options.map((o) => (
-        <button key={o} onClick={() => toggle(key, o)} style={chip(picked.includes(o))}>{o}</button>
+        <button key={o} onClick={() => toggle(key, o)} style={chip(hasTerm(picked, o))}>{o}</button>
       ))}
     </div>
   );
@@ -188,19 +189,19 @@ export function InspireFilterSheet({
 
         {/* ── Category / occasion / fabric ── */}
         {heading('Category')}
-        {chipRow(present(names('category'), (c) => catsPresent.has(c), (c) => draft.categories.includes(c)), 'categories', draft.categories)}
+        {chipRow(present(names('category'), (c) => catsPresent.has(termKey(c)), (c) => hasTerm(draft.categories, c)), 'categories', draft.categories)}
 
         {heading('Occasion')}
-        {chipRow(present(names('occasion'), (o) => occasionsPresent.has(o), (o) => draft.occasions.includes(o)), 'occasions', draft.occasions)}
+        {chipRow(present(names('occasion'), (o) => occasionsPresent.has(termKey(o)), (o) => hasTerm(draft.occasions, o)), 'occasions', draft.occasions)}
 
         {heading('Fabric')}
-        {chipRow(present(names('fabric'), (f) => fabricsPresent.has(f), (f) => draft.fabrics.includes(f)), 'fabrics', draft.fabrics)}
+        {chipRow(present(names('fabric'), (f) => fabricsPresent.has(termKey(f)), (f) => hasTerm(draft.fabrics, f)), 'fabrics', draft.fabrics)}
 
         {/* ── Size ── canonical ladder, not approval order. */}
         {heading('Size')}
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
           {sizeOptions.map((s) => {
-            const on = draft.sizes.includes(s);
+            const on = hasTerm(draft.sizes, s);
             return (
               <button
                 key={s}
@@ -217,14 +218,14 @@ export function InspireFilterSheet({
             colour itself. */}
         {heading('Colour')}
         <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;')}>
-          {present(rows('color'), (c) => colorsPresent.has(c.name), (c) => draft.colors.includes(c.name)).map((c) => (
+          {present(rows('color'), (c) => colorsPresent.has(termKey(c.name)), (c) => hasTerm(draft.colors, c.name)).map((c) => (
             <button
               key={c.name}
               onClick={() => toggle('colors', c.name)}
-              aria-pressed={draft.colors.includes(c.name)}
+              aria-pressed={hasTerm(draft.colors, c.name)}
               style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;font-family:inherit;')}
             >
-              <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${draft.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
+              <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${hasTerm(draft.colors, c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
               <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
             </button>
           ))}

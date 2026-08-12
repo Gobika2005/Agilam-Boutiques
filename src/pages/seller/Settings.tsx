@@ -6,7 +6,8 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
-import { currentCoords, isMapsLink, mapsLinkFromCoords, parseMapCoords } from '@/lib/geolocate';
+import { isMapsLink } from '@/lib/geolocate';
+import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WORKING_DAYS } from '@/data/types';
 
@@ -58,32 +59,6 @@ export function Settings() {
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
 
-  /** Drop the pin where the seller is standing — see the wizard's step 3 for
-   *  why a GPS fix beats anything derived from the typed address. */
-  const [locating, setLocating] = useState(false);
-  const useCurrentLocation = async () => {
-    setLocating(true);
-    const c = await currentCoords();
-    setLocating(false);
-    if (!c) {
-      showToast('Could not read your location. Allow location access for this site, or paste a Google Maps link.');
-      return;
-    }
-    setForm((f) => ({ ...f, mapUrl: mapsLinkFromCoords(c.lat, c.lng), lat: String(c.lat), lng: String(c.lng) }));
-    setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
-    showToast(
-      c.accuracyM && c.accuracyM > 150
-        ? `Location saved, but only accurate to about ${Math.round(c.accuracyM)}m — open the link and check it points at your shop.`
-        : 'Shop location saved',
-    );
-  };
-
-  /** A pasted link may carry coordinates; keep them when it does. */
-  const setMapUrl = (v: string) => {
-    const c = parseMapCoords(v);
-    setForm((f) => ({ ...f, mapUrl: v, lat: c ? String(c.lat) : f.lat, lng: c ? String(c.lng) : f.lng }));
-    setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
-  };
 
   // Seed from the signed-in seller's own boutique row rather than sample copy.
   useEffect(() => {
@@ -210,23 +185,23 @@ export function Settings() {
           </Row>
           <Field label="Email address" value={form.email} onChange={(v) => set('email', v)} placeholder="you@boutique.com" inputMode="email" />
           <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @. Opens your profile from the Instagram button on your shop page." />
-          <button
-            type="button"
-            onClick={useCurrentLocation}
-            disabled={locating}
-            style={css(`align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid #D6336C;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:${locating ? 'default' : 'pointer'};opacity:${locating ? 0.6 : 1};font-family:inherit;`)}
-          >
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>my_location</span>
-            {locating ? 'Getting your location…' : 'Use my current location'}
-          </button>
-          <Field
-            label="Google Maps location *"
-            value={form.mapUrl}
-            onChange={setMapUrl}
-            placeholder="https://maps.app.goo.gl/…"
-            inputMode="url"
+          {/* Checked against the address on the boutique row, so a pin taken at
+              home instead of at the shop is called out. See ShopLocationPicker. */}
+          <ShopLocationPicker
+            mapUrl={form.mapUrl}
+            lat={form.lat}
+            lng={form.lng}
+            onChange={(next) => {
+              setForm((f) => ({ ...f, ...next }));
+              setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
+            }}
             error={errors.mapUrl}
-            hint="Stand in your shop and tap the button above, or open the shop in Google Maps → Share → Copy link. Powers the Shop Location button on your buyer page."
+            expected={{
+              pincode: boutique?.pincode ?? undefined,
+              city: boutique?.city ?? undefined,
+              district: boutique?.district ?? undefined,
+              state: boutique?.state ?? undefined,
+            }}
           />
         </SectionCard>
 

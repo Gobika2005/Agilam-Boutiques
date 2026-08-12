@@ -12,6 +12,7 @@ import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 import { buildCollections } from '@/lib/collections';
+import { sameTerm } from '@/lib/vocabulary';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
@@ -182,15 +183,27 @@ export function Home() {
     else navigate(`/boutique/${h.boutiqueId}`);
   };
 
-  // A collection circle lands on results already filtered. Which field it maps
-  // to is read off the catalogue rather than hardcoded, so a tile like "Bridal"
-  // (an occasion, not a category) still resolves — and anything the catalogue
-  // doesn't know, like "More", just opens the full grid.
+  /**
+   * A collection circle lands on the results grid, already filtered to it.
+   *
+   * Which field it maps to is read off the catalogue rather than hardcoded, so a
+   * tile like "Bridal" (an occasion, not a category) still resolves.
+   *
+   * The matching is `sameTerm`, not `===`, and that is the whole point. The
+   * circles are built by `buildCollections`, which counts a tile's pieces
+   * case-insensitively — so "Kurta Set" from the admin's vocabulary appears the
+   * moment a seller lists a "kurta set". This function compared exactly, found
+   * nothing, and fell through to a branch that cleared the filters and opened
+   * the grid: tapping one collection showed the buyer *every* collection. There
+   * is no such branch now. A tile only exists when it has pieces behind it, and
+   * if the catalogue somehow disagrees the grid filters to the category anyway
+   * and says it is empty — which is at least true.
+   */
   const openCategory = (name: string) => {
     setQuery('');
-    if (PRODUCTS.some((p) => p.cat === name)) setFilters({ ...DEFAULT_FILTERS, cats: [name] });
-    else if (PRODUCTS.some((p) => p.occasion === name)) setFilters({ ...DEFAULT_FILTERS, occasions: [name] });
-    else setFilters(DEFAULT_FILTERS);
+    const isOccasion =
+      !PRODUCTS.some((p) => sameTerm(p.cat, name)) && PRODUCTS.some((p) => sameTerm(p.occasion, name));
+    setFilters({ ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) });
     navigate('/shop');
   };
   const openProduct = (id: string) => navigate(`/products/${id}`);

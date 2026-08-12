@@ -27,6 +27,7 @@
 
 import type { Boutique, Product } from '@/data/demo';
 import { cityKey } from '@/lib/cities';
+import { hasTerm } from '@/lib/vocabulary';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '@/lib/ranking';
 
 export type FeedFilters = {
@@ -115,18 +116,45 @@ export type FeedQuery = {
 };
 
 /**
+ * Every spelling of a chosen term that the catalogue actually contains.
+ *
+ * `in.(Kurta Set)` is an exact match in Postgres, and the chip carries the
+ * admin's spelling while the row carries the seller's — so a filter the sheet
+ * counted 12 pieces for came back with none. The app already holds the whole
+ * active catalogue, so the term is expanded here into the raw values behind it
+ * and the query stays a plain, indexable `in`.
+ *
+ * Falling back to the chosen terms when nothing matches is deliberate: it asks
+ * for a spelling no row has, i.e. returns nothing, which is the honest answer.
+ */
+function spellings(
+  products: Product[],
+  pick: (p: Product) => string | string[] | undefined | null,
+  chosen: string[],
+): string[] {
+  const found = new Set<string>();
+  for (const p of products) {
+    const v = pick(p);
+    for (const one of Array.isArray(v) ? v : [v]) {
+      if (one && hasTerm(chosen, one)) found.add(one);
+    }
+  }
+  return found.size ? [...found] : chosen;
+}
+
+/**
  * "New this month" is the same window as the New badge and the New arrivals
  * rail — the constant is imported rather than repeated, because the query below
  * and `matchesFeedFilters` (which counts the button) must agree exactly or the
  * sheet promises a number the feed does not deliver.
  */
-export function feedQueryFor(f: FeedFilters): FeedQuery {
+export function feedQueryFor(f: FeedFilters, products: Product[] = []): FeedQuery {
   return {
-    categories: f.categories.length ? f.categories : undefined,
-    occasions: f.occasions.length ? f.occasions : undefined,
-    fabrics: f.fabrics.length ? f.fabrics : undefined,
-    colors: f.colors.length ? f.colors : undefined,
-    sizes: f.sizes.length ? f.sizes : undefined,
+    categories: f.categories.length ? spellings(products, (p) => p.cat, f.categories) : undefined,
+    occasions: f.occasions.length ? spellings(products, (p) => p.occasion, f.occasions) : undefined,
+    fabrics: f.fabrics.length ? spellings(products, (p) => p.fabric, f.fabrics) : undefined,
+    colors: f.colors.length ? spellings(products, (p) => p.color, f.colors) : undefined,
+    sizes: f.sizes.length ? spellings(products, (p) => p.sizes ?? [], f.sizes) : undefined,
     maxPrice: f.maxPrice < FEED_MAX_PRICE ? f.maxPrice : undefined,
     inStockOnly: f.inStockOnly || undefined,
     newerThan: f.newOnly
@@ -163,11 +191,13 @@ export function matchesShopFilters(b: Boutique | undefined, f: FeedFilters): boo
  * number is exact and costs no round trip.
  */
 export function matchesFeedFilters(p: Product, b: Boutique | undefined, f: FeedFilters): boolean {
-  if (f.categories.length && !f.categories.includes(p.cat)) return false;
-  if (f.occasions.length && !f.occasions.includes(p.occasion)) return false;
-  if (f.fabrics.length && !f.fabrics.includes(p.fabric)) return false;
-  if (f.colors.length && !f.colors.includes(p.color)) return false;
-  if (f.sizes.length && !(p.sizes ?? []).some((s) => f.sizes.includes(s))) return false;
+  // `hasTerm`, not `includes` — the chip carries the admin's spelling and the
+  // product carries the seller's. See @/lib/vocabulary.
+  if (f.categories.length && !hasTerm(f.categories, p.cat)) return false;
+  if (f.occasions.length && !hasTerm(f.occasions, p.occasion)) return false;
+  if (f.fabrics.length && !hasTerm(f.fabrics, p.fabric)) return false;
+  if (f.colors.length && !hasTerm(f.colors, p.color)) return false;
+  if (f.sizes.length && !(p.sizes ?? []).some((s) => hasTerm(f.sizes, s))) return false;
   // At the top of the slider the filter is off, not a ₹10,000 ceiling — a
   // ₹14,000 bridal lehenga is in the feed, so it has to be in the count too.
   if (f.maxPrice < FEED_MAX_PRICE && p.price > f.maxPrice) return false;

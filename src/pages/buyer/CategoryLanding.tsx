@@ -9,7 +9,7 @@ import { EmptyState, CardSkeletons, SectionLabel } from '@/components/buyer/Disc
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { occasionLabel, occasionNoun, titleCase } from '@/lib/vocabulary';
+import { occasionLabel, occasionNoun, sameTerm, titleCase } from '@/lib/vocabulary';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { TONES, fmt } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
@@ -43,31 +43,142 @@ import type { Product } from '@/data/demo';
  * page Google would treat as low quality.
  */
 
-export type LandingKind = 'category' | 'occasion' | 'fabric';
+export type LandingKind = 'category' | 'occasion' | 'fabric' | 'colour' | 'budget';
 
-/** Which product field a kind filters on. */
-const FIELD: Record<LandingKind, (p: Product) => string> = {
-  category: (p) => p.cat,
-  occasion: (p) => p.occasion,
-  fabric: (p) => p.fabric,
+/**
+ * What makes one kind of landing page different from another.
+ *
+ * This started as five parallel `Record<LandingKind, …>` maps, which was fine
+ * while every kind was "a term the product stores in a column". Budget is not:
+ * its term is a price ceiling, it has no column, and it resolves from digits in
+ * the URL rather than from the vocabulary. One spec per kind keeps that
+ * difference in one place instead of scattering `kind === 'budget'` through the
+ * page.
+ */
+type LandingSpec = {
+  /** The eyebrow above the heading. */
+  label: string;
+  /** Breadcrumb parent. */
+  hub: { name: string; path: string };
+  /** This term's URL. */
+  route: (term: string) => string;
+  /** URL slug → canonical term, or null when nothing answers to it. */
+  resolve: (slug: string, vocab: Vocab, products: Product[]) => string | null;
+  /** Is this piece part of this collection? */
+  match: (p: Product, term: string) => boolean;
+  /** The other terms of the same kind, with counts — the lateral crawl paths. */
+  siblings: (products: Product[], term: string) => [string, number][];
+  /** The <h1>, and the name used throughout the copy. */
+  heading: (term: string) => string;
+  /** Mid-sentence noun: "how much do silk sarees cost". */
+  noun: (term: string, count: number) => string;
+  /** Plural name of the kind, for the "More …" section. */
+  siblingsLabel: string;
 };
 
-const LABEL: Record<LandingKind, string> = {
-  category: 'Category',
-  occasion: 'Occasion',
-  fabric: 'Fabric',
-};
+/** The slice of the taxonomy a spec may read. */
+type Vocab = { rows: (kind: 'category' | 'occasion' | 'fabric' | 'color' | 'size') => { name: string }[] };
 
-const HUB: Record<LandingKind, { name: string; path: string }> = {
-  category: { name: 'Collections', path: '/collections' },
-  occasion: { name: 'Occasions', path: '/collections' },
-  fabric: { name: 'Fabrics', path: '/collections' },
-};
+/**
+ * The shape shared by every kind whose term is a value the product stores.
+ * Only budget opts out.
+ */
+function termSpec(
+  field: (p: Product) => string,
+  vocabKind: 'category' | 'occasion' | 'fabric' | 'color',
+  rest: Omit<LandingSpec, 'resolve' | 'match' | 'siblings'>,
+): LandingSpec {
+  return {
+    ...rest,
+    /**
+     * Resolve on the slug rather than the raw name — that is what lets
+     * `/collections/kurta-sets` find "Kurta Sets", and what keeps the URL stable
+     * if the display name is later recased.
+     */
+    resolve: (slug, vocab, products) => {
+      const wanted = slug.toLowerCase();
+      const fromVocab = vocab.rows(vocabKind).find((r) => slugify(r.name) === wanted);
+      if (fromVocab) return fromVocab.name;
+      // A term the vocabulary hasn't loaded yet (or a legacy value only the
+      // catalogue knows about) still resolves, so the page never 404s a URL that
+      // has products behind it.
+      return products.map(field).find((v) => v && slugify(v) === wanted) ?? null;
+    },
+    match: (p, term) => sameTerm(field(p), term),
+    siblings: (products, term) => {
+      const counts = new Map<string, number>();
+      for (const p of products) {
+        const v = field(p);
+        if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .filter(([name]) => !sameTerm(name, term))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12);
+    },
+  };
+}
 
-const ROUTE_FOR: Record<LandingKind, (name: string) => string> = {
-  category: routes.category,
-  occasion: routes.occasion,
-  fabric: routes.fabric,
+/** Budget rungs, in step with `BUDGET_STEPS` in @/lib/collections. */
+const BUDGET_RUNGS = [1500, 3000, 5000, 10000];
+const budgetLabel = (max: number | string) => `Under ₹${Number(max).toLocaleString('en-IN')}`;
+
+const SPECS: Record<LandingKind, LandingSpec> = {
+  category: termSpec((p) => p.cat, 'category', {
+    label: 'Category',
+    hub: { name: 'Collections', path: '/collections' },
+    route: routes.category,
+    heading: (t) => titleCase(t),
+    noun: (t) => t.toLowerCase(),
+    siblingsLabel: 'categories',
+  }),
+  occasion: termSpec((p) => p.occasion, 'occasion', {
+    label: 'Occasion',
+    hub: { name: 'Occasions', path: '/collections' },
+    route: routes.occasion,
+    heading: (t) => occasionLabel(t),
+    noun: (t) => occasionNoun(t),
+    siblingsLabel: 'occasions',
+  }),
+  fabric: termSpec((p) => p.fabric, 'fabric', {
+    label: 'Fabric',
+    hub: { name: 'Fabrics', path: '/collections' },
+    route: routes.fabric,
+    heading: (t) => titleCase(t),
+    noun: (t) => t.toLowerCase(),
+    siblingsLabel: 'fabrics',
+  }),
+  colour: termSpec((p) => p.color, 'color', {
+    label: 'Colour',
+    hub: { name: 'Colours', path: '/collections' },
+    route: routes.colour,
+    heading: (t) => titleCase(t),
+    // "red pieces", not "red" — a colour is an adjective, and every sentence in
+    // the copy needs a noun after it.
+    noun: (t, count) => `${t.toLowerCase()} ${count === 1 ? 'piece' : 'pieces'}`,
+    siblingsLabel: 'colours',
+  }),
+  budget: {
+    label: 'Budget',
+    hub: { name: 'Budgets', path: '/collections' },
+    route: (t) => routes.budget(t),
+    /** `under-3000` → "3000", and only for a rung that exists. */
+    resolve: (slug) => {
+      const m = /^under-(\d+)$/.exec(slug.toLowerCase());
+      const max = m ? Number(m[1]) : NaN;
+      return BUDGET_RUNGS.includes(max) ? String(max) : null;
+    },
+    // A ladder, not a band: someone with ₹3,000 wants everything they can
+    // afford, not only the things that cost close to it.
+    match: (p, term) => p.price <= Number(term),
+    siblings: (products, term) =>
+      BUDGET_RUNGS.filter((max) => String(max) !== term)
+        .map((max) => [String(max), products.filter((p) => p.price <= max).length] as [string, number])
+        .filter(([, n]) => n > 0),
+    heading: (t) => budgetLabel(t),
+    noun: (t, count) => `${count === 1 ? 'piece' : 'pieces'} under ₹${Number(t).toLocaleString('en-IN')}`,
+    siblingsLabel: 'budgets',
+  },
 };
 
 /* ── Copy ────────────────────────────────────────────────────────────────── */
@@ -96,10 +207,16 @@ function introFor(kind: LandingKind, term: string, items: Product[]): string {
         ? cities.join(', ')
         : `${cities.slice(0, 3).join(', ')} and ${cities.length - 3} more towns`;
 
+  const houses = `${shops} verified ${shops === 1 ? 'boutique' : 'boutiques'}`;
+
   const opener: Record<LandingKind, string> = {
-    category: `${count} ${term.toLowerCase()} ${piece} from ${shops} verified ${shops === 1 ? 'boutique' : 'boutiques'} across ${where}, from ${fmt(from)}.`,
-    occasion: `${count} ${piece} picked for ${term.toLowerCase()}, listed by ${shops} verified ${shops === 1 ? 'boutique' : 'boutiques'} in ${where}, from ${fmt(from)}.`,
-    fabric: `${count} ${term.toLowerCase()} ${piece} from ${shops} verified ${shops === 1 ? 'boutique' : 'boutiques'} across ${where}, from ${fmt(from)}.`,
+    category: `${count} ${term.toLowerCase()} ${piece} from ${houses} across ${where}, from ${fmt(from)}.`,
+    occasion: `${count} ${piece} picked for ${term.toLowerCase()}, listed by ${houses} in ${where}, from ${fmt(from)}.`,
+    fabric: `${count} ${term.toLowerCase()} ${piece} from ${houses} across ${where}, from ${fmt(from)}.`,
+    colour: `${count} ${term.toLowerCase()} ${piece} from ${houses} across ${where}, from ${fmt(from)}.`,
+    // The budget page's number is the ceiling, so the useful fact is the spread
+    // beneath it rather than the cheapest thing on the page.
+    budget: `${count} ${piece} under ₹${Number(term).toLocaleString('en-IN')} from ${houses} across ${where}, starting at ${fmt(from)}.`,
   };
 
   return `${opener[kind]} Every shop on MangaiMart is verified before it can list, you can message the owner directly before you buy, and delivery is across India with cash on delivery available.`;
@@ -111,8 +228,7 @@ function faqsFor(kind: LandingKind, term: string, items: Product[]): { q: string
   const from = Math.min(...items.map((p) => p.price));
   const to = Math.max(...items.map((p) => p.price));
   const cities = Array.from(new Set(items.map((p) => p.city).filter(Boolean))).slice(0, 4);
-  const lower = term.toLowerCase();
-  const noun = kind === 'occasion' ? occasionNoun(term) : lower;
+  const noun = SPECS[kind].noun(term, items.length);
 
   return [
     {
@@ -142,41 +258,23 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
   const { wishlist, toggleWish } = useShop();
   const vocab = useTaxonomy();
 
-  const pick = FIELD[kind];
+  const spec = SPECS[kind];
 
-  /**
-   * Resolve the URL slug back to the admin's canonical term. Matching on the
-   * slug rather than the raw name is what lets `/collections/kurta-sets` find
-   * "Kurta Sets" — and what keeps the URL stable if the display name is later
-   * recased.
-   */
-  const term = useMemo(() => {
-    const wanted = (slug || '').toLowerCase();
-    const fromVocab = vocab.rows(kind).find((r) => slugify(r.name) === wanted);
-    if (fromVocab) return fromVocab.name;
-    // A term the vocabulary hasn't loaded yet (or a legacy value only the
-    // catalogue knows about) still resolves, so the page never 404s a URL that
-    // has products behind it.
-    return PRODUCTS.map(pick).find((v) => v && slugify(v) === wanted) ?? null;
-  }, [slug, kind, vocab, PRODUCTS, pick]);
+  const term = useMemo(
+    () => spec.resolve(slug || '', vocab, PRODUCTS),
+    [slug, spec, vocab, PRODUCTS],
+  );
 
   const items = useMemo(
-    () => (term ? PRODUCTS.filter((p) => slugify(pick(p) || '') === slugify(term)) : []),
-    [PRODUCTS, term, pick],
+    () => (term ? PRODUCTS.filter((p) => spec.match(p, term)) : []),
+    [PRODUCTS, term, spec],
   );
 
   /** The other terms of the same kind — the lateral links that spread crawl. */
-  const siblings = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of PRODUCTS) {
-      const v = pick(p);
-      if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .filter(([name]) => slugify(name) !== slugify(term || ''))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 12);
-  }, [PRODUCTS, term, pick]);
+  const siblings = useMemo(
+    () => (term ? spec.siblings(PRODUCTS, term) : []),
+    [PRODUCTS, term, spec],
+  );
 
   /** Boutiques that actually stock this term — product → shop internal links. */
   const shops = useMemo(() => {
@@ -184,16 +282,20 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
     return BOUTIQUES.filter((b) => names.has(b.name)).slice(0, 8);
   }, [items, BOUTIQUES]);
 
-  const path = term ? ROUTE_FOR[kind](term) : `/${kind}/${slug}`;
+  const path = term ? spec.route(term) : `/${kind}/${slug}`;
   const intro = introFor(kind, term || '', items);
   const faqs = faqsFor(kind, term || '', items);
-  const hub = HUB[kind];
+  const hub = spec.hub;
 
-  const heading = kind === 'occasion' ? occasionLabel(term ?? '') : titleCase(String(term ?? ''));
+  const heading = term ? spec.heading(term) : '';
+  const shopCount = new Set(items.map((p) => p.boutique)).size;
   const title = term
     ? kind === 'occasion'
-      ? `${occasionLabel(term)} Online — ${items.length} Pieces from Indian Boutiques`
-      : `${titleCase(term)} Online — Buy from ${new Set(items.map((p) => p.boutique)).size} Verified Indian Boutiques`
+      ? `${heading} Online — ${items.length} Pieces from Indian Boutiques`
+      : kind === 'budget'
+        // "Under ₹3,000 Online" reads as nonsense; the rung needs a subject.
+        ? `Ethnic Wear ${heading} — ${items.length} Pieces from Indian Boutiques`
+        : `${heading} Online — Buy from ${shopCount} Verified Indian ${shopCount === 1 ? 'Boutique' : 'Boutiques'}`
     : null;
 
   usePageMeta({
@@ -270,7 +372,7 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
       {/* ── Heading + intro ────────────────────────────────────────────── */}
       <header style={css('margin-top:14px;')}>
         <p className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0;')}>
-          {LABEL[kind]} · Indian boutiques
+          {spec.label} · Indian boutiques
         </p>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
           {heading}
@@ -346,15 +448,17 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
       {/* ── Sibling terms — lateral crawl paths ────────────────────────── */}
       {siblings.length > 0 && (
         <section>
-          <SectionLabel icon="grid_view" title={`More ${kind === 'category' ? 'categories' : kind === 'occasion' ? 'occasions' : 'fabrics'}`} />
+          <SectionLabel icon="grid_view" title={`More ${spec.siblingsLabel}`} />
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
             {siblings.map(([name, n]) => (
               <Link
                 key={name}
-                to={ROUTE_FOR[kind](name)}
+                to={spec.route(name)}
                 style={css('display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;border:1.5px solid var(--ag-border);border-radius:999px;background:var(--ag-surface);color:var(--ag-ink);text-decoration:none;font-size:13px;font-weight:700;')}
               >
-                {name}
+                {/* Through `heading`, because a budget sibling's term is the
+                    raw ceiling ("3000") and has to read as "Under ₹3,000". */}
+                {spec.heading(name)}
                 <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted-soft);")}>{n}</span>
               </Link>
             ))}

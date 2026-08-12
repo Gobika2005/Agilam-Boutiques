@@ -67,7 +67,7 @@ export type FeedItem = FeedProduct;
 export function useInspireFeed(opts: { followingOnly?: boolean; filters?: FeedFilters } = {}) {
   const { followingOnly = false, filters = NO_FEED_FILTERS } = opts;
   const { follows, showToast } = useShop();
-  const { boutiques, loading: catalogLoading } = useCatalog();
+  const { boutiques, products: CATALOGUE, loading: catalogLoading } = useCatalog();
 
   /**
    * Everything fetched so far, already in feed order, and how much of it the
@@ -185,7 +185,7 @@ export function useInspireFeed(opts: { followingOnly?: boolean; filters?: FeedFi
     setBatchesLeft(true);
     setShown(PAGE);
 
-    fetchFeed({ ...scope, limit: BATCH, where: feedQueryFor(filters) })
+    fetchFeed({ ...scope, limit: BATCH, where: feedQueryFor(filters, CATALOGUE) })
       .then((first) => {
         if (!active) return;
         // The cursor is the oldest row the DATABASE returned, not the oldest
@@ -228,7 +228,7 @@ export function useInspireFeed(opts: { followingOnly?: boolean; filters?: FeedFi
         ...scopeRef.current,
         limit: BATCH,
         before: cursorRef.current,
-        where: feedQueryFor(filters),
+        where: feedQueryFor(filters, CATALOGUE),
       });
       cursorRef.current = rows[rows.length - 1]?.created_at ?? cursorRef.current;
 

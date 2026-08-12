@@ -18,6 +18,7 @@
 
 import { CATEGORIES, TONES } from '@/data/demo';
 import { colorFromName } from '@/lib/colorName';
+import { termKey } from '@/lib/vocabulary';
 import type { Product } from '@/data/demo';
 import type { TaxonomyKind } from '@/data/taxonomy';
 
@@ -67,7 +68,12 @@ const rupees = (n: number) => '₹' + n.toLocaleString('en-IN');
 const GENERIC_CATEGORY_ICON = 'checkroom';
 const GENERIC_OCCASION_ICON = 'celebration';
 
-const norm = (s: string) => s.trim().toLowerCase();
+/**
+ * Counting a term and matching a term must be the same function, or a tile can
+ * promise pieces the grid then refuses to show. This is that function — shared
+ * with the results grid and the filter sheet through @/lib/vocabulary.
+ */
+const norm = termKey;
 
 function countBy(products: Product[], pick: (p: Product) => string | undefined | null): Map<string, number> {
   const m = new Map<string, number>();

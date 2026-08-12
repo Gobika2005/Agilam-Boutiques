@@ -1017,27 +1017,62 @@ ${rows.join("\n")}
 </noscript>`;
 }
 
+/**
+ * Which product field each facet kind reads, and where it lives in the URL.
+ *
+ * `colour` and `budget` are the two the hub used to open as a filtered grid
+ * rather than a page of their own \u2014 see src/pages/buyer/CategoryLanding.tsx.
+ * Budget is the odd one: its "term" is a price ceiling parsed out of the slug
+ * (`under-3000`), so it filters on `price` and has no column of its own.
+ */
+const FACET_PREFIX = {
+  category: "collections",
+  occasion: "occasions",
+  fabric: "fabrics",
+  colour: "colours",
+  budget: "budget"
+};
+const BUDGET_RUNGS = [1500, 3e3, 5e3, 1e4];
+const budgetCeiling = (slug) => {
+  const m = /^under-(\d+)$/.exec(String(slug).toLowerCase());
+  const max = m ? Number(m[1]) : NaN;
+  return BUDGET_RUNGS.includes(max) ? max : null;
+};
+const facetValue = (p, kind) =>
+  kind === "category" ? p.category : kind === "occasion" ? p.occasion : kind === "fabric" ? p.fabric : p.color;
+
 async function metaForCategory(kind, slug, origin) {
+  const ceiling = kind === "budget" ? budgetCeiling(slug) : null;
+  if (kind === "budget" && ceiling === null) return notFoundMeta();
   const attempt = await dbProductsTry(
     (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=40`
   );
   if (!attempt.ok) return null;
   const items = attempt.rows.filter((p) => {
-    const value = kind === "category" ? p.category : kind === "occasion" ? p.occasion : p.fabric;
+    if (kind === "budget") return typeof p.price === "number" && p.price <= ceiling;
+    const value = facetValue(p, kind);
     return value && slugify(value) === slug;
   });
   if (!items.length) return notFoundMeta();
-  const term = (kind === "category" ? items[0].category : kind === "occasion" ? items[0].occasion : items[0].fabric) || slug;
-  const heading = kind === "occasion" ? occasionHeading(term) : titleCase(term);
+  const term = (kind === "budget" ? String(ceiling) : facetValue(items[0], kind)) || slug;
+  const heading =
+    kind === "occasion" ? occasionHeading(term)
+      : kind === "budget" ? `Under ${inr(ceiling)}`
+      : titleCase(term);
   const shops = new Set(items.map((p) => p.boutiques?.name).filter(Boolean)).size;
   const from = Math.min(...items.map((p) => p.price));
-  const path = `/${kind === "category" ? "collections" : kind === "occasion" ? "occasions" : "fabrics"}/${slug}`;
+  const path = `/${FACET_PREFIX[kind]}/${slug}`;
   const url = `${origin}${path}`;
   const description = clamp(
-    `${items.length} ${heading.toLowerCase()} ${items.length === 1 ? "piece" : "pieces"} from ${shops} verified independent ${shops === 1 ? "boutique" : "boutiques"}, from ${inr(from)}. Direct chat with the shop, 7-day returns, delivery across India.`
+    kind === "budget"
+      ? `${items.length} ethnic wear ${items.length === 1 ? "piece" : "pieces"} under ${inr(ceiling)} from ${shops} verified independent ${shops === 1 ? "boutique" : "boutiques"}, starting at ${inr(from)}. Direct chat with the shop, 7-day returns, delivery across India.`
+      : `${items.length} ${heading.toLowerCase()} ${items.length === 1 ? "piece" : "pieces"} from ${shops} verified independent ${shops === 1 ? "boutique" : "boutiques"}, from ${inr(from)}. Direct chat with the shop, 7-day returns, delivery across India.`
   );
   return {
-    title: `${heading} Online \u2014 Buy from Verified Indian Boutiques`,
+    // "Under \u20b93,000 Online" reads as nonsense \u2014 the rung needs a subject.
+    title: kind === "budget"
+      ? `Ethnic Wear ${heading} \u2014 Buy from Verified Indian Boutiques`
+      : `${heading} Online \u2014 Buy from Verified Indian Boutiques`,
     description,
     image: items.find((p) => p.image_url)?.image_url || void 0,
     type: "website",
@@ -1362,7 +1397,7 @@ async function shopHubPrerender(origin) {
  */
 async function collectionsHubPrerender(origin) {
   const { ok, rows } = await dbTryTwice(
-    "products?select=category,occasion,fabric&status=eq.active&deleted_at=is.null&limit=5000"
+    "products?select=category,occasion,fabric,color,price&status=eq.active&deleted_at=is.null&limit=5000"
   );
   if (!ok || !rows.length) return void 0;
   // Slug → display name. A Map rather than a Set because the heading has to be
@@ -1370,12 +1405,23 @@ async function collectionsHubPrerender(origin) {
   const groups = {
     collections: { label: "Categories", terms: /* @__PURE__ */ new Map() },
     occasions: { label: "Occasions", terms: /* @__PURE__ */ new Map() },
-    fabrics: { label: "Fabrics", terms: /* @__PURE__ */ new Map() }
+    fabrics: { label: "Fabrics", terms: /* @__PURE__ */ new Map() },
+    colours: { label: "Colours", terms: /* @__PURE__ */ new Map() },
+    budget: { label: "Budgets", terms: /* @__PURE__ */ new Map() }
   };
   for (const p of rows) {
     if (p.category) groups.collections.terms.set(slugify(p.category), titleCase(p.category));
     if (p.occasion) groups.occasions.terms.set(slugify(p.occasion), occasionHeading(p.occasion));
     if (p.fabric) groups.fabrics.terms.set(slugify(p.fabric), titleCase(p.fabric));
+    if (p.color) groups.colours.terms.set(slugify(p.color), titleCase(p.color));
+  }
+  // Budget rungs are a fixed ladder, not a value read off the rows — but only
+  // the ones with something under them, so the hub never links to a page the
+  // router would answer with a 404.
+  for (const max of BUDGET_RUNGS) {
+    if (rows.some((p) => typeof p.price === "number" && p.price <= max)) {
+      groups.budget.terms.set(`under-${max}`, `Under ${inr(max)}`);
+    }
   }
   const sections = Object.entries(groups).map(([prefix, { label, terms }]) => {
     const items = [...terms].filter(([slug]) => slug);
@@ -1518,6 +1564,10 @@ async function resolveMeta(pathname, origin) {
   if (occasion) return metaForCategory("occasion", decodeURIComponent(occasion[1]), origin);
   const fabric = pathname.match(/^\/fabrics\/([^/]+)$/);
   if (fabric) return metaForCategory("fabric", decodeURIComponent(fabric[1]), origin);
+  const colour = pathname.match(/^\/colours\/([^/]+)$/);
+  if (colour) return metaForCategory("colour", decodeURIComponent(colour[1]), origin);
+  const budget = pathname.match(/^\/budget\/([^/]+)$/);
+  if (budget) return metaForCategory("budget", decodeURIComponent(budget[1]), origin);
   // Nothing recognised the path, and it is not one of the private prefixes that
   // `isNoIndex` already covers — so the router will land on the 404 screen.
   // Say so in the head rather than serving it as another indexable page.
@@ -1813,7 +1863,7 @@ async function newestProductDate() {
  */
 async function sitemapPagesXml(origin) {
   const [facetRead, cityRead] = await Promise.all([
-    dbTryTwice("products?select=category,occasion,fabric,created_at&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000"),
+    dbTryTwice("products?select=category,occasion,fabric,color,price,created_at&status=eq.active&deleted_at=is.null&order=created_at.desc&limit=5000"),
     dbTryTwice("boutiques?select=city&status=eq.approved&limit=2000")
   ]);
   const products = facetRead.rows;
@@ -1848,12 +1898,20 @@ async function sitemapPagesXml(origin) {
   const facets = {
     collections: /* @__PURE__ */ new Set(),
     occasions: /* @__PURE__ */ new Set(),
-    fabrics: /* @__PURE__ */ new Set()
+    fabrics: /* @__PURE__ */ new Set(),
+    colours: /* @__PURE__ */ new Set(),
+    budget: /* @__PURE__ */ new Set()
   };
   for (const p of products) {
     if (p.category) facets.collections.add(slugify(p.category));
     if (p.occasion) facets.occasions.add(slugify(p.occasion));
     if (p.fabric) facets.fabrics.add(slugify(p.fabric));
+    if (p.color) facets.colours.add(slugify(p.color));
+  }
+  // Only rungs with stock under them: a sitemap must never advertise a page the
+  // router answers with a 404.
+  for (const max of BUDGET_RUNGS) {
+    if (products.some((p) => typeof p.price === "number" && p.price <= max)) facets.budget.add(`under-${max}`);
   }
   for (const [prefix, values] of Object.entries(facets)) {
     for (const slug of values) {

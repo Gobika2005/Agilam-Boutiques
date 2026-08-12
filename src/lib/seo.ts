@@ -118,6 +118,16 @@ export const routes = {
   category: (name: string) => `/collections/${slugify(name)}`,
   occasion: (name: string) => `/occasions/${slugify(name)}`,
   fabric: (name: string) => `/fabrics/${slugify(name)}`,
+  colour: (name: string) => `/colours/${slugify(name)}`,
+  /**
+   * A budget rung — `/budget/under-3000`.
+   *
+   * The number, not a slugified label: `slugify('Under ₹3,000')` gives
+   * `under-3-000`, which is both ugly and fragile the moment the label's
+   * punctuation changes. The URL is built from the rung itself, so the label can
+   * be rewritten without breaking a link anyone has shared.
+   */
+  budget: (maxPrice: number | string) => `/budget/under-${Number(maxPrice)}`,
   product: (p: { id: string; title: string; slug?: string | null }) => `/products/${productSlug(p)}`,
   boutique: (b: { slug?: string; id: string }) => `/boutique/${b.slug || b.id}`,
   boutiques: () => '/boutiques',

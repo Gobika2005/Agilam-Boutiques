@@ -8,7 +8,8 @@ import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/compone
 import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
 import { usePincodeLookup } from '@/hooks/usePincodeLookup';
-import { currentCoords, isMapsLink, mapsLinkFromAddress, mapsLinkFromCoords, parseMapCoords } from '@/lib/geolocate';
+import { isMapsLink } from '@/lib/geolocate';
+import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
@@ -448,7 +449,6 @@ export function SellerOnboarding() {
      offers instead of a blank box. See src/lib/pincode.ts. */
   const pinStatus = usePincodeLookup(form.pincode);
   const pinArea = pinStatus.kind === 'found' ? pinStatus.area : null;
-  const [locating, setLocating] = useState(false);
 
   // District and state are filled in from the pincode when the seller has not
   // typed them — never over the top of what they did type, since a shop on a
@@ -469,45 +469,6 @@ export function SellerOnboarding() {
   }, [pinArea]);
 
   const clearError = (key: keyof Form) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
-
-  /** Drop the pin where the seller is standing — the only source that is
-   *  accurate to a shopfront rather than to a street or a suburb. */
-  const useCurrentLocation = async () => {
-    setLocating(true);
-    const c = await currentCoords();
-    setLocating(false);
-    if (!c) {
-      toast('Could not read your location. Allow location access for this site, or paste a Google Maps link.');
-      return;
-    }
-    setForm((f) => ({ ...f, mapUrl: mapsLinkFromCoords(c.lat, c.lng), lat: String(c.lat), lng: String(c.lng) }));
-    clearError('mapUrl');
-    toast(
-      c.accuracyM && c.accuracyM > 150
-        ? `Location saved, but it is only accurate to about ${Math.round(c.accuracyM)}m — open the link and check it points at your shop.`
-        : 'Shop location saved',
-    );
-  };
-
-  /** Fallback for a seller setting up from home: a Maps search for the address
-   *  they just typed. Weaker than a GPS pin — it resolves to whatever Maps finds
-   *  — so it does not claim to be one, and stores no coordinates. */
-  const pinFromAddress = () => {
-    setForm((f) => ({
-      ...f,
-      mapUrl: mapsLinkFromAddress([f.addressLine, f.area, f.city, f.district, f.state, f.pincode]),
-      lat: '', lng: '',
-    }));
-    clearError('mapUrl');
-    toast('Opened from your address — check the pin, and replace it with a shared link if it is off');
-  };
-
-  /** A pasted link may carry coordinates (`?q=`, `@lat,lng`); keep them if so. */
-  const setMapUrl = (v: string) => {
-    const c = parseMapCoords(v);
-    setForm((f) => ({ ...f, mapUrl: v, lat: c ? String(c.lat) : f.lat, lng: c ? String(c.lng) : f.lng }));
-    clearError('mapUrl');
-  };
 
   // Resolves the typed IFSC to a real bank + branch so the seller can recognise
   // (or fail to recognise) their own. Only a confirmed "no such branch" blocks
@@ -899,48 +860,21 @@ export function SellerOnboarding() {
             </Row>
 
             {/* ── The map pin ──────────────────────────────────────────────
-                Required. Three ways in, strongest first: stand in the shop and
-                use GPS, paste the link from Maps → Share, or fall back to a
-                search for the address above. */}
-            <div style={css('display:flex;gap:10px;flex-wrap:wrap;')}>
-              <button
-                type="button"
-                onClick={useCurrentLocation}
-                disabled={locating}
-                style={css(`display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid #D6336C;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:${locating ? 'default' : 'pointer'};opacity:${locating ? 0.6 : 1};font-family:inherit;`)}
-              >
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>my_location</span>
-                {locating ? 'Getting your location…' : 'Use my current location'}
-              </button>
-              <button
-                type="button"
-                onClick={pinFromAddress}
-                style={css('display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
-              >
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>pin_drop</span>
-                Find from my address
-              </button>
-            </div>
-            <Field
-              label="Google Maps location *"
-              value={form.mapUrl}
-              onChange={setMapUrl}
-              placeholder="https://maps.app.goo.gl/…"
-              inputMode="url"
+                Required, and checked against the address above — see
+                ShopLocationPicker for what it does about a fix taken 400km from
+                the shop. The "find from my address" shortcut that used to sit
+                beside the button is gone: it produced a Maps *search* for text
+                the seller had already typed, which is not a location, and
+                offering it next to a real GPS pin implied the two were
+                equivalent. */}
+            <ShopLocationPicker
+              mapUrl={form.mapUrl}
+              lat={form.lat}
+              lng={form.lng}
+              onChange={(next) => { setForm((f) => ({ ...f, ...next })); clearError('mapUrl'); }}
               error={errors.mapUrl}
-              hint="Stand in your shop and tap “Use my current location”, or open the shop in Google Maps → Share → Copy link."
+              expected={{ pincode: form.pincode, city: form.city, district: form.district, state: form.state }}
             />
-            {form.mapUrl.trim() && !errors.mapUrl && (
-              <a
-                href={form.mapUrl.trim()}
-                target="_blank"
-                rel="noreferrer noopener"
-                style={css('display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--ag-crimson);text-decoration:none;margin-top:-6px;')}
-              >
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>open_in_new</span>
-                {form.lat && form.lng ? `Check the pin (${Number(form.lat).toFixed(5)}, ${Number(form.lng).toFixed(5)})` : 'Check this opens at your shop'}
-              </a>
-            )}
           </SectionCard>
         )}
 
