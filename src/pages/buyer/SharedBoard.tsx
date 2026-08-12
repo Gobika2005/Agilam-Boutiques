@@ -228,7 +228,7 @@ export function SharedBoard() {
 
       {/* ── The pieces ─────────────────────────────────────────────────── */}
       <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:18px;')}>
-        {items.map((item) => {
+        {items.map((item, i) => {
           const t = tally[item.id] ?? { love: 0, no: 0, notes: [] };
           const mine = myVotes[item.id];
           const isFav = favourite === item.id;
@@ -262,6 +262,15 @@ export function SharedBoard() {
                   style={css(`flex:none;width:96px;border-radius:13px;overflow:hidden;background:${TONES[item.tone] ?? TONES[0]};position:relative;aspect-ratio:3/4;display:block;`)}
                 >
                   <ImageSlot src={item.image_url ?? ''} placeholder={item.title} className="agx-prod-fill" />
+                  {/* The same number this piece carries in the shared collage,
+                      so "number 2 is the nicest" — sent in the group before
+                      anyone opened the link — still points at the right saree. */}
+                  <span
+                    aria-hidden="true"
+                    style={css('position:absolute;top:6px;left:6px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgba(255,255,255,.94);color:#B02454;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.2);')}
+                  >
+                    {i + 1}
+                  </span>
                 </Link>
 
                 <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;')}>
@@ -325,7 +334,7 @@ export function SharedBoard() {
                         )}
                       >
                         <Icon name="thumb_down" style={{ fontSize: 16 }} />
-                        {mine === 'no' ? 'Not this' : 'Not this'}
+                        {mine === 'no' ? 'Said no' : 'Not this one'}
                       </button>
                     </div>
                   )}

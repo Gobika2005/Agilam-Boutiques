@@ -104,6 +104,17 @@ export interface SharedItem {
 export const MAX_BOARD_ITEMS = 30;
 
 /**
+ * Used when she doesn't name the occasion.
+ *
+ * A board must have a title (0077 requires one, and "Untitled" in her list is
+ * useless), but making her invent one before she can ask her sister a question
+ * is friction for nothing. Exported because the share caption has to recognise
+ * it and leave it OUT of the message — printing "Which one should I get?"
+ * underneath "Help me pick?" asks the same thing twice.
+ */
+export const DEFAULT_BOARD_TITLE = 'Which one should I get?';
+
+/**
  * A missing table means 0077 has not been applied. Reads treat that as "no
  * boards" so a screen still renders on a deployment one migration behind;
  * writes turn it into a sentence naming the migration.

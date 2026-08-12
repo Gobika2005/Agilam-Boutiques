@@ -21,8 +21,25 @@ sign up:
 
 1. She taps **Ask my people** on the wishlist or a product page, picks what
    she's torn between, and gets a link.
-2. It goes into WhatsApp with the first piece's photo attached and the caption
-   "Help me pick 👇 — 4 options".
+2. It goes into WhatsApp with **all the pieces drawn into one numbered square**
+   (`src/lib/boardCollage.ts`), captioned in her voice rather than the app's:
+
+   > Help me pick? 🙏
+   > Divya's wedding — 4 options
+   > No sign-up, just tap the one you like.
+   > `https://mangaimart.com/shortlist/…`
+
+   The occasion line disappears when she skipped that field, because the board's
+   stored title then falls back to "Which one should I get?" and printing that
+   under "Help me pick?" asks her family the same thing twice.
+
+   Attaching only the *first* photo would have misrepresented the ask — the
+   caption says "4 options" and the picture shows one saree, so nobody learns
+   what they are choosing between until they tap. The collage is the screenshot
+   people already assemble by hand, which is the whole reason they assemble it.
+   Tiles are numbered, and **both board screens number their pieces the same
+   way**, so "2 is the nicest" is a reply someone can send from the chat without
+   opening anything and it still means something when they do.
 3. Her family opens it — **no login, no signup wall** — types a first name, taps
    ❤️ or 👎, and leaves a line ("the green one — the blouse suits you").
 4. She gets one notification per person, taps it, sees the tally and the notes,
@@ -103,6 +120,7 @@ and still route through `order_id`.
 |---|---|
 | `src/data/shortlists.ts` | Data layer, both sides, plus the tally and family-favourite maths |
 | `src/lib/voterIdentity.ts` | The relative's localStorage name + voter key |
+| `src/lib/boardCollage.ts` | Draws every piece into one numbered square for the share |
 | `src/lib/share.ts` | `shareBoard()` — image-attached WhatsApp share |
 | `src/components/buyer/AskMyPeopleSheet.tsx` | Pick → name → share, in one sheet |
 | `src/pages/buyer/SharedBoard.tsx` | **The public board.** `/shortlist/:token` |
@@ -129,7 +147,19 @@ per-board voter cap bounds it.
 | `npm run build` | passes; `SharedBoard` 13.5 kB and `ShortlistDetail` 12.7 kB code-split |
 | SQL parsed against the real PostgreSQL grammar (`libpg-query`) | 56/56 statements OK |
 | The 5 intricate statements re-parsed standalone | OK — the CTE inserts, the chained data-modifying CTE, the upsert, and the 2.4 kB JSON projection |
+| Collage geometry, 1–9 tiles | no overlaps, nothing off-canvas, the only unpainted pixels are gutters |
+| Collage rendered for real (8, 12 and 30 pieces) | layouts inspected; every piece accounted for by a photo or the "+N" |
 | `npm run verify:seo` | ALL CHECKS PASSED |
+
+Two bugs the collage checks caught, both invisible to the type-checker:
+
+- **Eight pieces drew tile 7 over tile 8.** The gap-closing logic widened a cell
+  while its neighbour's `x` was still on the uniform column pitch. Replaced the
+  hand-rolled per-count cases with one grid that divides each row among only the
+  tiles in that row.
+- **The "+N" badge lied.** It painted over the ninth photo, so a twelve-piece
+  board showed eight and claimed "+3" when four were missing. The overflow tile
+  now takes its own cell and the count covers everything the grid omits.
 
 **Not verified:** nothing has been run against a live database — 0077 has not
 been applied. The SQL is syntactically valid per Postgres's own parser, but

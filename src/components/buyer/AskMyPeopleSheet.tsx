@@ -20,7 +20,7 @@
  * has to belong to someone, and the notifications when votes land have to reach
  * a person. Browsing and voting stay anonymous; only *owning* a board doesn't.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useToast } from '@/components/ui/Toast';
@@ -30,8 +30,9 @@ import { useCatalog } from '@/state/CatalogContext';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { Icon } from '@/components/ui/Icon';
-import { createBoard, MAX_BOARD_ITEMS } from '@/data/shortlists';
+import { createBoard, DEFAULT_BOARD_TITLE, MAX_BOARD_ITEMS } from '@/data/shortlists';
 import { shareBoard } from '@/lib/share';
+import { buildBoardCollage } from '@/lib/boardCollage';
 import { TONES, fmt } from '@/data/demo';
 
 export function AskMyPeopleSheet({
@@ -53,6 +54,7 @@ export function AskMyPeopleSheet({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<{ id: string; token: string } | null>(null);
+  const [collage, setCollage] = useState<File | null>(null);
 
   /**
    * What she can choose from: everything saved, plus the piece she opened this
@@ -64,8 +66,38 @@ export function AskMyPeopleSheet({
     return PRODUCTS.filter((p) => ids.has(p.id));
   }, [PRODUCTS, wishlist, initialProductIds]);
 
-  const pickedProducts = choices.filter((p) => picked.includes(p.id));
+  // In the order she picked them, which is the order the board stores and the
+  // order the collage numbers.
+  const pickedProducts = picked
+    .map((id) => choices.find((p) => p.id === id))
+    .filter((p): p is (typeof choices)[number] => !!p);
   const shareUrl = made ? `${window.location.origin}/shortlist/${made.token}` : '';
+
+  /**
+   * Draw the collage the moment the board exists, not when she taps Share.
+   *
+   * It takes one fetch per piece, and `navigator.share` must be called inside
+   * the tap that triggered it — Safari drops the transient user activation
+   * across an await and then refuses to open the sheet. By the time she reads
+   * the share screen the picture is usually ready; if it isn't, `shareBoard`
+   * falls back to the first photo on its own.
+   */
+  useEffect(() => {
+    if (!made) return;
+    let live = true;
+    void buildBoardCollage(
+      pickedProducts.map((p) => p.image),
+      title.trim() || 'shortlist',
+    ).then((file) => {
+      if (live) setCollage(file);
+    });
+    return () => {
+      live = false;
+    };
+    // Deliberately keyed on the board alone: the pieces are fixed once it is
+    // created, and depending on the derived array would redraw on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [made]);
 
   const toggle = (id: string) => {
     setPicked((cur) => {
@@ -83,9 +115,7 @@ export function AskMyPeopleSheet({
     setBusy(true);
     try {
       const result = await createBoard({
-        // A name is required server-side, but making her invent one before she
-        // can ask her sister a question is friction for nothing. Default it.
-        title: title.trim() || 'Which one should I get?',
+        title: title.trim() || DEFAULT_BOARD_TITLE,
         note: note.trim(),
         productIds: picked,
       });
@@ -100,9 +130,12 @@ export function AskMyPeopleSheet({
   const doShare = async () => {
     if (!made) return;
     const result = await shareBoard({
-      title: title.trim() || 'Which one should I get?',
+      // Deliberately not defaulted — an unnamed board drops the line entirely
+      // rather than asking her family the same question twice.
+      occasion: title.trim() || undefined,
       url: shareUrl,
       count: picked.length,
+      collage,
       image: pickedProducts[0]?.image,
     });
     if (result === 'copied') showToast('Link copied — paste it in your family group');
@@ -291,7 +324,7 @@ export function AskMyPeopleSheet({
                 onClick={() => void submit()}
                 style={css(`flex:2;height:50px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;opacity:${busy || picked.length === 0 ? 0.6 : 1};`)}
               >
-                {busy ? 'Making it…' : 'Get the link'}
+                {busy ? 'Just a moment…' : 'Ask them'}
               </button>
             </div>
           </>

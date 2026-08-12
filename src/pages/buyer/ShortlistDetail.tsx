@@ -12,7 +12,7 @@
  * who helped when they open the link again. Leaving them wondering is what
  * makes people ignore the second shortlist.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -25,9 +25,11 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { useShop } from '@/state/ShopContext';
 import { shareBoard } from '@/lib/share';
+import { buildBoardCollage } from '@/lib/boardCollage';
 import { voterKey, voterName, rememberVoterName } from '@/lib/voterIdentity';
 import { TONES, fmt } from '@/data/demo';
 import {
+  DEFAULT_BOARD_TITLE,
   fetchBoard,
   fetchBoardComments,
   decideBoard,
@@ -49,6 +51,7 @@ export function ShortlistDetail() {
   const [reply, setReply] = useState('');
   const [posting, setPosting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [collage, setCollage] = useState<File | null>(null);
 
   const { data: board, loading, reload } = useAsync(() => fetchBoard(id), [id]);
   const { data: comments, reload: reloadComments } = useAsync(() => fetchBoardComments(id), [id]);
@@ -64,6 +67,30 @@ export function ShortlistDetail() {
     description: 'Votes on your shortlist.',
     noindex: true,
   });
+
+  /**
+   * Redraw the share collage whenever the set of pieces changes — she may have
+   * removed one since she last sent the link. Built here rather than inside the
+   * Share tap because it takes a fetch per piece, and awaiting that inside the
+   * gesture costs us the share sheet on Safari.
+   */
+  const photoKey = (board?.items ?? []).map((i) => i.product?.image_url ?? '').join('|');
+  useEffect(() => {
+    if (!board) return;
+    let live = true;
+    void buildBoardCollage(
+      board.items.map((i) => i.product?.image_url ?? ''),
+      board.title,
+    ).then((file) => {
+      if (live) setCollage(file);
+    });
+    return () => {
+      live = false;
+    };
+    // `photoKey` is the content of `board.items`; depending on the array itself
+    // would redraw on every background revalidation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board?.id, photoKey]);
 
   if (loading && !board) {
     return <div style={css('padding-top:18px;')}><SkeletonRows rows={4} height={110} /></div>;
@@ -90,9 +117,12 @@ export function ShortlistDetail() {
 
   const doShare = async () => {
     const result = await shareBoard({
-      title: board.title,
+      // The stored title is never empty, so the placeholder one has to be
+      // recognised and dropped here rather than printed at her family.
+      occasion: board.title === DEFAULT_BOARD_TITLE ? undefined : board.title,
       url: shareUrl,
       count: board.items.length,
+      collage,
       image: board.items[0]?.product?.image_url ?? undefined,
     });
     if (result === 'copied') showToast('Link copied — paste it in your family group');
@@ -234,7 +264,7 @@ export function ShortlistDetail() {
 
       {/* ── The pieces, in vote order ──────────────────────────────────── */}
       <div style={css('display:flex;flex-direction:column;gap:13px;margin-top:18px;')}>
-        {board.items.map((item) => {
+        {board.items.map((item, i) => {
           const p = item.product;
           const t = tally[item.id] ?? { love: 0, no: 0, notes: [] };
           const isFav = favourite === item.id;
@@ -266,6 +296,14 @@ export function ShortlistDetail() {
                   style={css(`flex:none;width:88px;border-radius:13px;overflow:hidden;background:${TONES[p?.tone ?? 0]};position:relative;aspect-ratio:3/4;display:block;`)}
                 >
                   <ImageSlot src={p?.image_url ?? ''} placeholder={p?.title ?? ''} className="agx-prod-fill" />
+                  {/* Matches the number on the shared collage and on the public
+                      board, so all three name the same piece. */}
+                  <span
+                    aria-hidden="true"
+                    style={css('position:absolute;top:6px;left:6px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgba(255,255,255,.94);color:#B02454;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.2);')}
+                  >
+                    {i + 1}
+                  </span>
                 </Link>
 
                 <div style={css('flex:1;min-width:0;')}>

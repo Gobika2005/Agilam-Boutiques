@@ -53,6 +53,16 @@ async function shareWithImage(opts: {
   text: string;
   url: string;
   image?: string;
+  /**
+   * An already-built attachment, used in preference to fetching `image`.
+   *
+   * It exists for the shortlist collage, which is composed from several photos
+   * and cannot be produced quickly enough inside a tap: Safari drops the
+   * transient user activation that `navigator.share` requires while we await,
+   * and the share sheet then refuses to open. The caller builds it in advance
+   * and hands it over ready.
+   */
+  file?: File | null;
   /** Used for the attached file's name when the title has no usable characters. */
   fallbackName: string;
 }): Promise<ShareResult> {
@@ -60,7 +70,7 @@ async function shareWithImage(opts: {
 
   if (typeof navigator !== 'undefined' && navigator.share) {
     // Best case: the picture travels with the caption.
-    const file = await imageFile(image, title, fallbackName);
+    const file = opts.file ?? (await imageFile(image, title, fallbackName));
     if (file && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title, text });
@@ -142,29 +152,55 @@ export function shareBoutique(input: ShareBoutiqueInput): Promise<ShareResult> {
 }
 
 export type ShareBoardInput = {
-  title: string;
+  /**
+   * What she's deciding — "Divya's wedding". Left undefined when she skipped
+   * the occasion field, which matters: the board still needs a stored title, so
+   * it falls back to "Which one should I get?", and printing that under "Help
+   * me pick?" stacks two questions on top of each other.
+   */
+  occasion?: string;
   url: string;
   count: number;
-  /** The first piece's photo — what the family sees before they tap. */
+  /**
+   * All the pieces, drawn into one numbered square by `@/lib/boardCollage` —
+   * what the family sees in the chat list before they tap anything. Built ahead
+   * of the tap, because composing it takes several fetches and awaiting those
+   * inside the gesture costs us the share sheet on Safari.
+   */
+  collage?: File | null;
+  /** The first piece's photo. Used only when the collage could not be built. */
   image?: string;
 };
 
 /**
  * A shortlist asks for something, which is what makes its caption different
  * from the other two: a product share says "look at this", a board share says
- * "help me pick". The number matters — "4 options" tells the reader how long
- * this will take before they open it.
+ * "help me pick".
+ *
+ * It is also the only one of the three that is a message from HER to people who
+ * know her, rather than the app talking to a stranger — so it reads like a
+ * person asking a favour, not like a product explaining itself. The one piece
+ * of instruction that survives ("no sign-up") is there because it answers the
+ * question that would otherwise stop an aunt from tapping at all.
+ *
+ * The count earns its place too: "4 options" tells the reader how long this
+ * will take before they commit to opening it.
  */
-function boardCaption({ title, count, url }: ShareBoardInput): string {
+function boardCaption({ occasion, count, url }: ShareBoardInput): string {
   const options = `${count} ${count === 1 ? 'option' : 'options'}`;
-  return `Help me pick 👇\n${title} — ${options}\nTap a piece to say yes or no. No app, no sign-up.\n${url}`;
+  const what = occasion?.trim()
+    ? `${occasion.trim()} — ${options}\nNo sign-up, just tap the one you like.`
+    : `${options} — no sign-up, just tap the one you like.`;
+  return `Help me pick? 🙏\n${what}\n${url}`;
 }
 
 export function shareBoard(input: ShareBoardInput): Promise<ShareResult> {
   return shareWithImage({
-    title: input.title,
+    // The native share sheet's own heading, and the attached file's name.
+    title: input.occasion?.trim() || 'Help me pick',
     text: boardCaption(input),
     url: input.url,
+    file: input.collage,
     image: input.image,
     fallbackName: 'shortlist',
   });
