@@ -206,6 +206,19 @@ export function Home() {
     setFilters({ ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) });
     navigate('/shop');
   };
+
+  /**
+   * The whole catalogue, with nothing left over from wherever the buyer has
+   * been. Filters are global session state, so without the reset "View all"
+   * would open the grid still narrowed to the collection they tapped a minute
+   * ago — and it would be the one control on the page that doesn't do what it
+   * says.
+   */
+  const openShopUnfiltered = () => {
+    setQuery('');
+    setFilters(DEFAULT_FILTERS);
+    navigate('/shop');
+  };
   const openProduct = (id: string) => navigate(`/products/${id}`);
   const openBoutique = (id: string) => navigate(`/boutique/${id}`);
 
@@ -390,7 +403,12 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
-        <a href="/collections" onClick={(e) => { e.preventDefault(); navigate('/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        {/* "View all" is the whole catalogue, unfiltered — the opposite of a
+            circle, which is one collection. It used to open the Collections
+            hub, which meant neither control on this row actually showed the
+            buyer the shop. The hub is still one tap away: it is what the "More"
+            circle at the end of the rail opens. */}
+        <a href="/shop" onClick={(e) => { e.preventDefault(); openShopUnfiltered(); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CIRCLES.map((c) => (
@@ -421,10 +439,17 @@ export function Home() {
           </button>
         ))}
 
-        {/* The design's "More" circle, now with somewhere real to go: the rail
-            shows six, the page shows every collection there is. */}
+        {/* The design's "More" circle, and now the way to the Collections hub:
+            the rail shows six categories, that page shows every category,
+            occasion, fabric, colour and budget there is.
+
+            "More" alone is a poor accessible name for the one link to it — and
+            since "View all" now goes to the grid instead, this is the only one
+            on the page. The label stays as drawn; the aria-label says where it
+            actually goes. */}
         <button
           onClick={() => navigate('/collections')}
+          aria-label="Shop by collection — every category, occasion, fabric, colour and budget"
           className="agx-circle"
           style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
         >
