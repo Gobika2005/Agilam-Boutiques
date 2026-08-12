@@ -8,11 +8,24 @@ import {
   subscribeToProductLikes,
   toggleProductLike,
   type FeedProduct,
-  type FeedSort,
 } from '@/data/feed';
+import { rankFeed } from '@/lib/ranking';
 import { readLocalLikes, writeLocalLikes } from '@/lib/feedLocal';
 
+/** Cards revealed per step of the infinite scroll. */
 const PAGE = 6;
+
+/**
+ * Rows pulled from the database per round trip.
+ *
+ * The feed's order is decided on the client (see `rankFeed`), so it has to hold
+ * a batch of the catalogue to rank rather than asking the database for six rows
+ * in the order it wants them — no `order by` expresses "recency and likes and
+ * views and orders and a per-visit shuffle". Ten pages' worth per trip: enough
+ * that a whole session usually costs one query, small enough not to ship the
+ * catalogue to a phone on a slow connection.
+ */
+const BATCH = PAGE * 10;
 
 export type FeedItem = FeedProduct;
 
@@ -20,35 +33,60 @@ export type FeedItem = FeedProduct;
  * The Inspire feed.
  *
  * The feed reads straight from the catalogue — a boutique lists a piece and it
- * appears here, with no separate posting step. Two lenses, and they are
- * genuinely different feeds rather than two orderings of one:
+ * appears here, with no separate posting step. Two tabs, and they are genuinely
+ * different feeds rather than two orderings of one:
  *
- *   • For You (`followingOnly: false`) is the whole approved market, ranked by
- *     the chosen `sort`. It used to run the followed shops first and hand over
+ *   • For You (`followingOnly: false`) is the whole approved market, ordered by
+ *     `rankFeed`: recency, likes, views and orders, blended with a per-visit
+ *     random term, and the same shop's pieces pulled apart so no boutique holds
+ *     a run of the feed. It used to run the followed shops first and hand over
  *     to everyone else at a divider, which meant a buyer who follows three
  *     boutiques saw those three boutiques and little else — the opposite of
  *     what a discovery feed is for. Following now has its own tab, so For You
  *     is free to be discovery.
  *   • Following (`followingOnly: true`) is strictly the shops the buyer follows,
- *     newest first, and never widens.
+ *     newest first, never reordered and never widened. It answers "what have my
+ *     shops posted", and a shuffle would make that unanswerable.
  *
  * Likes are local-first (buyers browse anonymously) and reconciled with the
  * account when there is one.
  */
-export function useInspireFeed(opts: { category?: string; followingOnly?: boolean; sort?: FeedSort } = {}) {
-  const { category, followingOnly = false, sort = 'new' } = opts;
-  // The Following tab is a chronology by definition — "what the shops I follow
-  // posted" — so its ordering is fixed regardless of the For You lens.
-  const activeSort: FeedSort = followingOnly ? 'new' : sort;
+export function useInspireFeed(opts: { category?: string; followingOnly?: boolean } = {}) {
+  const { category, followingOnly = false } = opts;
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
-  const [items, setItems] = useState<FeedItem[]>([]);
+  /**
+   * Everything fetched so far, already in feed order, and how much of it the
+   * buyer has scrolled into view.
+   *
+   * The two are separate because ranking and paging are no longer the same
+   * thing: a batch is fetched and ordered once, then revealed a page at a time.
+   * Most "load more" steps are therefore a state update with no network at all.
+   */
+  const [ranked, setRanked] = useState<FeedItem[]>([]);
+  const [shown, setShown] = useState(PAGE);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [exhausted, setExhausted] = useState(false);
+  /** Whether the database has older rows left, as opposed to the screen. */
+  const [batchesLeft, setBatchesLeft] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [likes, setLikes] = useState<Record<string, boolean>>(() => readLocalLikes());
+
+  /**
+   * The shuffle's seed, fixed for this visit to Inspire.
+   *
+   * Fixed matters: it is what keeps the order steady while the buyer scrolls, so
+   * a card can't move out from under a thumb mid-tap and page two can't repeat
+   * page one. It is drawn once when the screen mounts, so leaving Inspire and
+   * coming back deals a different feed — which is the point of shuffling at all.
+   */
+  const seedRef = useRef<number>(Math.floor(Math.random() * 0xffffffff));
+
+  /** `created_at` of the oldest row fetched — the keyset cursor for the next batch. */
+  const cursorRef = useRef<string | undefined>(undefined);
+
+  const items = useMemo(() => ranked.slice(0, shown), [ranked, shown]);
 
   // Followed ids are intersected with the live catalogue so a stale local follow
   // (a boutique since removed or unapproved) can't strand the first phase.
@@ -84,61 +122,89 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     ? { boutiqueIds: followedIds, exclude: false }
     : { boutiqueIds: [] as string[], exclude: true };
 
-  // First page (and a reload whenever the followed set, the lens or the sort
-  // changes).
+  /**
+   * Put a freshly fetched batch into feed order.
+   *
+   * For You is ranked and spread; Following is left exactly as the database
+   * returned it, newest first. `after` carries the last boutique of what is
+   * already on screen, so the "no two cards from one shop in a row" rule holds
+   * across the seam between batches too.
+   */
+  const order = useCallback(
+    (rows: FeedProduct[], after?: string) =>
+      followingOnly ? rows : rankFeed(rows, seedRef.current, after),
+    [followingOnly],
+  );
+
+  // First batch (and a reload whenever the tab or the followed set changes).
   useEffect(() => {
     // Nothing to ask for until the catalogue has resolved which shops exist.
     if (catalogLoading && boutiques.length === 0) return;
     let active = true;
     setLoading(true);
     setError(null);
-    setExhausted(false);
+    setBatchesLeft(true);
+    setShown(PAGE);
 
-    fetchFeed({ ...scope, limit: PAGE, category, sort: activeSort })
+    fetchFeed({ ...scope, limit: BATCH, category })
       .then((first) => {
         if (!active) return;
-        setItems(first);
-        setExhausted(first.length < PAGE);
+        cursorRef.current = first[first.length - 1]?.created_at;
+        setRanked(order(first));
+        setBatchesLeft(first.length === BATCH);
       })
       .catch((e: unknown) => {
         if (!active) return;
-        setItems([]);
+        setRanked([]);
         setError(describeError(e));
       })
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeKey, catalogLoading, category, followingOnly, activeSort]);
+  }, [scopeKey, catalogLoading, category, followingOnly]);
+
+  /** Nothing on screen, nothing left to fetch. */
+  const exhausted = shown >= ranked.length && !batchesLeft;
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || exhausted || loading || items.length === 0) return;
+    if (loadingMore || loading || exhausted || ranked.length === 0) return;
+
+    // The common step: the batch already holds more than is on screen, so the
+    // next page is a reveal, not a round trip.
+    if (shown < ranked.length) {
+      setShown((n) => n + PAGE);
+      return;
+    }
+
     setLoadingMore(true);
     try {
       const rows = await fetchFeed({
         boutiqueIds: followingOnly ? idsRef.current : [],
         exclude: !followingOnly,
-        limit: PAGE,
-        // Newest-first seeks from the last card on screen; the popularity
-        // lenses count from how many are already shown (see fetchFeed).
-        before: activeSort === 'new' ? items[items.length - 1]?.created_at : undefined,
-        offset: activeSort === 'new' ? 0 : items.length,
+        limit: BATCH,
+        before: cursorRef.current,
         category,
-        sort: activeSort,
       });
+      cursorRef.current = rows[rows.length - 1]?.created_at ?? cursorRef.current;
 
-      // The offset-paged lenses can repeat a card when a counter moves
-      // mid-scroll, and React would throw on the duplicate key.
-      const seen = new Set(items.map((p) => p.id));
+      // A boutique listing something mid-scroll can push a row across the
+      // cursor, so a batch can overlap the one before it — and React throws on
+      // a duplicate key.
+      const seen = new Set(ranked.map((p) => p.id));
       const fresh = rows.filter((r) => !seen.has(r.id));
-      setItems((prev) => [...prev, ...fresh]);
-      if (rows.length < PAGE) setExhausted(true);
+
+      setRanked((prev) => [...prev, ...order(fresh, prev[prev.length - 1]?.boutique_id)]);
+      setShown((n) => n + PAGE);
+      setBatchesLeft(rows.length === BATCH);
     } catch {
-      setExhausted(true);
+      // Stop asking rather than retrying into a failing connection on every
+      // scroll; the cards already fetched stay on screen.
+      setBatchesLeft(false);
     } finally {
       setLoadingMore(false);
     }
-  }, [items, loadingMore, exhausted, loading, category, followingOnly, activeSort]);
+  }, [ranked, shown, loadingMore, loading, exhausted, category, followingOnly, order]);
 
   // Pull the account's likes once signed in.
   useEffect(() => {
@@ -160,9 +226,11 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
 
   useEffect(() => writeLocalLikes(likes), [likes]);
 
-  // Keep counts honest while the feed is open.
+  // Keep counts honest while the feed is open. Only the number changes — the
+  // order was fixed when the batch was ranked, so a like landing mid-scroll
+  // never moves a card out from under the buyer.
   useEffect(() => subscribeToProductLikes((productId, likesCount) => {
-    setItems((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: likesCount } : p)));
+    setRanked((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: likesCount } : p)));
   }), []);
 
   const toggleLike = useCallback((productId: string) => {
@@ -175,11 +243,11 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
     });
     // Optimistic: the RPC's return value corrects the number, and realtime keeps
     // it in step with other people tapping the same piece.
-    setItems((prev) =>
+    setRanked((prev) =>
       prev.map((p) => (p.id === productId ? { ...p, likes_count: Math.max(0, (p.likes_count ?? 0) + (next ? 1 : -1)) } : p)),
     );
     toggleProductLike(productId, next)
-      .then((count) => setItems((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: count } : p))))
+      .then((count) => setRanked((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: count } : p))))
       .catch(() => {
         // Roll the tap back rather than leaving a heart that didn't register.
         setLikes((m) => {
@@ -188,7 +256,7 @@ export function useInspireFeed(opts: { category?: string; followingOnly?: boolea
           else copy[productId] = true;
           return copy;
         });
-        setItems((prev) =>
+        setRanked((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, likes_count: Math.max(0, (p.likes_count ?? 0) + (next ? -1 : 1)) } : p)),
         );
         showToast("Couldn't register that — check your connection");

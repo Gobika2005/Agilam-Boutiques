@@ -36,35 +36,19 @@ export type FeedProduct = ProductWithBoutique & {
 const shape = (rows: unknown): FeedProduct[] => (rows ?? []) as unknown as FeedProduct[];
 
 /**
- * How the For You feed is ordered. `new` is the feed's own chronology; the other
- * three are the engagement counters the catalogue already maintains —
- * `likes_count` (migration 0020), `views_count` (0031) and `sold_count` (0023).
- * All three are trigger- or RPC-maintained and not app-writable, so a boutique
- * cannot sort itself to the top of the feed.
- */
-export type FeedSort = 'new' | 'liked' | 'viewed' | 'ordered';
-
-const SORT_COLUMN: Record<FeedSort, string> = {
-  new: 'created_at',
-  liked: 'likes_count',
-  viewed: 'views_count',
-  ordered: 'sold_count',
-};
-
-/**
  * Listings for the feed, either from a set of boutiques or from everything
  * except a set of boutiques. Passing `exclude` flips the id list from an
  * include-filter to a skip-filter; an empty list with `exclude` is "everything",
  * which is what the For You feed asks for.
  *
- * Two pagination modes, because the sort decides which is correct:
+ * Always newest-first, and always keyset-paged: `before` is the `created_at` of
+ * the oldest row already fetched, so a boutique listing something mid-scroll
+ * can't shift the window and make the buyer see a duplicate or miss one.
  *
- *   • `new` pages by keyset — `before` is the `created_at` of the last card on
- *     screen, so a boutique listing something mid-scroll can't shift the window
- *     and make the buyer see a duplicate or miss one.
- *   • the popularity sorts page by `offset`. Their columns move under the cursor
- *     (a like lands while you scroll), so there is no stable key to seek on;
- *     an offset can at worst repeat a card, which the caller de-dupes by id.
+ * The order rows come back in is NOT the order For You shows them. This reads a
+ * batch of the catalogue; `rankFeed` in src/lib/ranking.ts decides what leads
+ * it. That split is deliberate — the blend is recency, likes, views, orders and
+ * a per-visit random term, and no single `order by` expresses it.
  */
 export async function fetchFeed(opts: {
   boutiqueIds: string[];
@@ -72,13 +56,10 @@ export async function fetchFeed(opts: {
   exclude?: boolean;
   limit?: number;
   before?: string;
-  /** Rows already shown, for the offset-paged popularity sorts. */
-  offset?: number;
   /** Narrow the feed to one catalogue category — the Inspire filter row. */
   category?: string;
-  sort?: FeedSort;
 }): Promise<FeedProduct[]> {
-  const { boutiqueIds, exclude = false, limit = 6, before, offset = 0, category, sort = 'new' } = opts;
+  const { boutiqueIds, exclude = false, limit = 6, before, category } = opts;
   // An include-query with nothing to include returns nothing, rather than
   // silently widening to every boutique. An exclude-query with nothing to
   // exclude is simply "everything", which is correct.
@@ -99,30 +80,11 @@ export async function fetchFeed(opts: {
   }
 
   if (category) q = q.eq('category', category);
+  if (before) q = q.lt('created_at', before);
 
-  if (sort === 'new') {
-    if (before) q = q.lt('created_at', before);
-    const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
-    if (error) throw error;
-    return shape(data);
-  }
-
-  // `created_at` is the tie-break: without it every product on nought likes
-  // comes back in whatever order Postgres feels like, which differs per page and
-  // makes the same card show up twice as the buyer scrolls.
-  const { data, error } = await q
-    .order(SORT_COLUMN[sort], { ascending: false })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-  if (!error) return shape(data);
-
-  // The counters live in migrations 0020/0023/0031. On a deployment missing one
-  // of them the lens is simply unavailable — the feed falls back to newest
-  // first rather than showing the buyer an error where a feed should be.
-  // 42703 = undefined_column, 42501 = column not granted.
-  if (error.code !== '42703' && error.code !== '42501') throw error;
-  console.warn(`[feed] cannot sort by ${SORT_COLUMN[sort]} — apply the counter migrations. Falling back to newest.`);
-  return fetchFeed({ ...opts, sort: 'new', before: undefined, offset: 0 });
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return shape(data);
 }
 
 /** Toggle a like and get the authoritative new count back. */
