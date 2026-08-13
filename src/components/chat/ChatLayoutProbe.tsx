@@ -53,6 +53,22 @@ export function ChatLayoutProbe() {
       const visibleH = vv?.height ?? window.innerHeight;
       const overshoot = compR ? Math.round(compR.bottom - visibleH) : NaN;
 
+      /*
+       * The composer overflows the root rather than the root overflowing the
+       * screen, so the interesting elements are the ones in between. None of
+       * them carry a class, so they are reached by position: the root's only
+       * child is the 900px column, and inside it sit the header, the scrolling
+       * thread and the composer.
+       */
+      const wrap = root?.firstElementChild as HTMLElement | null;
+      const head = wrap?.children[0] as HTMLElement | undefined;
+      const thread = root?.querySelector('.agx-scroll') as HTMLElement | null;
+      const wrapR = wrap?.getBoundingClientRect();
+      const headR = head?.getBoundingClientRect();
+      const threadR = thread?.getBoundingClientRect();
+      const wrapCs = wrap ? getComputedStyle(wrap) : null;
+      const threadCs = thread ? getComputedStyle(thread) : null;
+
       setRows([
         { label: 'composer found', value: comp ? 'yes' : 'NO', bad: !comp },
         {
@@ -61,8 +77,24 @@ export function ChatLayoutProbe() {
           bad: !Number.isNaN(overshoot) && overshoot > 2,
         },
         { label: 'composer top/bottom', value: `${n(compR?.top)} / ${n(compR?.bottom)}` },
+        { label: 'composer height', value: n(compR?.height) },
         { label: 'root top/height', value: `${n(rootR?.top)} / ${n(rootR?.height)}` },
         { label: 'root bottom', value: n(rootR?.bottom) },
+        // Which element is the one that overflows.
+        {
+          label: 'wrapper h / bottom',
+          value: `${n(wrapR?.height)} / ${n(wrapR?.bottom)}`,
+          bad: !!wrapR && !!rootR && wrapR.bottom - rootR.bottom > 2,
+        },
+        { label: 'wrapper flex/min-h', value: `${wrapCs?.flexGrow ?? '—'}/${wrapCs?.flexShrink ?? '—'}/${wrapCs?.flexBasis ?? '—'} min:${wrapCs?.minHeight ?? '—'}` },
+        { label: 'wrapper height css', value: wrapCs?.height ?? '—' },
+        { label: 'header h', value: n(headR?.height) },
+        { label: 'thread h / bottom', value: `${n(threadR?.height)} / ${n(threadR?.bottom)}` },
+        { label: 'thread min-h / flex', value: `${threadCs?.minHeight ?? '—'} / ${threadCs?.flexGrow ?? '—'}` },
+        { label: 'root box-sizing', value: cs?.boxSizing ?? '—' },
+        { label: 'root pad-bottom', value: cs?.paddingBottom ?? '—' },
+        { label: 'root overflow', value: cs?.overflow ?? '—' },
+        { label: 'root max-height', value: cs?.maxHeight ?? '—' },
         { label: 'window.innerHeight', value: n(window.innerHeight) },
         { label: 'visualViewport h', value: n(vv?.height) },
         { label: 'vv offsetTop / scale', value: `${n(vv?.offsetTop)} / ${(vv?.scale ?? 1).toFixed(2)}` },
