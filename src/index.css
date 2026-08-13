@@ -507,7 +507,28 @@ body.agx-photo-open { overflow: hidden; }
    it to the visual viewport instead (`--ag-vv-top`/`--ag-vv-h` on the element);
    what is left here is the bottom inset. The home indicator is *under* the
    keyboard while it is open, so reserving it then would only leave a gap. */
-.agx-chat-root { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.agx-chat-root {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /*
+   * Never taller than the screen — the composer's safety net.
+   *
+   * The surface's height comes from `--ag-vv-h`, which JavaScript writes from
+   * `visualViewport.height`. That is the right measurement, but it means one
+   * wrong or stale value — a rotation, a browser that reports the viewport mid
+   * transition, an effect that has not run yet — makes the element taller than
+   * the window, and the composer is the last thing in the column, so it is the
+   * part that goes off the bottom. The user then has a chat they cannot type
+   * into, which is the whole screen's purpose.
+   *
+   * It can never legitimately need to be taller than the viewport, so cap it.
+   * When the keyboard is up, `--ag-vv-h` is *smaller* than this cap and keeps
+   * winning, so the keyboard behaviour above is untouched.
+   */
+  max-height: calc(100dvh - var(--ag-banner-h, 0px));
+  /* With the cap in place the thread (flex:1, min-height:0) absorbs the
+     difference instead of the column spilling past its own box. */
+  overflow: hidden;
+}
 body[data-kb-open] .agx-chat-root {
   padding-bottom: 0;
   /* The banner below is hidden while typing, so stop reserving its height. */
@@ -529,7 +550,12 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */
-.agx-chat-composer { flex: none; padding: 8px 12px 6px; }
+/* `flex:none` (0 0 auto) so the column can never shrink the composer away when
+   the thread is long; `position:relative` + a stacking order so it always paints
+   above the scrolling thread rather than behind a message that scrolled under
+   it. Both are belt-and-braces — the flex column already does the right thing —
+   but this is the one control on the screen that must never be missing. */
+.agx-chat-composer { flex: none; position: relative; z-index: 1; padding: 8px 12px 6px; }
 .agx-chat-attach { display: flex; }
 @media (max-width:640px){ .agx-chat-composer { padding: 6px 8px 4px; } }
 @media (max-width:379px){ .agx-chat-attach { display: none !important; } }

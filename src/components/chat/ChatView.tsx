@@ -294,8 +294,14 @@ export function ChatView({
   // surface to the visual viewport when a keyboard is open; they fall back to
   // the full layout viewport, which is what every desktop browser gets.
   return (
-    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;height:calc(var(--ag-vv-h,100%) - var(--ag-banner-h,0px));z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
-      <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;height:calc(var(--ag-vv-h,100dvh) - var(--ag-banner-h,0px));z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+      {/* `flex:1;min-height:0` rather than `height:100%`: a percentage height
+          resolves against the parent's *height* property, which is the very
+          thing the cap above may be overriding, and a stale percentage basis is
+          how a column like this ends up taller than its own box. Filling the
+          flex line instead needs no basis at all, and `min-height:0` is what
+          lets the thread inside scroll rather than push the composer out. */}
+      <div style={css('max-width:900px;width:100%;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
