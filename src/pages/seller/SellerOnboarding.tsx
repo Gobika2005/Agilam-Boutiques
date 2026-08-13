@@ -10,6 +10,7 @@ import { KNOWN_CITIES } from '@/lib/cities';
 import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 import { isMapsLink } from '@/lib/geolocate';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
+import { DeliveryRateCard, describeReach, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
@@ -102,7 +103,7 @@ type Form = {
   lat: string; lng: string;
   categories: string[]; gstNumber: string; businessReg: string; yearsInBusiness: string;
   openTime: string; closeTime: string; workingDays: string[];
-  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string; freeDeliveryOver: string;
+  deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
   codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
 };
@@ -114,7 +115,7 @@ const EMPTY: Form = {
   lat: '', lng: '',
   categories: [], gstNumber: '', businessReg: '', yearsInBusiness: '',
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0', freeDeliveryOver: '0',
+  deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
   codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
@@ -251,7 +252,7 @@ function toPatch(f: Form): BoutiquePatch {
     working_days: f.workingDays,
     delivery_available: f.deliveryAvailable,
     delivery_areas: f.deliveryAreas.trim(),
-    delivery_charge: Number(f.deliveryCharge || 0),
+    ...zoneRatesToPatch(f.rates),
     free_delivery_over: Number(f.freeDeliveryOver || 0),
     cod_enabled: f.codEnabled,
     cod_fee: Number(f.codFee || 0),
@@ -397,7 +398,7 @@ export function SellerOnboarding() {
           workingDays: row.working_days?.length ? row.working_days : EMPTY.workingDays,
           deliveryAvailable: row.delivery_available ?? true,
           deliveryAreas: row.delivery_areas ?? '',
-          deliveryCharge: row.delivery_charge != null ? String(row.delivery_charge) : '0',
+          rates: zoneRatesToForm(row),
           freeDeliveryOver: row.free_delivery_over != null ? String(row.free_delivery_over) : '0',
           codEnabled: row.cod_enabled ?? true,
           codFee: row.cod_fee != null ? String(row.cod_fee) : '0',
@@ -898,16 +899,28 @@ export function SellerOnboarding() {
             </SectionCard>
 
             {/* Your numbers, charged to the buyer at checkout — MangaiMart adds
-                no delivery fee of its own (migration 0076). */}
+                no delivery fee of its own (migration 0076), and they vary with
+                how far the parcel goes (0077). The rate bands, not the free-text
+                box below them, are what decides who can order. */}
             <SectionCard title="Delivery" subtitle="What buyers pay you to deliver.">
               <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
               {form.deliveryAvailable && (
                 <>
-                  <TextArea label="Delivery areas *" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
-                  <Row>
-                    <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per order from your shop. 0 = you deliver free." />
-                    <Field label="Free delivery over (₹)" value={form.freeDeliveryOver} onChange={(v) => set('freeDeliveryOver', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Your charge drops off above this. 0 = always charged." />
-                  </Row>
+                  <DeliveryRateCard
+                    value={form.rates}
+                    onChange={(next) => set('rates', next)}
+                    places={{ city: form.city, district: form.district, state: form.state }}
+                    freeDeliveryOver={form.freeDeliveryOver}
+                    onFreeDeliveryOverChange={(v) => set('freeDeliveryOver', v)}
+                  />
+                  <TextArea
+                    label="Delivery areas *"
+                    value={form.deliveryAreas}
+                    onChange={(v) => set('deliveryAreas', v)}
+                    placeholder="Coimbatore city, Tirupur, Erode"
+                    error={errors.deliveryAreas}
+                    hint="A description for your shop page. The bands above are what buyers are actually charged."
+                  />
                 </>
               )}
             </SectionCard>
@@ -943,6 +956,7 @@ export function SellerOnboarding() {
               placeholder="123456789012"
               inputMode="numeric"
               error={errors.bankAccountNumber}
+              hint="9–18 digits, exactly as printed in your passbook."
             />
             <Field
               label="Re-enter account number"
@@ -1035,16 +1049,23 @@ function IfscStatusLine({ status }: { status: IfscStatus }) {
   if (status.kind === 'unavailable') {
     return (
       <span style={css(`${base}color:var(--ag-muted);`)}>
-        We couldn’t verify this IFSC just now — you can continue, and we’ll confirm it before your first payout.
+        We couldn’t reach the IFSC directory just now — you can continue. Please check the code against your passbook yourself.
       </span>
     );
   }
+  // Says what was matched, not just that something was. The tick sits below all
+  // three bank fields, so an unlabelled "verified" reads as "your account is
+  // verified" — which it is not: nothing here ever touches the account number.
   return (
     <span style={css(`${base}color:var(--ag-good);`)}>
       <span className="material-symbols-rounded" style={css('font-size:15px;')}>verified</span>
       <span>
-        {status.bank}
+        IFSC matched — {status.bank}
         {status.branch ? <><br /><span style={css('font-weight:600;color:var(--ag-muted);')}>{status.branch}{status.city ? `, ${status.city}` : ''}</span></> : null}
+        <br />
+        <span style={css('font-weight:600;color:var(--ag-muted);')}>
+          This confirms the branch only — your account number is not checked here.
+        </span>
       </span>
     </span>
   );
@@ -1086,7 +1107,7 @@ function ReviewStep({
       rows: [
         ['Timing', form.openTime && form.closeTime ? `${form.openTime} – ${form.closeTime}` : '—'],
         ['Working days', form.workingDays.length ? form.workingDays.join(', ') : '—'],
-        ['Delivery', form.deliveryAvailable ? `${dash(form.deliveryAreas)} · ₹${form.deliveryCharge || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver}` : ''}` : 'Store pickup only'],
+        ['Delivery', form.deliveryAvailable ? `${describeReach(form.rates, form.city, form.district, form.state)} · from ₹${form.rates.local || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver} nearby` : ''}` : 'Store pickup only'],
         ['Payments', [form.codEnabled && `Cash on delivery${Number(form.codFee) > 0 ? ` (₹${form.codFee} fee)` : ''}`, form.onlinePaymentEnabled && 'Online'].filter(Boolean).join(', ') || '—'],
       ],
     },

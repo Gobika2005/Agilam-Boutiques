@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
-import { routes } from '@/lib/seo';
 import { graph, organizationSchema, websiteSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
@@ -185,7 +184,8 @@ export function Home() {
   };
 
   /**
-   * A collection circle lands on the results grid, already filtered to it.
+   * A collection circle opens the results grid, already filtered to it — the
+   * same screen "View all" opens, with one filter on.
    *
    * Which field it maps to is read off the catalogue rather than hardcoded, so a
    * tile like "Bridal" (an occasion, not a category) still resolves.
@@ -199,26 +199,18 @@ export function Home() {
    * is no such branch now. A tile only exists when it has pieces behind it, and
    * if the catalogue somehow disagrees the grid filters to the category anyway
    * and says it is empty — which is at least true.
-   */
-  /**
-   * Where a collection circle goes: that collection's own page.
    *
-   * It used to set a global filter and push the buyer to the shared /shop URL,
-   * which meant the same collection had two different destinations depending on
-   * whether you reached it from this rail or from the Collections hub — and the
-   * rail's version could not be linked, shared or crawled. Both now land on
-   * `/collections/<slug>`, which has the heading, the intro, the breadcrumb and
-   * its own grid.
-   *
-   * The kind is read off the catalogue rather than assumed: the rail is built
-   * from categories today, but a tile like "Bridal" is an occasion and belongs
-   * on `/occasions/bridal`. Matching is `sameTerm`, so a seller's casing cannot
-   * send a tile to the wrong family — see @/lib/vocabulary.
+   * The collection landing pages (`/collections/kurta-sets`) are still live and
+   * still linked from the Collections hub, the sitemap and the edge's own
+   * prerender of this rail — they are the site's search surface. This rail just
+   * isn't the way buyers reach them.
    */
-  const collectionPath = (name: string) => {
+  const openCategory = (name: string) => {
+    setQuery('');
     const isOccasion =
       !PRODUCTS.some((p) => sameTerm(p.cat, name)) && PRODUCTS.some((p) => sameTerm(p.occasion, name));
-    return isOccasion ? routes.occasion(name) : routes.category(name);
+    setFilters({ ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) });
+    navigate('/shop');
   };
 
   /**
@@ -425,22 +417,13 @@ export function Home() {
         <a href="/shop" onClick={(e) => { e.preventDefault(); openShopUnfiltered(); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
-        {/* A real link, not a button.
-
-            The edge already prerenders this rail as `<a href="/collections/…">`
-            under "Shop by category" (see homeHubPrerender in middleware.js), so
-            a crawler following the homepage landed on the collection page while
-            a buyer tapping the same circle landed on the filtered grid. The
-            rendered page now agrees with what we tell crawlers it is — and the
-            buyer gets middle-click, open-in-new-tab and a Back button that
-            behaves, none of which a <button> gives you. */}
         {CIRCLES.map((c) => (
-          <Link
+          <button
             key={c.name}
-            to={collectionPath(c.name)}
+            onClick={() => openCategory(c.name)}
             aria-label={`${c.name} — ${c.count} ${c.count === 1 ? 'piece' : 'pieces'}`}
             className="agx-circle"
-            style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;text-decoration:none;color:inherit;')}
+            style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
           >
             {/* Gradient ring → page-coloured gap → photo, so the circle reads as
                 a framed piece instead of a cropped thumbnail. */}
@@ -460,7 +443,7 @@ export function Home() {
               </span>
             </span>
             <span style={css('font-size:13px;font-weight:800;color:var(--ag-ink-2);letter-spacing:-.005em;white-space:nowrap;')}>{c.name}</span>
-          </Link>
+          </button>
         ))}
 
         {/* The design's "More" circle, and now the way to the Collections hub:
@@ -570,7 +553,14 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
-        <a href="/top-boutiques" onClick={(e) => { e.preventDefault(); navigate('/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        {/* "View all" is the full directory, not a longer version of this rail.
+            It used to open /top-boutiques — the same eight shops in the same
+            order, just taller — so a buyer who wanted to see who else is on the
+            marketplace was given the identical answer twice. /boutiques is the
+            page with search, city, sort and every approved shop.
+            /top-boutiques is still live and still linked from the edge's hub
+            nav and the sitemap. */}
+        <a href="/boutiques" onClick={(e) => { e.preventDefault(); navigate('/boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {TOP_BOUTIQUES.map((b) => (

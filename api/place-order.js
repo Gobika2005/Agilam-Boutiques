@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon, loadShopTerms, redeemCoupon } from './_pricing.js';
+import { computeCartPricing, loadBuyerPlace, loadCoupon, loadShopTerms, redeemCoupon, undeliverableShop } from './_pricing.js';
 import { loadCodSwitch } from './_settings.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
@@ -428,6 +428,23 @@ export default async function handler(req, res) {
     // on each order, the paise the payment is checked against — is priced from
     // one consistent snapshot even if a seller saves their settings mid-checkout.
     const shops = await loadShopTerms(supabase, [...groups.keys()]);
+    // Where the parcel is going decides which of each shop's zone rates applies
+    // (migration 0077). Read from the SAME `pincodes` directory the browser
+    // quoted from, so the two derive the same zone and the amount binding below
+    // does not reject a correctly-priced payment.
+    const buyerPlace = await loadBuyerPlace(supabase, guest?.pincode);
+
+    // A shop that does not deliver this far must not be sold a parcel it cannot
+    // send. Checked before the payment binding so a prepaid buyer is refused
+    // with their money untouched, and re-checked here rather than trusted from
+    // the browser because it is the seller's promise, not the buyer's claim.
+    const cannotDeliver = undeliverableShop(groupTotals, shops, buyerPlace);
+    if (cannotDeliver) {
+      return res.status(400).json({
+        error: `${cannotDeliver} does not deliver to that address. Remove those items, or use a different delivery address.`,
+        code: 'UNDELIVERABLE',
+      });
+    }
 
     // ── Cash on Delivery ───────────────────────────────────────────────────
     // No payment to bind an amount against, so the checks are about whether
@@ -445,7 +462,7 @@ export default async function handler(req, res) {
       // The cap is now per boutique, because each shop sets its own and each
       // collects its own cash — so it is measured against that shop's order,
       // not the whole bag. Mirrors codBlockedReason() in src/lib/pricing.ts.
-      const codTotals = computeCartPricing(groupTotals, coupon, true, shops);
+      const codTotals = computeCartPricing(groupTotals, coupon, true, shops, buyerPlace);
       for (const [id, payable] of Object.entries(codTotals.perBoutiquePayable)) {
         const cap = Number(shops[id]?.codMaxOrder) || 0;
         if (cap > 0 && payable > cap) {
@@ -519,7 +536,7 @@ export default async function handler(req, res) {
       if (!razorpay) {
         return res.status(500).json({ error: 'Payment verification is not configured' });
       }
-      const expectedPaise = computeCartPricing(groupTotals, coupon, false, shops).totalPaise;
+      const expectedPaise = computeCartPricing(groupTotals, coupon, false, shops, buyerPlace).totalPaise;
 
       let rzPayment;
       try {
@@ -624,7 +641,7 @@ export default async function handler(req, res) {
     // checkout. Summed across the orders this request creates, total +
     // shipping_fee + cod_fee still equals exactly what the buyer was quoted,
     // which is what lets a seller collect the right cash at the door.
-    const cartTotals = computeCartPricing(groupTotals, coupon, isCod, shops);
+    const cartTotals = computeCartPricing(groupTotals, coupon, isCod, shops, buyerPlace);
 
     // Claim the redemption before writing the orders. Done here — after pricing,
     // before the rows exist — so a code that ran out between the buyer loading

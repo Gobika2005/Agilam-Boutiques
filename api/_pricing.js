@@ -30,7 +30,14 @@
  * browser applies, which is what keeps the two totals equal on a deployment
  * where 0076 has not been applied yet.
  */
-const DEFAULT_SHOP_TERMS = { deliveryCharge: 0, freeDeliveryOver: 0, codFee: 0, codMaxOrder: 0, name: '' };
+const DEFAULT_SHOP_TERMS = {
+  rates: { local: 0, district: 0, state: 0, national: 0 },
+  freeDeliveryOver: 0,
+  codFee: 0,
+  codMaxOrder: 0,
+  place: {},
+  name: '',
+};
 
 function termsFor(shops, id) {
   return shops?.[id] ?? DEFAULT_SHOP_TERMS;
@@ -39,6 +46,101 @@ function termsFor(shops, id) {
 /** Boutiques with something in the bag — one order, one parcel, one fee each. */
 function shopsInBag(groupTotals) {
   return Object.keys(groupTotals).filter((id) => groupTotals[id] > 0);
+}
+
+/* ── Delivery zones ─────────────────────────────────────────────────────────
+ * Mirror of src/lib/deliveryZone.ts and src/lib/nameMatch.ts. Delivery is
+ * priced by how far the parcel goes (migration 0077), so the buyer's pincode
+ * has to resolve to the same zone here as it did in the browser — otherwise a
+ * correctly-quoted payment is rejected as the wrong amount. Change together.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const nameKeyOf = (s) => String(s ?? '').toLowerCase().replace(/[^a-z]/g, '');
+
+function editDistance(a, b) {
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > 3) return 99;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const row = [i];
+    for (let j = 1; j <= n; j++) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[n];
+}
+
+function namesAgree(a, b) {
+  const x = nameKeyOf(a);
+  const y = nameKeyOf(b);
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  return Math.min(x.length, y.length) >= 6 && editDistance(x, y) <= 2;
+}
+
+/** Mirror of resolveZone(): widest test first, so a shop with a blank district
+ *  or state falls back to its national rate rather than its local one. */
+function zoneFor(place, buyer) {
+  const shopPin = String(place?.pincode ?? '').replace(/\D/g, '');
+  const buyerPin = String(buyer?.pincode ?? '').replace(/\D/g, '');
+  if (shopPin.length === 6 && shopPin === buyerPin) return 'local';
+  if (!namesAgree(place?.state, buyer?.state)) return 'national';
+  if (!namesAgree(place?.district, buyer?.district)) return 'state';
+  const town = place?.city ?? '';
+  const covers = (buyer?.places ?? []).some((p) => namesAgree(town, p));
+  return covers || namesAgree(town, buyer?.district) ? 'local' : 'district';
+}
+
+/** Mirror of zoneForShop(): no address yet means the furthest zone served. */
+function zoneForShop(t, buyer) {
+  if (buyer) return zoneFor(t.place, buyer);
+  if (t.rates.national != null) return 'national';
+  if (t.rates.state != null) return 'state';
+  if (t.rates.district != null) return 'district';
+  return 'local';
+}
+
+const rateForZone = (rates, zone) => (zone === 'local' ? rates.local : rates[zone]);
+const zoneEarnsFreeDelivery = (zone) => zone === 'local' || zone === 'district';
+
+/**
+ * Where a delivery pincode is, from the shared `pincodes` directory that the
+ * browser fills in (migration 0077).
+ *
+ * Reads the stored row and nothing else — no call out to India Post from inside
+ * a checkout. If the row is missing, this returns null and every shop prices at
+ * its furthest zone, which can only ever over-quote relative to the browser…
+ * except that the browser would then have quoted lower, so `place-order` would
+ * reject the payment. That is the right failure: it is loud, it is rare (the
+ * browser writes the row while the buyer is still typing their address), and it
+ * refuses money rather than taking the wrong amount.
+ */
+export async function loadBuyerPlace(supabase, pincode) {
+  const code = String(pincode ?? '').replace(/\D/g, '');
+  if (!supabase || !/^[1-9][0-9]{5}$/.test(code)) return null;
+  try {
+    const { data, error } = await supabase
+      .from('pincodes')
+      .select('pincode, district, state, places')
+      .eq('pincode', code)
+      .maybeSingle();
+    if (error) {
+      console.warn('loadBuyerPlace: pincode directory unavailable, apply migration 0077 —', error.message ?? error);
+      return null;
+    }
+    if (!data || !data.district || !data.state) return null;
+    return {
+      pincode: data.pincode,
+      district: data.district,
+      state: data.state,
+      places: Array.isArray(data.places) ? data.places : [],
+    };
+  } catch (e) {
+    console.error('loadBuyerPlace threw:', e?.message ?? e);
+    return null;
+  }
 }
 
 /**
@@ -57,34 +159,54 @@ export async function loadShopTerms(supabase, boutiqueIds) {
   const shops = {};
   if (!supabase || ids.length === 0) return shops;
 
+  // `full` says which optional column groups the SELECT actually got back: the
+  // 0076 terms, and the 0077 zone rates. A missing group degrades to the same
+  // numbers the browser degrades to (src/data/boutiques.ts), which is what keeps
+  // the two totals equal on a part-migrated deployment.
   const build = (rows, full) => {
     for (const b of rows ?? []) {
+      const local = Number(b.delivery_charge) || 0;
+      const rate = (v) => (full.zones ? (v == null ? null : Number(v) || 0) : local);
       shops[b.id] = {
-        deliveryCharge: Number(b.delivery_charge) || 0,
-        freeDeliveryOver: full ? Number(b.free_delivery_over) || 0 : 0,
-        codFee: full ? Number(b.cod_fee) || 0 : 0,
-        codMaxOrder: full ? Number(b.cod_max_order) || 0 : 0,
+        rates: {
+          local,
+          district: rate(b.delivery_charge_district),
+          state: rate(b.delivery_charge_state),
+          national: rate(b.delivery_charge_national),
+        },
+        freeDeliveryOver: full.terms ? Number(b.free_delivery_over) || 0 : 0,
+        codFee: full.terms ? Number(b.cod_fee) || 0 : 0,
+        codMaxOrder: full.terms ? Number(b.cod_max_order) || 0 : 0,
+        place: {
+          pincode: b.pincode ?? '',
+          city: b.city ?? '',
+          district: b.district ?? '',
+          state: b.state ?? '',
+        },
         name: b.name ?? '',
       };
     }
   };
 
+  const BASE = 'id, name, pincode, city, district, state, delivery_charge';
+  const TERMS = 'free_delivery_over, cod_fee, cod_max_order';
+  const ZONES = 'delivery_charge_district, delivery_charge_state, delivery_charge_national';
+
   try {
-    const { data, error } = await supabase
-      .from('boutiques')
-      .select('id, name, delivery_charge, free_delivery_over, cod_fee, cod_max_order')
-      .in('id', ids);
-    if (!error) {
-      build(data, true);
-      return shops;
+    const attempts = [
+      { cols: `${BASE}, ${TERMS}, ${ZONES}`, full: { terms: true, zones: true }, note: null },
+      { cols: `${BASE}, ${TERMS}`, full: { terms: true, zones: false }, note: 'zone rates unavailable — apply migration 0077' },
+      { cols: BASE, full: { terms: false, zones: false }, note: 'seller terms unavailable — apply migration 0076' },
+    ];
+    for (const attempt of attempts) {
+      const { data, error } = await supabase.from('boutiques').select(attempt.cols).in('id', ids);
+      if (!error) {
+        build(data, attempt.full);
+        return shops;
+      }
+      console.warn(`loadShopTerms: ${attempt.note ?? error.message ?? error}`);
     }
-    console.warn('loadShopTerms: seller terms unavailable, apply migration 0076 —', error.message ?? error);
-    const retry = await supabase.from('boutiques').select('id, name, delivery_charge').in('id', ids);
-    if (retry.error) {
-      console.error('loadShopTerms failed:', retry.error.message ?? retry.error);
-      return shops;
-    }
-    build(retry.data, false);
+    console.error('loadShopTerms failed: even the base columns could not be read');
     return shops;
   } catch (e) {
     console.error('loadShopTerms threw:', e?.message ?? e);
@@ -92,16 +214,36 @@ export async function loadShopTerms(supabase, boutiqueIds) {
   }
 }
 
-// Mirror of shopShipFee() in src/lib/pricing.ts.
-function shopShipFee(subtotal, t) {
+// Mirror of shopShipFee() in src/lib/pricing.ts. Null = this shop does not
+// deliver to that zone at all, which is not the same as delivering free.
+function shopShipFee(subtotal, t, buyer) {
   if (subtotal <= 0) return 0;
-  if (t.freeDeliveryOver > 0 && subtotal >= t.freeDeliveryOver) return 0;
-  return t.deliveryCharge;
+  const zone = zoneForShop(t, buyer);
+  const rate = rateForZone(t.rates, zone);
+  if (rate == null) return null;
+  if (t.freeDeliveryOver > 0 && subtotal >= t.freeDeliveryOver && zoneEarnsFreeDelivery(zone)) return 0;
+  return rate;
 }
 
 // Mirror of baseShipFee(): each boutique ships its own parcel and charges for it.
-function shipFeeFor(groupTotals, shops) {
-  return shopsInBag(groupTotals).reduce((sum, id) => sum + shopShipFee(groupTotals[id], termsFor(shops, id)), 0);
+function shipFeeFor(groupTotals, shops, buyer) {
+  return shopsInBag(groupTotals).reduce(
+    (sum, id) => sum + (shopShipFee(groupTotals[id], termsFor(shops, id), buyer) ?? 0),
+    0,
+  );
+}
+
+/**
+ * Mirror of undeliverableReason(): the boutique in this bag that cannot reach
+ * the address, or null. Returned as a name so place-order can say which shop.
+ */
+export function undeliverableShop(groupTotals, shops, buyer) {
+  if (!buyer) return null;
+  for (const id of shopsInBag(groupTotals)) {
+    const t = termsFor(shops, id);
+    if (rateForZone(t.rates, zoneFor(t.place, buyer)) == null) return t.name || 'One of the boutiques in your bag';
+  }
+  return null;
 }
 
 // Mirror of baseCodFee(): one cash-handling fee per boutique, i.e. per delivery.
@@ -195,14 +337,14 @@ function isEligible(coupon, cartSubtotal, groupTotals) {
 
 // Mirror of couponSavings() in src/lib/pricing.ts. `max_discount` is no longer
 // settable from either console, but rows created while it was still carry it.
-function couponSavings(coupon, cartSubtotal, groupTotals, shops) {
+function couponSavings(coupon, cartSubtotal, groupTotals, shops, buyer) {
   if (!isEligible(coupon, cartSubtotal, groupTotals)) return 0;
   const base = couponBase(coupon, cartSubtotal, groupTotals);
   if (coupon.type === 'pct') {
     return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   }
   if (coupon.type === 'flat') return Math.min(coupon.off, base);
-  return shipFeeFor(groupTotals, shops); // 'ship' — the delivery fee waived
+  return shipFeeFor(groupTotals, shops, buyer); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -215,7 +357,9 @@ function couponSavings(coupon, cartSubtotal, groupTotals, shops) {
  * order total (empty for a platform coupon). `payingCash` says whether this is a
  * cash-on-delivery checkout, which is what adds each boutique's own handling
  * fee. `shops` comes from `loadShopTerms(supabase, ids)`; an empty map prices
- * delivery and COD at zero rather than at NaN.
+ * delivery and COD at zero rather than at NaN. `buyer` is where the parcel is
+ * going (`loadBuyerPlace`), which picks each shop's delivery zone — null prices
+ * every shop at its furthest zone, exactly as the browser does.
  *
  * `perBoutiquePlatformDiscount` is the mirror of that for a PLATFORM coupon: it
  * is NOT netted off any order total (the platform funds it, so the seller is
@@ -224,12 +368,12 @@ function couponSavings(coupon, cartSubtotal, groupTotals, shops) {
  * a cash-on-delivery buyer was quoted the discounted total at checkout and then
  * asked for the undiscounted one at the door.
  */
-export function computeCartPricing(groupTotals, coupon, payingCash = false, shops = {}) {
+export function computeCartPricing(groupTotals, coupon, payingCash = false, shops = {}, buyer = null) {
   const cartSubtotal = Object.values(groupTotals).reduce((sum, v) => sum + v, 0);
   const eligible = coupon && isEligible(coupon, cartSubtotal, groupTotals) ? coupon : null;
 
   const freeShip = eligible?.type === 'ship';
-  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals, shops) : 0;
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, groupTotals, shops, buyer) : 0;
 
   // Only a seller coupon's discount is allocated to a boutique (and so funded by
   // that seller). A platform coupon reduces the buyer's payment but no order.
@@ -253,7 +397,7 @@ export function computeCartPricing(groupTotals, coupon, payingCash = false, shop
     if (ids.length > 0) perBoutiquePlatformDiscount[ids[0]] = remaining;
   }
 
-  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, shops);
+  const shipFee = freeShip ? 0 : shipFeeFor(groupTotals, shops, buyer);
   const codFee = payingCash ? codFeeFor(groupTotals, shops) : 0;
   const total = Math.max(0, cartSubtotal - discount) + shipFee + codFee;
 
@@ -272,7 +416,7 @@ export function computeCartPricing(groupTotals, coupon, payingCash = false, shop
   for (const id of shopsInBag(groupTotals)) {
     const t = termsFor(shops, id);
     const allocated = (perBoutiqueDiscount[id] ?? 0) + (perBoutiquePlatformDiscount[id] ?? 0);
-    perBoutiqueShipFee[id] = freeShip ? 0 : shopShipFee(groupTotals[id], t);
+    perBoutiqueShipFee[id] = freeShip ? 0 : (shopShipFee(groupTotals[id], t, buyer) ?? 0);
     perBoutiqueCodFee[id] = payingCash ? Math.max(0, t.codFee) : 0;
     perBoutiquePayable[id] = Math.max(
       0,

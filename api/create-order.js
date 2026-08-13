@@ -1,5 +1,5 @@
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon, loadShopTerms } from './_pricing.js';
+import { computeCartPricing, loadBuyerPlace, loadCoupon, loadShopTerms } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 import { activeAccount, clientFor, configuredAccounts } from './_razorpay.js';
 
@@ -110,7 +110,10 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });
   }
 
-  const { items, couponCode, currency = 'INR', receipt } = req.body ?? {};
+  // `pincode` is the delivery address's, not a price the client is proposing:
+  // it selects which of each shop's zone rates applies. A buyer cannot cheat it
+  // downward, because it is the address the parcel is actually sent to.
+  const { items, couponCode, pincode, currency = 'INR', receipt } = req.body ?? {};
 
   // The cart is the only price authority. The browser's own `amount` is never
   // trusted, so a request that carries no server-priceable items cannot open
@@ -165,10 +168,14 @@ export default async function handler(req, res) {
   // The coupon (if any) is re-fetched and applied here so the Razorpay order is
   // opened for the exact discounted amount place-order will re-verify.
   const coupon = await loadCoupon(supabase, couponCode);
-  // Delivery is each boutique's own charge (migration 0076), so the terms come
-  // from the shops in the bag rather than from platform settings.
+  // Delivery is each boutique's own charge (0076) and varies with how far the
+  // parcel goes (0077), so the amount depends on both the shops in the bag and
+  // the address it is going to. The pincode arrives from the checkout form; a
+  // pincode we cannot place resolves to null, which prices every shop at its
+  // furthest zone — the same fallback the browser applies.
   const shops = await loadShopTerms(supabase, Object.keys(priced.groupTotals));
-  const paise = computeCartPricing(priced.groupTotals, coupon, false, shops).totalPaise;
+  const buyerPlace = await loadBuyerPlace(supabase, pincode);
+  const paise = computeCartPricing(priced.groupTotals, coupon, false, shops, buyerPlace).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   //

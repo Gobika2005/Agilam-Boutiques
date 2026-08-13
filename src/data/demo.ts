@@ -112,16 +112,28 @@ export type Boutique = {
   deliveryAreas?: string;
   /**
    * What this boutique charges the buyer to deliver, and the terms around it
-   * (migration 0076). `deliveryCharge` used to be a private logistics note the
-   * checkout ignored; it is now the actual charge, waived once this boutique's
-   * goods in the bag reach `freeDeliveryOver` (0 = never). `codFee` is charged
-   * per cash delivery and `codMaxOrder` caps a cash order (0 = no cap).
-   * Undefined on older rows, which are treated as charging nothing.
+   * (migrations 0076 and 0077). `deliveryCharge` used to be a private logistics
+   * note the checkout ignored; it is now the actual charge for a delivery
+   * inside the shop's own town, waived once this boutique's goods in the bag
+   * reach `freeDeliveryOver` (0 = never).
+   *
+   * The three zone rates price distance: elsewhere in the shop's district, its
+   * state, and the rest of India. `null` on any of them means the shop does not
+   * deliver that far — see `src/lib/deliveryZone.ts`. Undefined (rather than
+   * null) means the row predates 0077, and is read as "same rate everywhere".
    */
   deliveryCharge?: number;
+  deliveryChargeDistrict?: number | null;
+  deliveryChargeState?: number | null;
+  deliveryChargeNational?: number | null;
   freeDeliveryOver?: number;
   codFee?: number;
   codMaxOrder?: number;
+  /** The shop's own address, which the buyer's is measured against to pick a
+   *  delivery zone. `city` is above; these three complete it. */
+  district?: string;
+  state?: string;
+  pincode?: string;
 };
 
 export const CATEGORIES = [

@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS } from '@/data/demo';
-import { computeTotals, codBlockedReason, findCoupon, type ShopTermsMap } from '@/lib/pricing';
+import { computeTotals, codBlockedReason, findCoupon, undeliverableReason, type ShopTermsMap } from '@/lib/pricing';
+import type { BuyerPlace } from '@/lib/deliveryZone';
+import { resolvePincode } from '@/data/pincodes';
 import { loadSettings } from '@/data/settings';
 import { fetchActiveCoupons, type CouponRow } from '@/data/coupons';
 import { useCatalog } from '@/state/CatalogContext';
@@ -20,6 +22,8 @@ import {
   writeLocalWishlist,
   readLocalFollows,
   writeLocalFollows,
+  readDeliveryPincode,
+  writeDeliveryPincode,
   clearLocalCollections,
 } from '@/lib/buyerLocal';
 import { clearLocalFeedInteractions } from '@/lib/feedLocal';
@@ -118,6 +122,22 @@ type ShopValue = {
    *  Exposed because a free-delivery coupon is worth whatever the bag's
    *  delivery actually costs, which is now a per-shop question. */
   shopTerms: ShopTermsMap;
+
+  /**
+   * The pincode the storefront is pricing delivery for (migration 0077).
+   *
+   * Set from the "Deliver to" box on a product page and remembered across
+   * visits; the checkout address wins over it once entered. Until one is known
+   * every shop quotes its furthest zone, so this is what turns "delivery ₹150"
+   * into "delivery ₹30" for a buyer down the road.
+   */
+  deliveryPincode: string;
+  setDeliveryPincode: (pincode: string) => void;
+  /** That pincode resolved to a district and state, or null while unknown. */
+  buyerPlace: BuyerPlace | null;
+  /** Why this bag cannot be sent to that address, or null. Set when a boutique
+   *  in the bag does not deliver that far. */
+  undeliverable: string | null;
 
   /**
    * The cart as the server-priced order payload — product ids + quantities +
@@ -515,16 +535,67 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const shopTerms = useMemo(() => {
     const map: ShopTermsMap = {};
     for (const b of boutiques) {
+      const local = b.deliveryCharge ?? 0;
+      // `undefined` means the zone columns were not selected (0077 not applied),
+      // and the shop charges its one rate everywhere as it always did. `null`
+      // means the seller chose not to deliver that far. The server draws the
+      // same distinction, which is what keeps the two totals equal.
+      const zone = (v: number | null | undefined) => (v === undefined ? local : v);
       map[b.id] = {
-        deliveryCharge: b.deliveryCharge ?? 0,
+        rates: {
+          local,
+          district: zone(b.deliveryChargeDistrict),
+          state: zone(b.deliveryChargeState),
+          national: zone(b.deliveryChargeNational),
+        },
         freeDeliveryOver: b.freeDeliveryOver ?? 0,
         codFee: b.codFee ?? 0,
         codMaxOrder: b.codMaxOrder ?? 0,
+        place: { pincode: b.pincode, city: b.city, district: b.district, state: b.state },
         name: b.name,
       };
     }
     return map;
   }, [boutiques]);
+
+  /**
+   * Where the bag is being delivered, resolved to a district and state.
+   *
+   * Delivery is priced by distance (migration 0077), so the totals cannot be
+   * final until this is known. It comes from the buyer's checkout pincode, or —
+   * before they reach checkout — from the "Deliver to" box on the product page,
+   * which is why that box exists: without it the cart would quote a national
+   * rate and then drop at the payment screen.
+   *
+   * Null while unknown, and pricing reads that as "charge the furthest zone".
+   * The resolved row is the same one the server reads (`pincodes`, filled by
+   * `resolvePincode` below), so both sides land on the same zone.
+   */
+  const [deliveryPincode, setDeliveryPincodeState] = useState<string>(() => readDeliveryPincode());
+  const [buyerPlace, setBuyerPlace] = useState<BuyerPlace | null>(null);
+
+  const setDeliveryPincode = useCallback((pin: string) => {
+    const code = pin.replace(/\D/g, '').slice(0, 6);
+    setDeliveryPincodeState(code);
+    writeDeliveryPincode(code);
+  }, []);
+
+  // The checkout address is authoritative once it has a valid pincode: it is the
+  // address the parcel actually goes to, so it overrides whatever was typed into
+  // the product page's box earlier.
+  const effectivePincode = /^[1-9]\d{5}$/.test(guest.pincode ?? '') ? guest.pincode : deliveryPincode;
+
+  useEffect(() => {
+    let live = true;
+    if (!/^[1-9]\d{5}$/.test(effectivePincode ?? '')) { setBuyerPlace(null); return; }
+    void resolvePincode(effectivePincode).then((area) => {
+      if (!live) return;
+      setBuyerPlace(area && area.district && area.state
+        ? { pincode: area.pincode, district: area.district, state: area.state, places: area.places }
+        : null);
+    });
+    return () => { live = false; };
+  }, [effectivePincode]);
 
   const payingCash = payMethod === 'cod';
 
@@ -541,10 +612,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     [coupons, appliedCoupon, subtotal, boutiqueSubtotals],
   );
 
+  /** A shop in the bag that will not deliver to this address, put into words. */
+  const undeliverable = useMemo(
+    () => undeliverableReason(boutiqueSubtotals, shopTerms, buyerPlace),
+    [boutiqueSubtotals, shopTerms, buyerPlace],
+  );
+
   /** Why cash isn't offered on this bag, or null when it is. */
   const codUnavailableReason = useMemo(
-    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms),
-    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms],
+    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms, buyerPlace),
+    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, shopTerms, buyerPlace],
   );
 
   // Adding one more item can push a bag past the COD cap. Silently leaving
@@ -562,8 +639,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // The COD handling fee is one per delivery, so it only enters the total once
   // the buyer has actually chosen to pay cash.
   const { discount, shipFee, codFee, total } = useMemo(
-    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms),
-    [subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms],
+    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms, buyerPlace),
+    [subtotal, boutiqueSubtotals, coupon, payingCash, shopTerms, buyerPlace],
   );
 
   const orderItems = useMemo(
@@ -776,6 +853,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,
     appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals, shopTerms,
+    deliveryPincode, setDeliveryPincode, buyerPlace, undeliverable,
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,

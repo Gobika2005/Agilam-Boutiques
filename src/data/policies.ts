@@ -144,8 +144,10 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
       {
         heading: 'Delivery charges',
         blocks: [
-          'Each boutique sets its own delivery charge, and many set it to zero. The exact amount for your bag is shown on the payment screen before you pay — that figure is what you are charged.',
-          'Some boutiques deliver free once your order from that shop reaches a value they choose. Where that applies, the charge simply drops off as you add items.',
+          'Each boutique sets its own delivery charges, and prices them by distance: one rate within its own town, and separate rates for the rest of its district, the rest of its state and the rest of India. Many set the local rate to zero.',
+          'Enter your pincode on a product page — or your delivery address at checkout — and the exact charge for your bag is shown before you pay. That figure is what you are charged.',
+          'Some boutiques deliver free once your order from that shop reaches a value they choose. That applies to deliveries within the boutique’s own town and district, where its carriage cost is lowest.',
+          'A boutique may choose not to deliver beyond a certain distance. If one of the shops in your bag does not reach your address, we tell you at checkout rather than taking an order it cannot fulfil.',
           'A cart containing items from several boutiques is split into one order per boutique, each packed and shipped by that shop. Each carries its own delivery charge, because each is a separate parcel.',
         ],
       },

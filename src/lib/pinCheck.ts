@@ -1,4 +1,5 @@
 import { VAGUE_ACCURACY_M, type PlaceAtCoords } from '@/lib/geolocate';
+import { namesAgree } from '@/lib/nameMatch';
 
 /**
  * Deciding whether a map pin can plausibly be the shop the seller described.
@@ -18,46 +19,6 @@ export type ExpectedPlace = {
 };
 
 export type PinNote = { tone: 'good' | 'warn' | 'bad'; text: string };
-
-const nameKey = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-
-/** Edit distance, capped — only used on short place names. */
-function editDistance(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  if (Math.abs(m - n) > 3) return 99;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const row = [i];
-    for (let j = 1; j <= n; j++) {
-      row[j] = Math.min(
-        prev[j] + 1,
-        row[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    prev = row;
-  }
-  return prev[n];
-}
-
-/**
- * Do two place names refer to the same place?
- *
- * Deliberately forgiving, because the two sides are transliterations of a Tamil
- * name typed by different people: the seller writes "Oddanchatram", the
- * geocoder answers "Oddanchathiram". Exact and substring matching both miss
- * that — one silent letter — and a false "this is not your town" on a correct
- * pin is worse than no check at all. Two edits of slack covers the usual
- * th/t, aa/a and -ur/-oor variations without letting Chennai match Coimbatore.
- */
-function namesAgree(a: string, b: string): boolean {
-  const x = nameKey(a);
-  const y = nameKey(b);
-  if (!x || !y) return false;
-  if (x === y || x.includes(y) || y.includes(x)) return true;
-  return Math.min(x.length, y.length) >= 6 && editDistance(x, y) <= 2;
-}
 
 /**
  * What to tell the seller about the pin we just took.

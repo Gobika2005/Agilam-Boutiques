@@ -42,6 +42,27 @@ export type AdSubjectType = 'product' | 'boutique';
 export interface Database {
   public: {
     Tables: {
+      /**
+       * Pincode → district / state / localities (migration 0077).
+       *
+       * Public reference data, filled in lazily as buyers and sellers use
+       * pincodes. It exists so the browser and the server resolve a delivery
+       * zone from the SAME row — two independent lookups of one pincode can
+       * disagree, and the disagreement would reject a legitimate checkout.
+       * Written only through `upsert_pincode()`.
+       */
+      pincodes: {
+        Row: {
+          pincode: string;
+          district: string;
+          state: string;
+          places: string[];
+          fetched_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -108,6 +129,16 @@ export interface Database {
            *  it (migration 0076) — the platform charges nothing of its own.
            *  `free_delivery_over` 0 = never waived; `cod_max_order` 0 = no cap. */
           delivery_charge: number;
+          /**
+           * Delivery priced by distance (migration 0077). `delivery_charge` is
+           * the shop's own town; these three are the rest of its district, the
+           * rest of its state and the rest of India. NULL means the shop does
+           * not deliver that far, which is not the same as delivering free —
+           * see src/lib/deliveryZone.ts.
+           */
+          delivery_charge_district: number | null;
+          delivery_charge_state: number | null;
+          delivery_charge_national: number | null;
           free_delivery_over: number;
           cod_enabled: boolean;
           cod_fee: number;
@@ -749,6 +780,16 @@ export interface Database {
       toggle_boutique_follow: {
         Args: { bid: string; do_follow: boolean };
         Returns: number;
+      };
+      /**
+       * Record what India Post said about a pincode (migration 0077). The
+       * `pincodes` table takes no direct writes, so the browser fills the shared
+       * directory through here — and cannot rewrite an existing entry to move
+       * its own address into a cheaper delivery zone.
+       */
+      upsert_pincode: {
+        Args: { p_pincode: string; p_district: string; p_state: string; p_places: string[] };
+        Returns: void;
       };
       /** Admin fans a single notification out to a whole audience (migration 0048). */
       broadcast_notification: {

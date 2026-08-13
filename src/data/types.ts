@@ -150,6 +150,15 @@ export interface BoutiqueRow {
    * them on a deployment where the migration has not been applied yet.
    */
   delivery_charge: number;
+  /**
+   * Delivery priced by distance (migration 0077) — the rest of the shop's
+   * district, its state, and the rest of India. `null` means the shop does not
+   * deliver that far; `undefined` means the columns were not selected, and the
+   * local rate stands in.
+   */
+  delivery_charge_district?: number | null;
+  delivery_charge_state?: number | null;
+  delivery_charge_national?: number | null;
   free_delivery_over?: number;
   cod_enabled: boolean;
   cod_fee?: number;

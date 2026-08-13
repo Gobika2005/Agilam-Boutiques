@@ -56,7 +56,15 @@ const COUNTER_COLUMNS = 'units_sold, orders_count';
  */
 const TERMS_COLUMNS = 'latitude, longitude, free_delivery_over, cod_fee, cod_max_order';
 
-export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_COLUMNS}`;
+/**
+ * The per-zone delivery rates (migration 0077), in their own group again —
+ * without them a shop charges its single `delivery_charge` to every address,
+ * which is exactly how it behaved before 0077 and is what api/_pricing.js falls
+ * back to as well.
+ */
+const ZONE_COLUMNS = 'delivery_charge_district, delivery_charge_state, delivery_charge_national';
+
+export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_COLUMNS}, ${ZONE_COLUMNS}`;
 
 /**
  * Runs a boutique query with the optional column groups, dropping one group at a
@@ -67,11 +75,15 @@ export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_CO
  */
 let countersAvailable = true;
 let termsAvailable = true;
+let zonesAvailable = true;
 
 function columnList(): string {
-  return [BASE_COLUMNS, countersAvailable ? COUNTER_COLUMNS : '', termsAvailable ? TERMS_COLUMNS : '']
-    .filter(Boolean)
-    .join(', ');
+  return [
+    BASE_COLUMNS,
+    countersAvailable ? COUNTER_COLUMNS : '',
+    termsAvailable ? TERMS_COLUMNS : '',
+    zonesAvailable ? ZONE_COLUMNS : '',
+  ].filter(Boolean).join(', ');
 }
 
 async function selectBoutiques<T>(
@@ -84,7 +96,10 @@ async function selectBoutiques<T>(
     if (error.code !== '42703' && error.code !== '42501') throw error;
     // Drop the newest group first — it is the likelier one to be missing, and
     // dropping it may be enough on its own.
-    if (termsAvailable) {
+    if (zonesAvailable) {
+      zonesAvailable = false;
+      console.warn('[boutiques] delivery zone rates unavailable — apply migration 0077. Every address will be charged the shop’s local rate.');
+    } else if (termsAvailable) {
       termsAvailable = false;
       console.warn('[boutiques] seller delivery terms unavailable — apply migration 0076. Delivery will be charged at each shop’s delivery_charge with no COD fee.');
     } else if (countersAvailable) {
@@ -259,6 +274,9 @@ export type BoutiquePatch = Partial<{
   delivery_available: boolean;
   delivery_areas: string;
   delivery_charge: number;
+  delivery_charge_district: number | null;
+  delivery_charge_state: number | null;
+  delivery_charge_national: number | null;
   free_delivery_over: number;
   cod_enabled: boolean;
   cod_fee: number;

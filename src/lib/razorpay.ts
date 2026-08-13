@@ -58,6 +58,14 @@ type PayArgs = {
    */
   items?: { product_id: string; qty: number; size: string }[];
   couponCode?: string | null;
+  /**
+   * The delivery address's pincode. Not a price the browser is proposing — it
+   * selects which of each boutique's distance bands applies (migration 0077),
+   * and the server resolves it against the same `pincodes` directory the cart
+   * quoted from. Omitting it prices every shop at its furthest zone, so the
+   * amount would not match what the buyer was shown.
+   */
+  pincode?: string | null;
   /** Amount in paise (₹1 = 100). Must be at least 100. Fallback when `items` is absent. */
   amountPaise: number;
   name: string;
@@ -74,6 +82,7 @@ type PayArgs = {
 export async function payWithRazorpay({
   items,
   couponCode,
+  pincode,
   amountPaise,
   name,
   description,
@@ -102,6 +111,7 @@ export async function payWithRazorpay({
     body: JSON.stringify({
       items: items && items.length ? items : undefined,
       couponCode: couponCode ?? null,
+      pincode: pincode ?? null,
       amount: amountPaise,
       currency: 'INR',
       receipt,

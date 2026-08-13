@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { PINCODE_RE, lookupPincode, type PincodeArea } from '@/lib/pincode';
+import { PINCODE_RE, type PincodeArea } from '@/lib/pincode';
+import { resolvePincode } from '@/data/pincodes';
 
 export type PincodeStatus =
   | { kind: 'idle' }
@@ -37,7 +38,7 @@ export function usePincodeLookup(pincode: string): PincodeStatus {
     let live = true;
     setStatus({ kind: 'checking' });
     const t = setTimeout(() => {
-      void lookupPincode(pin).then((area) => {
+      void resolvePincode(pin).then((area) => {
         if (!live) return;
         setStatus(area ? { kind: 'found', area } : { kind: 'unknown' });
       });

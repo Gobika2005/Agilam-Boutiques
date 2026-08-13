@@ -13,6 +13,10 @@
  * goods value in the bag) alongside the cart subtotal.
  */
 import type { CouponRow } from '@/data/coupons';
+import {
+  rateForZone, resolveZone, zoneEarnsFreeDelivery,
+  type BuyerPlace, type DeliveryZone, type ShopPlace, type ZoneRates,
+} from '@/lib/deliveryZone';
 
 /**
  * Delivery and cash-on-delivery are the SELLER's terms, not the platform's.
@@ -33,19 +37,37 @@ import type { CouponRow } from '@/data/coupons';
  *   • the COD cap is per boutique for the same reason — the seller is the one
  *     carrying the cash risk on their own order.
  *
+ * Migration 0077 then split the delivery charge itself by DISTANCE: each shop
+ * prices its own town, its district, its state and the rest of India
+ * separately, and the buyer's delivery pincode picks which applies. So every
+ * function here that touches delivery needs to know where the parcel is going —
+ * that is the `buyer: BuyerPlace | null` argument threaded through below.
+ *
+ * A null buyer (nothing typed yet) is NOT treated as local. It prices at the
+ * shop's furthest zone, because quoting the cheapest and then raising it at the
+ * payment screen is the version of this that loses carts.
+ *
  * `freeDeliveryOver: 0` means "never free" and `codMaxOrder: 0` means "no cap",
  * which is also what an un-migrated deployment falls back to (see
  * `TERMS_COLUMNS` in src/data/boutiques.ts). The server falls back identically.
  */
 export type ShopTerms = {
-  /** Charged once per boutique order, unless waived below. */
-  deliveryCharge: number;
-  /** This boutique's goods value that earns free delivery. 0 = never free. */
+  /**
+   * What this shop charges to deliver, per zone (migration 0077). `local` is
+   * always a number; the wider zones are null when the seller does not deliver
+   * that far, and a bag containing that shop cannot ship to such an address at
+   * all — see `undeliverableReason`.
+   */
+  rates: ZoneRates;
+  /** This boutique's goods value that earns free delivery. 0 = never free.
+   *  Applies in the shop's own town and district only — see zoneEarnsFreeDelivery. */
   freeDeliveryOver: number;
   /** Cash-handling fee, charged once per cash delivery. */
   codFee: number;
   /** Largest this boutique's order may be and still be paid in cash. 0 = no cap. */
   codMaxOrder: number;
+  /** Where the shop is, which is what the buyer's address is measured against. */
+  place: ShopPlace;
   /** Only for the "which shop is refusing?" message. */
   name?: string;
 };
@@ -54,10 +76,11 @@ export type ShopTermsMap = Record<string, ShopTerms>;
 
 /** A shop we know nothing about charges nothing — never an invented fee. */
 export const DEFAULT_SHOP_TERMS: ShopTerms = {
-  deliveryCharge: 0,
+  rates: { local: 0, district: 0, state: 0, national: 0 },
   freeDeliveryOver: 0,
   codFee: 0,
   codMaxOrder: 0,
+  place: {},
 };
 
 function termsFor(shops: ShopTermsMap, id: string): ShopTerms {
@@ -91,20 +114,78 @@ export function isExpired(coupon: CouponRow): boolean {
   return coupon.expires_at < todayUTC();
 }
 
-/** What one boutique charges to deliver its own part of the bag. */
-export function shopShipFee(subtotal: number, t: ShopTerms): number {
+/**
+ * Which of a shop's four rates applies to this delivery.
+ *
+ * With no buyer address yet, the FURTHEST zone the shop serves — see the note at
+ * the top of this file. Deliberately not the cheapest: a quote that only ever
+ * falls at the payment screen is a pleasant surprise, one that rises is an
+ * abandoned cart.
+ */
+export function zoneForShop(t: ShopTerms, buyer: BuyerPlace | null): DeliveryZone {
+  if (buyer) return resolveZone(t.place, buyer);
+  if (t.rates.national != null) return 'national';
+  if (t.rates.state != null) return 'state';
+  if (t.rates.district != null) return 'district';
+  return 'local';
+}
+
+/**
+ * What one boutique charges to deliver its own part of the bag.
+ *
+ * Null means this shop does not deliver to that zone at all — a different thing
+ * from 0 (free), and the reason this returns a nullable rather than falling back
+ * to some other rate. `undeliverableReason` is what turns it into words.
+ */
+export function shopShipFee(subtotal: number, t: ShopTerms, buyer: BuyerPlace | null): number | null {
   if (subtotal <= 0) return 0;
-  if (t.freeDeliveryOver > 0 && subtotal >= t.freeDeliveryOver) return 0;
-  return t.deliveryCharge;
+  const zone = zoneForShop(t, buyer);
+  const rate = rateForZone(t.rates, zone);
+  if (rate == null) return null;
+  // Free delivery is the seller's incentive to buy more locally; it does not
+  // waive the carriage on a parcel crossing the country.
+  if (t.freeDeliveryOver > 0 && subtotal >= t.freeDeliveryOver && zoneEarnsFreeDelivery(zone)) return 0;
+  return rate;
 }
 
 /** Delivery for the whole bag before any coupon — the sum of each boutique's
- *  own charge, since each ships its own parcel. */
-export function baseShipFee(boutiqueSubtotals: Record<string, number>, shops: ShopTermsMap): number {
+ *  own charge, since each ships its own parcel. A shop that cannot reach the
+ *  address contributes 0 here; checkout is blocked by `undeliverableReason`
+ *  rather than by quietly pricing an impossible bag. */
+export function baseShipFee(
+  boutiqueSubtotals: Record<string, number>,
+  shops: ShopTermsMap,
+  buyer: BuyerPlace | null = null,
+): number {
   return shopsInBag(boutiqueSubtotals).reduce(
-    (sum, id) => sum + shopShipFee(boutiqueSubtotals[id], termsFor(shops, id)),
+    (sum, id) => sum + (shopShipFee(boutiqueSubtotals[id], termsFor(shops, id), buyer) ?? 0),
     0,
   );
+}
+
+/**
+ * Why this bag cannot be sent to this address, or null if it can.
+ *
+ * Only answerable once there is an address: with no pincode the bag is priced,
+ * not refused. Named shop-first because "Uzhamagal does not deliver to Delhi" is
+ * something a buyer can act on — swap the item, or change the address — where
+ * "delivery unavailable" is not.
+ */
+export function undeliverableReason(
+  boutiqueSubtotals: Record<string, number>,
+  shops: ShopTermsMap,
+  buyer: BuyerPlace | null,
+): string | null {
+  if (!buyer) return null;
+  for (const id of shopsInBag(boutiqueSubtotals)) {
+    const t = termsFor(shops, id);
+    if (rateForZone(t.rates, resolveZone(t.place, buyer)) == null) {
+      const who = t.name || 'One of the boutiques in your bag';
+      const where = [buyer.district, buyer.state].filter(Boolean).join(', ') || buyer.pincode;
+      return `${who} does not deliver to ${where}. Remove those items, or use a different delivery address.`;
+    }
+  }
+  return null;
 }
 
 /** Cash handling for the whole bag — one fee per boutique, i.e. per delivery. */
@@ -142,12 +223,13 @@ export function couponSavings(
   cartSubtotal: number,
   boutiqueSubtotals: Record<string, number>,
   shops: ShopTermsMap = {},
+  buyer: BuyerPlace | null = null,
 ): number {
   if (!isEligible(coupon, cartSubtotal, boutiqueSubtotals)) return 0;
   const base = couponBase(coupon, cartSubtotal, boutiqueSubtotals);
   if (coupon.type === 'pct') return Math.min(Math.round((base * coupon.off) / 100), coupon.max_discount ?? Infinity);
   if (coupon.type === 'flat') return Math.min(coupon.off, base); // never exceed the goods it applies to
-  return baseShipFee(boutiqueSubtotals, shops); // 'ship' — the delivery fee waived
+  return baseShipFee(boutiqueSubtotals, shops, buyer); // 'ship' — the delivery fee waived
 }
 
 /**
@@ -212,6 +294,10 @@ function allocateDiscount(
  * less its share of the discount, plus its own delivery and cash-handling fees.
  * It is what the per-boutique COD cap is checked against, and the server derives
  * the identical map.
+ *
+ * `buyer` is where the parcel is going, which is what picks each shop's delivery
+ * rate (migration 0077). Null until an address is known — see the note at the
+ * top of this file for why that prices high rather than low.
  */
 export function computeTotals(
   cartSubtotal: number,
@@ -219,20 +305,23 @@ export function computeTotals(
   coupon: CouponRow | undefined,
   payingCash = false,
   shops: ShopTermsMap = {},
+  buyer: BuyerPlace | null = null,
 ) {
   const eligible = coupon && isEligible(coupon, cartSubtotal, boutiqueSubtotals) ? coupon : undefined;
   const freeShip = eligible?.type === 'ship';
-  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, boutiqueSubtotals, shops) : 0;
-  const shipFee = freeShip ? 0 : baseShipFee(boutiqueSubtotals, shops);
+  const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, boutiqueSubtotals, shops, buyer) : 0;
+  const shipFee = freeShip ? 0 : baseShipFee(boutiqueSubtotals, shops, buyer);
   const codFee = payingCash ? baseCodFee(boutiqueSubtotals, shops) : 0;
 
   const allocated = allocateDiscount(eligible && !freeShip ? eligible : undefined, discount, cartSubtotal, boutiqueSubtotals);
   const perBoutiquePayable: Record<string, number> = {};
+  const perBoutiqueShipFee: Record<string, number> = {};
   for (const id of shopsInBag(boutiqueSubtotals)) {
     const t = termsFor(shops, id);
+    perBoutiqueShipFee[id] = freeShip ? 0 : (shopShipFee(boutiqueSubtotals[id], t, buyer) ?? 0);
     perBoutiquePayable[id] = Math.max(
       0,
-      boutiqueSubtotals[id] - (allocated[id] ?? 0) + (freeShip ? 0 : shopShipFee(boutiqueSubtotals[id], t)) + (payingCash ? Math.max(0, t.codFee) : 0),
+      boutiqueSubtotals[id] - (allocated[id] ?? 0) + perBoutiqueShipFee[id] + (payingCash ? Math.max(0, t.codFee) : 0),
     );
   }
 
@@ -242,6 +331,7 @@ export function computeTotals(
     shipFee,
     codFee,
     perBoutiquePayable,
+    perBoutiqueShipFee,
     total: Math.max(0, cartSubtotal - discount) + shipFee + codFee,
   };
 }
@@ -261,11 +351,12 @@ export function codBlockedReason(
   coupon: CouponRow | undefined,
   codEnabledEverywhere: boolean,
   shops: ShopTermsMap = {},
+  buyer: BuyerPlace | null = null,
 ): string | null {
   if (!codEnabledEverywhere) return 'One of the boutiques in your bag does not accept cash on delivery.';
   // Priced as a cash order, because the handling fee is part of what the buyer
   // would owe at the door and so part of what the cap has to cover.
-  const { perBoutiquePayable } = computeTotals(cartSubtotal, boutiqueSubtotals, coupon, true, shops);
+  const { perBoutiquePayable } = computeTotals(cartSubtotal, boutiqueSubtotals, coupon, true, shops, buyer);
   for (const id of Object.keys(perBoutiquePayable)) {
     const t = termsFor(shops, id);
     if (t.codMaxOrder > 0 && perBoutiquePayable[id] > t.codMaxOrder) {

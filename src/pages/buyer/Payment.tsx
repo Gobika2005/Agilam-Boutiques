@@ -15,7 +15,7 @@ export function Payment() {
   const {
     payMethod, setPayMethod, subtotal, discount, shipFee, codFee, total,
     guest, orderItems, appliedCoupon, coupon, boutiqueSubtotals, shopTerms,
-    placeOrder, placeCodOrder, retryPendingPayment, showToast,
+    placeOrder, placeCodOrder, retryPendingPayment, showToast, undeliverable,
     payingCash, codUnavailableReason, codDeliveries,
     cart,
   } = useShop();
@@ -39,6 +39,13 @@ export function Payment() {
 
   const onPlaceOrder = async () => {
     if (inFlight.current) return;
+    // A boutique in the bag does not deliver this far. Refused here as well as
+    // by the server, so the buyer is stopped before the gateway opens rather
+    // than after their money has moved.
+    if (undeliverable) {
+      showToast(undeliverable, 'error');
+      return;
+    }
     if (total < 1) {
       showToast('Your bag is empty', 'error');
       return;
@@ -67,6 +74,9 @@ export function Payment() {
       const payment = await payWithRazorpay({
         items: orderItems,
         couponCode: appliedCoupon,
+        // The delivery address decides which distance band each boutique
+        // charges, so the server needs it to derive the same total.
+        pincode: guest.pincode,
         amountPaise: Math.round(total * 100),
         name: 'MangaiMart',
         description: 'Order payment',

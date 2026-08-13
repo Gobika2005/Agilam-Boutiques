@@ -6,6 +6,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { DeliveryRateCard, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
 import { isMapsLink } from '@/lib/geolocate';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -24,7 +25,7 @@ import { WORKING_DAYS } from '@/data/types';
 type Form = {
   instagram: string; mapUrl: string; lat: string; lng: string; phone: string; whatsapp: string; email: string;
   openTime: string; closeTime: string; workingDays: string[];
-  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string; freeDeliveryOver: string;
+  deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
   codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
 };
@@ -32,7 +33,7 @@ type Form = {
 const EMPTY: Form = {
   instagram: '', mapUrl: '', lat: '', lng: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
-  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0', freeDeliveryOver: '0',
+  deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
   codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
@@ -76,7 +77,7 @@ export function Settings() {
       workingDays: boutique.working_days?.length ? boutique.working_days : [...WORKING_DAYS].slice(0, 6),
       deliveryAvailable: boutique.delivery_available ?? true,
       deliveryAreas: boutique.delivery_areas ?? '',
-      deliveryCharge: boutique.delivery_charge != null ? String(boutique.delivery_charge) : '0',
+      rates: zoneRatesToForm(boutique),
       freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
       codEnabled: boutique.cod_enabled ?? true,
       codFee: boutique.cod_fee != null ? String(boutique.cod_fee) : '0',
@@ -128,7 +129,7 @@ export function Settings() {
       working_days: form.workingDays,
       delivery_available: form.deliveryAvailable,
       delivery_areas: form.deliveryAreas.trim(),
-      delivery_charge: Number(form.deliveryCharge || 0),
+      ...zoneRatesToPatch(form.rates),
       free_delivery_over: Number(form.freeDeliveryOver || 0),
       cod_enabled: form.codEnabled,
       cod_fee: Number(form.codFee || 0),
@@ -214,16 +215,27 @@ export function Settings() {
         </SectionCard>
 
         {/* These are the buyer's actual charges, not notes to yourself — the
-            platform no longer sets a delivery fee of its own (migration 0076). */}
+            platform no longer sets a delivery fee of its own (migration 0076),
+            and they vary by distance (0077). */}
         <SectionCard title="Delivery" subtitle="What buyers pay you to deliver. Your numbers, charged at checkout.">
           <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
           {form.deliveryAvailable && (
             <>
-              <TextArea label="Delivery areas" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
-              <Row>
-                <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per order from your shop. 0 = you deliver free." />
-                <Field label="Free delivery over (₹)" value={form.freeDeliveryOver} onChange={(v) => set('freeDeliveryOver', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Your charge drops off above this. 0 = always charged." />
-              </Row>
+              <DeliveryRateCard
+                value={form.rates}
+                onChange={(next) => set('rates', next)}
+                places={{ city: boutique?.city, district: boutique?.district, state: boutique?.state }}
+                freeDeliveryOver={form.freeDeliveryOver}
+                onFreeDeliveryOverChange={(v) => set('freeDeliveryOver', v)}
+              />
+              <TextArea
+                label="Delivery areas"
+                value={form.deliveryAreas}
+                onChange={(v) => set('deliveryAreas', v)}
+                placeholder="Coimbatore city, Tirupur, Erode"
+                error={errors.deliveryAreas}
+                hint="Shown on your shop page as a description. What buyers are actually charged — and whether they can order at all — comes from the bands above."
+              />
             </>
           )}
         </SectionCard>

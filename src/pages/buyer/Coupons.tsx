@@ -38,7 +38,7 @@ export function Coupons() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: { from?: string } | null };
   const {
-    appliedCoupon, applyCoupon, removeCoupon, coupon, coupons, boutiqueSubtotals, shopTerms,
+    appliedCoupon, applyCoupon, removeCoupon, coupon, coupons, boutiqueSubtotals, shopTerms, buyerPlace,
     subtotal, discount, shipFee, total, showToast,
   } = useShop();
   const { boutiques } = useCatalog();
@@ -62,7 +62,7 @@ export function Coupons() {
     const eligible = !expired && isEligible(c, subtotal, boutiqueSubtotals);
     // `shopTerms` matters for a free-delivery coupon: what it saves is whatever
     // the boutiques in the bag actually charge to deliver.
-    const savings = expired ? 0 : couponSavings(c, subtotal, boutiqueSubtotals, shopTerms);
+    const savings = expired ? 0 : couponSavings(c, subtotal, boutiqueSubtotals, shopTerms, buyerPlace);
     return {
       ...c,
       base,
@@ -94,7 +94,7 @@ export function Coupons() {
       return;
     }
     applyCoupon(c.code);
-    const savings = couponSavings(c, subtotal, boutiqueSubtotals, shopTerms);
+    const savings = couponSavings(c, subtotal, boutiqueSubtotals, shopTerms, buyerPlace);
     showToast(savings > 0 ? `${c.code} applied · you save ${fmt(savings)}` : `${c.code} applied`);
     navigate(from);
   };

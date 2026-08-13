@@ -116,9 +116,19 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     deliveryAvailable: b.delivery_available ?? true,
     deliveryAreas: b.delivery_areas ?? '',
     deliveryCharge: b.delivery_charge ?? 0,
+    // `undefined` (0077 not applied / column not selected) is not the same as
+    // `null` (the seller does not deliver there). Undefined falls back to the
+    // local rate, which is what every shop charged before zones existed; null
+    // is carried through so checkout can refuse the address.
+    deliveryChargeDistrict: b.delivery_charge_district,
+    deliveryChargeState: b.delivery_charge_state,
+    deliveryChargeNational: b.delivery_charge_national,
     freeDeliveryOver: b.free_delivery_over ?? 0,
     codFee: b.cod_fee ?? 0,
     codMaxOrder: b.cod_max_order ?? 0,
+    district: b.district ?? '',
+    state: b.state ?? '',
+    pincode: b.pincode ?? '',
   };
 }
 

@@ -23,6 +23,7 @@ import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from 
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
 import { POLICY_TERMS } from '@/data/company';
+import { DeliveryCheck } from '@/components/buyer/DeliveryCheck';
 import { badgesFor, DEFAULT_COLOR_DISCLAIMER } from '@/lib/productBadges';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -311,16 +312,45 @@ export function ProductDetail() {
    */
   const boutiqueLink = boutique ? routes.boutique(boutique) : boutiqueId ? `/boutique/${boutiqueId}` : '';
   /**
-   * What this shop charges to deliver — the same rule `shopShipFee` in
-   * `@/lib/pricing` applies at checkout, said in words: a flat charge, dropped
-   * once this boutique's items in the bag reach its threshold (0 = no threshold).
+   * This shop's delivery rates, in the shape `@/lib/pricing` and the "Deliver
+   * to" box both work in. `undefined` on a zone means the row predates
+   * migration 0077 and the shop charges one rate everywhere, as it used to;
+   * `null` means it does not deliver that far.
+   */
+  const shopRates = (() => {
+    const local = boutique?.deliveryCharge ?? 0;
+    const zone = (v: number | null | undefined) => (v === undefined ? local : v);
+    return {
+      local,
+      district: zone(boutique?.deliveryChargeDistrict),
+      state: zone(boutique?.deliveryChargeState),
+      national: zone(boutique?.deliveryChargeNational),
+    };
+  })();
+  const shopPlace = {
+    pincode: boutique?.pincode,
+    city: boutique?.city,
+    district: boutique?.district,
+    state: boutique?.state,
+  };
+
+  /**
+   * The delivery line in the shipping panel, before any pincode is entered.
+   *
+   * Says the range rather than one number, because there is no longer one
+   * number: the exact charge comes from the "Deliver to" box above. Printing
+   * only the cheapest here is how a buyer ends up surprised at the payment
+   * screen, which is the thing this whole change exists to stop.
    */
   const deliveryNote = (() => {
-    const charge = boutique?.deliveryCharge ?? 0;
-    const freeOver = boutique?.freeDeliveryOver ?? 0;
-    if (charge <= 0) return 'Free delivery';
-    if (freeOver > 0) return `${fmt(charge)} delivery · free over ${fmt(freeOver)}`;
-    return `${fmt(charge)} delivery`;
+    const priced = [shopRates.local, shopRates.district, shopRates.state, shopRates.national]
+      .filter((v): v is number => v != null);
+    if (priced.length === 0) return 'Delivery charged at checkout';
+    const low = Math.min(...priced);
+    const high = Math.max(...priced);
+    if (high === 0) return 'Free delivery';
+    if (low === high) return `${fmt(low)} delivery`;
+    return `Delivery ${low === 0 ? 'free' : fmt(low)}–${fmt(high)} by distance`;
   })();
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
@@ -796,7 +826,18 @@ export function ProductDetail() {
             {renderBagControl(56)}
           </div>
 
-          {/* ASK MY PEOPLE (migration 0077) — sits directly under the buy
+          {/* Delivery is priced by distance (migration 0077), so the exact
+              charge is a question only the buyer's pincode can answer. Directly
+              under the buy actions, where "what will this actually cost me"
+              gets asked — not buried in the shipping accordion further down. */}
+          <DeliveryCheck
+            rates={shopRates}
+            place={shopPlace}
+            freeDeliveryOver={boutique?.freeDeliveryOver ?? 0}
+            boutiqueName={boutique?.name}
+          />
+
+          {/* ASK MY PEOPLE — sits directly under the buy
               actions because that is exactly where the hesitation is. A buyer
               who isn't sure enough to tap "Add to Bag" is about to leave and
               screenshot this into a family WhatsApp group; this is the same

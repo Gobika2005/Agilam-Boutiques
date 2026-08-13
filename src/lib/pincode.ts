@@ -30,10 +30,8 @@ export type PincodeArea = {
   state: string;
 };
 
-/** Resolved lookups for this page load — the wizard re-checks on every keystroke
- *  that completes six digits, and a seller stepping back and forth would
- *  otherwise re-fetch the same pincode repeatedly. `null` is cached too: an
- *  unknown pincode stays unknown. */
+/** Answers from this page load. `src/data/pincodes.ts` memoises as well, one
+ *  layer up; this one only stops a burst of keystrokes hitting the network. */
 const cache = new Map<string, PincodeArea | null>();
 
 export const PINCODE_RE = /^[1-9][0-9]{5}$/;
@@ -57,10 +55,15 @@ function cleanDistrict(raw: string): string {
 }
 
 /**
- * Look up a 6-digit pincode. Never throws; `null` means "we could not tell you",
+ * Ask India Post directly. Never throws; `null` means "we could not tell you",
  * which callers must treat as "let them type it themselves", not as an error.
+ *
+ * Most callers want `resolvePincode()` in src/data/pincodes.ts instead — it
+ * reads the shared `pincodes` table first and writes this answer back to it, so
+ * the browser and the server resolve a delivery zone from the same row. Reach
+ * for this one only when the stored directory has already missed.
  */
-export async function lookupPincode(pin: string): Promise<PincodeArea | null> {
+export async function lookupPincodeUpstream(pin: string): Promise<PincodeArea | null> {
   const code = String(pin ?? '').trim();
   if (!PINCODE_RE.test(code)) return null;
   const hit = cache.get(code);

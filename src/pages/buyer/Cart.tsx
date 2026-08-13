@@ -13,7 +13,7 @@ export function Cart() {
   const {
     cart, cartQty, removeCart,
     appliedCoupon, removeCoupon, coupon,
-    subtotal, discount, shipFee, total,
+    subtotal, discount, shipFee, total, buyerPlace, undeliverable,
   } = useShop();
   const { productById } = useCatalog();
   // Ordering needs a real account (see @/auth/SignInGate). The route guard on
@@ -119,7 +119,21 @@ export function Cart() {
                 {discount > 0 && (
                   <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Coupon discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
                 )}
-                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
+                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
+                  <span>Delivery{buyerPlace ? '' : ' (estimate)'}</span>
+                  <span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span>
+                </div>
+                {/* Each shop charges by distance (migration 0077), so without a
+                    pincode this is their furthest rate. It can only fall at
+                    checkout, never rise — but say which it is. */}
+                {!buyerPlace && (
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;line-height:1.5;')}>
+                    Delivery is priced by distance. The exact charge is confirmed once you enter your pincode at checkout.
+                  </div>
+                )}
+                {undeliverable && (
+                  <div style={css('font-size:11.5px;color:var(--ag-danger-text);font-weight:700;line-height:1.5;')}>{undeliverable}</div>
+                )}
               </div>
 
               <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />

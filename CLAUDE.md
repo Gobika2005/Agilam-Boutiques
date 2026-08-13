@@ -27,7 +27,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0077`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0078`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
@@ -39,10 +39,14 @@ deployed to Vercel.
 3. **Commercial terms split two ways.** The commission, returns window and payout
    hold are platform-wide, admin-editable in the `platform_settings` row via
    `api/_settings.js` / `src/data/settings.ts`. Delivery and cash-on-delivery are
-   **the seller's** (migration 0076) — `boutiques.delivery_charge`,
-   `free_delivery_over`, `cod_fee`, `cod_max_order` — charged per boutique and
-   read via `loadShopTerms` / `ShopTerms`. Don't add a delivery fee to the admin
-   console; nothing reads the old columns.
+   **the seller's** (0076) and priced **by distance** (0077): `delivery_charge`
+   is the shop's own town, `delivery_charge_district` / `_state` / `_national`
+   the wider bands (NULL = does not deliver there), plus `free_delivery_over`
+   (local + district only), `cod_fee`, `cod_max_order`. The buyer's pincode
+   picks the band via `resolveZone` (`src/lib/deliveryZone.ts`), mirrored by
+   `zoneFor` in `api/_pricing.js`; both read district/state from the lazily
+   filled `pincodes` table so they cannot disagree. Don't add a delivery fee to
+   the admin console; nothing reads the old platform columns.
 4. **Colours are `--ag-*` CSS variables, never literal hex.** The app has a full
    light/dark theme; a hardcoded colour breaks dark mode. See `src/lib/tokens.ts`.
 5. **`boutiques` cannot be read with `select('*')`** — column-level grants since

@@ -10,7 +10,7 @@ import { POLICY_TERMS } from '@/data/company';
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
+  const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast, undeliverable, buyerPlace } = useShop();
   const { productById, boutiques } = useCatalog();
   const [touched, setTouched] = useState(false);
   usePageMeta({ title: 'Checkout', description: 'Confirm your delivery details and place your MangaiMart order.' });
@@ -58,7 +58,8 @@ export function Checkout() {
    * whether to trust us with money. The flag still shows to sellers and admins,
    * where it means something.
    */
-  const deliveryLine = () => (shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`);
+  const deliveryLine = () =>
+    !buyerPlace ? 'Delivery priced from your pincode' : shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`;
 
   const errors = {
     name: !nameOk(guest.name),
@@ -73,6 +74,13 @@ export function Checkout() {
     if (invalid) {
       setTouched(true);
       showToast('Please fill in your delivery details', 'error');
+      return;
+    }
+    // A boutique in the bag does not reach this pincode. Stopping here rather
+    // than at the payment screen means the buyer is told before they have
+    // chosen how to pay, and the server refuses the same order anyway.
+    if (undeliverable) {
+      showToast(undeliverable, 'error');
       return;
     }
     navigate('/payment');
@@ -119,6 +127,18 @@ export function Checkout() {
             </div>
             <div>
               <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Delivery{cartBoutiques.length > 1 ? ` · ${cartBoutiques.length} boutiques` : ''}</div>
+
+              {/* A shop in the bag does not reach this pincode. Stated where the
+                  address was just typed, because changing one of those two is
+                  the only way forward — and said before the buyer picks a
+                  payment method, not after. */}
+              {undeliverable && (
+                <div style={css('display:flex;gap:11px;align-items:flex-start;margin-top:9px;padding:13px 15px;border-radius:15px;border:1.5px solid var(--ag-danger-text);background:var(--ag-surface-2);')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);font-size:20px;")}>wrong_location</span>
+                  <span style={css('flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ag-danger-text);line-height:1.55;')}>{undeliverable}</span>
+                </div>
+              )}
+
               <div style={css('display:flex;flex-direction:column;gap:8px;margin-top:9px;')}>
                 {cartBoutiques.map((b) => (
                   <div key={b.id} style={css('display:flex;align-items:center;gap:12px;border:1.5px solid #D6336C;background:var(--ag-surface-2);border-radius:15px;padding:13px 15px;')}>
@@ -145,7 +165,18 @@ export function Checkout() {
               {discount > 0 && (
                 <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
               )}
-              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
+              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
+                <span>Delivery{buyerPlace ? '' : ' (estimate)'}</span>
+                <span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span>
+              </div>
+              {/* Delivery is priced by distance, so until the pincode above is
+                  filled in this row is each shop's furthest rate — it can only
+                  fall once we know where the parcel is going, never rise. */}
+              {!buyerPlace && (
+                <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;line-height:1.5;')}>
+                  Enter your pincode above for the exact delivery charge.
+                </div>
+              )}
             </div>
             <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
