@@ -27,7 +27,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0081`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0082`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a

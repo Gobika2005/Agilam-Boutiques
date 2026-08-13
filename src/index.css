@@ -145,11 +145,6 @@ select:-webkit-autofill {
    frame on every tap reads as jank, not as progress. */
 @keyframes agx-route-spin { to { transform: rotate(360deg); } }
 @keyframes agx-route-in { from { opacity: 0; } to { opacity: 1; } }
-/* Spins an icon glyph in place — the chat composer's attach button while a
-   photo uploads. Reuses the rotation above rather than declaring a second one.
-   `inline-block` because a bare <span> cannot be transformed. */
-.agx-spin { display: inline-block; animation: agx-route-spin 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .agx-spin { animation: none; } }
 .agx-route-spinner {
   width: 26px; height: 26px; border-radius: 50%;
   border: 2.5px solid var(--ag-border); border-top-color: var(--ag-crimson);
@@ -607,9 +602,7 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   background: var(--ag-surface-2);
   border-top: 1px solid var(--ag-border-soft);
 }
-.agx-chat-attach { display: flex; }
 @media (max-width:640px){ .agx-chat-composer { padding: 6px 8px 4px; } }
-@media (max-width:379px){ .agx-chat-attach { display: none !important; } }
 @keyframes agx-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(47,163,107,.55);} 70%{ box-shadow:0 0 0 5px rgba(47,163,107,0);} }
 .agx-online-dot { animation: agx-pulse 1.8s ease-in-out infinite; }
 /* Seller bill receipt: "Print / Save" hides nav/action chrome, keeping only the bill itself. */

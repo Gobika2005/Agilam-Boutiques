@@ -55,7 +55,7 @@ export function BuyerLayout() {
         profileTo="/profile"
         homeTo="/"
         searchable
-        headerAction={<NotificationBellMenu viewAllTo="/notifications" orderBasePath="" />}
+        headerAction={<NotificationBellMenu viewAllTo="/notifications" />}
         renderProfileMenu={(close) => <ProfileMenu close={close} />}
       />
       <FloatingBag />

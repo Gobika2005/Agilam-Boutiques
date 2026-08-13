@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { likeValue, isUuid } from '@/lib/search/query';
 import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
@@ -174,9 +175,22 @@ export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<Order
 
     if (q.status === 'refunded') query = query.eq('refunded', true);
     else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
-    if (q.search?.trim()) {
-      const s = `%${q.search.trim()}%`;
-      query = query.or(`order_number.ilike.${s},guest_name.ilike.${s},guest_phone.ilike.${s}`);
+    const term = q.search?.trim();
+    if (term) {
+      // `likeValue` rather than a bare `%${term}%`: this string is spliced into
+      // PostgREST's `or=(…)` grammar, which is parsed before any value is looked
+      // at, so a customer named "Anitha (Salem)" or a search for "red, silk"
+      // used to corrupt the whole filter list and return the wrong rows without
+      // erroring. Newly reachable now that the global search and the
+      // notification inbox both deep-link here with arbitrary terms.
+      const v = likeValue(term);
+      const filters = [`order_number.ilike.${v}`, `guest_name.ilike.${v}`, `guest_phone.ilike.${v}`];
+      // An order notification in the admin console has only the order's id to
+      // point at — there is no per-order admin route, so it links to this list
+      // filtered by id. Guarded on the shape because `id.eq.<not-a-uuid>` is a
+      // hard 22P02 that would fail the entire query.
+      if (isUuid(term)) filters.push(`id.eq.${term}`);
+      query = query.or(filters.join(','));
     }
 
     const from = q.page * q.pageSize;

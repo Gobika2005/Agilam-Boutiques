@@ -94,7 +94,7 @@ function SellerHeaderActions() {
           exactly the width the wordmark and avatar already swap at. */}
       <GlobalSearchBox {...shared} className="agx-only-desktop agx-search-desktop" variant="compact" />
       <GlobalSearchBox {...shared} className="agx-only-mobile" variant="icon" />
-      <NotificationBellMenu viewAllTo="/seller/notifications" orderBasePath="/seller" />
+      <NotificationBellMenu viewAllTo="/seller/notifications" />
     </>
   );
 }

@@ -38,19 +38,56 @@ const relTime = (iso: string) => {
   return Math.round(h / 24) + 'd';
 };
 
+export type NotificationConsole = 'buyer' | 'seller' | 'admin';
+
+/**
+ * Where an `order_id` row opens, per console.
+ *
+ * Admin is the odd one out: it lists every order on a single screen with no
+ * per-order route, so the nearest thing to "open this order" is landing on that
+ * list already filtered to it. Previously admin passed no base path at all and
+ * an order notification simply did nothing when tapped.
+ */
+const ORDER_PATH: Record<NotificationConsole, (id: string) => string> = {
+  buyer: (id) => `/orders/${encodeURIComponent(id)}`,
+  seller: (id) => `/seller/orders/${encodeURIComponent(id)}`,
+  admin: (id) => `/admin/orders?q=${encodeURIComponent(id)}`,
+};
+
+/**
+ * The last resort, by notification type.
+ *
+ * A "New message" row carries neither a link nor an order id — the trigger that
+ * writes it never recorded which conversation it was about (migration 0081 now
+ * does, but only for rows written after it is applied). Every one of those rows
+ * was dead on tap. Sending them to the inbox is not as good as opening the
+ * thread, but it is the difference between a notification that works and one
+ * that does nothing, and it is what every old row will keep doing.
+ *
+ * `Updates` deliberately has no entry: an admin broadcast is free text with no
+ * subject, so there is genuinely nowhere for it to go.
+ */
+const TYPE_FALLBACK: Record<NotificationConsole, Record<string, string>> = {
+  buyer: { Messages: '/messages', Wishlist: '/wishlist' },
+  seller: { Messages: '/seller/messages' },
+  admin: {},
+};
+
 /**
  * Full notification inbox, shared by the buyer, seller and admin
  * "view all"/`/…/notifications` pages so there's one list UI instead of three.
- * `orderBasePath` (e.g. '' or '/seller') lets a row with an order_id
- * deep-link to that console's order screen; admin has none, so it's optional.
+ *
+ * `console` decides where a tapped row goes — order routes and per-type
+ * fallbacks differ per console, and the same notification row belongs to
+ * exactly one of them.
  *
  * `embedded` drops the back button and page title for hosts that already draw a
  * header around the outlet — the admin console did, so the screen showed two
  * competing titles (its own "Notifications" under the layout's own heading).
  */
-export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: {
+export function NotificationsInbox({ backTo, console: surface, embedded = false }: {
   backTo: string;
-  orderBasePath?: string;
+  console: NotificationConsole;
   embedded?: boolean;
 }) {
   const navigate = useNavigate();
@@ -60,12 +97,14 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
   const notifs = items.filter((n) => tab === 'All' || n.type === tab);
 
   /**
-   * Where a row goes when tapped.
+   * Where a row goes when tapped, most specific first.
    *
-   * `link` (migration 0077) first: it is an explicit in-app path written by the
-   * notification's author, and it covers everything that is not an order — a
-   * shortlist someone voted on, for instance. `order_id` stays the fallback so
-   * every row written before that column existed behaves exactly as it did.
+   *  1. `link` (migration 0077, widened by 0081) — an explicit in-app path
+   *     written by the notification's author. The exact thread, product or
+   *     review screen the notification is about.
+   *  2. `order_id` — the console's order screen.
+   *  3. The type fallback above — the right *area* when the row predates the
+   *     migration that would have given it a precise target.
    *
    * Only same-origin paths are followed. The column is written by triggers, not
    * by users, but a notification is a link the app clicks on the user's behalf,
@@ -74,8 +113,8 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
    */
   const destination = (n: (typeof items)[number]): string | null => {
     if (n.link && /^\/[^/]/.test(n.link)) return n.link;
-    if (n.order_id && orderBasePath) return `${orderBasePath}/orders/${encodeURIComponent(n.order_id)}`;
-    return null;
+    if (n.order_id) return ORDER_PATH[surface](n.order_id);
+    return TYPE_FALLBACK[surface][n.type] ?? null;
   };
 
   const open = async (n: (typeof items)[number]) => {
@@ -126,7 +165,7 @@ export function NotificationsInbox({ backTo, orderBasePath, embedded = false }: 
               No notifications yet
             </div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;max-width:330px;line-height:1.55;')}>
-              {orderBasePath === '/seller'
+              {surface === 'seller'
                 ? 'We’ll tell you the moment an order comes in, a buyer messages you, or a review needs a reply.'
                 : 'We’ll tell you the moment a boutique confirms, packs or ships your order — and when something you saved comes back in stock.'}
             </div>

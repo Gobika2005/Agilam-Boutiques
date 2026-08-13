@@ -3,5 +3,5 @@ import { NotificationsInbox } from '@/components/notifications/NotificationsInbo
 export function Notifications() {
   // AdminLayout already renders the page title bar, so the inbox runs headless
   // here rather than stacking a second "Notifications" heading under it.
-  return <NotificationsInbox backTo="/admin/overview" embedded />;
+  return <NotificationsInbox backTo="/admin/overview" console="admin" embedded />;
 }
