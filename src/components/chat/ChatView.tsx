@@ -146,18 +146,50 @@ export function ChatView({
       // Ignore the few pixels a collapsing URL bar accounts for.
       const open = kb > 120;
       const top = open ? Math.round(vv.offsetTop) : 0;
-      const key = `${open ? kb : 0}|${top}`;
+
+      /*
+       * Size to the visual viewport ALWAYS — not only while a keyboard is up.
+       *
+       * This used to fall back to `100%` whenever the keyboard was closed. For a
+       * `position:fixed` element that resolves against the layout viewport, and
+       * Android Chrome makes its layout viewport the *large* viewport — the
+       * height the page would have with the URL bar hidden. So while the URL bar
+       * is on screen the surface is ~60-90px taller than what you can actually
+       * see, and the composer, being last in the column, is the part that ends
+       * up underneath it. Tapping down there scrolled the URL bar away and the
+       * bar "appeared", which is what made this look intermittent.
+       *
+       * `visualViewport.height` is the genuinely visible height and already
+       * accounts for both the URL bar and the keyboard, so there is no reason to
+       * ever prefer a percentage. Pinch-zoom is the one exception: it shrinks the
+       * visual viewport too, and the chat should sit still while the reader is
+       * zoomed rather than reflow under them.
+       */
+      const height = zoomed ? '100%' : `${Math.round(vv.height)}px`;
+
+      /*
+       * The height has to be part of the key. It used to be `${open ? kb : 0}|
+       * ${top}`, which is the constant `0|0` for as long as the keyboard is
+       * closed — so a URL bar sliding in or out, the exact thing that changes
+       * the visible height, could never trigger an update.
+       */
+      const key = `${height}|${top}|${open}`;
       if (key === last) return;
       last = key;
       const root = rootRef.current;
       root?.style.setProperty('--ag-vv-top', `${top}px`);
-      root?.style.setProperty('--ag-vv-h', open ? `${Math.round(vv.height)}px` : '100%');
+      root?.style.setProperty('--ag-vv-h', height);
       document.body.style.setProperty('--ag-kb', `${open ? Math.max(0, kb - top) : 0}px`);
       if (open) document.body.dataset.kbOpen = '1';
       else delete document.body.dataset.kbOpen;
       // The thread just got shorter; without this the message you were reading
       // when you tapped the field scrolls out of sight behind the keyboard.
-      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      // Only while the keyboard is up: now that a URL bar toggle also lands
+      // here, scrolling on every change would yank the thread to the bottom
+      // while someone is reading back through it.
+      if (open) {
+        requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      }
     };
     apply();
     vv.addEventListener('resize', apply);
