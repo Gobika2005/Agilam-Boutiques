@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { cityKey } from '@/lib/cities';
 import { clampDescription, routes } from '@/lib/seo';
 import { boutiqueSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { shareBoutique } from '@/lib/share';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { BoutiqueReviews } from '@/components/buyer/BoutiqueReviews';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { useShop } from '@/state/ShopContext';
@@ -129,6 +131,29 @@ export function BoutiqueProfile() {
     () => (ab ? PRODUCTS.filter((p) => p.boutique === ab.name && (bqFilter === 'All' || p.cat === bqFilter)) : []),
     [PRODUCTS, ab, bqFilter],
   );
+
+  /**
+   * Other shops to look at — the rail that stops this page being a dead end.
+   *
+   * Same city first, because that is what a buyer means by "who else is near
+   * me", and it is the strongest reason to pick a second shop (one delivery
+   * area, one set of terms). If the city has nobody else, it widens to the
+   * marketplace rather than showing nothing: a shop with no neighbours is
+   * common on a young marketplace and is not a reason to strand the reader.
+   *
+   * Only shops with something listed — an empty boutique is not a
+   * recommendation — and best-rated first.
+   */
+  const { nearby, nearbyInCity } = useMemo(() => {
+    if (!ab) return { nearby: [], nearbyInCity: false };
+    const others = BOUTIQUES.filter((b) => b.id !== ab.id && b.products > 0);
+    const sameCity = others.filter((b) => cityKey(b.city) === cityKey(ab.city));
+    const pool = sameCity.length > 0 ? sameCity : others;
+    return {
+      nearby: [...pool].sort((a, b) => b.rating - a.rating || b.products - a.products).slice(0, 10),
+      nearbyInCity: sameCity.length > 0,
+    };
+  }, [BOUTIQUES, ab]);
 
   if (!ab) {
     return (
@@ -403,6 +428,45 @@ export function BoutiqueProfile() {
               </button>
             )}
           </div>
+        )}
+
+        {/* ---------- Reviews ---------- */}
+        <div style={css("display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:38px;")}>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;")}>
+            What buyers say
+          </div>
+        </div>
+        <BoutiqueReviews boutiqueId={ab.id} />
+
+        {/* ---------- Other boutiques ---------- */}
+        {nearby.length > 0 && (
+          <>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+              {nearbyInCity ? `More boutiques in ${ab.city}` : 'More boutiques'}
+            </div>
+            <div className="agx-scroll" style={css('display:flex;gap:12px;overflow-x:auto;padding:16px 0 8px;')}>
+              {nearby.map((b) => (
+                <Link
+                  key={b.id}
+                  to={routes.boutique(b)}
+                  className="agx-lift"
+                  style={css('flex:none;width:150px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;padding:16px 12px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;text-decoration:none;color:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
+                >
+                  <BoutiqueLogo name={b.name} src={b.logo} size={54} ring={2} />
+                  <span style={css('font-weight:800;font-size:13.5px;line-height:1.25;color:var(--ag-ink);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{b.name}</span>
+                  <span style={css('display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>
+                    {b.reviews > 0 && (
+                      <>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
+                        {b.rating} ·
+                      </>
+                    )}
+                    {b.products} {b.products === 1 ? 'style' : 'styles'}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

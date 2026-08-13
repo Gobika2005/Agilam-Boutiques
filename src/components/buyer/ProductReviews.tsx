@@ -2,9 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { imageUrl } from '@/lib/imageUrl';
+import { timeAgo } from '@/lib/timeAgo';
 import { useAuth } from '@/auth/AuthContext';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchReviews, submitReview, uploadReviewImage, type ReviewRow } from '@/data/reviews';
+import { canReviewProduct, fetchReviews, submitReview, uploadReviewImage, type ReviewRow } from '@/data/reviews';
 
 /**
  * Customer reviews for a product. Reads the real `reviews` table (public via
@@ -15,23 +16,20 @@ import { fetchReviews, submitReview, uploadReviewImage, type ReviewRow } from '@
 const TONE_BG = ['#F4D6E2', '#E7D9F0', '#D6E4F0', 'var(--ag-gold-border)', '#D9F0E4', '#F0D9D9'];
 const starsFor = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const days = Math.floor((Date.now() - then) / 86_400_000);
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
-  const years = Math.floor(months / 12);
-  return `${years} year${years === 1 ? '' : 's'} ago`;
-}
-
 export function ProductReviews({ productId, boutiqueId }: { productId: string; boutiqueId: string }) {
   const navigate = useNavigate();
   const { session, profile } = useAuth();
   const { data, loading, reload } = useAsync(() => fetchReviews(productId), [productId]);
   const reviews = useMemo<ReviewRow[]>(() => data ?? [], [data]);
+
+  // Has this buyer had this piece delivered? Re-asked when they sign in, so the
+  // form appears without a reload.
+  const buyerIdForCheck = session?.user?.id ?? null;
+  const { data: purchased } = useAsync(
+    () => canReviewProduct(buyerIdForCheck, productId),
+    [buyerIdForCheck, productId],
+  );
+  const canReview = purchased === true;
 
   const [formOpen, setFormOpen] = useState(false);
   const [rating, setRating] = useState(5);
@@ -146,13 +144,31 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
         </div>
       </div>
 
-      <button
-        onClick={onWriteClick}
-        style={css('height:44px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
-      >
-        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>
-        {myReview ? 'Edit your review' : signedIn ? 'Write a review' : 'Sign in to write a review'}
-      </button>
+      {/*
+        Only a buyer who has had this piece delivered can review it — the rule
+        is enforced by RLS (migration 0083) and asked here so the page can say
+        why rather than offering a form that fails on submit.
+
+        A buyer who already has a review keeps the edit button regardless: the
+        check can only be slow or offline, and hiding the way back into their
+        own words would be worse than a refusal they will never see.
+      */}
+      {signedIn && !canReview && !myReview ? (
+        <div style={css('display:flex;align-items:flex-start;gap:10px;padding:14px 16px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:13px;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);flex:none;")}>verified</span>
+          <span style={css('font-size:13px;color:var(--ag-ink-2);line-height:1.55;')}>
+            Reviews come from buyers who have received the piece. Once your order for it is delivered, you can write one here.
+          </span>
+        </div>
+      ) : (
+        <button
+          onClick={onWriteClick}
+          style={css('height:44px;border:1.5px solid #D6336C;background:var(--ag-surface);color:var(--ag-crimson);border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+        >
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>
+          {myReview ? 'Edit your review' : signedIn ? 'Write a review' : 'Sign in to write a review'}
+        </button>
+      )}
 
       {formOpen && (
         <div style={css('background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;')}>

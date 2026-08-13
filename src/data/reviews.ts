@@ -58,6 +58,37 @@ export async function fetchReviews(productId: string): Promise<ReviewRow[]> {
   return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map(normalizeReview) as ReviewRow[];
 }
 
+/**
+ * Whether this buyer may review this piece — i.e. has had it delivered.
+ *
+ * The rule lives in the database (migration 0083); this is the same question
+ * asked ahead of time so the page can explain itself instead of offering a form
+ * that fails on submit. It is a courtesy, never the control: a client that
+ * skips this call still gets refused by RLS.
+ *
+ * Reads `order_items` with an inner join onto the buyer's own orders, which
+ * their own RLS already permits — no new grant, and a signed-out visitor simply
+ * gets `false`.
+ */
+export async function canReviewProduct(buyerId: string | null | undefined, productId: string): Promise<boolean> {
+  if (!buyerId) return false;
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('id, orders!inner(buyer_id, status)')
+    .eq('product_id', productId)
+    .eq('orders.buyer_id', buyerId)
+    .eq('orders.status', 'delivered')
+    .limit(1);
+  if (error) {
+    // Never block on a failed check — the write is guarded regardless, and a
+    // buyer who really has bought the piece should not be told otherwise by a
+    // dropped connection.
+    console.error('canReviewProduct failed:', error.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
 /** Fill in columns added by later migrations so an un-migrated DB still parses. */
 function normalizeReview<T extends Record<string, unknown>>(r: T): T & Pick<ReviewRow, 'images' | 'seller_reply' | 'seller_reply_at'> {
   return {
@@ -191,6 +222,14 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
   if (error) {
     if (isMissingTable(error)) {
       return { ok: false, error: 'Reviews are not enabled yet. Please try again later.' };
+    }
+    // The purchase rule from migration 0083. A buyer who gets here has usually
+    // had the form open since before their order changed state, so name the
+    // condition rather than showing them a generic failure they cannot act on.
+    // 42501 = insufficient_privilege, which is how PostgREST reports an RLS
+    // refusal on a write.
+    if (error.code === '42501' || /row-level security/i.test(error.message ?? '')) {
+      return { ok: false, error: 'You can review a piece once your order for it has been delivered.' };
     }
     console.error('submitReview failed:', error.message);
     return { ok: false, error: 'Could not save your review. Please try again.' };
