@@ -112,6 +112,21 @@ export function ScrollReveal() {
       return r;
     };
 
+    /**
+     * Is this node inside a `position:fixed` surface?
+     *
+     * Walks up rather than testing the node itself: the chat is a fixed
+     * full-screen surface whose children are ordinary flow and absolute
+     * elements, and those children are not part of the page's scroll no matter
+     * where their rects happen to land.
+     */
+    const insideFixedSurface = (el: HTMLElement) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (getComputedStyle(p).position === 'fixed') return true;
+      }
+      return false;
+    };
+
     /** Tall enough to be worth animating, and not already on screen. */
     const eligible = (el: HTMLElement) => {
       const r = rectOf(el);
@@ -151,6 +166,29 @@ export function ScrollReveal() {
         // Rule 2 — never transform a fixed element, nor an ancestor of one.
         // This is a permanent verdict, so it is safe to stop re-checking.
         if (getComputedStyle(node).position === 'fixed' || node.querySelector('[style*="position:fixed"]')) {
+          seen.add(node);
+          continue;
+        }
+
+        /*
+         * Rule 2, the half that was missing: nor anything INSIDE a fixed
+         * surface.
+         *
+         * The check above only looks at the node and its descendants, so a
+         * `position:absolute` child of a full-screen fixed surface passed
+         * straight through. That is exactly what the chat's message composer
+         * is, and it sat a few pixels below `innerHeight * 0.9` — so it was
+         * classed as a section "below the fold", given `.agx-sr`, and left at
+         * `opacity:0; translateY(22px)` waiting for a scroll that never comes,
+         * because a fixed surface does not move with the page. The buyer saw a
+         * chat with no message bar, and scrolling the thread was the one thing
+         * that made it appear.
+         *
+         * Nothing inside a fixed surface is ever "scrolled into view" in the
+         * page sense, so none of it is a candidate. Permanent, like the check
+         * above: an ancestor's `position` will not change under us.
+         */
+        if (insideFixedSurface(node)) {
           seen.add(node);
           continue;
         }

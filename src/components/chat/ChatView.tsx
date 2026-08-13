@@ -18,7 +18,6 @@ import {
   subscribeToReadReceipt,
 } from '@/data/chat';
 import { TONES, fmt } from '@/data/demo';
-import { ChatLayoutProbe, useChatProbeEnabled } from '@/components/chat/ChatLayoutProbe';
 
 type Bubble = { id?: string; sender: string; text: string; time: string; createdAt: string };
 
@@ -111,7 +110,6 @@ export function ChatView({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
-  const probe = useChatProbeEnabled();
 
   // Flag the whole app as "in a chat" while this full-screen surface is mounted,
   // so the floating bottom nav dock can be hidden (it has no place over a chat,
@@ -555,9 +553,6 @@ export function ChatView({
         })}
       </div>
 
-      {/* Opt-in measurements for the missing-composer investigation. Renders
-          nothing unless the URL carries `?debugchat`. */}
-      {probe && <ChatLayoutProbe />}
 
       {/* Composer — pinned to the bottom of the chat column, clearing both the
           nav dock and the iOS home indicator (see `.agx-chat-composer`). The
