@@ -159,40 +159,36 @@ export function ChatView({
       // the widget covers is independent of how far the browser has panned, and
       // subtracting it used to hide the keyboard from this measurement entirely.
       const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height));
-      // Ignore the few pixels a collapsing URL bar accounts for.
+      // Only a widget this tall is a keyboard; anything less is the URL bar.
+      // This still decides `data-kb-open` and `--ag-kb`, but it no longer
+      // decides the insets below — that was the bug.
       const open = kb > 120;
-      const top = open ? Math.round(vv.offsetTop) : 0;
+      const top = zoomed ? 0 : Math.round(vv.offsetTop);
 
       /*
-       * Size to the visual viewport ALWAYS — not only while a keyboard is up.
+       * Everything below the visible slice — whatever is causing it.
        *
-       * This used to fall back to `100%` whenever the keyboard was closed. For a
-       * `position:fixed` element that resolves against the layout viewport, and
-       * Android Chrome makes its layout viewport the *large* viewport — the
-       * height the page would have with the URL bar hidden. So while the URL bar
-       * is on screen the surface is ~60-90px taller than what you can actually
-       * see, and the composer, being last in the column, is the part that ends
-       * up underneath it. Tapping down there scrolled the URL bar away and the
-       * bar "appeared", which is what made this look intermittent.
+       * `position:fixed; bottom:0` resolves against the LAYOUT viewport, and
+       * Android Chrome's layout viewport is the large one: the height the page
+       * would have with the URL bar retracted. So while the URL bar is showing,
+       * `bottom:0` is genuinely below the bottom of the screen, and the composer
+       * sitting on that edge is out of sight until a scroll retracts the bar.
        *
-       * `visualViewport.height` is the genuinely visible height and already
-       * accounts for both the URL bar and the keyboard, so there is no reason to
-       * ever prefer a percentage. Pinch-zoom is the one exception: it shrinks the
-       * visual viewport too, and the chat should sit still while the reader is
-       * zoomed rather than reflow under them.
+       * This used to be gated on `open`, so it was 0 unless a keyboard was up —
+       * and a URL bar is only ~60-90px, well under the 120px that counts as a
+       * keyboard. That is why a conversation opened cold had no visible
+       * composer, while a brand-new one did: the auto-focus raised the keyboard,
+       * which pushed the measurement over the threshold and corrected the inset
+       * as a side effect.
+       *
+       * Subtracting `offsetTop` as well as the height is what makes it general:
+       * whatever the browser has already panned out of view at the top is not
+       * also hidden at the bottom. Keyboard, URL bar or both, this is simply
+       * "how far up from the layout viewport's bottom the visible area ends".
        */
-      /*
-       * How much of the bottom of the layout viewport is covered by the
-       * keyboard, after whatever the browser has already panned away.
-       *
-       * This replaces the old `--ag-vv-h` height. The surface is now anchored to
-       * the top AND the bottom of the viewport, so its height is derived by the
-       * browser instead of computed here — and a height that is never computed
-       * is a height that can never be stale, wrong by a URL bar, or off by the
-       * 22px that kept pushing the composer out of view. All this has to say is
-       * how far up from the bottom edge to stop.
-       */
-      const bottom = open ? Math.max(0, kb - top) : 0;
+      const bottom = zoomed
+        ? 0
+        : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
 
       const key = `${top}|${bottom}|${open}`;
       if (key === last) return;
