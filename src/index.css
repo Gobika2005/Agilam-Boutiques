@@ -504,29 +504,16 @@ body.agx-photo-open { overflow: hidden; }
 @media (max-width: 899px) { body:has(.agx-pdp-root) .agx-launch-notice { bottom: 174px !important; } }
 /* The chat is `position:fixed`, so it is sized to the *layout* viewport — which
    no mobile browser shrinks when the on-screen keyboard opens. ChatView sizes
-   it to the visual viewport instead (`--ag-vv-top`/`--ag-vv-h` on the element);
+   it to the visual viewport instead (`--ag-vv-top`/`--ag-kb-inset` on the
+   element, applied as insets so it has no height of its own);
    what is left here is the bottom inset. The home indicator is *under* the
    keyboard while it is open, so reserving it then would only leave a gap. */
 .agx-chat-root {
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  /*
-   * Never taller than the screen — the composer's safety net.
-   *
-   * The surface's height comes from `--ag-vv-h`, which JavaScript writes from
-   * `visualViewport.height`. That is the right measurement, but it means one
-   * wrong or stale value — a rotation, a browser that reports the viewport mid
-   * transition, an effect that has not run yet — makes the element taller than
-   * the window, and the composer is the last thing in the column, so it is the
-   * part that goes off the bottom. The user then has a chat they cannot type
-   * into, which is the whole screen's purpose.
-   *
-   * It can never legitimately need to be taller than the viewport, so cap it.
-   * When the keyboard is up, `--ag-vv-h` is *smaller* than this cap and keeps
-   * winning, so the keyboard behaviour above is untouched.
-   */
-  max-height: calc(100dvh - var(--ag-banner-h, 0px));
-  /* With the cap in place the thread (flex:1, min-height:0) absorbs the
-     difference instead of the column spilling past its own box. */
+  /* The surface has no height of its own — it is anchored top and bottom (see
+     ChatView), so the browser derives it and there is no arithmetic left here
+     to get wrong. `overflow:hidden` only stops a long thread painting outside
+     the rounded surface. */
   overflow: hidden;
 }
 body[data-kb-open] .agx-chat-root {

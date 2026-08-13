@@ -124,9 +124,11 @@ export function ChatView({
    * keyboard at the bottom.
    *
    * So don't reserve a strip — position the surface on the visual viewport
-   * itself: `--ag-vv-top` is how far the browser has panned, `--ag-vv-h` the
-   * height actually on screen. Together they park the header, thread and
-   * composer inside the visible slice in every mode.
+   * itself: `--ag-vv-top` is how far the browser has panned, `--ag-kb-inset`
+   * how much of the bottom the keyboard covers. Together they park the header,
+   * thread and composer inside the visible slice in every mode — as insets
+   * rather than as a height, so the browser derives the size and there is no
+   * arithmetic here to be wrong.
    *
    * `--ag-kb` is still published on the body for the toast, which is a fixed
    * sibling rather than a child: it stays in layout coordinates, so what it has
@@ -168,20 +170,25 @@ export function ChatView({
        * visual viewport too, and the chat should sit still while the reader is
        * zoomed rather than reflow under them.
        */
-      const height = zoomed ? '100%' : `${Math.round(vv.height)}px`;
-
       /*
-       * The height has to be part of the key. It used to be `${open ? kb : 0}|
-       * ${top}`, which is the constant `0|0` for as long as the keyboard is
-       * closed — so a URL bar sliding in or out, the exact thing that changes
-       * the visible height, could never trigger an update.
+       * How much of the bottom of the layout viewport is covered by the
+       * keyboard, after whatever the browser has already panned away.
+       *
+       * This replaces the old `--ag-vv-h` height. The surface is now anchored to
+       * the top AND the bottom of the viewport, so its height is derived by the
+       * browser instead of computed here — and a height that is never computed
+       * is a height that can never be stale, wrong by a URL bar, or off by the
+       * 22px that kept pushing the composer out of view. All this has to say is
+       * how far up from the bottom edge to stop.
        */
-      const key = `${height}|${top}|${open}`;
+      const bottom = open ? Math.max(0, kb - top) : 0;
+
+      const key = `${top}|${bottom}|${open}`;
       if (key === last) return;
       last = key;
       const root = rootRef.current;
       root?.style.setProperty('--ag-vv-top', `${top}px`);
-      root?.style.setProperty('--ag-vv-h', height);
+      root?.style.setProperty('--ag-kb-inset', `${bottom}px`);
       document.body.style.setProperty('--ag-kb', `${open ? Math.max(0, kb - top) : 0}px`);
       if (open) document.body.dataset.kbOpen = '1';
       else delete document.body.dataset.kbOpen;
@@ -344,15 +351,22 @@ export function ChatView({
   const statusOn = live && peerOnline;
   const canSend = live && !!draft.trim() && !sending;
 
-  // `top`/`height` rather than `inset:0`, for two reasons. A page-level banner
-  // (maintenance mode) is a sticky element in the document flow and sits above
-  // this surface in the stacking order, so covering the whole viewport put the
-  // chat header underneath it — `--ag-banner-h` (0px when no banner is showing)
-  // is reserved at the top instead. And `--ag-vv-top`/`--ag-vv-h` pin the
-  // surface to the visual viewport when a keyboard is open; they fall back to
-  // the full layout viewport, which is what every desktop browser gets.
+  // Anchored to the top AND the bottom of the viewport, with no height of its
+  // own. That is the whole point: the height is then the browser's arithmetic,
+  // not ours, so the bottom edge of this surface IS the bottom of the screen by
+  // definition and the composer sitting on it cannot be pushed past the edge.
+  // Every version of this bug came from a computed height being wrong by a
+  // banner, a URL bar or 22 unexplained pixels.
+  //
+  // The two insets are all that is left to say. `--ag-banner-h` reserves the
+  // maintenance banner at the top: it is a sticky element in the document flow
+  // and sits above this surface in the stacking order, so spanning the whole
+  // viewport would put the chat header underneath it. `--ag-kb-inset` holds the
+  // bottom clear of the on-screen keyboard, which `position:fixed` alone knows
+  // nothing about, and `--ag-vv-top` follows the browser's own panning. All
+  // three are 0 on a desktop browser, where this reduces to `inset:0`.
   return (
-    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;height:calc(var(--ag-vv-h,100dvh) - var(--ag-banner-h,0px));z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;bottom:var(--ag-kb-inset,0px);z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
       {/* `flex:1;min-height:0` rather than `height:100%`: a percentage height
           resolves against the parent's *height* property, which is the very
           thing the cap above may be overriding, and a stale percentage basis is

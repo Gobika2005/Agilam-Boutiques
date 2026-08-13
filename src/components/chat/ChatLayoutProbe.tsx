@@ -35,6 +35,37 @@ export function useChatProbeEnabled(): boolean {
 
 type Row = { label: string; value: string; bad?: boolean };
 
+/**
+ * Which ancestor, if any, has turned itself into the containing block for a
+ * `position:fixed` descendant.
+ *
+ * `transform`, `filter`, `backdrop-filter`, `perspective`, `contain` and
+ * `will-change` on any of those all do it, and the effect is that `fixed` stops
+ * meaning "relative to the viewport" — which would move the chat surface and
+ * everything in it. Reported by name so the fix has somewhere to go.
+ */
+function containingBlockCulprit(el: HTMLElement | null): string {
+  let p = el?.parentElement ?? null;
+  while (p && p !== document.documentElement) {
+    const s = getComputedStyle(p);
+    const why =
+      (s.transform && s.transform !== 'none' && 'transform') ||
+      (s.filter && s.filter !== 'none' && 'filter') ||
+      ((s as unknown as { backdropFilter?: string }).backdropFilter &&
+        (s as unknown as { backdropFilter?: string }).backdropFilter !== 'none' &&
+        'backdrop-filter') ||
+      (s.perspective && s.perspective !== 'none' && 'perspective') ||
+      (s.contain && /paint|layout|strict|content/.test(s.contain) && 'contain') ||
+      (s.willChange && /transform|filter|perspective/.test(s.willChange) && 'will-change');
+    if (why) {
+      const name = p.tagName.toLowerCase() + (p.className ? '.' + String(p.className).split(' ')[0] : '');
+      return `${name} (${why})`;
+    }
+    p = p.parentElement;
+  }
+  return 'nothing (ok)';
+}
+
 export function ChatLayoutProbe() {
   const [rows, setRows] = useState<Row[]>([]);
 
@@ -98,12 +129,17 @@ export function ChatLayoutProbe() {
         { label: 'window.innerHeight', value: n(window.innerHeight) },
         { label: 'visualViewport h', value: n(vv?.height) },
         { label: 'vv offsetTop / scale', value: `${n(vv?.offsetTop)} / ${(vv?.scale ?? 1).toFixed(2)}` },
-        { label: '--ag-vv-h', value: cs?.getPropertyValue('--ag-vv-h').trim() || '(unset)' },
+        { label: '--ag-kb-inset', value: cs?.getPropertyValue('--ag-kb-inset').trim() || '(unset)' },
         { label: '--ag-banner-h', value: cs?.getPropertyValue('--ag-banner-h').trim() || '(unset)' },
         { label: 'root position', value: cs?.position ?? '—', bad: !!cs && cs.position !== 'fixed' },
-        // A non-null offsetParent on a fixed element means an ancestor has a
-        // transform/filter/contain and has captured it as the containing block.
-        { label: 'root offsetParent', value: root?.offsetParent ? (root.offsetParent as HTMLElement).tagName + '.' + ((root.offsetParent as HTMLElement).className || '').split(' ')[0] : 'null (ok)', bad: !!root?.offsetParent },
+        /*
+         * Whether a transformed/filtered ancestor has captured the fixed
+         * positioning. NOT `offsetParent`: the spec says that is always null for
+         * a fixed element, so the earlier reading of "null (ok)" proved nothing
+         * and wrongly cleared this suspect. Walk the ancestors and look for the
+         * properties that actually create a containing block.
+         */
+        { label: 'fixed captured by', value: containingBlockCulprit(root), bad: containingBlockCulprit(root) !== 'nothing (ok)' },
         { label: 'doc scrollTop/H', value: `${n(document.documentElement.scrollTop)} / ${n(document.documentElement.scrollHeight)}` },
         { label: 'body class', value: document.body.className || '(none)' },
       ]);
