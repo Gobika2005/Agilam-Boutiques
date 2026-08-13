@@ -69,12 +69,23 @@ export function MaintenanceNotice() {
       role="status"
       className="agx-maintenance-notice"
       style={css(
+        // `position` and `top` are NOT set here — they live in index.css.
+        //
+        // An inline style beats any stylesheet rule that is not `!important`, so
+        // declaring `position:sticky` here silently defeated
+        // `body.agx-chatting .agx-maintenance-notice { position: fixed }`. The
+        // banner therefore stayed in the document flow while a chat was open,
+        // the page grew taller than the viewport, and the chat's composer went
+        // off the bottom of the screen — buyer-side only, because operators
+        // never see this banner. Leave positioning to the stylesheet so that
+        // override can actually win.
+        //
         // min-height, because the sentence sits right on the wrap boundary: it
         // takes two lines in the fallback font and one once the webfont swaps
         // in, so the banner used to shrink ~28px mid-load and drag the whole
         // page up with it. Two lines' worth is reserved either way; the
         // published --ag-banner-h then stays put too.
-        'position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:center;gap:9px;' +
+        'z-index:80;display:flex;align-items:center;justify-content:center;gap:9px;' +
           'min-height:53px;box-sizing:border-box;' +
           'padding:9px 14px;background:#8A5A00;color:#fff;font-size:12.5px;font-weight:700;line-height:1.4;text-align:center;',
       )}

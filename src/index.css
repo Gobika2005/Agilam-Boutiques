@@ -545,7 +545,16 @@ body[data-kb-open].agx-chatting .agx-maintenance-notice { display: none; }
    the composer off the bottom of the screen with it. While a chat is open the
    banner is taken out of flow; it keeps its place at the top of the screen, and
    the chat reserves its measured height (`--ag-banner-h`) instead of sliding
-   under it. */
+   under it.
+
+   Both declarations live here rather than on the element. The banner used to
+   carry `position:sticky` in its inline style, which beats any stylesheet rule
+   without `!important` — so the override below never applied, the banner stayed
+   in flow throughout, and the composer went off the bottom of the screen on the
+   buyer's chat exactly as described above. Operators never see this banner,
+   which is why the seller console looked fine. Keep `position` out of the
+   component's inline style. */
+.agx-maintenance-notice { position: sticky; top: 0; }
 body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
