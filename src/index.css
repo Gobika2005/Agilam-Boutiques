@@ -827,6 +827,19 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(96px + env(safe-area-inset-b
 /* The photo fills the box; overlays (heart, rating, badges) position themselves. */
 .agx-prod-fill { position: absolute; inset: 0; }
 .agx-prod-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Review body inside the boutique profile's horizontal review rail.
+   Four lines, clamped. The rail lays cards side by side, so an unclamped body
+   would make one long review three times the height of its neighbours and drag
+   the whole row down with it; the card carries a Read more when it overflows,
+   which expands that one card in place. */
+.agx-review-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 /* Product-card title.
    Two lines, clamped, and always reserving both — so a one-word title and a
    long one leave the price on the same baseline and every row of the grid

@@ -139,6 +139,14 @@ export interface Database {
           delivery_charge_district: number | null;
           delivery_charge_state: number | null;
           delivery_charge_national: number | null;
+          /**
+           * What this shop promises about fulfilment (migration 0078): working
+           * days to dispatch, and its own goodwill return window (0 = none).
+           * Both were platform constants printed as facts about the shop.
+           */
+          dispatch_days_min: number;
+          dispatch_days_max: number;
+          return_window_days: number;
           free_delivery_over: number;
           cod_enabled: boolean;
           cod_fee: number;

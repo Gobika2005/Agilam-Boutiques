@@ -64,7 +64,15 @@ const TERMS_COLUMNS = 'latitude, longitude, free_delivery_over, cod_fee, cod_max
  */
 const ZONE_COLUMNS = 'delivery_charge_district, delivery_charge_state, delivery_charge_national';
 
-export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_COLUMNS}, ${ZONE_COLUMNS}`;
+/**
+ * What this shop promises about fulfilment (migration 0078) — its dispatch time
+ * and its own return window. Its own optional group for the same reason as the
+ * others: missing, the product page falls back to the platform copy it used
+ * before, rather than the whole catalogue failing to load.
+ */
+const FULFILMENT_COLUMNS = 'dispatch_days_min, dispatch_days_max, return_window_days';
+
+export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_COLUMNS}, ${ZONE_COLUMNS}, ${FULFILMENT_COLUMNS}`;
 
 /**
  * Runs a boutique query with the optional column groups, dropping one group at a
@@ -76,6 +84,7 @@ export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}, ${TERMS_CO
 let countersAvailable = true;
 let termsAvailable = true;
 let zonesAvailable = true;
+let fulfilmentAvailable = true;
 
 function columnList(): string {
   return [
@@ -83,6 +92,7 @@ function columnList(): string {
     countersAvailable ? COUNTER_COLUMNS : '',
     termsAvailable ? TERMS_COLUMNS : '',
     zonesAvailable ? ZONE_COLUMNS : '',
+    fulfilmentAvailable ? FULFILMENT_COLUMNS : '',
   ].filter(Boolean).join(', ');
 }
 
@@ -96,7 +106,10 @@ async function selectBoutiques<T>(
     if (error.code !== '42703' && error.code !== '42501') throw error;
     // Drop the newest group first — it is the likelier one to be missing, and
     // dropping it may be enough on its own.
-    if (zonesAvailable) {
+    if (fulfilmentAvailable) {
+      fulfilmentAvailable = false;
+      console.warn('[boutiques] dispatch times and per-shop return windows unavailable — apply migration 0078. The platform estimate will be shown instead.');
+    } else if (zonesAvailable) {
       zonesAvailable = false;
       console.warn('[boutiques] delivery zone rates unavailable — apply migration 0077. Every address will be charged the shop’s local rate.');
     } else if (termsAvailable) {
@@ -277,6 +290,9 @@ export type BoutiquePatch = Partial<{
   delivery_charge_district: number | null;
   delivery_charge_state: number | null;
   delivery_charge_national: number | null;
+  dispatch_days_min: number;
+  dispatch_days_max: number;
+  return_window_days: number;
   free_delivery_over: number;
   cod_enabled: boolean;
   cod_fee: number;

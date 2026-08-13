@@ -80,7 +80,6 @@ const CONTACT_SECTION: PolicySection = {
  * commercial values are read from.
  */
 type PolicyCopyTerms = {
-  returnWindowDays: number;
   commissionPct: number;
   refundWorkingDays: string;
   deliveryEstimate: string;
@@ -92,14 +91,19 @@ function copyTerms(s: PlatformSettings): PolicyCopyTerms {
   return {
     // Live, admin-editable — these are what the buyer is actually charged.
     //
-    // Delivery and COD are no longer among them: since migration 0076 each
-    // boutique sets its own charge, threshold, cash-handling fee and cap, so
-    // there is no single figure this copy could quote that would be true for
-    // every shop. The sections below describe the rule instead and point at the
-    // number the checkout screen actually shows — which is the mistake that was
+    // Delivery, COD and the return window are no longer among them: each
+    // boutique sets its own charge, threshold, cash-handling fee, cap
+    // (migrations 0076/0077) and change-of-mind window (0078), so there is no
+    // single figure this copy could quote that would be true for every shop.
+    // The sections below describe the rule instead and point at the number the
+    // product page and checkout actually show — which is the mistake that was
     // made the other way round before, when these pages quoted a frozen ₹79
     // while checkout charged ₹89.
-    returnWindowDays: s.return_window_days,
+    //
+    // What stays platform-wide, and is still stated as an absolute here, is the
+    // 30-day cover for a faulty, wrong or misdescribed item. That is the
+    // marketplace's own promise and request_return() enforces it whatever a
+    // shop sets its goodwill window to.
     commissionPct: s.commission_pct,
     // Copy-only: service promises with no settings column behind them.
     refundWorkingDays: POLICY_TERMS.refundWorkingDays,
@@ -135,10 +139,11 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
       {
         heading: 'Delivery timelines',
         blocks: [
-          `- Metro cities: ${T.metroDeliveryEstimate} from dispatch.`,
-          `- Rest of India: ${T.deliveryEstimate} from dispatch.`,
-          '- Made-to-order, custom-stitched and altered pieces: the boutique will confirm the timeline with you on chat before work begins. These typically add 5–10 working days.',
-          'Timelines are estimates from the date the boutique dispatches your order, not from the date you place it. Boutiques usually pack an order within 1–2 working days of confirming it.',
+          `- Metro cities: ${T.metroDeliveryEstimate} in transit, once the parcel is dispatched.`,
+          `- Rest of India: ${T.deliveryEstimate} in transit, once the parcel is dispatched.`,
+          '- Before that, each boutique takes its own time to pack. That figure is theirs, not ours, and is shown on every product page — "Dispatched in 1–2 working days" for a shop with the piece on the shelf, longer for one that cuts to measure.',
+          '- Made-to-order, custom-stitched and altered pieces: the boutique will confirm the timeline with you on chat before work begins.',
+          'So the total is the boutique’s dispatch time plus the transit estimate above. Transit times are our delivery partners’ estimates and are counted from dispatch, not from the moment you place the order.',
         ],
       },
       {
@@ -215,29 +220,22 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
     title: 'Return & Refund Policy',
     eyebrow: 'If something is not right',
     icon: 'autorenew',
-    summary: T.returnWindowDays > 0
-      ? `${T.returnWindowDays}-day returns on eligible items. Refunds land in ${T.refundWorkingDays}.`
-      : `Returns on damaged, defective or wrong items. Refunds land in ${T.refundWorkingDays}.`,
+    summary: `Faults are always covered for 30 days. Change-of-mind returns are up to each boutique. Refunds land in ${T.refundWorkingDays}.`,
     sections: [
-      // A zero return window is a real configuration — it means the platform
-      // offers no goodwill returns, only the statutory remedy for an item that
-      // arrived damaged, defective or wrong. Printing "the 0-day window" and
-      // "within 0 days of delivery" would have been nonsense, and quietly
-      // hard-coding 7 here is exactly the drift this file was rewritten to end.
-      T.returnWindowDays > 0
-        ? {
-            heading: `The ${T.returnWindowDays}-day window`,
-            blocks: [
-              `You may request a return within ${T.returnWindowDays} days of delivery if the item is damaged, defective, materially different from what was listed, or the wrong item was sent.`,
-              'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
-            ],
-          }
-        : {
-            heading: 'When you can return an item',
-            blocks: [
-              'We do not offer change-of-mind returns. You may still request a return if the item arrived damaged, is defective, is materially different from what was listed, or the wrong item was sent — report it as soon as you receive the parcel.',
-              'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
-            ],
+      // Since migration 0078 the change-of-mind window is the BOUTIQUE's, so
+      // there is no single number this page can quote that is true of every
+      // shop — the same reason the delivery copy stopped quoting a fee. What is
+      // platform-wide, and stated as such, is the 30-day cover for a faulty,
+      // wrong or misdescribed item: that one is the marketplace's own promise
+      // and `request_return()` enforces it regardless of what a shop sets.
+      {
+        heading: 'When you can return an item',
+        blocks: [
+          '- Damaged, defective, the wrong item, or materially different from what was listed: always accepted, for 30 days from delivery, from every boutique on MangaiMart.',
+          '- Changed your mind, or the size does not suit: accepted where the boutique offers it. Each shop sets its own window, shown on the product page under Shipping Information, and on the order itself.',
+          'Some boutiques — particularly those stitching to measure — do not accept change-of-mind returns at all. That is stated on the product page before you buy, never discovered afterwards.',
+          'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
+        ],
           },
       {
         heading: 'Condition of returned items',
@@ -607,9 +605,7 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
       {
         heading: 'How do I return something?',
         blocks: [
-          T.returnWindowDays > 0
-            ? `Within ${T.returnWindowDays} days of delivery, open the order and message the boutique with photographs. See the Return & Refund Policy for what is eligible.`
-            : 'Open the order as soon as it arrives and message the boutique with photographs. See the Return & Refund Policy for what is eligible.',
+          'Open the order and tap "Request a return", with photographs. A damaged, faulty or wrong item is accepted for 30 days by every boutique; for a change of mind, the window is the one that boutique published on the product page. See the Return & Refund Policy.',
         ],
       },
       {

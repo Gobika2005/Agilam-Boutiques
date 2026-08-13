@@ -132,6 +132,15 @@ export type Boutique = {
   freeDeliveryOver?: number;
   codFee?: number;
   codMaxOrder?: number;
+  /**
+   * What this shop promises about fulfilment (migration 0078). `dispatchMin/Max`
+   * are working days to pack, before transit; `returnWindowDays` is its own
+   * change-of-mind window, 0 meaning none. Undefined where 0078 has not been
+   * applied, and the platform copy stands in.
+   */
+  dispatchMin?: number;
+  dispatchMax?: number;
+  returnWindowDays?: number;
   /** The shop's own address, which the buyer's is measured against to pick a
    *  delivery zone. `city` is above; these three complete it. */
   district?: string;

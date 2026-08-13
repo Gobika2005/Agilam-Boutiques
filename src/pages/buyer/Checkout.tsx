@@ -6,7 +6,7 @@ import { useCatalog } from '@/state/CatalogContext';
 import { usePageMeta } from '@/lib/pageMeta';
 import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
-import { POLICY_TERMS } from '@/data/company';
+import { deliveryEtaLabel, shopFulfilment } from '@/lib/fulfilment';
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -148,8 +148,11 @@ export function Checkout() {
                         {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + deliveryLine()}
                       </div>
                       <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>
-                        {cartBoutiques.length > 1 && 'Delivery included in the one fee below · '}
-                        {POLICY_TERMS.deliveryEstimate} from dispatch{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
+                        {/* Each shop's own dispatch time (migration 0078), not
+                            one platform estimate for the whole marketplace —
+                            this is the screen where a buyer decides whether the
+                            piece will arrive in time. */}
+                        {deliveryEtaLabel(shopFulfilment(b))}{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
                       </div>
                     </div>
                   </div>

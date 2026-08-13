@@ -14,16 +14,22 @@
  *
  *   • A FAULT (damaged, defective, wrong item, not as described) is always
  *     accepted, up to 30 days from delivery, whatever the window is set to.
- *   • GOODWILL (size, changed mind) is gated on the admin's window, and refused
- *     outright when that window is 0 — which is how production is configured
- *     today. Those two options are shown greyed with the reason rather than
- *     hidden, so the buyer learns the policy instead of wondering where the
- *     option went.
+ *     That one is the marketplace's own commitment, not the shop's.
+ *   • GOODWILL (size, changed mind) is gated on THIS BOUTIQUE's return window
+ *     (migration 0078), and refused outright when that window is 0. Those two
+ *     options are shown greyed with the reason rather than hidden, so the buyer
+ *     learns the policy instead of wondering where the option went.
+ *
+ * The window comes from the boutique rather than from platform settings so the
+ * promise on the product page and the rule the server enforces are the same
+ * number. They were not: the product page printed a compile-time 7 while
+ * `request_return()` checked an admin field set to 0.
  */
 import { useState } from 'react';
 import { css } from '@/lib/css';
 import { useToast } from '@/components/ui/Toast';
-import { useSettings } from '@/data/settings';
+import { useCatalog } from '@/state/CatalogContext';
+import { shopFulfilment } from '@/lib/fulfilment';
 import { uploadImage } from '@/lib/uploadImage';
 import {
   requestReturn,
@@ -46,16 +52,20 @@ const MAX_PHOTOS = 4;
 export function ReturnRequestSheet({
   orderId,
   orderNumber,
+  boutiqueId,
   onClose,
   onDone,
 }: {
   orderId: string;
   orderNumber: string;
+  /** Whose window applies. The order's boutique — see the note above. */
+  boutiqueId?: string;
   onClose: () => void;
   onDone: () => void;
 }) {
   const showToast = useToast();
-  const { return_window_days: windowDays } = useSettings();
+  const { boutiqueById } = useCatalog();
+  const { returnWindowDays: windowDays } = shopFulfilment(boutiqueById(boutiqueId));
   const [reason, setReason] = useState<ReturnReason | null>(null);
   const [note, setNote] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);

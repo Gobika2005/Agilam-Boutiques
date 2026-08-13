@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -133,6 +133,22 @@ export function BoutiqueProfile() {
   );
 
   /**
+   * Jump from the rating in the header to the reviews behind it.
+   *
+   * `scrollIntoView` on the section rather than a `#hash` link: the profile is
+   * one screen with no routing of its own, and a hash would put a stray
+   * `#reviews` in the address bar and a dead entry in the back stack.
+   *
+   * Honours a reduced-motion preference — a long smooth scroll down a page this
+   * tall is exactly the kind of movement that setting exists to stop.
+   */
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const scrollToReviews = useCallback(() => {
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    reviewsRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+  }, []);
+
+  /**
    * Other shops to look at — the rail that stops this page being a dead end.
    *
    * Same city first, because that is what a buyer means by "who else is near
@@ -246,12 +262,20 @@ export function BoutiqueProfile() {
             )}
           </div>
 
-          {/* Rating */}
-          <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:15px;font-weight:700;')}>
+          {/* Rating — and the way to the reviews it summarises.
+              It stated a number and offered no way to the evidence, which is
+              the one thing a reader wants the moment they read it. Tapping it
+              takes them to the rail at the bottom of the page. */}
+          <button
+            onClick={scrollToReviews}
+            aria-label={`${ab.rating} out of 5 from ${ab.reviews} reviews — read them`}
+            style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin:9px auto 0;padding:4px 10px;border:none;background:none;border-radius:999px;font-size:15px;font-weight:700;color:inherit;font-family:inherit;cursor:pointer;')}
+          >
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-star);")}>star</span>
             {ab.rating}
             <span style={css('color:var(--ag-muted);font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
-          </div>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>expand_more</span>
+          </button>
 
           {/* Location */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;color:var(--ag-muted);font-size:14px;')}>
@@ -430,9 +454,11 @@ export function BoutiqueProfile() {
           </div>
         )}
 
-        {/* ---------- Reviews ---------- */}
-        <div style={css("display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:38px;")}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;")}>
+        {/* ---------- Reviews ----------
+            `scroll-margin-top` clears the sticky app header, which would
+            otherwise sit over the heading the jump just landed on. */}
+        <div ref={reviewsRef} style={css('scroll-margin-top:84px;')}>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
             What buyers say
           </div>
         </div>

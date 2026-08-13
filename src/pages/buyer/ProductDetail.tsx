@@ -24,6 +24,7 @@ import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/li
 import { TONES, fmt } from '@/data/demo';
 import { POLICY_TERMS } from '@/data/company';
 import { DeliveryCheck } from '@/components/buyer/DeliveryCheck';
+import { dispatchLabel, returnsDetail, returnsLabel, shopFulfilment } from '@/lib/fulfilment';
 import { badgesFor, DEFAULT_COLOR_DISCLAIMER } from '@/lib/productBadges';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -327,6 +328,8 @@ export function ProductDetail() {
       national: zone(boutique?.deliveryChargeNational),
     };
   })();
+  /** This shop's dispatch time and return window, normalised (migration 0078). */
+  const fulfilment = shopFulfilment(boutique);
   const shopPlace = {
     pincode: boutique?.pincode,
     city: boutique?.city,
@@ -974,7 +977,28 @@ export function ProductDetail() {
                   </div>
                   <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{POLICY_TERMS.returnWindowDays}-day easy returns</div>
+                    {/* THIS BOUTIQUE's return window (migration 0078).
+                        It used to print `POLICY_TERMS.returnWindowDays` — a
+                        compile-time 7 — and was the last surface in the app
+                        reading that constant instead of the configured value.
+                        With returns set to 0, as production had them, the page
+                        promised a 7-day window that `request_return()` refused
+                        on sight. The shop's own number is now what is shown and
+                        what the server enforces. */}
+                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{returnsLabel(fulfilment)}</div>
+                  </div>
+                </div>
+
+                {/* When the parcel actually leaves, in the seller's own answer.
+                    A single platform "3–7 working days" covered a shop with
+                    stock on the shelf and one that cuts to measure; only the
+                    transit half of that was ever the platform's to promise. */}
+                <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>schedule</span>
+                  <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
+                    <span style={css('font-weight:700;')}>{dispatchLabel(fulfilment)}</span>
+                    {`, then ${POLICY_TERMS.deliveryEstimate} in transit.`}
+                    <div style={css('color:var(--ag-muted);margin-top:3px;')}>{returnsDetail(fulfilment)}</div>
                   </div>
                 </div>
                 {/* The seller's own coverage area, in their words — not every

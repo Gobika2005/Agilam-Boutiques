@@ -160,6 +160,16 @@ export interface BoutiqueRow {
   delivery_charge_state?: number | null;
   delivery_charge_national?: number | null;
   free_delivery_over?: number;
+  /**
+   * How long this shop takes to pack an order, and how long buyers have to send
+   * it back (migration 0078). Both were platform constants the buyer read as
+   * facts about the shop. `return_window_days` is the GOODWILL window only —
+   * fault claims are always accepted for 30 days. Optional on the type because
+   * the query drops them where 0078 has not been applied.
+   */
+  dispatch_days_min?: number;
+  dispatch_days_max?: number;
+  return_window_days?: number;
   cod_enabled: boolean;
   cod_fee?: number;
   cod_max_order?: number;

@@ -11,6 +11,8 @@ import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 import { isMapsLink } from '@/lib/geolocate';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { DeliveryRateCard, describeReach, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
+import { FulfilmentCard, fulfilmentToForm, fulfilmentToPatch, validateFulfilment, type FulfilmentForm } from '@/components/seller/FulfilmentCard';
+import { dispatchLabel, shopFulfilment } from '@/lib/fulfilment';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
@@ -104,6 +106,7 @@ type Form = {
   categories: string[]; gstNumber: string; businessReg: string; yearsInBusiness: string;
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
+  fulfilment: FulfilmentForm;
   codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
 };
@@ -116,6 +119,7 @@ const EMPTY: Form = {
   categories: [], gstNumber: '', businessReg: '', yearsInBusiness: '',
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
+  fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
   codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
@@ -174,6 +178,8 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
     if (!f.closeTime) e.closeTime = 'Set a closing time';
     if (f.workingDays.length === 0) e.workingDays = 'Pick at least one working day';
     if (f.deliveryAvailable && !f.deliveryAreas.trim()) e.deliveryAreas = 'List the areas you deliver to';
+    const badFulfilment = validateFulfilment(f.fulfilment);
+    if (badFulfilment) e.fulfilment = badFulfilment;
     if (!f.codEnabled && !f.onlinePaymentEnabled) e.codEnabled = 'Enable at least one payment method';
   }
   if (step === 6) {
@@ -253,6 +259,7 @@ function toPatch(f: Form): BoutiquePatch {
     delivery_available: f.deliveryAvailable,
     delivery_areas: f.deliveryAreas.trim(),
     ...zoneRatesToPatch(f.rates),
+    ...fulfilmentToPatch(f.fulfilment),
     free_delivery_over: Number(f.freeDeliveryOver || 0),
     cod_enabled: f.codEnabled,
     cod_fee: Number(f.codFee || 0),
@@ -399,6 +406,7 @@ export function SellerOnboarding() {
           deliveryAvailable: row.delivery_available ?? true,
           deliveryAreas: row.delivery_areas ?? '',
           rates: zoneRatesToForm(row),
+          fulfilment: fulfilmentToForm(row),
           freeDeliveryOver: row.free_delivery_over != null ? String(row.free_delivery_over) : '0',
           codEnabled: row.cod_enabled ?? false,
           codFee: row.cod_fee != null ? String(row.cod_fee) : '0',
@@ -925,6 +933,10 @@ export function SellerOnboarding() {
               )}
             </SectionCard>
 
+            <SectionCard title="Dispatch & returns" subtitle="What buyers are promised on every product you list.">
+              <FulfilmentCard value={form.fulfilment} onChange={(next) => set('fulfilment', next)} error={errors.fulfilment} />
+            </SectionCard>
+
             <SectionCard title="Payments accepted">
               <Toggle label="Cash on delivery" description="Off by default. Turn it on only if you are willing to send stock before it is paid for" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
               {form.codEnabled && (
@@ -1108,6 +1120,8 @@ function ReviewStep({
         ['Timing', form.openTime && form.closeTime ? `${form.openTime} – ${form.closeTime}` : '—'],
         ['Working days', form.workingDays.length ? form.workingDays.join(', ') : '—'],
         ['Delivery', form.deliveryAvailable ? `${describeReach(form.rates, form.city, form.district, form.state)} · from ₹${form.rates.local || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver} nearby` : ''}` : 'Store pickup only'],
+        ['Dispatch', dispatchLabel(shopFulfilment({ dispatchMin: Number(form.fulfilment.dispatchMin), dispatchMax: Number(form.fulfilment.dispatchMax) }))],
+        ['Returns', Number(form.fulfilment.returnWindowDays) > 0 ? `${form.fulfilment.returnWindowDays} days` : 'Faults only'],
         ['Payments', [form.codEnabled && `Cash on delivery${Number(form.codFee) > 0 ? ` (₹${form.codFee} fee)` : ''}`, form.onlinePaymentEnabled && 'Online'].filter(Boolean).join(', ') || '—'],
       ],
     },

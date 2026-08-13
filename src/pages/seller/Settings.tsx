@@ -7,6 +7,7 @@ import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { DeliveryRateCard, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
+import { FulfilmentCard, fulfilmentToForm, fulfilmentToPatch, validateFulfilment, type FulfilmentForm } from '@/components/seller/FulfilmentCard';
 import { isMapsLink } from '@/lib/geolocate';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -26,6 +27,7 @@ type Form = {
   instagram: string; mapUrl: string; lat: string; lng: string; phone: string; whatsapp: string; email: string;
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
+  fulfilment: FulfilmentForm;
   codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
 };
@@ -34,6 +36,7 @@ const EMPTY: Form = {
   instagram: '', mapUrl: '', lat: '', lng: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
+  fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
   codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
@@ -78,6 +81,7 @@ export function Settings() {
       deliveryAvailable: boutique.delivery_available ?? true,
       deliveryAreas: boutique.delivery_areas ?? '',
       rates: zoneRatesToForm(boutique),
+      fulfilment: fulfilmentToForm(boutique),
       freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
       codEnabled: boutique.cod_enabled ?? false,
       codFee: boutique.cod_fee != null ? String(boutique.cod_fee) : '0',
@@ -110,6 +114,8 @@ export function Settings() {
     if (form.whatsapp.trim() && !PHONE_RE.test(form.whatsapp.trim())) next.whatsapp = 'Enter a 10-digit WhatsApp number';
     if (form.workingDays.length === 0) next.workingDays = 'Pick at least one working day';
     if (form.deliveryAvailable && !form.deliveryAreas.trim()) next.deliveryAreas = 'List the areas you deliver to';
+    const badFulfilment = validateFulfilment(form.fulfilment);
+    if (badFulfilment) next.fulfilment = badFulfilment;
     if (!form.codEnabled && !form.onlinePaymentEnabled) next.codEnabled = 'Enable at least one payment method';
     if (Object.keys(next).length) {
       setErrors(next);
@@ -130,6 +136,7 @@ export function Settings() {
       delivery_available: form.deliveryAvailable,
       delivery_areas: form.deliveryAreas.trim(),
       ...zoneRatesToPatch(form.rates),
+      ...fulfilmentToPatch(form.fulfilment),
       free_delivery_over: Number(form.freeDeliveryOver || 0),
       cod_enabled: form.codEnabled,
       cod_fee: Number(form.codFee || 0),
@@ -238,6 +245,10 @@ export function Settings() {
               />
             </>
           )}
+        </SectionCard>
+
+        <SectionCard title="Dispatch & returns" subtitle="What buyers are promised on every product you list.">
+          <FulfilmentCard value={form.fulfilment} onChange={(next) => set('fulfilment', next)} error={errors.fulfilment} />
         </SectionCard>
 
         {parcel && (

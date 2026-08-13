@@ -45,8 +45,13 @@ deployed to Vercel.
    (local + district only), `cod_fee`, `cod_max_order`. The buyer's pincode
    picks the band via `resolveZone` (`src/lib/deliveryZone.ts`), mirrored by
    `zoneFor` in `api/_pricing.js`; both read district/state from the lazily
-   filled `pincodes` table so they cannot disagree. Don't add a delivery fee to
-   the admin console; nothing reads the old platform columns.
+   filled `pincodes` table so they cannot disagree. Dispatch time and the
+   change-of-mind return window are the seller's too (0078:
+   `dispatch_days_min/max`, `return_window_days`) — the platform still owns the
+   30-day cover for a faulty item, and transit time. Don't add a delivery fee or
+   a returns promise to the admin console; nothing reads the old platform
+   columns, and `platform_settings.return_window_days` is now only the default
+   for a NEW shop.
 4. **Colours are `--ag-*` CSS variables, never literal hex.** The app has a full
    light/dark theme; a hardcoded colour breaks dark mode. See `src/lib/tokens.ts`.
 5. **`boutiques` cannot be read with `select('*')`** — column-level grants since

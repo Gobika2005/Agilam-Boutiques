@@ -30,14 +30,12 @@ import { fetchReviewsForBoutique, type BoutiqueReviewRow } from '@/data/reviews'
 const TONE_BG = ['#F4D6E2', '#E7D9F0', '#D6E4F0', 'var(--ag-gold-border)', '#D9F0E4', '#F0D9D9'];
 const starsFor = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-/** Shown before the buyer asks for the rest. Enough to be evidence, short
- *  enough that the product grid above it is still the page. */
-const PREVIEW_COUNT = 4;
-
 export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
   const { data, loading } = useAsync(() => fetchReviewsForBoutique(boutiqueId), [boutiqueId]);
   const { productById } = useCatalog();
-  const [expanded, setExpanded] = useState(false);
+  /** Cards the reader has opened out. Per card, not one flag for the rail —
+   *  expanding every review at once would make the row unreadable. */
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
 
   const reviews = useMemo<BoutiqueReviewRow[]>(() => data ?? [], [data]);
 
@@ -63,9 +61,9 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
 
   if (loading) {
     return (
-      <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:18px;')}>
-        {[0, 1].map((i) => (
-          <span key={i} className="agx-shimmer" style={css('display:block;height:96px;border-radius:16px;')} />
+      <div style={css('display:flex;gap:12px;margin-top:18px;overflow:hidden;')}>
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="agx-shimmer" style={css('display:block;flex:none;width:min(78vw,300px);height:172px;border-radius:16px;')} />
         ))}
       </div>
     );
@@ -85,8 +83,6 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
       </div>
     );
   }
-
-  const shown = expanded ? reviews : reviews.slice(0, PREVIEW_COUNT);
 
   return (
     <>
@@ -122,16 +118,36 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
         </div>
       </div>
 
-      <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:14px;')}>
-        {shown.map((rv) => {
+      {/*
+        A rail, not a column.
+
+        Reviews sat under a product grid that is itself several screens long, so
+        a vertical list meant the page kept going and going — the reader had to
+        scroll past everything to reach the end of the page at all. Side by side,
+        the whole section is one screen tall however many reviews there are, and
+        reading them is a sideways flick rather than a commitment.
+
+        `overflow-y:visible` matters: a horizontal scroller with the default
+        `auto` on the cross axis clips the card shadows and adds a phantom
+        vertical scrollbar on some Androids.
+      */}
+      <div
+        className="agx-scroll"
+        style={css('display:flex;align-items:flex-start;gap:12px;margin-top:14px;overflow-x:auto;overflow-y:visible;padding-bottom:6px;scroll-snap-type:x proximity;')}
+      >
+        {reviews.map((rv) => {
           const name = rv.author_name?.trim() || 'MangaiMart buyer';
           const tone = TONE_BG[Math.abs(name.charCodeAt(0)) % TONE_BG.length];
           // The piece it is about. Looked up in the catalogue so the card can
           // link to it; the joined title is the fallback when the product has
           // since been delisted, which still reads correctly.
           const product = productById(rv.product_id);
+          const open = !!openIds[rv.id];
           return (
-            <div key={rv.id} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}>
+            <div
+              key={rv.id}
+              style={css('flex:none;width:min(78vw,300px);scroll-snap-align:start;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}
+            >
               <div style={css('display:flex;align-items:center;gap:12px;')}>
                 <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
@@ -168,13 +184,34 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
                 </div>
               )}
 
-              {rv.body && <div style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.body}</div>}
+              {rv.body && (
+                <>
+                  <div
+                    className={open ? undefined : 'agx-review-body'}
+                    style={css('color:var(--ag-ink-2);font-size:13.5px;line-height:1.6;margin-top:10px;')}
+                  >
+                    {rv.body}
+                  </div>
+                  {/* Offered on length rather than on measured overflow: a
+                      ResizeObserver per card to hide a link that costs one line
+                      is not worth the work, and ~200 characters is reliably
+                      past four clamped lines at this width. */}
+                  {rv.body.length > 200 && (
+                    <button
+                      onClick={() => setOpenIds((m) => ({ ...m, [rv.id]: !open }))}
+                      style={css('margin-top:6px;padding:0;border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+                    >
+                      {open ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </>
+              )}
 
               {rv.images?.length > 0 && (
                 <div style={css('display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;')}>
                   {rv.images.map((src) => (
-                    <a key={src} href={src} target="_blank" rel="noreferrer noopener" style={css('display:block;width:64px;height:64px;border-radius:11px;overflow:hidden;flex:none;')}>
-                      <img src={imageUrl(src, 192)} alt="Photo from a buyer's review" width={64} height={64} loading="lazy" decoding="async" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
+                    <a key={src} href={src} target="_blank" rel="noreferrer noopener" style={css('display:block;width:56px;height:56px;border-radius:11px;overflow:hidden;flex:none;')}>
+                      <img src={imageUrl(src, 168)} alt="Photo from a buyer's review" width={56} height={56} loading="lazy" decoding="async" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
                     </a>
                   ))}
                 </div>
@@ -187,25 +224,18 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
                     <span style={css('font-weight:800;font-size:12px;color:var(--ag-crimson);')}>Reply from the boutique</span>
                     {rv.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:11px;')}>· {timeAgo(rv.seller_reply_at)}</span>}
                   </div>
-                  <div style={css('color:var(--ag-ink-2);font-size:13px;line-height:1.6;margin-top:6px;')}>{rv.seller_reply}</div>
+                  <div
+                    className={open ? undefined : 'agx-review-body'}
+                    style={css('color:var(--ag-ink-2);font-size:13px;line-height:1.6;margin-top:6px;')}
+                  >
+                    {rv.seller_reply}
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
       </div>
-
-      {/* Expands in place rather than navigating: there is no per-boutique
-          reviews page, and inventing one for a list already in memory would
-          cost a round trip to show the same rows. */}
-      {reviews.length > PREVIEW_COUNT && (
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          style={css('width:100%;margin-top:12px;padding:13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;')}
-        >
-          {expanded ? 'Show fewer reviews' : `Read all ${reviews.length} reviews`}
-        </button>
-      )}
     </>
   );
 }

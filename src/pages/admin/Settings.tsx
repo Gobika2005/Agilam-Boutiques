@@ -13,17 +13,23 @@ import { Card, ConfirmDialog, GhostButton, Icon, T } from '@/components/admin/ki
 type NumField = { key: keyof PlatformSettings; label: string; help: string; prefix?: string; suffix?: string };
 
 /**
- * Delivery and cash-on-delivery are no longer set here.
+ * Fulfilment terms are no longer set here.
  *
  * "Standard shipping", "Free delivery over", "COD fee" and "COD order cap" used
  * to be four fields on this page. They belong to the boutique that packs the
  * parcel and collects the cash, not to the marketplace, so since migration 0076
- * each seller sets their own in the seller console (Settings → Delivery /
- * Payments accepted) and the buyer is charged per boutique. Re-adding them here
- * would have no effect: nothing reads those columns any more.
+ * each seller sets their own in the seller console and the buyer is charged per
+ * boutique. Re-adding them here would have no effect: nothing reads those
+ * columns any more.
  *
- * What is left is genuinely platform-wide — the commission the marketplace
- * takes, the returns window it publishes, and how long a payout is held.
+ * `return_window_days` survived, but its meaning changed with migration 0078:
+ * it is now only the STARTING value for a newly-created boutique. Each shop
+ * then sets its own, and the shop's number is what the product page shows and
+ * what `request_return()` enforces — editing this field changes nothing for a
+ * shop that already exists.
+ *
+ * What is left is genuinely platform-wide: the commission the marketplace
+ * takes, how long a payout is held and the payout promise.
  */
 const SECTIONS: { title: string; icon: string; fields: NumField[] }[] = [
   {
@@ -35,7 +41,7 @@ const SECTIONS: { title: string; icon: string; fields: NumField[] }[] = [
   {
     title: 'Returns & payouts', icon: 'event_repeat',
     fields: [
-      { key: 'return_window_days', label: 'Return window', help: 'Days a buyer can request a return.', suffix: 'days' },
+      { key: 'return_window_days', label: 'Default return window', help: 'Starting value for a NEW boutique. Each shop sets its own afterwards, and that is what buyers are shown and what returns are checked against.', suffix: 'days' },
       { key: 'payout_hold_days', label: 'Payout hold', help: 'Hold window before an automatic seller transfer.', suffix: 'days' },
       { key: 'payout_sla_hours', label: 'Payout promise', help: 'Hours after delivery within which a seller is paid. Shown to sellers and used to flag an overdue payout.', suffix: 'hours' },
     ],
@@ -125,11 +131,12 @@ export function Settings() {
           <div style={css('font-weight:800;font-size:15px;')}>Delivery & cash on delivery</div>
         </div>
         <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.7;`)}>
-          Each boutique sets its own delivery charge, free-delivery threshold, cash-handling
-          fee and COD cap in its own console — the shop that packs the parcel and collects the
-          cash is the one that prices it. Buyers are charged per boutique, and each order stores
-          the fees it carried. The platform-wide switch for turning COD off everywhere is on the
-          Deliveries page.
+          Each boutique sets its own delivery charges (priced by distance), free-delivery
+          threshold, cash-handling fee, COD cap, dispatch time and change-of-mind return window
+          in its own console — the shop that packs the parcel and collects the cash is the one
+          that prices and promises it. Buyers are charged per boutique, and each order stores the
+          fees it carried. Two things stay ours: the 30-day cover for a faulty or wrong item, and
+          the platform-wide switch for turning COD off everywhere, on the Deliveries page.
         </div>
       </Card>
 
