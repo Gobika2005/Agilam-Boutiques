@@ -99,6 +99,7 @@ export function ChatView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const probe = useChatProbeEnabled();
 
   // Flag the whole app as "in a chat" while this full-screen surface is mounted,
@@ -285,6 +286,29 @@ export function ChatView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [thread]);
 
+  /**
+   * Publish the composer's real height as `--ag-composer-h`.
+   *
+   * It is anchored over the bottom of the column rather than stacked after it
+   * (see `.agx-chat-composer`), so the thread has to reserve its height or the
+   * newest message hides behind it. Measured rather than hard-coded because the
+   * bar is not a fixed size: the textarea grows with the draft up to ~120px, and
+   * the seller's quick-reply chips add a whole row on top while the draft is
+   * empty. A constant would be wrong in both directions.
+   */
+  useEffect(() => {
+    const el = composerRef.current;
+    const root = rootRef.current;
+    if (!el || !root) return;
+    const publish = () =>
+      root.style.setProperty('--ag-composer-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+    publish();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Grow the composer with the draft, up to a few lines, then let it scroll.
   useEffect(() => {
     const el = inputRef.current;
@@ -335,7 +359,7 @@ export function ChatView({
           how a column like this ends up taller than its own box. Filling the
           flex line instead needs no basis at all, and `min-height:0` is what
           lets the thread inside scroll rather than push the composer out. */}
-      <div style={css('max-width:900px;width:100%;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;')}>
+      <div style={css('position:relative;max-width:900px;width:100%;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
@@ -358,7 +382,17 @@ export function ChatView({
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="agx-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:9px;')}>
+        {/* The composer is anchored over the bottom of this column rather than
+            stacked after it (see `.agx-chat-composer`), so the thread reserves
+            its measured height as padding — otherwise the newest message, the
+            one you actually want to read, sits behind the bar. The 76px
+            fallback is roughly one empty field, used only for the first frame
+            before the observer reports. */}
+        <div
+          ref={scrollRef}
+          className="agx-scroll"
+          style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px calc(8px + var(--ag-composer-h,76px));display:flex;flex-direction:column;gap:9px;')}
+        >
           {pending && thread.length === 0 && (
             <div style={css('margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--ag-muted-soft);font-size:13px;font-weight:600;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>chat</span>Starting your chat…
@@ -459,7 +493,7 @@ export function ChatView({
           nav dock and the iOS home indicator (see `.agx-chat-composer`). The
           field is a textarea so a long message wraps instead of scrolling
           sideways inside a one-line input; Enter sends, Shift+Enter breaks. */}
-      <div className="agx-chat-composer">
+      <div ref={composerRef} className="agx-chat-composer">
         {live && !draft.trim() && quickReplies && quickReplies.length > 0 && (
           <div className="agx-scroll" style={css('display:flex;gap:7px;overflow-x:auto;padding:0 2px 8px;')}>
             {quickReplies.map((qr) => (
