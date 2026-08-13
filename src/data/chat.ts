@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { readGuest } from '@/lib/buyerDetails';
+import { IMAGE_MARKER, imagePreview, parseImageMessage } from '@/lib/chatPhoto';
 import type { ConversationWithPeer, MessageRow } from './types';
 
 /**
@@ -98,6 +99,17 @@ export function messagePreview(body: string): string {
   if (product) return `🛍️ ${product.title}`;
   const order = parseOrderCard(body);
   if (order) return `🧾 ${order.orderId} · ${order.title}`;
+  const image = parseImageMessage(body);
+  if (image) return imagePreview(image);
+
+  // A body that only *looks* like a card — a marker with unparseable JSON
+  // behind it — must still never surface raw. Without these three lines the
+  // inbox would show `@@IMAGE@@{not json` verbatim, which is the exact failure
+  // `message_preview()` guards against in SQL (migrations 0055 and 0079). The
+  // wording matches that function's, so the list and the notification agree.
+  if (body.startsWith(IMAGE_MARKER)) return '📷 Photo';
+  if (body.startsWith(PRODUCT_MARKER)) return 'Shared a product';
+  if (body.startsWith(ORDER_MARKER)) return 'Shared an order';
   return body;
 }
 

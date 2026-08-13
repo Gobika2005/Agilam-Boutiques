@@ -6,6 +6,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 type CustomerGroup = {
   key: string;
@@ -31,7 +32,8 @@ export function Customers() {
   const { boutique } = useMyBoutique();
   const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
   const [open, setOpen] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  // Seeded from `?q=` so a customer picked in the global search lands filtered.
+  const [search, setSearch] = useSeededSearch();
 
   const groups = useMemo<CustomerGroup[]>(() => {
     const map = new Map<string, CustomerGroup>();

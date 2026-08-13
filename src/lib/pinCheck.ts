@@ -1,13 +1,19 @@
-import { VAGUE_ACCURACY_M, type PlaceAtCoords } from '@/lib/geolocate';
+import { type PlaceAtCoords } from '@/lib/geolocate';
 import { namesAgree } from '@/lib/nameMatch';
 
 /**
- * Deciding whether a map pin can plausibly be the shop the seller described.
+ * Deciding whether a map link can plausibly point at the shop the seller
+ * described.
  *
  * Pure, and kept out of the component that renders it so the rules can be read
  * — and exercised — on their own. The wording lives here too: the severity and
  * the sentence are one decision, and splitting them is how you end up with a
  * red icon over reassuring text.
+ *
+ * This only ever runs on a link that CARRIES coordinates (`?q=12.9,80.2`,
+ * `@12.9,80.2`). A shortened `maps.app.goo.gl` link carries none, and then there
+ * is nothing to check — the link is simply saved. Best-effort by design: the
+ * check catches the obvious mistake, it does not gate the save.
  */
 
 /** The address the seller typed, which the pin is checked against. */
@@ -21,7 +27,7 @@ export type ExpectedPlace = {
 export type PinNote = { tone: 'good' | 'warn' | 'bad'; text: string };
 
 /**
- * What to tell the seller about the pin we just took.
+ * What to tell the seller about the link they just pasted.
  *
  * Built around what this geocoder actually answers with in India, which is not
  * what you would guess: `postcode` comes back EMPTY for Indian coordinates, so
@@ -30,28 +36,20 @@ export type PinNote = { tone: 'good' | 'warn' | 'bad'; text: string };
  * the locality, the town and the state, so those are what this leans on, and
  * the pincode is used only on the rare point that carries one.
  *
- * The severity ladder is chosen so a false alarm is cheap and a real one is
- * loud. A wrong town on a WIDE fix is the Wi-Fi-estimate fingerprint — the
- * seller is at home on a laptop, hundreds of kilometres from the shop — and is
- * reported in red. A wrong town on a TIGHT fix is more likely a hamlet the
- * geocoder files under the nearest taluk town, so it asks rather than accuses.
- * Nothing here blocks the save: the seller knows where their shop is.
+ * The severity ladder puts the unambiguous mistakes in red and the ambiguous
+ * ones in amber. A different state or country cannot be a near-miss. A different
+ * TOWN often can: a hamlet is routinely filed under the nearest taluk town, and
+ * a false "this is not your town" on a correct link is worse than no check at
+ * all — so that one asks rather than accuses.
  */
 export function verdictForPin(
   place: PlaceAtCoords | null,
   expected: ExpectedPlace | undefined,
-  accuracyM: number,
 ): PinNote {
-  const vague = accuracyM > VAGUE_ACCURACY_M;
-  const accuracyText = accuracyM >= 1000 ? `${(accuracyM / 1000).toFixed(1)} km` : `${accuracyM} m`;
-  const vagueLine =
-    ` The fix is only accurate to about ${accuracyText}, which usually means it came from Wi-Fi rather than GPS —` +
-    ' for an exact pin, use a phone while standing in the shop.';
-
   if (!place) {
     return {
-      tone: vague ? 'warn' : 'good',
-      text: `Location saved. We could not check which area it falls in, so open the link and make sure it points at your shop.${vague ? vagueLine : ''}`,
+      tone: 'good',
+      text: 'Link saved. Open it once to make sure it lands on your shop.',
     };
   }
 
@@ -61,15 +59,14 @@ export function verdictForPin(
   if (place.countryCode && place.countryCode !== 'IN') {
     return {
       tone: 'bad',
-      text: `This pin is in ${where} (${place.countryCode}), outside India — that is not your shop. Try again from the shop, or paste a Google Maps link.`,
+      text: `This link points at ${where} (${place.countryCode}), outside India — that is not your shop. Open your shop in Google Maps and copy the link from there.`,
     };
   }
 
-  // A different state is unambiguous however tight the fix is.
   if (expected?.state && place.state && !namesAgree(expected.state, place.state)) {
     return {
       tone: 'bad',
-      text: `This pin is in ${where} — but your address says ${expected.state}. If you are not at the shop right now, don’t save this: use a phone at the shop, or paste a Google Maps link.`,
+      text: `This link points at ${where} — but your address says ${expected.state}. Open your own shop in Google Maps and copy that link instead.`,
     };
   }
 
@@ -81,15 +78,10 @@ export function verdictForPin(
     !typedPlaces.some((t) => foundPlaces.some((f) => namesAgree(t, f)));
 
   if (namesDisagree) {
-    return vague
-      ? {
-        tone: 'bad',
-        text: `This pin is at ${where}, ${accuracyText} wide — but your address says ${typedWhere}. That is a Wi-Fi estimate of where this device is, not your shop. Don’t save it: use a phone at the shop, or paste a Google Maps link.`,
-      }
-      : {
-        tone: 'warn',
-        text: `Pinned at ${where}, which does not look like ${typedWhere}. Open the link and check it lands on your shop.`,
-      };
+    return {
+      tone: 'warn',
+      text: `This link points at ${where}, which does not look like ${typedWhere}. Open it and check it lands on your shop.`,
+    };
   }
 
   // Only reached where the geocoder gave a postcode at all — uncommon in India.
@@ -98,10 +90,9 @@ export function verdictForPin(
   if (typedPin.length === 6 && foundPin.length === 6 && typedPin !== foundPin) {
     return {
       tone: 'warn',
-      text: `Pinned at ${where}, but under pincode ${foundPin} rather than the ${typedPin} you entered. Fine if your shop is near the boundary — otherwise check it.${vague ? vagueLine : ''}`,
+      text: `Points at ${where}, but under pincode ${foundPin} rather than the ${typedPin} you entered. Fine if your shop is near the boundary — otherwise check it.`,
     };
   }
 
-  if (vague) return { tone: 'warn' as const, text: `Pinned at ${where}, matching your address.${vagueLine}` };
-  return { tone: 'good', text: `Pinned at ${where} — matches the address you entered.` };
+  return { tone: 'good', text: `Points at ${where} — matches the address you entered.` };
 }

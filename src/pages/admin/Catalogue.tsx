@@ -12,6 +12,7 @@ import {
 } from '@/data/taxonomy';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 /**
  * Catalogue vocabulary — the words the whole marketplace shops by.
@@ -137,7 +138,7 @@ export function Catalogue() {
   const { data, loading, reload } = useAsync(() => fetchAllTaxonomy(), []);
 
   const [kind, setKind] = useState<'all' | TaxonomyKind>('all');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useSeededSearch();
   const [review, setReview] = useState<WithBoutique | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [busy, setBusy] = useState(false);

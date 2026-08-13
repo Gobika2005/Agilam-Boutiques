@@ -20,6 +20,8 @@ import {
   type CreativeInput,
 } from '@/data/ads';
 import type { AdStatus, AdPlacementCode, AdSubjectType } from '@/types/database';
+import { SearchInput } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 // Terminal states carry no creative to fix; everything else is admin-editable.
 const ADMIN_EDITABLE: AdStatus[] = ['pending_payment', 'pending_review', 'changes_requested', 'scheduled', 'live', 'paused'];
@@ -63,6 +65,7 @@ export function Ads() {
   const { showToast } = useShop();
   const [tab, setTab] = useState<'campaigns' | 'rates'>('campaigns');
   const [statusFilter, setStatusFilter] = useState<AdStatus | 'all'>('all');
+  const [search, setSearch] = useSeededSearch();
 
   // Fetch every campaign and filter client-side on the *effective* status, so a
   // live-but-expired ad falls under "Ended" (not "Live") the moment its window
@@ -73,8 +76,17 @@ export function Ads() {
   const rows = useMemo(() => {
     const withEff = (campaigns ?? []).map((c) => ({ c, status: effectiveAdStatus(c) }));
     const shown = statusFilter === 'all' ? withEff : withEff.filter((r) => r.status === statusFilter);
-    return shown.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
-  }, [campaigns, statusFilter]);
+    const q = search.trim().toLowerCase();
+    const matched = !q
+      ? shown
+      : shown.filter(
+          ({ c }) =>
+            (c.headline ?? '').toLowerCase().includes(q) ||
+            (c.boutique?.name ?? '').toLowerCase().includes(q) ||
+            c.placement_code.toLowerCase().includes(q),
+        );
+    return matched.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
+  }, [campaigns, statusFilter, search]);
 
   // Revenue = every campaign that has actually been paid and not refunded.
   const summary = useMemo(() => {
@@ -181,6 +193,9 @@ export function Ads() {
 
       {tab === 'campaigns' && (
         <>
+          <div style={css('display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;')}>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search headline, boutique or placement…" />
+          </div>
           <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;')}>
             {FILTERS.map((f) => {
               const on = statusFilter === f.key;

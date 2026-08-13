@@ -12,6 +12,7 @@ import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 import { buildCollections } from '@/lib/collections';
+import { shopPath } from '@/lib/searchParams';
 import { sameTerm } from '@/lib/vocabulary';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { useLiveAds } from '@/hooks/useLiveAds';
@@ -206,11 +207,15 @@ export function Home() {
    * isn't the way buyers reach them.
    */
   const openCategory = (name: string) => {
-    setQuery('');
     const isOccasion =
       !PRODUCTS.some((p) => sameTerm(p.cat, name)) && PRODUCTS.some((p) => sameTerm(p.occasion, name));
-    setFilters({ ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) });
-    navigate('/shop');
+    const next = { ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) };
+    setQuery('');
+    setFilters(next);
+    // The filter goes in the URL, not just in context — see `shopPath`. Setting
+    // the state as well is what stops a frame of unfiltered grid before the
+    // page reads the address.
+    navigate(shopPath({ filters: next }));
   };
 
   /**
@@ -223,7 +228,7 @@ export function Home() {
   const openShopUnfiltered = () => {
     setQuery('');
     setFilters(DEFAULT_FILTERS);
-    navigate('/shop');
+    navigate(shopPath());
   };
   const openProduct = (id: string) => navigate(`/products/${id}`);
   const openBoutique = (id: string) => navigate(`/boutique/${id}`);

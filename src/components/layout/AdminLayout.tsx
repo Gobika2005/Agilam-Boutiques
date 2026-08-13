@@ -1,5 +1,7 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { GlobalSearchBox } from '@/components/search/GlobalSearchBox';
+import { ADMIN_SOURCES, type AdminCtx } from '@/lib/search/adminSources';
 import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
 import { useTheme } from '@/state/ThemeContext';
@@ -32,11 +34,16 @@ const NAV = [
  *  nav. They still need a title, so they are resolved alongside NAV. */
 const OFF_NAV = [
   { label: 'Notifications', icon: 'notifications', to: '/admin/notifications', title: 'Notifications', sub: 'Alerts across the marketplace' },
+  { label: 'Search', icon: 'search', to: '/admin/search', title: 'Search', sub: 'Everything the console can find' },
 ];
+
+/** Stable object identity — the search hook keys its effect on this. */
+const ADMIN_CTX: AdminCtx = {};
 
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   // The buyer AppShell renders the global toast, but admin pages live outside it,
@@ -50,6 +57,10 @@ export function AdminLayout() {
     NAV.find((n) => location.pathname.startsWith(n.to)) ??
     OFF_NAV.find((n) => location.pathname.startsWith(n.to)) ??
     NAV[0];
+
+  // On the results page the header field should show the term it is displaying,
+  // so editing it reads as refining the same search rather than starting over.
+  const headerTerm = location.pathname.startsWith('/admin/search') ? (params.get('q') ?? '') : '';
 
   const logout = async () => {
     await signOut();
@@ -111,10 +122,35 @@ export function AdminLayout() {
               <div style={css('color:var(--ag-muted);font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{active.sub}</div>
             </div>
             <div style={css('display:flex;align-items:center;gap:14px;flex:none;')}>
-              <div className="agx-admin-search agx-field" style={css('display:flex;align-items:center;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:0 12px;height:40px;width:220px;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
-                <input placeholder="Search…" style={css('border:none;background:none;flex:1;font-size:13px;min-width:0;color:var(--ag-ink);')} />
-              </div>
+              {/* Was an uncontrolled <input> wired to nothing — it looked like a
+                  search box and had never searched anything. It now runs the
+                  console's twelve sources (orders, users, boutiques, products,
+                  coupons, refunds, payouts, expenses, reviews, ads, catalogue
+                  terms and the pages themselves) against the database. */}
+              <GlobalSearchBox
+                className="agx-admin-search"
+                variant="compact"
+                sources={ADMIN_SOURCES}
+                ctx={ADMIN_CTX}
+                resultsPath="/admin/search"
+                recentKey="admin"
+                placeholder="Search orders, users, boutiques…"
+                ariaLabel="Search the admin console"
+                initialTerm={headerTerm}
+              />
+              {/* Phones get the icon + full-screen sheet instead; the header has
+                  no room for a field once the title has it. */}
+              <GlobalSearchBox
+                className="agx-console-search-icon"
+                variant="icon"
+                sources={ADMIN_SOURCES}
+                ctx={ADMIN_CTX}
+                resultsPath="/admin/search"
+                recentKey="admin"
+                placeholder="Search orders, users, boutiques, payouts…"
+                ariaLabel="Search the admin console"
+                initialTerm={headerTerm}
+              />
               <button
                 onClick={toggleTheme}
                 title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}

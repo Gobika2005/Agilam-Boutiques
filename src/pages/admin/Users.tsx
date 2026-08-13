@@ -41,6 +41,7 @@ import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
 import type { Role } from '@/types/database';
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const PAGE_SIZE = 12;
 const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
@@ -76,7 +77,7 @@ function UserDirectory() {
   const { showToast } = useShop();
   const { profile } = useAuth();
   const [page, setPage] = useState(0);
-  const [rawSearch, setRawSearch] = useState('');
+  const [rawSearch, setRawSearch] = useSeededSearch();
   const search = useDebounced(rawSearch, 300);
   const [role, setRole] = useState<'all' | Role>('all');
   const [status, setStatus] = useState<'all' | 'active' | 'blocked' | 'deleted'>('all');

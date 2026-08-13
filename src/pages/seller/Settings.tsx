@@ -34,7 +34,7 @@ const EMPTY: Form = {
   instagram: '', mapUrl: '', lat: '', lng: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
-  codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
+  codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
 
@@ -79,7 +79,7 @@ export function Settings() {
       deliveryAreas: boutique.delivery_areas ?? '',
       rates: zoneRatesToForm(boutique),
       freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
-      codEnabled: boutique.cod_enabled ?? true,
+      codEnabled: boutique.cod_enabled ?? false,
       codFee: boutique.cod_fee != null ? String(boutique.cod_fee) : '0',
       codMaxOrder: boutique.cod_max_order != null ? String(boutique.cod_max_order) : '0',
       onlinePaymentEnabled: boutique.online_payment_enabled ?? true,
@@ -269,7 +269,7 @@ export function Settings() {
         )}
 
         <SectionCard title="Payments accepted">
-          <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
+          <Toggle label="Cash on delivery" description="Off by default. Turn it on only if you are willing to send stock before it is paid for" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
           {form.codEnabled && (
             <Row>
               <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />

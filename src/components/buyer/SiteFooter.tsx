@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
+import { shopPath } from '@/lib/searchParams';
 import { COMPANY, COMPANY_ADDRESS_LINE, CONTACT_LINKS } from '@/data/company';
 import { InstagramIcon, FacebookIcon, YouTubeIcon, WhatsAppIcon } from '@/components/ui/SocialIcons';
 
@@ -49,13 +50,16 @@ export function SiteFooter() {
   const { setFilters, setQuery } = useShop();
 
   // Footer shop links land on a clean results grid rather than inheriting
-  // whatever filters the buyer left behind on a previous screen.
+  // whatever filters the buyer left behind on a previous screen. The sort rides
+  // in the URL: `Results` adopts the address on mount, so a bare `/shop` would
+  // have reset "Best sellers" back to Latest the moment it opened — see
+  // `shopPath`.
   const goShop = (to: string, sort?: string) => {
-    if (to === '/shop') {
-      setQuery('');
-      setFilters({ ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort });
-    }
-    navigate(to);
+    if (to !== '/shop') return navigate(to);
+    const filters = { ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort };
+    setQuery('');
+    setFilters(filters);
+    navigate(shopPath({ filters }));
   };
 
   const col = (title: string, children: React.ReactNode) => (

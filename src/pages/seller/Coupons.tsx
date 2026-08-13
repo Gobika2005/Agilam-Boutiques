@@ -14,6 +14,8 @@ import {
 } from '@/lib/couponForm';
 import { isExpired } from '@/lib/pricing';
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
+import { SeededTermChip } from '@/components/search/SeededTermChip';
 
 /**
  * Seller coupons — a boutique's own discount codes.
@@ -45,13 +47,18 @@ export function Coupons() {
   const { data: activeAll } = useAsync(() => fetchActiveCoupons(), []);
   const platformOffers = useMemo(() => (activeAll ?? []).filter((c) => !c.boutique_id), [activeAll]);
 
+  const [seeded, setSeeded] = useSeededSearch();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (boutiqueLoading) return <FullscreenLoader />;
 
-  const rows = mine ?? [];
+  // A `?q=` arrives when the global search picked one of these coupons.
+  const q = seeded.trim().toLowerCase();
+  const rows = q
+    ? (mine ?? []).filter((c) => c.code.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q))
+    : (mine ?? []);
 
   const openNew = () => setEditing({ id: null, input: emptyCouponInput(boutiqueId ?? null), errors: {} });
   const openEdit = (c: CouponRow) => setEditing({ id: c.id, input: couponInputFromRow(c), errors: {} });
@@ -145,6 +152,7 @@ export function Coupons() {
               <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>Create a code to bring buyers back to your boutique.</div>
             </div>
           )}
+          <SeededTermChip term={seeded} onClear={() => setSeeded('')} />
           {rows.map((c) => {
             const expired = isExpired(c);
             return (

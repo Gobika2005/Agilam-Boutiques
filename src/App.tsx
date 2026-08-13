@@ -156,6 +156,7 @@ const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast'
 const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
 const Expenses = lazyNamed(() => import('@/pages/admin/Expenses'), 'Expenses');
 const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveries');
+const AdminSearch = lazyNamed(() => import('@/pages/admin/AdminSearch'), 'AdminSearch');
 const Feedback = lazyNamed(() => import('@/pages/admin/Feedback'), 'Feedback');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
 
@@ -402,6 +403,8 @@ export default function App() {
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="audit" element={<Audit />} />
         <Route path="settings" element={<AdminSettings />} />
+        {/* "See all results" from the header search box. */}
+        <Route path="search" element={<AdminSearch />} />
       </Route>
 
       </Routes>

@@ -116,7 +116,7 @@ const EMPTY: Form = {
   categories: [], gstNumber: '', businessReg: '', yearsInBusiness: '',
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
-  codEnabled: true, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
+  codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
 
@@ -400,7 +400,7 @@ export function SellerOnboarding() {
           deliveryAreas: row.delivery_areas ?? '',
           rates: zoneRatesToForm(row),
           freeDeliveryOver: row.free_delivery_over != null ? String(row.free_delivery_over) : '0',
-          codEnabled: row.cod_enabled ?? true,
+          codEnabled: row.cod_enabled ?? false,
           codFee: row.cod_fee != null ? String(row.cod_fee) : '0',
           codMaxOrder: row.cod_max_order != null ? String(row.cod_max_order) : '0',
           onlinePaymentEnabled: row.online_payment_enabled ?? true,
@@ -926,7 +926,7 @@ export function SellerOnboarding() {
             </SectionCard>
 
             <SectionCard title="Payments accepted">
-              <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
+              <Toggle label="Cash on delivery" description="Off by default. Turn it on only if you are willing to send stock before it is paid for" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
               {form.codEnabled && (
                 <Row>
                   <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />

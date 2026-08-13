@@ -145,6 +145,11 @@ select:-webkit-autofill {
    frame on every tap reads as jank, not as progress. */
 @keyframes agx-route-spin { to { transform: rotate(360deg); } }
 @keyframes agx-route-in { from { opacity: 0; } to { opacity: 1; } }
+/* Spins an icon glyph in place — the chat composer's attach button while a
+   photo uploads. Reuses the rotation above rather than declaring a second one.
+   `inline-block` because a bare <span> cannot be transformed. */
+.agx-spin { display: inline-block; animation: agx-route-spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .agx-spin { animation: none; } }
 .agx-route-spinner {
   width: 26px; height: 26px; border-radius: 50%;
   border: 2.5px solid var(--ag-border); border-top-color: var(--ag-crimson);
@@ -153,6 +158,16 @@ select:-webkit-autofill {
 @media (prefers-reduced-motion: reduce) {
   .agx-route-spinner { animation: agx-route-in .2s ease .22s both; }
 }
+/* ---------- global search ----------
+   The in-field "still querying" ring. Sized in the component; only the spin
+   lives here, reusing the rotation above rather than declaring a third one. */
+.agx-search-spin { animation: agx-route-spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .agx-search-spin { animation: none; } }
+/* Hover has to match the keyboard highlight, and the highlight is a theme token
+   rather than a literal — the old buyer dropdown hardcoded #FCF3F7, which read
+   as a white bar against the dark theme. */
+.agx-search-row:hover { background: var(--ag-surface-2) !important; }
+
 .agx-app { width: 100%; max-width: 1440px; margin: 0 auto; }
 .agx-nav-scroll { overflow-x: auto; }
 /* ---------- catalogue grids ----------
@@ -615,12 +630,18 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
    dashboard grids collapse column counts as the viewport narrows. Kept as media
    classes (like agx-pgrid / agx-sd-stats) so the pages stay inline-styled. */
 .agx-admin-tabbar { display: none; }
+/* The header field on desktop, an icon that opens the search sheet on phones —
+   the same swap the storefront makes. Previously the field was simply hidden
+   below 900px, which left the mobile console with no search at all. */
+.agx-admin-search { width: 220px; flex: none; }
+.agx-console-search-icon { display: none !important; }
 @media (max-width: 900px) {
   .agx-admin-sidebar { display: none !important; }
   .agx-admin-main { padding-left: 16px !important; padding-right: 16px !important; padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
   .agx-admin-header { padding: 14px 16px !important; }
   .agx-admin-header-title { font-size: 21px !important; }
   .agx-admin-search { display: none !important; }
+  .agx-console-search-icon { display: flex !important; }
   .agx-admin-tabbar {
     display: flex;
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;

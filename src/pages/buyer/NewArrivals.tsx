@@ -14,6 +14,7 @@ import {
   ShowMore,
 } from '@/components/buyer/DiscoveryPage';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
+import { shopPath } from '@/lib/searchParams';
 import { useCatalog } from '@/state/CatalogContext';
 import { newArrivals, daysSince, NEW_ARRIVAL_DAYS } from '@/lib/ranking';
 import type { Product } from '@/data/demo';
@@ -132,7 +133,7 @@ export function NewArrivals() {
           In stock only
         </button>
         <button
-          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Latest' }); navigate('/shop'); }}
+          onClick={() => { const f = { ...DEFAULT_FILTERS, sort: 'Latest' }; setQuery(''); setFilters(f); navigate(shopPath({ filters: f })); }}
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Browse the full catalogue

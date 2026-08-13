@@ -15,8 +15,9 @@ import { useIfscLookup } from '@/hooks/useIfscLookup';
 import { CopyRow } from '@/components/admin/CopyRow';
 import {
   T, Card, StatCard, DataTable, StatusPill, Avatar, GhostButton, ConfirmDialog, Drawer, Field, EmptyState,
-  BulkBar, type Column,
+  BulkBar, SearchInput, type Column,
 } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 /** Signed money: keeps a real minus for the "seller owes us" case. */
@@ -56,6 +57,7 @@ export function Payments() {
   const slaHours = settings?.payout_sla_hours ?? 8;
   const now = useMinuteTick();
 
+  const [search, setSearch] = useSeededSearch();
   const [selected, setSelected] = useState<PayoutSummary | null>(null);
   const [confirm, setConfirm] = useState<PayoutSummary | null>(null);
   const [note, setNote] = useState('');
@@ -105,6 +107,13 @@ export function Payments() {
   const rows = [...(summaries ?? [])].sort((a, b) =>
     (a.net < 0 ? 1 : 0) - (b.net < 0 ? 1 : 0) || Math.abs(b.net) - Math.abs(a.net),
   );
+  // Only the settlement table narrows to the search — the tiles, the totals and
+  // "select all" must keep counting every outstanding boutique, or filtering the
+  // view would silently change what a bulk payout pays.
+  const visibleRows = search.trim()
+    ? rows.filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : rows;
+
   const totalPayable = rows.reduce((s, r) => s + Math.max(r.net, 0), 0);
   const totalOwedToUs = rows.reduce((s, r) => s + Math.max(-r.net, 0), 0);
   const unsettledCommission = rows.reduce((s, r) => s + r.prepaidCommission + r.codCommission, 0);
@@ -366,6 +375,9 @@ export function Payments() {
 
       {/* Awaiting settlement */}
       <div>
+        <div style={css('margin-bottom:10px;max-width:340px;')}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search boutique…" />
+        </div>
         <div style={css('display:flex;align-items:baseline;gap:9px;margin-bottom:12px;')}>
           <span style={css('font-weight:800;font-size:15px;')}>Awaiting settlement</span>
           {/* The tiles above count payables only, so a table of "owes us" rows
@@ -384,7 +396,7 @@ export function Payments() {
         </BulkBar>
         <DataTable
           columns={columns}
-          rows={rows}
+          rows={visibleRows}
           loading={loading}
           getId={(r) => r.boutique_id}
           selectable

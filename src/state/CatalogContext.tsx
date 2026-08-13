@@ -109,7 +109,7 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     desc: b.description,
     image: b.cover_url ?? '',
     logo: b.logo_url ?? '',
-    codEnabled: b.cod_enabled ?? true,
+    codEnabled: b.cod_enabled ?? false,
     createdAt: b.created_at,
     unitsSold: b.units_sold ?? 0,
     ordersCount: b.orders_count ?? 0,

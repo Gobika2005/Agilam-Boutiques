@@ -1,8 +1,12 @@
+import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell, type TabDef } from './AppShell';
 import { NotificationBellMenu, useUnreadMessageCount } from '@/components/notifications/NotificationBellMenu';
 import { ProfileMenu } from '@/components/seller/ProfileMenu';
+import { GlobalSearchBox } from '@/components/search/GlobalSearchBox';
+import { SELLER_SOURCES } from '@/lib/search/sellerSources';
 import { css } from '@/lib/css';
+import { useAuth } from '@/auth/AuthContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import type { BoutiqueStatus } from '@/data/types';
 
@@ -55,19 +59,41 @@ const BANNERS: Record<
   },
 };
 
-/** Seller AppBar actions: global search + the notification bell. */
+/**
+ * Seller AppBar actions: global search + the notification bell.
+ *
+ * The search icon used to be a plain link to `/seller/search` — a full page
+ * navigation before you had typed a character, and no way to search from the
+ * header at all on a desktop-width window. It is now the shared search box:
+ * suggestions in a dropdown as you type, and `/seller/search` reserved for
+ * "see everything".
+ */
 function SellerHeaderActions() {
-  const navigate = useNavigate();
+  // The owner id, not the boutique: it is already in AuthContext, so mounting
+  // the search box on every seller screen costs no extra query. The sources
+  // resolve the boutique themselves, once, on the first search.
+  const { profile } = useAuth();
+  const { pathname, search } = useLocation();
+  const ctx = useMemo(() => ({ ownerId: profile?.id ?? null }), [profile?.id]);
+  const headerTerm = pathname.startsWith('/seller/search') ? (new URLSearchParams(search).get('q') ?? '') : '';
+
+  const shared = {
+    sources: SELLER_SOURCES,
+    ctx,
+    resultsPath: '/seller/search',
+    recentKey: 'seller',
+    placeholder: 'Search products, orders, customers…',
+    ariaLabel: 'Search your boutique',
+    initialTerm: headerTerm,
+  } as const;
+
   return (
     <>
-      <button
-        onClick={() => navigate('/seller/search')}
-        aria-label="Search"
-        title="Search"
-        style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -16px rgba(107,20,54,.7);')}
-      >
-        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;color:var(--ag-crimson);")}>search</span>
-      </button>
+      {/* The shell's own breakpoint classes, not new ones: this is the same
+          header the storefront uses, so the field/icon swap has to happen at
+          exactly the width the wordmark and avatar already swap at. */}
+      <GlobalSearchBox {...shared} className="agx-only-desktop agx-search-desktop" variant="compact" />
+      <GlobalSearchBox {...shared} className="agx-only-mobile" variant="icon" />
       <NotificationBellMenu viewAllTo="/seller/notifications" orderBasePath="/seller" />
     </>
   );

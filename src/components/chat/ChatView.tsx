@@ -17,6 +17,13 @@ import {
   subscribeToPresence,
   subscribeToReadReceipt,
 } from '@/data/chat';
+import {
+  CHAT_PHOTO_ACCEPT,
+  encodeImageMessage,
+  parseImageMessage,
+  signChatPhoto,
+  uploadChatPhoto,
+} from '@/lib/chatPhoto';
 import { TONES, fmt } from '@/data/demo';
 
 type Bubble = { id?: string; sender: string; text: string; time: string; createdAt: string };
@@ -106,6 +113,19 @@ export function ChatView({
   // from any staff/owner account, so on the seller side "mine" is every bubble
   // that isn't the buyer's — not just ones matching this logged-in seller.
   const [buyerId, setBuyerId] = useState<string | null>(null);
+  /**
+   * Signed URLs for the photos in this thread, keyed by stored path.
+   *
+   * The bucket is private (migration 0079), so a bubble cannot render until its
+   * object has been signed. They are cached here for the life of the screen —
+   * the links last an hour, and re-signing on every render would be a request
+   * per photo per scroll.
+   */
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  /** The photo opened full screen, if any. */
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -331,6 +351,8 @@ export function ChatView({
     if (!focusOnOpen || !live || !loaded || !conversationId) return;
     if (autoFocusedFor.current === conversationId) return;
 
+    // A card is context the app posted, not something anybody said — but a
+    // photo is: someone opened the picker and chose it. It counts as started.
     const conversationStarted = thread.some(
       (b) => !parseProductCard(b.text) && !parseOrderCard(b.text),
     );
@@ -377,6 +399,54 @@ export function ChatView({
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, [draft]);
+
+  /**
+   * Sign any photo in the thread we have not signed yet.
+   *
+   * Runs off the thread rather than at render so a message arriving over
+   * realtime is picked up too. Failures are left unsigned deliberately: the
+   * bubble keeps its shimmer, which is the honest state for "we could not get
+   * you a link", and the next thread update retries.
+   */
+  useEffect(() => {
+    const pendingPaths = thread
+      .map((b) => parseImageMessage(b.text)?.path)
+      .filter((p): p is string => !!p && !photoUrls[p]);
+    if (pendingPaths.length === 0) return;
+
+    let active = true;
+    void Promise.all(
+      [...new Set(pendingPaths)].map(async (path) => [path, await signChatPhoto(path)] as const),
+    ).then((pairs) => {
+      if (!active) return;
+      const next: Record<string, string> = {};
+      for (const [path, url] of pairs) if (url) next[path] = url;
+      if (Object.keys(next).length) setPhotoUrls((prev) => ({ ...prev, ...next }));
+    });
+    return () => { active = false; };
+  }, [thread, photoUrls]);
+
+  /**
+   * Attach a photo: downscale and strip EXIF on the device, upload to the
+   * conversation's own folder, then post the message that points at it.
+   *
+   * Any text already typed rides along as the caption, which is how every
+   * messenger behaves — and it saves a second bubble for "this one in green".
+   */
+  const attachPhoto = async (file: File) => {
+    if (!live || !conversationId || !senderId || uploading) return;
+    setUploading(true);
+    const caption = draft.trim();
+    try {
+      const img = await uploadChatPhoto(conversationId, file);
+      await sendMessage(conversationId, senderId, encodeImageMessage(caption ? { ...img, caption } : img));
+      setDraft('');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not send that photo');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const send = async () => {
     const text = draft.trim();
@@ -531,6 +601,52 @@ export function ChatView({
               </div>
             );
           }
+          const photo = parseImageMessage(c.text);
+          if (photo) {
+            const src = photoUrls[photo.path];
+            // The box is reserved from the stored dimensions, so the thread does
+            // not jump as each signed URL resolves and the picture paints.
+            const ratio = photo.w && photo.h ? photo.w / photo.h : 3 / 4;
+            return (
+              <div
+                key={c.id ?? i}
+                style={css(`max-width:72%;width:240px;align-self:${me ? 'flex-end' : 'flex-start'};background:${me ? 'linear-gradient(135deg,#E8558A,#B02454 88%)' : 'var(--ag-surface)'};border:${me ? 'none' : '1px solid var(--ag-border)'};border-radius:${me ? '18px 18px 5px 18px' : '18px 18px 18px 5px'};overflow:hidden;box-shadow:${me ? '0 10px 22px -14px rgba(176,36,84,.85)' : '0 8px 20px -16px rgba(107,20,54,.5)'};`)}
+              >
+                <button
+                  onClick={() => src && setViewing(src)}
+                  aria-label={photo.caption ? `Open photo: ${photo.caption}` : 'Open photo'}
+                  disabled={!src}
+                  style={css(`display:block;width:100%;aspect-ratio:${ratio};padding:0;border:none;background:var(--ag-surface-2);cursor:${src ? 'zoom-in' : 'default'};position:relative;`)}
+                >
+                  {src ? (
+                    <img
+                      src={src}
+                      alt={photo.caption || 'Photo shared in this conversation'}
+                      style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;')}
+                    />
+                  ) : (
+                    // Signing is a round trip. A shimmer at the right shape
+                    // beats a grey box that might be a failure.
+                    <span className="agx-shimmer" style={css('position:absolute;inset:0;display:block;')} />
+                  )}
+                </button>
+                <div style={css(`display:flex;align-items:center;justify-content:flex-end;gap:3px;padding:5px 10px 6px;`)}>
+                  {photo.caption && (
+                    <span style={css(`flex:1;min-width:0;text-align:left;font-size:13px;line-height:1.4;color:${me ? '#fff' : 'var(--ag-ink)'};`)}>{photo.caption}</span>
+                  )}
+                  <span style={css(`font-size:9.5px;color:${me ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};font-weight:600;`)}>{c.time}</span>
+                  {me && (
+                    <span aria-hidden="true"
+                      aria-label={peerReadAt && c.createdAt <= peerReadAt ? 'Read' : 'Sent'}
+                      style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${peerReadAt && c.createdAt <= peerReadAt ? '#7FE0FF' : 'rgba(255,255,255,.75)'};`)}
+                    >
+                      done_all
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          }
           return (
             <div
               key={c.id ?? i}
@@ -581,14 +697,36 @@ export function ChatView({
             There is also nothing left to blur: the bar behind it is opaque
             because it sits over the scrolling thread. */}
         <div className="agx-field" style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 12px 24px -18px var(--ag-shadow);')}>
+          {/* The picker itself. Hidden rather than styled, because a file input
+              cannot be made to match the composer and every browser draws its
+              own; the button beside it is the real control. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={CHAT_PHOTO_ACCEPT}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Cleared before the upload so choosing the same photo twice in a
+              // row still fires a change event.
+              e.target.value = '';
+              if (file) void attachPhoto(file);
+            }}
+            style={css('display:none;')}
+          />
           <button
-            onClick={() => showToast('Photo sharing is coming soon')}
-            disabled={!live}
-            aria-label="Attach a photo"
+            onClick={() => fileRef.current?.click()}
+            disabled={!live || uploading}
+            aria-label={uploading ? 'Sending photo' : 'Attach a photo'}
             className="agx-chat-attach"
-            style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:var(--ag-surface-2);cursor:${live ? 'pointer' : 'not-allowed'};opacity:${live ? 1 : 0.5};align-items:center;justify-content:center;`)}
+            style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:var(--ag-surface-2);cursor:${live && !uploading ? 'pointer' : 'not-allowed'};opacity:${live && !uploading ? 1 : 0.5};align-items:center;justify-content:center;`)}
           >
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:21px;")}>add_photo_alternate</span>
+            <span
+              aria-hidden="true"
+              className={uploading ? 'agx-spin' : undefined}
+              style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:21px;")}
+            >
+              {uploading ? 'progress_activity' : 'add_photo_alternate'}
+            </span>
           </button>
           <textarea
             ref={inputRef}
@@ -617,6 +755,34 @@ export function ChatView({
         </div>
       </div>
       </div>
+
+      {/* Full-screen photo. Deliberately plain: no zoom-pan, no gallery, no
+          download button. The bubble is 240px wide and the one thing a reader
+          needs is to see the whole picture — and a download button on a private
+          object would be the one control that hands the file to anything that
+          can read the filesystem. */}
+      {viewing && (
+        <div
+          onClick={() => setViewing(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo"
+          style={css('position:fixed;inset:0;z-index:200;background:rgba(12,4,8,.94);display:flex;align-items:center;justify-content:center;padding:20px;animation:agx-fade .18s ease;')}
+        >
+          <img
+            src={viewing}
+            alt="Photo shared in this conversation"
+            style={css('max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;')}
+          />
+          <button
+            onClick={() => setViewing(null)}
+            aria-label="Close photo"
+            style={css('position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.16);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          >
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>close</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

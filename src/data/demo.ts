@@ -94,7 +94,10 @@ export type Boutique = {
    * Whether this boutique takes cash on delivery (its store setting). Checkout
    * offers COD only when every boutique in the bag accepts it; the server
    * re-checks the same flag, so this is for the buyer's benefit, not security.
-   * Undefined on older rows, which are treated as accepting.
+   *
+   * Cash is opt-in: unset reads as NOT accepting, matching the column default
+   * from migration 0066 and the seller forms. An unpaid order that leaves the
+   * shop is the seller's risk, so it is never assumed on their behalf.
    */
   codEnabled?: boolean;
   /** When the boutique row was created — the denominator of its sales rate. */

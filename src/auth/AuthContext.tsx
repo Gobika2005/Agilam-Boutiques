@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { resetSellerSearchScope } from '@/lib/search/sellerSources';
 import type { Role } from '@/types/database';
 
 type Profile = {
@@ -233,6 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
+    // The seller search caches which boutique the signed-in user owns, in a
+    // module variable that outlives the React tree. Left alone, the next account
+    // signed in on this device would search the previous seller's shop until the
+    // tab was reloaded.
+    resetSellerSearchScope();
   }
 
   async function refreshProfile() {

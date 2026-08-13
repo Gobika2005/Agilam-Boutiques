@@ -6,7 +6,8 @@ import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { fetchRefunds, setOrderRefunded, isRefundCandidate, moneyCollected, type RefundRow } from '@/data/admin';
 import { logAdminAction } from '@/data/activityLog';
-import { StatCard, Select, DataTable, StatusPill, GhostButton, ConfirmDialog, Avatar, T, type Column } from '@/components/admin/kit';
+import { StatCard, Select, SearchInput, DataTable, StatusPill, GhostButton, ConfirmDialog, Avatar, T, type Column } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const compactInr = (n: number) =>
   n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmtInr(n);
@@ -17,7 +18,11 @@ export function Refunds() {
   const { data, loading, reload } = useAsync(() => fetchRefunds(), []);
   const { showToast } = useShop();
   const { profile } = useAuth();
-  const [filter, setFilter] = useState<Filter>('candidates');
+  const [search, setSearch] = useSeededSearch();
+  // A refund arrived at from the global search is, by definition, already
+  // refunded — so landing on the default "Awaiting refund" tab would hide the
+  // very row that was picked. A seeded term opens on All instead.
+  const [filter, setFilter] = useState<Filter>(() => (search ? 'all' : 'candidates'));
   const [target, setTarget] = useState<RefundRow | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,12 +40,18 @@ export function Refunds() {
   const unpaid = all.filter(isUnpaidWriteOff);
 
   const rows = useMemo(() => {
-    if (filter === 'refunded') return refundedList;
-    if (filter === 'candidates') return candidates;
-    if (filter === 'unpaid') return unpaid;
-    return all;
+    const base =
+      filter === 'refunded' ? refundedList : filter === 'candidates' ? candidates : filter === 'unpaid' ? unpaid : all;
+    const q = search.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(
+      (r) =>
+        r.order_number.toLowerCase().includes(q) ||
+        r.name.toLowerCase().includes(q) ||
+        r.boutique.toLowerCase().includes(q),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, filter]);
+  }, [all, filter, search]);
 
   const confirmToggle = async () => {
     if (!target) return;
@@ -122,6 +133,7 @@ export function Refunds() {
       </div>
 
       <div style={css('display:flex;gap:10px;flex-wrap:wrap;align-items:center;')}>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search order #, buyer or boutique…" />
         <Select value={filter} onChange={(v) => setFilter(v as Filter)} options={[
           { value: 'candidates', label: `Awaiting refund (${candidates.length})` },
           { value: 'unpaid', label: `Unpaid write-offs (${unpaid.length})` },

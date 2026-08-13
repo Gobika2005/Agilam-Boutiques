@@ -13,6 +13,7 @@ import {
   DataTable, SearchInput, Select, StatusPill, Avatar, Pagination,
   Drawer, Field, EmptyState, Icon, GhostButton, T, type Column,
 } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const PAGE_SIZE = 12;
 const FLOW: OrderWithDetails['status'][] = ['pending', 'shipped', 'delivered'];
@@ -21,7 +22,9 @@ export function OrdersAdmin() {
   const { showToast } = useShop();
   const { profile } = useAuth();
   const [page, setPage] = useState(0);
-  const [rawSearch, setRawSearch] = useState('');
+  // Seeded from `?q=` so a hit picked in the global search lands here already
+  // filtered to it.
+  const [rawSearch, setRawSearch] = useSeededSearch();
   const search = useDebounced(rawSearch, 300);
   const [status, setStatus] = useState<'all' | 'pending' | 'shipped' | 'delivered' | 'rejected' | 'refunded'>('all');
   const [openId, setOpenId] = useState<string | null>(null);

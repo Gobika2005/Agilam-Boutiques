@@ -16,6 +16,7 @@ import {
   DataTable, SearchInput, Select, IconButton, StatusPill, Avatar, Pagination,
   BulkBar, GhostButton, ConfirmDialog, Drawer, Icon, EmptyState, T, type Column,
 } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const PAGE_SIZE = 12;
 const STATUS_OPTS: { value: ProductStatus; label: string }[] = [
@@ -26,7 +27,7 @@ export function ProductsAdmin() {
   const { showToast } = useShop();
   const { profile } = useAuth();
   const [page, setPage] = useState(0);
-  const [rawSearch, setRawSearch] = useState('');
+  const [rawSearch, setRawSearch] = useSeededSearch();
   const search = useDebounced(rawSearch, 300);
   const [status, setStatus] = useState<'all' | ProductStatus | 'deleted'>('all');
   const [lowStock, setLowStock] = useState(false);
