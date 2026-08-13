@@ -575,6 +575,14 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   bottom: 0;
   z-index: 1;
   padding: 8px 12px 6px;
+  /* Opaque, for two independent reasons. It sits OVER the scrolling thread now,
+     so a transparent bar would have messages sliding through it. And a
+     translucent bar here is what made the whole thing disappear until you
+     scrolled — see the note on the field inside it. `--ag-surface-2` is the
+     colour the root's radial gradient already resolves to at its bottom edge,
+     so the bar blends rather than banding. */
+  background: var(--ag-surface-2);
+  border-top: 1px solid var(--ag-border-soft);
 }
 .agx-chat-attach { display: flex; }
 @media (max-width:640px){ .agx-chat-composer { padding: 6px 8px 4px; } }

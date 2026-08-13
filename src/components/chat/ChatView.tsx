@@ -521,7 +521,15 @@ export function ChatView({
             ))}
           </div>
         )}
-        <div className="agx-field" style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-frost-strong);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 22px 44px -22px var(--ag-shadow);')}>
+        {/* Opaque, and deliberately NOT `backdrop-filter`.
+            A blurred, semi-transparent field is what made this bar vanish: a
+            backdrop-filtered element inside a position:fixed, overflow:hidden
+            ancestor is a long-standing Chrome compositing failure — it paints
+            as nothing at all until a scroll forces a repaint, which is exactly
+            how this presented ("scroll down and back up and it appears").
+            There is also nothing left to blur: the bar behind it is opaque
+            because it sits over the scrolling thread. */}
+        <div className="agx-field" style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 12px 24px -18px var(--ag-shadow);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}
             disabled={!live}
