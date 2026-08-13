@@ -59,6 +59,7 @@ export function ChatView({
   onProductClick,
   onOrderClick,
   quickReplies,
+  focusOnOpen,
 }: {
   name: string;
   /** The other participant's photo — the boutique's shop logo on the buyer
@@ -78,11 +79,21 @@ export function ChatView({
   /** Seller-only canned openers, shown as tappable chips while the draft is
    *  empty. Tapping one loads it into the composer to edit or send. */
   quickReplies?: string[];
+  /**
+   * Put the cursor in the composer when the conversation is brand new, so the
+   * keyboard comes up ready to type.
+   *
+   * Buyer-side only. A seller works through a queue and reads before replying,
+   * so a keyboard opening on every conversation they tap would fight them.
+   */
+  focusOnOpen?: boolean;
 }) {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const live = Boolean(conversationId && senderId);
   const [thread, setThread] = useState<Bubble[]>([]);
+  /** Whether the first read of this conversation has finished, either way. */
+  const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   // Whether the *other* participant is joined to this conversation right now,
@@ -216,11 +227,18 @@ export function ChatView({
     if (!conversationId || !senderId) return;
     let active = true;
     setThread([]);
+    setLoaded(false);
     fetchMessages(conversationId)
       .then((rows) => {
         if (active) setThread(rows.map((m) => ({ id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at })));
       })
-      .catch(() => {});
+      .catch(() => {})
+      // Settled either way: "we know what is in this thread" is what the
+      // open-with-the-keyboard decision below waits on, and a failed read still
+      // answers that question — it just answers "nothing".
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
     const unsub = subscribeToMessages(conversationId, (m) => {
       setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at }]));
     });
@@ -292,6 +310,48 @@ export function ChatView({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [thread]);
+
+  /**
+   * Open a brand-new conversation ready to type.
+   *
+   * Someone opening a chat that has never been used came here to say something,
+   * so put the cursor in the field. Someone returning to a thread with replies
+   * in it came to READ, and a keyboard covering half the conversation would be
+   * in the way — so this fires only while there is nothing to read.
+   *
+   * "Nothing to read" is not `thread.length === 0`. Arriving from a product's
+   * Chat button posts an enquiry card automatically (see the buyer's Chat
+   * page), so the most focus-worthy case of all — she tapped Chat on a saree
+   * and wants to ask about it — already has a message in it. What matters is
+   * whether a person has typed anything, so the cards are discounted.
+   *
+   * Deliberately best-effort. Browsers only raise the on-screen keyboard for a
+   * focus that happens inside a user gesture: iOS Safari will move the caret
+   * and show no keyboard, and Android Chrome varies with how the page was
+   * reached. That is why this is a convenience layered on a composer that is
+   * already visible and usable on its own, and never the thing that makes it
+   * reachable.
+   */
+  const autoFocusedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusOnOpen || !live || !loaded || !conversationId) return;
+    if (autoFocusedFor.current === conversationId) return;
+
+    const conversationStarted = thread.some(
+      (b) => !parseProductCard(b.text) && !parseOrderCard(b.text),
+    );
+    if (conversationStarted) {
+      // Mark it anyway: this thread is not a candidate, and re-checking on
+      // every incoming message is pointless.
+      autoFocusedFor.current = conversationId;
+      return;
+    }
+
+    autoFocusedFor.current = conversationId;
+    // After paint, so the field exists and the scroll position has settled.
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [focusOnOpen, live, loaded, conversationId, thread]);
 
   /**
    * Publish the composer's real height as `--ag-composer-h`.

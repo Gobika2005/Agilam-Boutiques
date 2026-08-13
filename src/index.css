@@ -409,10 +409,18 @@ body.agx-chatting .agx-toast {
    dock covers the composer, and the buyer's floating bag (z-index 45, above the
    chat's 40) parked itself on the quick replies and the field. Retire both for
    as long as a chat is on screen. */
+/* The chat is a full-screen surface, so nothing that floats over the storefront
+   belongs on top of it. The launch notice is included for a concrete reason as
+   well as a tidy one: it is `position:fixed; z-index:70` against the chat's 40,
+   so it floats above the conversation — and being buyer-only, like everything
+   in this list, it is invisible on the seller's identical chat screen, which is
+   what made this class of bug look like "the buyer chat is broken". */
 body:has(.agx-chat-root) .agx-dock,
 body.agx-chatting .agx-dock,
 body:has(.agx-chat-root) .agx-fab-bag,
-body.agx-chatting .agx-fab-bag { display: none !important; }
+body.agx-chatting .agx-fab-bag,
+body:has(.agx-chat-root) .agx-launch-notice,
+body.agx-chatting .agx-launch-notice { display: none !important; }
 
 /* Full-screen photo viewer. The dock and the PDP action bar are fixed siblings
    of the viewer, not children, so they kept painting over the photo — the

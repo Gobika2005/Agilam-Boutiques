@@ -159,6 +159,10 @@ export function Chat() {
         pending={(authLoading || catalogLoading || (signedIn && !live)) && !failed}
         onProductClick={(pid) => navigate(`/products/${pid}`)}
         onOrderClick={(oid) => navigate(`/orders/${encodeURIComponent(oid)}/track`)}
+        // A buyer opening a conversation nobody has spoken in yet came here to
+        // ask something, so open it ready to type. Not passed on the seller
+        // side: they work through a queue and read before replying.
+        focusOnOpen
       />
       {!authLoading && !signedIn && (
         <AccountSheet

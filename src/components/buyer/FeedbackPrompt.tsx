@@ -18,8 +18,19 @@ import { useBuyerOrders } from '@/hooks/useBuyerOrders';
 import { useOrderFeedback } from '@/hooks/useOrderFeedback';
 import { OrderFeedbackSheet } from './OrderFeedbackSheet';
 
-/** Routes where interrupting would be actively unhelpful. */
-const NEVER_ON = ['/checkout', '/payment', '/cart', '/order-confirmation', '/auth'];
+/**
+ * Routes where interrupting would be actively unhelpful.
+ *
+ * `/chat` is here because a conversation is a live exchange with a person, and
+ * a modal about last week's order is the wrong thing to put in front of someone
+ * mid-sentence. It also caused a bug worth remembering: this sheet is
+ * `position:fixed; inset:0; z-index:70` and the chat surface is `z-index:40`, so
+ * the backdrop covered the composer completely. It reads as "the chat has no
+ * message bar" — and because tapping the backdrop dismisses the sheet, tapping
+ * where the bar should be made it appear, which made the whole thing look like
+ * an intermittent rendering fault.
+ */
+const NEVER_ON = ['/checkout', '/payment', '/cart', '/order-confirmation', '/auth', '/chat'];
 
 export function FeedbackPrompt() {
   const { pathname } = useLocation();
