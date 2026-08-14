@@ -13,6 +13,28 @@ const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'http://local
 // the whole function on cold start with no diagnosable response.
 const supabaseAdmin = serviceClient(supabaseUrl, supabaseServiceKey);
 
+/**
+ * Turn a Postgres write failure into something the admin can act on.
+ *
+ * The one that actually happens: assigning a role the database has never heard
+ * of. `profiles.role` carries a CHECK constraint listing the legal values, and
+ * every new role arrives in a numbered migration the owner applies by hand — so
+ * between deploying the code and running the SQL, the console offers a role the
+ * database will refuse. "Failed to update the user" gave no hint that the fix
+ * was a migration rather than a bug.
+ */
+function writeErrorMessage(error, fallback) {
+  const code = error?.code;
+  const detail = `${error?.message ?? ''} ${error?.details ?? ''}`;
+  if (code === '23514' && /profiles_role_check|role/i.test(detail)) {
+    return 'This role does not exist in the database yet. Apply the migration that adds it (0086 for "staff"), then try again.';
+  }
+  // A trigger refusing the change — e.g. the privilege guard in 0010/0086 —
+  // raises with a message written to be read, so pass it straight through.
+  if (code === 'P0001' && error?.message) return error.message;
+  return fallback;
+}
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -313,7 +335,7 @@ async function handleUpdate(req, res, adminId) {
 
   if (updateError) {
     console.error('[PROFILE_UPDATE_ERROR]', updateError);
-    return res.status(500).json({ error: 'Failed to update the user' });
+    return res.status(500).json({ error: writeErrorMessage(updateError, 'Failed to update the user') });
   }
 
   const roleChanged = existing.role !== role;
@@ -407,7 +429,7 @@ export default async function handler(req, res) {
 
       if (updateError) {
         console.error('[PROFILE_UPDATE_ERROR]', updateError);
-        return res.status(500).json({ error: 'Failed to update the existing user' });
+        return res.status(500).json({ error: writeErrorMessage(updateError, 'Failed to update the existing user') });
       }
 
       const promoted = existing.role !== role;

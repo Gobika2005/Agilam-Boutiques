@@ -49,7 +49,27 @@
 -- Idempotent and re-runnable in the Supabase SQL editor.
 
 -- ══ 1) The role itself ═══════════════════════════════════════════════════════
-alter table profiles drop constraint if exists profiles_role_check;
+--
+-- The constraint is auto-named `profiles_role_check` — it was declared inline in
+-- schema.sql (`role text not null check (role in (...))`) and no migration has
+-- ever renamed it. Dropped by discovery rather than by that name anyway: a
+-- `drop constraint if exists <wrong name>` is a silent no-op, and the failure it
+-- produces is baffling — the console still refuses `staff`, the migration
+-- reports success, and nothing says the two are related.
+do $$
+declare c record;
+begin
+  for c in
+    select conname from pg_constraint
+     where conrelid = 'public.profiles'::regclass
+       and contype = 'c'
+       and pg_get_constraintdef(oid) ilike '%role%'
+       and pg_get_constraintdef(oid) ilike '%buyer%'
+  loop
+    execute format('alter table profiles drop constraint %I', c.conname);
+  end loop;
+end $$;
+
 alter table profiles add constraint profiles_role_check
   check (role in ('buyer', 'seller', 'admin', 'staff'));
 
