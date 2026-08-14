@@ -1,4 +1,7 @@
-export type Role = 'buyer' | 'seller' | 'admin';
+/** `staff` is an employee: the admin console minus money, config and user
+ *  management. See migration 0086 — the console nav is filtered by
+ *  `STAFF_ROUTES` in `src/lib/staffAccess.ts`, but the real boundary is RLS. */
+export type Role = 'buyer' | 'seller' | 'admin' | 'staff';
 /**
  * Where a boutique sits in the seller lifecycle (migration 0021).
  *
@@ -1096,6 +1099,27 @@ export interface Database {
       post_board_comment: {
         Args: { p_token: string; p_voter_key: string; p_voter_name: string; p_body: string };
         Returns: string;
+      };
+      /*
+       * Staff console (migration 0086). Staff hold no RLS policy on `orders` or
+       * `profiles` — a policy cannot withhold one column, and `guest_phone` is
+       * the buyer's mobile number — so these are their only way in. Each is
+       * SECURITY DEFINER with `is_staff()` as the access check, and each masks
+       * contact details on the way out.
+       */
+      staff_orders_feed: {
+        Args: Record<string, never>;
+        /** The `SELECT` shape from `src/data/orders.ts`, phone masked. */
+        Returns: unknown;
+      };
+      staff_customer_rows: {
+        Args: Record<string, never>;
+        /** `CUSTOMER_SELECT`, with `guest_phone` hashed to keep it a grouping key. */
+        Returns: unknown;
+      };
+      staff_set_order_status: {
+        Args: { p_id: string; p_status: string };
+        Returns: unknown;
       };
     };
     Enums: Record<string, never>;

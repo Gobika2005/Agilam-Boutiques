@@ -63,7 +63,7 @@ export function esc(s) {
  * variable. They are the light-theme brand values, which is correct — email
  * has no dark-mode contract we can honour.
  */
-export function layout({ heading, intro, bodyHtml, ctaLabel, ctaHref, footerNote }) {
+export function layout({ heading, intro, bodyHtml, ctaLabel, ctaHref, footerNote, tagline }) {
   return `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -87,7 +87,7 @@ export function layout({ heading, intro, bodyHtml, ctaLabel, ctaHref, footerNote
       ${footerNote ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#775D66;">${esc(footerNote)}</p>` : ''}
       <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
         ${BRAND} — ethnic wear from verified independent boutiques.<br />
-        This is a transactional message about your order, not marketing.
+        ${esc(tagline || 'This is a transactional message about your order, not marketing.')}
       </p>
     </td></tr>
   </table>

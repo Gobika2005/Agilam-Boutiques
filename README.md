@@ -48,12 +48,12 @@ This app uses `BrowserRouter`, so the included `vercel.json` rewrite is required
 
 - `/` — splash / role entry (Buyer, Boutique Owner, or Platform Admin sign-in)
 - `/auth/signin/:role`, `/auth/signup/:role` — email + password sign in/up for buyers and sellers
-- `/admin/login` — email + password sign in for admins
+- `<console>/login` — email + password sign in for admins and staff. The console's URL segment is set per deploy by `VITE_ADMIN_PATH` and is deliberately not written down here; `/admin` is not routed at all. See `src/lib/adminPath.ts`
 - `/buyer/*` — buyer mobile web app (home, search, boutiques, product detail, wishlist, chat, profile)
   - `/buyer/inspire` — the boutique feed: new pieces from the shops you follow, with like / save / share, a size picker and add-to-bag on the card. Built straight from the catalogue — a boutique lists a piece once and it appears here, no separate posting step (requires migration `0020`)
   - `/buyer/policy/:slug` — delivery, shipping, returns, cancellation, product, privacy and terms, plus About and Help
 - `/seller/*` — boutique owner mobile web app (dashboard, products, orders, earnings, chat). Adding a product also publishes it to the Inspire feed of every buyer following the boutique.
-- `/admin/*` — desktop admin console (overview, approvals, boutiques, subscriptions, featured, customers, reports, payments, ads)
+- `<console>/*` — desktop admin console (overview, approvals, boutiques, customers, payouts, expenses, ads, coupons, settings)
 
 Role is resolved from the signed-in user's `profiles.role` row — there's no manual role switcher in the shipped app.
 

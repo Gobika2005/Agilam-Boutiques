@@ -196,7 +196,7 @@ function renderHtml(d, brief) {
 
   <p style="margin-top:26px;color:#9ca3af;font-size:11px;line-height:1.5">
     Covers ${esc(d.day)}, 00:00–24:00 IST. Cancelled orders are excluded from every money figure.
-    Commission is calculated on goods value, not order totals. Settle payouts at /admin/payments.
+    Commission is calculated on goods value, not order totals. Settle payouts in the console's Payouts screen.
   </p>
 </div>`;
 }

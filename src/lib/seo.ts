@@ -1,3 +1,5 @@
+import { ADMIN_BASE } from '@/lib/adminPath';
+
 /**
  * The one place that knows what MangaiMart's URLs are.
  *
@@ -181,6 +183,9 @@ export function canonicalUrl(path: string): string {
  * linked from an indexed page can still be indexed despite a Disallow.
  */
 export const NOINDEX_PREFIXES = [
+  // The console's real address, plus `/admin` — which no longer routes, but
+  // must stay unindexable in case anything ever links it.
+  ADMIN_BASE,
   '/admin',
   '/seller',
   '/auth',

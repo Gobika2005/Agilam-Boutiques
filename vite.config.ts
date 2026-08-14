@@ -69,6 +69,9 @@ function devApi(env: Record<string, string>): Plugin {
       pass('RESEND_API_KEY', env.RESEND_API_KEY || env.VITE_RESEND_API_KEY);
       pass('EMAIL_FROM', env.EMAIL_FROM || env.VITE_EMAIL_FROM);
       pass('APP_URL', env.APP_URL || env.VITE_APP_URL);
+      // api/_accessEmail.js builds the console sign-in link for welcome mails
+      // from this; without it a locally sent invite points at /admin/login.
+      pass('VITE_ADMIN_PATH', env.VITE_ADMIN_PATH);
       // Lets /api/run-ad-lifecycle be exercised locally (otherwise it is an inert
       // no-op with no secret configured).
       pass('AD_CRON_SECRET', env.AD_CRON_SECRET);
@@ -178,8 +181,33 @@ function iconSubset(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => {
+/**
+ * The admin console's URL segment is a deploy-time secret (`src/lib/adminPath.ts`).
+ *
+ * A missing var would fall back to `admin` and quietly publish the console at
+ * the one address everybody tries — a silent regression of the whole point. So
+ * a production build refuses to start without it. `vite dev` is exempt: local
+ * work should not need the secret.
+ */
+function requireAdminPath(env: Record<string, string>) {
+  const value = (env.VITE_ADMIN_PATH ?? '').trim().replace(/^\/+|\/+$/g, '');
+  if (!value) {
+    throw new Error(
+      'VITE_ADMIN_PATH is not set — the admin console would be published at /admin.\n' +
+        '  Set it in the Vercel project settings (and in .env for a local build).',
+    );
+  }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(value)) {
+    throw new Error(`VITE_ADMIN_PATH must be one lowercase URL segment (letters, digits, hyphens) — got "${value}".`);
+  }
+  return value;
+}
+
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  if (command === 'build') {
+    console.log(`  ✓ admin console at /${requireAdminPath(env)}`);
+  }
   return {
     plugins: [react(), devApi(env), iconSubset()],
     define: {

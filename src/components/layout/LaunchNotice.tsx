@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { isAdminPath } from '@/lib/adminPath';
 
 /**
  * A quiet "we're new" note for the public storefront.
@@ -36,7 +37,7 @@ export function LaunchNotice() {
     }
   });
 
-  const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
+  const onOperatorSurface = isAdminPath(pathname) || pathname.startsWith('/seller');
   const hidden = dismissed || onOperatorSurface;
 
   /**

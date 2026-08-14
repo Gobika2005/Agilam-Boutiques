@@ -327,8 +327,13 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
   );
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel, busy }: {
-  open: boolean; title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean;
+/**
+ * `children` is an optional slot under the message — used for the reason the
+ * admin types when blocking or deleting someone, which is quoted back to that
+ * person in their notification email.
+ */
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel, busy, children }: {
+  open: boolean; title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean; children?: ReactNode;
 }) {
   if (!open) return null;
   return (
@@ -336,6 +341,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
       <div onClick={(e) => e.stopPropagation()} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{title}</div>
         <div style={css(`color:${T.muted};font-size:13.5px;margin-top:8px;line-height:1.5;`)}>{message}</div>
+        {children}
         <div style={css('display:flex;gap:10px;margin-top:22px;')}>
           <button onClick={onCancel} disabled={busy} style={css(`flex:1;height:48px;border-radius:14px;border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:14px;cursor:pointer;`)}>Cancel</button>
           <button onClick={onConfirm} disabled={busy} style={css(`flex:1;height:48px;border-radius:14px;border:none;color:#fff;font-weight:800;font-size:14px;cursor:pointer;background:${danger ? 'linear-gradient(135deg,#E4636F,var(--ag-bad-text))' : 'linear-gradient(135deg,#D6336C,#B02454)'};`)}>{busy ? 'Working…' : confirmLabel}</button>

@@ -348,7 +348,14 @@ await check('checkout is noindex', '/checkout', [
   is('noindex meta', (o) => (o.robots || '').includes('noindex')),
   is('X-Robots-Tag', (o) => (o.xRobots || '').includes('noindex')),
 ]);
-await check('admin is noindex', '/admin/overview', [is('noindex', (o) => (o.robots || '').includes('noindex'))]);
+// The console lives at VITE_ADMIN_PATH, not /admin (src/lib/adminPath.ts). Both
+// are asserted: the real address because that is the page that exists, and the
+// old one because it must not become an indexable 404 either.
+const adminSegment = (process.env.VITE_ADMIN_PATH || 'admin').trim().replace(/^\/+|\/+$/g, '') || 'admin';
+await check('admin console is noindex', `/${adminSegment}/overview`, [is('noindex', (o) => (o.robots || '').includes('noindex'))]);
+if (adminSegment !== 'admin') {
+  await check('old /admin is noindex', '/admin/overview', [is('noindex', (o) => (o.robots || '').includes('noindex'))]);
+}
 
 /*
  * "Ask my people" boards (migration 0077).

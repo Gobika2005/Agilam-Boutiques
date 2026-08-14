@@ -54,7 +54,15 @@ const CANONICAL_HOST = (process.env.VITE_SITE_URL || "https://mangaimart.com")
 // `npm run verify:seo` are untouched by anything that keys on it.
 const VERCEL_ENV = process.env.VERCEL_ENV || "";
 const DB_TIMEOUT_MS = 1500;
+// The admin console's URL segment, mirroring src/lib/adminPath.ts. Kept OUT of
+// robots.txt on purpose — a Disallow line publishes the path to everyone who
+// reads it, which is the opposite of why it was moved off /admin. An
+// X-Robots-Tag header does the same job without announcing anything.
+const ADMIN_SEGMENT = (process.env.VITE_ADMIN_PATH || "admin").trim().replace(/^\/+|\/+$/g, "") || "admin";
 const NOINDEX_PREFIXES = [
+  `/${ADMIN_SEGMENT}`,
+  // No longer routed — the console moved — but still unindexable in case
+  // anything old links it.
   "/admin",
   "/seller",
   "/auth",

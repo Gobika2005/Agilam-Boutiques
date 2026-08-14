@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { isAdminPath } from '@/lib/adminPath';
 import { loadSettings, useSettings } from '@/data/settings';
 
 /**
@@ -28,7 +29,7 @@ export function MaintenanceNotice() {
   // routes outside it — make sure the row is requested either way.
   useEffect(() => { void loadSettings(); }, []);
 
-  const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
+  const onOperatorSurface = isAdminPath(pathname) || pathname.startsWith('/seller');
   const visible = on && !onOperatorSurface;
 
   /**

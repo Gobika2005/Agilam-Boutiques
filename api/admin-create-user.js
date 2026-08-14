@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
+import { loginPathForRole, sendAccessEmail } from './_accessEmail.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -41,12 +42,6 @@ function generateTempPassword() {
   return password;
 }
 
-function loginPathForRole(role) {
-  if (role === 'admin') return '/admin/login';
-  if (role === 'seller') return '/auth/signin/seller';
-  return '/auth/signin/buyer';
-}
-
 function buildLoginUrl(role, email) {
   const path = loginPathForRole(role);
   return `${appUrl}${path}?email=${encodeURIComponent(email)}`;
@@ -57,12 +52,14 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
     buyer: 'Buyer Account',
     seller: 'Boutique Seller',
     admin: 'Admin Panel',
+    staff: 'Staff Console',
   }[role];
 
   const roleDetail = {
     buyer: 'Curated fashion discovery, wishlists, and seamless checkout.',
     seller: 'Boutique tools for catalog management, orders, and growth.',
     admin: 'Operational visibility, approvals, and platform controls.',
+    staff: 'Orders, deliveries, approvals and moderation. Payouts, refunds and platform settings stay with the owner.',
   }[role];
 
   return {
@@ -258,6 +255,92 @@ async function authenticateAdmin(req) {
   return { ok: true, adminId: authData.user.id };
 }
 
+/**
+ * Admin edit of an existing profile — name, contact, city, address and role.
+ *
+ * This was a direct browser→Postgres UPDATE in src/data/adminUsers.ts. It moved
+ * behind the service role for one reason: a role change IS an access change, the
+ * person is entitled to be told, and only the server holds the mail key. The
+ * move has a second benefit — the write is now gated by the explicit is_admin
+ * check in authenticateAdmin() rather than by an RLS policy alone.
+ *
+ * The email goes out ONLY when the role actually changed. An admin fixing a
+ * typo in someone's city should not send them a security notice.
+ */
+async function handleUpdate(req, res, adminId) {
+  const { userId, fullName, phone, city, address, role } = req.body || {};
+
+  if (!userId || typeof userId !== 'string') {
+    return res.status(400).json({ error: 'A userId is required' });
+  }
+  if (!fullName || fullName.trim().length < 2) {
+    return res.status(400).json({ error: 'Full name required (minimum 2 characters)' });
+  }
+  if (!['buyer', 'seller', 'admin', 'staff'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+
+  const { data: existing, error: readError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, full_name, role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error('[PROFILE_READ_ERROR]', readError);
+    return res.status(500).json({ error: 'Could not load the user' });
+  }
+  if (!existing) return res.status(404).json({ error: 'User not found' });
+
+  // Same reasoning as the delete route's self-delete guard: demoting your own
+  // admin account logs you straight out of the console you are standing in, and
+  // if you were the last admin nobody can put it back.
+  if (userId === adminId && existing.role === 'admin' && role !== 'admin') {
+    return res.status(400).json({ error: 'You cannot remove your own admin access. Ask another admin to do it.' });
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from('profiles')
+    .update({
+      full_name: fullName.trim(),
+      phone: phone?.trim() || null,
+      city: city?.trim() || null,
+      address: address?.trim() || null,
+      role,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (updateError) {
+    console.error('[PROFILE_UPDATE_ERROR]', updateError);
+    return res.status(500).json({ error: 'Failed to update the user' });
+  }
+
+  const roleChanged = existing.role !== role;
+  // The profile row is already updated. A failed email is reported, never fatal.
+  const emailResult = roleChanged
+    ? await sendAccessEmail('roleChanged', {
+        to: existing.email,
+        fullName: fullName.trim() || existing.full_name,
+        role,
+        previousRole: existing.role,
+      })
+    : { ok: false };
+
+  return res.status(200).json({
+    success: true,
+    userId,
+    roleChanged,
+    previousRole: existing.role,
+    emailSent: roleChanged ? emailResult.ok : false,
+    message: !roleChanged
+      ? 'User updated.'
+      : emailResult.ok
+        ? `Role changed to ${role} — ${existing.email} has been notified by email.`
+        : `Role changed to ${role}, but the notification email could not be sent. Tell them directly.`,
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -272,6 +355,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    // The admin console's Edit drawer posts here too — same admin gate, same
+    // service-role client, different shape (a userId, not a new email).
+    if ((req.body || {}).action === 'update') {
+      return await handleUpdate(req, res, auth.adminId);
+    }
+
     const { email, fullName, phone, city, role } = req.body || {};
 
     if (!email || !isValidEmail(email)) {
@@ -280,7 +369,7 @@ export default async function handler(req, res) {
     if (!fullName || fullName.trim().length < 2) {
       return res.status(400).json({ error: 'Full name required (minimum 2 characters)' });
     }
-    if (!['buyer', 'seller', 'admin'].includes(role)) {
+    if (!['buyer', 'seller', 'admin', 'staff'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
@@ -298,7 +387,13 @@ export default async function handler(req, res) {
     // If the account already exists, don't error — assign the requested role to
     // it (so an admin can promote an existing user, e.g. to admin). We only set
     // the role and fill in any profile fields that were blank; we never reset
-    // their password, email them, or clobber details they already have.
+    // their password or clobber details they already have.
+    //
+    // We DO email them when the role actually moved. This path used to be
+    // silent, which meant the single highest-privilege action in the console —
+    // promoting an existing account to admin — was also the one nobody was told
+    // about. No temp password is involved here: they keep their own credentials,
+    // so the mail is a notice, not an invitation.
     if (existing) {
       const patch = { role, updated_at: new Date().toISOString() };
       if (!existing.full_name && normalizedName) patch.full_name = normalizedName;
@@ -315,13 +410,26 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to update the existing user' });
       }
 
+      const promoted = existing.role !== role;
+      const noticeResult = promoted
+        ? await sendAccessEmail('roleChanged', {
+            to: normalizedEmail,
+            fullName: existing.full_name || normalizedName,
+            role,
+            previousRole: existing.role,
+          })
+        : { ok: false };
+
       return res.status(200).json({
         success: true,
         userId: existing.id,
         updated: true,
-        message: existing.role === role
+        emailSent: promoted ? noticeResult.ok : false,
+        message: !promoted
           ? `${normalizedEmail} already exists with the ${role} role — no change needed.`
-          : `${normalizedEmail} already exists — role changed from ${existing.role} to ${role}.`,
+          : noticeResult.ok
+            ? `${normalizedEmail} already exists — role changed from ${existing.role} to ${role}, and they have been notified by email.`
+            : `${normalizedEmail} already exists — role changed from ${existing.role} to ${role}, but the notification email could not be sent.`,
       });
     }
 

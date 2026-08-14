@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { fmtInr } from '@/lib/tokens';
+import { ADMIN_BASE, adminPath } from '@/lib/adminPath';
 import { ilikeAny, likePattern } from './query';
 import { matchPages } from './sellerSources';
 import type { SearchHit, SearchSource } from './types';
@@ -75,7 +76,7 @@ const orders: SearchSource<AdminCtx> = {
       sub: [o.guest_name, o.boutique?.name, shortDate(o.created_at)].filter(Boolean).join(' · '),
       right: fmtInr(Number(o.total) || 0),
       icon: 'receipt_long',
-      to: `/admin/orders?q=${encodeURIComponent(o.order_number)}`,
+      to: `${ADMIN_BASE}/orders?q=${encodeURIComponent(o.order_number)}`,
     }));
   },
 };
@@ -117,7 +118,7 @@ const products: SearchSource<AdminCtx> = {
       right: fmtInr(Number(p.price) || 0),
       image: p.image_url,
       tone: p.tone ?? 0,
-      to: `/admin/products?q=${encodeURIComponent(p.title)}`,
+      to: `${ADMIN_BASE}/products?q=${encodeURIComponent(p.title)}`,
     }));
   },
 };
@@ -153,7 +154,7 @@ const users: SearchSource<AdminCtx> = {
       title: u.full_name?.trim() || u.email || 'Unnamed account',
       sub: [u.email, u.phone, u.city].filter(Boolean).join(' · ') || 'No contact on file',
       right: u.status && u.status !== 'active' ? u.status : u.role,
-      to: `/admin/users?q=${encodeURIComponent(u.full_name?.trim() || u.email || '')}`,
+      to: `${ADMIN_BASE}/users?q=${encodeURIComponent(u.full_name?.trim() || u.email || '')}`,
     }));
   },
 };
@@ -193,7 +194,7 @@ const boutiques: SearchSource<AdminCtx> = {
       right: b.status,
       logo: b.logo_url,
       tone: b.tone ?? 0,
-      to: `/admin/boutiques?q=${encodeURIComponent(b.name)}`,
+      to: `${ADMIN_BASE}/boutiques?q=${encodeURIComponent(b.name)}`,
     }));
   },
 };
@@ -237,7 +238,7 @@ const coupons: SearchSource<AdminCtx> = {
         .join(' · '),
       right: c.type === 'pct' ? `${Number(c.off)}%` : c.type === 'ship' ? 'Free delivery' : fmtInr(Number(c.off) || 0),
       icon: 'local_offer',
-      to: `/admin/coupons?q=${encodeURIComponent(c.code)}`,
+      to: `${ADMIN_BASE}/coupons?q=${encodeURIComponent(c.code)}`,
     }));
   },
 };
@@ -268,7 +269,7 @@ const refunds: SearchSource<AdminCtx> = {
       sub: [o.guest_name, o.boutique?.name].filter(Boolean).join(' · ') || 'Refunded order',
       right: fmtInr(Number(o.total) || 0),
       icon: 'currency_exchange',
-      to: `/admin/refunds?q=${encodeURIComponent(o.order_number)}`,
+      to: `${ADMIN_BASE}/refunds?q=${encodeURIComponent(o.order_number)}`,
     }));
   },
 };
@@ -308,7 +309,7 @@ const payouts: SearchSource<AdminCtx> = {
       sub: `${p.orders_count} order${p.orders_count === 1 ? '' : 's'} · ${shortDate(p.created_at)}${p.created_by_name ? ` · by ${p.created_by_name}` : ''}`,
       right: fmtInr(Number(p.amount) || 0),
       icon: 'account_balance',
-      to: `/admin/payments?q=${encodeURIComponent(p.boutique?.name ?? '')}`,
+      to: `${ADMIN_BASE}/payments?q=${encodeURIComponent(p.boutique?.name ?? '')}`,
     }));
   },
 };
@@ -344,7 +345,7 @@ const expenses: SearchSource<AdminCtx> = {
       sub: [e.vendor, e.category, shortDate(e.spent_on)].filter(Boolean).join(' · '),
       right: fmtInr(Number(e.amount) || 0),
       icon: 'savings',
-      to: `/admin/expenses?q=${encodeURIComponent(e.title)}`,
+      to: `${ADMIN_BASE}/expenses?q=${encodeURIComponent(e.title)}`,
     }));
   },
 };
@@ -381,7 +382,7 @@ const reviews: SearchSource<AdminCtx> = {
       sub: [r.author_name, r.products?.title, r.boutiques?.name].filter(Boolean).join(' · ') || 'Review',
       right: '★'.repeat(Math.max(1, Math.min(5, r.rating))),
       icon: 'reviews',
-      to: `/admin/reviews?q=${encodeURIComponent(r.author_name || r.body?.slice(0, 24) || '')}`,
+      to: `${ADMIN_BASE}/reviews?q=${encodeURIComponent(r.author_name || r.body?.slice(0, 24) || '')}`,
     }));
   },
 };
@@ -416,7 +417,7 @@ const ads: SearchSource<AdminCtx> = {
       sub: [c.boutique?.name, c.status.replace(/_/g, ' ')].filter(Boolean).join(' · '),
       right: fmtInr(Number(c.amount) || 0),
       icon: 'campaign',
-      to: `/admin/ads?q=${encodeURIComponent(c.headline?.trim() || c.boutique?.name || '')}`,
+      to: `${ADMIN_BASE}/ads?q=${encodeURIComponent(c.headline?.trim() || c.boutique?.name || '')}`,
     }));
   },
 };
@@ -444,7 +445,7 @@ const catalogue: SearchSource<AdminCtx> = {
       sub: `${t.kind} · ${t.status}`,
       right: t.status === 'pending' ? 'awaiting review' : undefined,
       icon: 'sell',
-      to: `/admin/catalogue?q=${encodeURIComponent(t.name)}`,
+      to: `${ADMIN_BASE}/catalogue?q=${encodeURIComponent(t.name)}`,
     }));
   },
 };
@@ -457,25 +458,25 @@ const catalogue: SearchSource<AdminCtx> = {
  * for Settings, "kyc" for Approvals — which the sidebar labels do not contain.
  */
 const PAGES = [
-  { title: 'Overview', sub: 'Marketplace health and trends', icon: 'dashboard', to: '/admin/overview', keywords: 'dashboard home stats revenue gmv' },
-  { title: 'Approvals', sub: 'Review and verify new boutiques', icon: 'verified', to: '/admin/approvals', keywords: 'kyc verify pending seller onboarding' },
-  { title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics', icon: 'sell', to: '/admin/catalogue', keywords: 'taxonomy category occasion fabric colour terms' },
-  { title: 'Boutiques', sub: 'All boutiques on the platform', icon: 'storefront', to: '/admin/boutiques', keywords: 'shops sellers stores' },
-  { title: 'Users', sub: 'Accounts and buyer history', icon: 'group', to: '/admin/users', keywords: 'customers accounts people buyers admins roles' },
-  { title: 'Products', sub: 'Moderation and inventory', icon: 'shopping_bag', to: '/admin/products', keywords: 'listings catalogue stock hide moderation' },
-  { title: 'Reviews', sub: 'Moderate product and boutique reviews', icon: 'reviews', to: '/admin/reviews', keywords: 'ratings stars moderation' },
-  { title: 'Orders', sub: 'Fulfilment and refunds', icon: 'receipt_long', to: '/admin/orders', keywords: 'sales purchases transactions' },
-  { title: 'Deliveries', sub: 'Disputes, stalled parcels and couriers', icon: 'local_shipping', to: '/admin/deliveries', keywords: 'courier shipping awb tracking shiprocket parcel' },
-  { title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart', icon: 'rate_review', to: '/admin/feedback', keywords: 'nps complaints suggestions' },
-  { title: 'Refunds', sub: 'Record and track order refunds', icon: 'currency_exchange', to: '/admin/refunds', keywords: 'money back returns reversal' },
-  { title: 'Seller Payouts', sub: 'Settlements after commission', icon: 'account_balance', to: '/admin/payments', keywords: 'payout settlement bank transfer razorpayx commission' },
-  { title: 'Expenses', sub: 'What the platform spends', icon: 'savings', to: '/admin/expenses', keywords: 'spend cost bills receipts vendor' },
-  { title: 'Advertisements', sub: 'Campaigns and promotions', icon: 'campaign', to: '/admin/ads', keywords: 'ads sponsored placement hero promo' },
-  { title: 'Coupons', sub: 'Platform and seller discount codes', icon: 'local_offer', to: '/admin/coupons', keywords: 'discount promo code offer voucher' },
-  { title: 'Broadcast', sub: 'Send a notification to buyers or sellers', icon: 'send', to: '/admin/broadcast', keywords: 'notification announce message push blast' },
-  { title: 'Audit Trail', sub: 'Every sensitive admin action, logged', icon: 'history', to: '/admin/audit', keywords: 'log history who did what activity' },
-  { title: 'Platform Settings', sub: 'Commission, fees and return window', icon: 'settings', to: '/admin/settings', keywords: 'commission rate returns window payout hold maintenance config' },
-  { title: 'Notifications', sub: 'Alerts across the marketplace', icon: 'notifications', to: '/admin/notifications', keywords: 'alerts bell' },
+  { title: 'Overview', sub: 'Marketplace health and trends', icon: 'dashboard', to: adminPath('overview'), keywords: 'dashboard home stats revenue gmv' },
+  { title: 'Approvals', sub: 'Review and verify new boutiques', icon: 'verified', to: adminPath('approvals'), keywords: 'kyc verify pending seller onboarding' },
+  { title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics', icon: 'sell', to: adminPath('catalogue'), keywords: 'taxonomy category occasion fabric colour terms' },
+  { title: 'Boutiques', sub: 'All boutiques on the platform', icon: 'storefront', to: adminPath('boutiques'), keywords: 'shops sellers stores' },
+  { title: 'Users', sub: 'Accounts and buyer history', icon: 'group', to: adminPath('users'), keywords: 'customers accounts people buyers admins roles' },
+  { title: 'Products', sub: 'Moderation and inventory', icon: 'shopping_bag', to: adminPath('products'), keywords: 'listings catalogue stock hide moderation' },
+  { title: 'Reviews', sub: 'Moderate product and boutique reviews', icon: 'reviews', to: adminPath('reviews'), keywords: 'ratings stars moderation' },
+  { title: 'Orders', sub: 'Fulfilment and refunds', icon: 'receipt_long', to: adminPath('orders'), keywords: 'sales purchases transactions' },
+  { title: 'Deliveries', sub: 'Disputes, stalled parcels and couriers', icon: 'local_shipping', to: adminPath('deliveries'), keywords: 'courier shipping awb tracking shiprocket parcel' },
+  { title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart', icon: 'rate_review', to: adminPath('feedback'), keywords: 'nps complaints suggestions' },
+  { title: 'Refunds', sub: 'Record and track order refunds', icon: 'currency_exchange', to: adminPath('refunds'), keywords: 'money back returns reversal' },
+  { title: 'Seller Payouts', sub: 'Settlements after commission', icon: 'account_balance', to: adminPath('payments'), keywords: 'payout settlement bank transfer razorpayx commission' },
+  { title: 'Expenses', sub: 'What the platform spends', icon: 'savings', to: adminPath('expenses'), keywords: 'spend cost bills receipts vendor' },
+  { title: 'Advertisements', sub: 'Campaigns and promotions', icon: 'campaign', to: adminPath('ads'), keywords: 'ads sponsored placement hero promo' },
+  { title: 'Coupons', sub: 'Platform and seller discount codes', icon: 'local_offer', to: adminPath('coupons'), keywords: 'discount promo code offer voucher' },
+  { title: 'Broadcast', sub: 'Send a notification to buyers or sellers', icon: 'send', to: adminPath('broadcast'), keywords: 'notification announce message push blast' },
+  { title: 'Audit Trail', sub: 'Every sensitive admin action, logged', icon: 'history', to: adminPath('audit'), keywords: 'log history who did what activity' },
+  { title: 'Platform Settings', sub: 'Commission, fees and return window', icon: 'settings', to: adminPath('settings'), keywords: 'commission rate returns window payout hold maintenance config' },
+  { title: 'Notifications', sub: 'Alerts across the marketplace', icon: 'notifications', to: adminPath('notifications'), keywords: 'alerts bell' },
 ];
 
 const pages: SearchSource<AdminCtx> = {

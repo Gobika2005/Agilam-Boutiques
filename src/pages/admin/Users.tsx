@@ -48,6 +48,7 @@ const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
   buyer: { bg: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)' },
   seller: { bg: 'var(--ag-purple-bg)', fg: '#9B7FC7' },
   admin: { bg: 'var(--ag-surface-2)', fg: '#D6336C' },
+  staff: { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' },
 };
 
 /**
@@ -83,6 +84,10 @@ function UserDirectory() {
   const [status, setStatus] = useState<'all' | 'active' | 'blocked' | 'deleted'>('all');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ user: AdminUserRow } | null>(null);
+  const [blockUser, setBlockUser] = useState<AdminUserRow | null>(null);
+  // Typed by the admin, quoted verbatim to the user in the block/close email.
+  // One field serves both dialogs — only ever one of them is open.
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createData, setCreateData] = useState<CreateUserInput>({
@@ -115,9 +120,11 @@ function UserDirectory() {
     }
     setBusy(true);
     try {
-      await updateUser(editUser.id, editData);
+      const result = await updateUser(editUser.id, editData);
       await log('user.update', editUser.id, { name: editData.fullName, role: editData.role });
-      showToast(`${editData.fullName} updated`);
+      // The server's message says whether the role moved and whether the user
+      // was emailed about it — more useful than a flat "updated".
+      showToast(editUser.role === editData.role ? `${editData.fullName} updated` : result.message);
       setEditUser(null);
       reload();
     } catch (error) {
@@ -156,15 +163,37 @@ function UserDirectory() {
       meta,
     });
 
-  const toggleBlock = async (user: AdminUserRow) => {
-    const next = user.status === 'blocked' ? 'active' : 'blocked';
+  /**
+   * Unblocking needs no explanation, so it acts immediately. Blocking opens a
+   * dialog instead — the user now receives an email about it, and "your account
+   * has been suspended" with no reason attached is the message that generates a
+   * support ticket.
+   */
+  const doUnblock = async (user: AdminUserRow) => {
     try {
-      await setUserStatus(user.id, next);
-      await log(next === 'blocked' ? 'user.block' : 'user.unblock', user.id, { name: user.full_name });
-      showToast(`${user.full_name} ${next === 'blocked' ? 'blocked' : 'unblocked'}`);
+      const result = await setUserStatus(user.id, 'active');
+      await log('user.unblock', user.id, { name: user.full_name });
+      showToast(result.message);
       reload();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Update failed');
+    }
+  };
+
+  const doBlock = async () => {
+    if (!blockUser) return;
+    setBusy(true);
+    try {
+      const result = await setUserStatus(blockUser.id, 'blocked', reason);
+      await log('user.block', blockUser.id, { name: blockUser.full_name, reason: reason.trim() || null });
+      showToast(result.message);
+      setBlockUser(null);
+      setReason('');
+      reload();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Update failed');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -172,13 +201,15 @@ function UserDirectory() {
     if (!confirm) return;
     setBusy(true);
     try {
-      const result = await deleteUserEverywhere(confirm.user.id);
+      const result = await deleteUserEverywhere(confirm.user.id, reason);
       await log(result.mode === 'archived' ? 'user.archive' : 'user.delete', confirm.user.id, {
         name: confirm.user.full_name,
         mode: result.mode,
+        reason: reason.trim() || null,
       });
       showToast(result.message);
       setConfirm(null);
+      setReason('');
       showFreshest();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Delete failed');
@@ -189,9 +220,9 @@ function UserDirectory() {
 
   const doRestore = async (user: AdminUserRow) => {
     try {
-      await restoreUser(user.id);
+      const result = await restoreUser(user.id);
       await log('user.restore', user.id, { name: user.full_name });
-      showToast(`${user.full_name} restored`);
+      showToast(result.message);
       reload();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Restore failed');
@@ -310,12 +341,27 @@ function UserDirectory() {
                   icon={user.status === 'blocked' ? 'lock_open' : 'block'}
                   tone={user.status === 'blocked' ? 'success' : 'warn'}
                   title={user.status === 'blocked' ? 'Unblock' : 'Block'}
-                  onClick={() => toggleBlock(user)}
+                  onClick={() => {
+                    if (user.status === 'blocked') {
+                      doUnblock(user);
+                    } else {
+                      setReason('');
+                      setBlockUser(user);
+                    }
+                  }}
                 />
               )}
               {/* Admins can't be deleted (change their role first); can't delete self. */}
               {user.id !== profile?.id && user.role !== 'admin' && (
-                <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirm({ user })} />
+                <IconButton
+                  icon="delete"
+                  tone="danger"
+                  title="Delete"
+                  onClick={() => {
+                    setReason('');
+                    setConfirm({ user });
+                  }}
+                />
               )}
             </>
           )}
@@ -341,6 +387,7 @@ function UserDirectory() {
             { value: 'all', label: 'All roles' },
             { value: 'buyer', label: 'Buyers' },
             { value: 'seller', label: 'Sellers' },
+            { value: 'staff', label: 'Staff' },
             { value: 'admin', label: 'Admins' },
           ]}
         />
@@ -386,6 +433,22 @@ function UserDirectory() {
       <UserDrawer id={detailId} onClose={() => setDetailId(null)} row={rows.find((row) => row.id === detailId) ?? null} />
 
       <ConfirmDialog
+        open={!!blockUser}
+        title="Block this account?"
+        message={`${blockUser?.full_name} will not be able to sign in. They are emailed about it${blockUser?.email ? ` at ${blockUser.email}` : ''}, and any reason you give below is quoted to them word for word.`}
+        confirmLabel="Block"
+        danger
+        busy={busy}
+        onConfirm={doBlock}
+        onCancel={() => {
+          setBlockUser(null);
+          setReason('');
+        }}
+      >
+        <ReasonField value={reason} onChange={setReason} placeholder="e.g. Repeated chargebacks on delivered orders" />
+      </ConfirmDialog>
+
+      <ConfirmDialog
         open={!!confirm}
         title="Delete user permanently?"
         message={`${confirm?.user.full_name} will be permanently deleted from the database, including their login. If they have orders or chat history, those records are kept and the account is archived instead. This can't be undone.`}
@@ -393,8 +456,13 @@ function UserDirectory() {
         danger
         busy={busy}
         onConfirm={doDelete}
-        onCancel={() => setConfirm(null)}
-      />
+        onCancel={() => {
+          setConfirm(null);
+          setReason('');
+        }}
+      >
+        <ReasonField value={reason} onChange={setReason} placeholder="e.g. Closed at the account holder's request" />
+      </ConfirmDialog>
 
       {credentials && (
         <div
@@ -504,6 +572,7 @@ function UserDirectory() {
             >
               <option value="buyer">Buyer</option>
               <option value="seller">Seller</option>
+              <option value="staff">Staff &mdash; console, no money or settings</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -562,6 +631,7 @@ function UserDirectory() {
             <select value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value as Role })} style={css(EDIT_FIELD + 'cursor:pointer;')}>
               <option value="buyer">Buyer</option>
               <option value="seller">Seller</option>
+              <option value="staff">Staff &mdash; console, no money or settings</option>
               <option value="admin">Admin</option>
             </select>
           </FormField>
@@ -578,6 +648,30 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
     <div>
       <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>{label}</label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * The reason an admin types when blocking or closing an account.
+ *
+ * Optional by design — the email reads perfectly well without one — but what is
+ * typed here is sent to that person verbatim, so the label says so plainly. It
+ * also lands in the admin audit log next to the action.
+ */
+function ReasonField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div style={css('margin-top:16px;text-align:left;')}>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>
+        Reason <span style={css('font-weight:600;color:var(--ag-muted);')}>(optional — the user will see this)</span>
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, 500))}
+        placeholder={placeholder}
+        rows={3}
+        style={css(EDIT_FIELD + 'resize:vertical;line-height:1.5;')}
+      />
     </div>
   );
 }

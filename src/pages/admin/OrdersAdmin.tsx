@@ -7,6 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useDebounced } from '@/hooks/useDebounced';
 import { logAdminAction } from '@/data/activityLog';
 import { fetchOrdersAdminPaged, updateOrderStatus, setOrderRefunded } from '@/data/orders';
+import { canSeePlatformMoney } from '@/lib/staffAccess';
 import type { OrderWithDetails } from '@/data/types';
 import { useSettings } from '@/data/settings';
 import {
@@ -21,6 +22,8 @@ const FLOW: OrderWithDetails['status'][] = ['pending', 'shipped', 'delivered'];
 export function OrdersAdmin() {
   const { showToast } = useShop();
   const { profile } = useAuth();
+  // Refunds and cancellations are money moving back out — the owner's call.
+  const canAct = canSeePlatformMoney(profile?.role);
   const [page, setPage] = useState(0);
   // Seeded from `?q=` so a hit picked in the global search lands here already
   // filtered to it.
@@ -122,12 +125,19 @@ export function OrdersAdmin() {
         title={open?.order_number ?? 'Order'}
         footer={open && (
           <div style={css('display:flex;gap:10px;')}>
-            {open.status !== 'rejected' && (
+            {/* Cancelling an order and marking it refunded are both refund
+                decisions — money going back out — so both stay with the owner.
+                `staff_set_order_status` refuses 'rejected' and staff hold no
+                UPDATE policy on `orders`, so these would fail anyway (0086);
+                hiding them keeps an employee from trying. */}
+            {canAct && open.status !== 'rejected' && (
               <GhostButton icon="cancel" tone="danger" onClick={() => setStatusFor(open, 'rejected')}>Cancel order</GhostButton>
             )}
-            <GhostButton icon="currency_rupee" tone={open.refunded ? 'default' : 'primary'} onClick={() => refund(open)}>
-              {open.refunded ? 'Clear refund' : 'Mark refunded'}
-            </GhostButton>
+            {canAct && (
+              <GhostButton icon="currency_rupee" tone={open.refunded ? 'default' : 'primary'} onClick={() => refund(open)}>
+                {open.refunded ? 'Clear refund' : 'Mark refunded'}
+              </GhostButton>
+            )}
           </div>
         )}
       >
@@ -139,6 +149,8 @@ export function OrdersAdmin() {
 
 function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s: OrderWithDetails['status']) => void }) {
   const { commission_pct: pct } = useSettings();
+  const { profile } = useAuth();
+  const showMoney = canSeePlatformMoney(profile?.role);
   const name = o.buyer?.full_name ?? o.guest_name ?? 'Guest';
   const phone = o.buyer?.phone ?? o.guest_phone ?? '—';
   const city = o.buyer?.city ?? o.guest_city ?? '—';
@@ -210,8 +222,13 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
             withdrawn (migration 0085) — every order since carries one. */}
         <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery (legacy)'} />
         {o.payment_id && <Field label="Payment ID" value={<span style={css('font-size:11.5px;')}>{o.payment_id}</span>} />}
+        {/* Order total stays visible for everyone — support cannot handle an
+            order without knowing what the buyer paid. The commission line is
+            what the PLATFORM earns, which is revenue, so it is admin-only. */}
         <Field label="Order total" value={fmtInr(o.total)} />
-        <Field label={`Commission (${pct}%)`} value={<span style={css('color:var(--ag-gold-text);')}>{fmtInr(o.total * (pct / 100))}</span>} />
+        {showMoney && (
+          <Field label={`Commission (${pct}%)`} value={<span style={css('color:var(--ag-gold-text);')}>{fmtInr(o.total * (pct / 100))}</span>} />
+        )}
         <Field label="Refund" value={o.refunded ? <StatusPill status="refunded" label="Refunded" /> : 'None'} />
       </div>
     </div>

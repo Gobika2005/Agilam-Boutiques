@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
-import { FullscreenLoader } from '@/auth/RequireRole';
+import { FullscreenLoader, homeFor } from '@/auth/RequireRole';
+import { isConsoleRole } from '@/lib/staffAccess';
+import { adminPath } from '@/lib/adminPath';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
@@ -29,14 +31,16 @@ export function AdminLogin() {
     setBusy(true);
     try {
       const role = await adminSignIn(email, password);
-      // Only admins may enter the console. A non-admin account (seller/buyer)
-      // that authenticates here is signed back out rather than routed elsewhere.
-      if (role !== 'admin') {
+      // Only console accounts may enter. A buyer or seller that authenticates
+      // here is signed back out rather than routed elsewhere. Staff are a
+      // console role (migration 0086) — they land on the work queue, not on
+      // Overview, which is the revenue screen and not theirs.
+      if (!isConsoleRole(role)) {
         await signOut();
         toast('This account does not have admin access.');
         return;
       }
-      navigate('/admin/overview', { replace: true });
+      navigate(homeFor(role), { replace: true });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
@@ -49,7 +53,7 @@ export function AdminLogin() {
   // who still holds a session should land in the console rather than be asked to
   // sign in to the account they are already signed in to.
   if (loading) return <FullscreenLoader />;
-  if (profile?.role === 'admin') return <Navigate to="/admin/overview" replace />;
+  if (isConsoleRole(profile?.role)) return <Navigate to={homeFor(profile?.role)} replace />;
 
   if (mode === 'reset') {
     return (
@@ -62,7 +66,7 @@ export function AdminLogin() {
         <RequestResetFields
           email={email}
           setEmail={setEmail}
-          redirectTo={`${window.location.origin}/admin/reset-password`}
+          redirectTo={`${window.location.origin}${adminPath('reset-password')}`}
         />
       </AuthModal>
     );

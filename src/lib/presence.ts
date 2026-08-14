@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { isAdminPath } from '@/lib/adminPath';
 
 /**
  * Live "who's on the site right now" presence.
@@ -69,7 +70,9 @@ export function presenceId(): string {
  */
 export function describePage(path: string): { page: string; section: PresenceSection } {
   const p = path.toLowerCase();
-  if (p.startsWith('/admin')) return { page: 'Admin console', section: 'admin' };
+  // Both addresses: the console moved to VITE_ADMIN_PATH, but `/admin` is still
+  // worth labelling — someone poking at it is exactly what this roster shows.
+  if (isAdminPath(p) || p.startsWith('/admin')) return { page: 'Admin console', section: 'admin' };
   if (p.startsWith('/seller')) return { page: 'Seller console', section: 'seller' };
   if (p.startsWith('/auth')) return { page: 'Signing in', section: 'auth' };
 

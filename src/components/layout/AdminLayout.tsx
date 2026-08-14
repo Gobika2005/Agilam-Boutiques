@@ -8,33 +8,44 @@ import { useTheme } from '@/state/ThemeContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 import { NotificationBellMenu } from '@/components/notifications/NotificationBellMenu';
+import { canOpen } from '@/lib/staffAccess';
+import { adminPath } from '@/lib/adminPath';
 
+/**
+ * `only: 'staff'` marks a tile that exists solely because an employee cannot
+ * reach the admin equivalent — the work queue standing in for Overview, and the
+ * customer directory standing in for the Users page. Admins never see them, so
+ * their sidebar is exactly what it was before migration 0086. Every other tile
+ * is filtered by `canOpen`, which reads the same list RLS was written against.
+ */
 const NAV = [
-  { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health, trends and analytics' },
-  { label: 'Approvals', icon: 'verified', to: '/admin/approvals', title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
-  { label: 'Catalogue', icon: 'sell', to: '/admin/catalogue', title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
-  { label: 'Boutiques', icon: 'storefront', to: '/admin/boutiques', title: 'Boutiques', sub: 'All boutiques on the platform' },
-  { label: 'Users', icon: 'group', to: '/admin/users', title: 'Users', sub: 'Accounts, and Customer 360° buyer history' },
-  { label: 'Products', icon: 'shopping_bag', to: '/admin/products', title: 'Products', sub: 'Moderation and inventory' },
-  { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
-  { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
-  { label: 'Deliveries', icon: 'local_shipping', to: '/admin/deliveries', title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
-  { label: 'Feedback', icon: 'rate_review', to: '/admin/feedback', title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart — private, never published' },
-  { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
-  { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
-  { label: 'Expenses', icon: 'savings', to: '/admin/expenses', title: 'Expenses', sub: 'What the platform spends, with proof attached' },
-  { label: 'Advertisements', icon: 'campaign', to: '/admin/ads', title: 'Advertisements', sub: 'Campaigns and promotions' },
-  { label: 'Coupons', icon: 'local_offer', to: '/admin/coupons', title: 'Coupons', sub: 'Platform & seller discount codes' },
-  { label: 'Broadcast', icon: 'send', to: '/admin/broadcast', title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
-  { label: 'Audit', icon: 'history', to: '/admin/audit', title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
-  { label: 'Settings', icon: 'settings', to: '/admin/settings', title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
+  { label: 'Overview', icon: 'dashboard', to: adminPath('overview'), title: 'Overview', sub: 'Marketplace health, trends and analytics' },
+  { label: 'My Work', icon: 'checklist', to: adminPath('staff'), title: 'My Work', sub: 'Everything waiting on you right now', only: 'staff' },
+  { label: 'Customers', icon: 'diversity_3', to: adminPath('customers'), title: 'Customers', sub: 'Who is buying, and how often', only: 'staff' },
+  { label: 'Approvals', icon: 'verified', to: adminPath('approvals'), title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
+  { label: 'Catalogue', icon: 'sell', to: adminPath('catalogue'), title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
+  { label: 'Boutiques', icon: 'storefront', to: adminPath('boutiques'), title: 'Boutiques', sub: 'All boutiques on the platform' },
+  { label: 'Users', icon: 'group', to: adminPath('users'), title: 'Users', sub: 'Accounts, and Customer 360° buyer history' },
+  { label: 'Products', icon: 'shopping_bag', to: adminPath('products'), title: 'Products', sub: 'Moderation and inventory' },
+  { label: 'Reviews', icon: 'reviews', to: adminPath('reviews'), title: 'Reviews', sub: 'Moderate product & boutique reviews' },
+  { label: 'Orders', icon: 'receipt_long', to: adminPath('orders'), title: 'Orders', sub: 'Fulfillment and refunds' },
+  { label: 'Deliveries', icon: 'local_shipping', to: adminPath('deliveries'), title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
+  { label: 'Feedback', icon: 'rate_review', to: adminPath('feedback'), title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart — private, never published' },
+  { label: 'Refunds', icon: 'currency_exchange', to: adminPath('refunds'), title: 'Refunds', sub: 'Record and track order refunds' },
+  { label: 'Payouts', icon: 'account_balance', to: adminPath('payments'), title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
+  { label: 'Expenses', icon: 'savings', to: adminPath('expenses'), title: 'Expenses', sub: 'What the platform spends, with proof attached' },
+  { label: 'Advertisements', icon: 'campaign', to: adminPath('ads'), title: 'Advertisements', sub: 'Campaigns and promotions' },
+  { label: 'Coupons', icon: 'local_offer', to: adminPath('coupons'), title: 'Coupons', sub: 'Platform & seller discount codes' },
+  { label: 'Broadcast', icon: 'send', to: adminPath('broadcast'), title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
+  { label: 'Audit', icon: 'history', to: adminPath('audit'), title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
+  { label: 'Settings', icon: 'settings', to: adminPath('settings'), title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
 ];
 
 /** Console routes with no sidebar tile — opened from the header bell, not the
  *  nav. They still need a title, so they are resolved alongside NAV. */
 const OFF_NAV = [
-  { label: 'Notifications', icon: 'notifications', to: '/admin/notifications', title: 'Notifications', sub: 'Alerts across the marketplace' },
-  { label: 'Search', icon: 'search', to: '/admin/search', title: 'Search', sub: 'Everything the console can find' },
+  { label: 'Notifications', icon: 'notifications', to: adminPath('notifications'), title: 'Notifications', sub: 'Alerts across the marketplace' },
+  { label: 'Search', icon: 'search', to: adminPath('search'), title: 'Search', sub: 'Everything the console can find' },
 ];
 
 /** Stable object identity — the search hook keys its effect on this. */
@@ -46,6 +57,10 @@ export function AdminLayout() {
   const [params] = useSearchParams();
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const role = profile?.role;
+  // Sidebar and mobile tab bar both render this. An admin gets NAV unchanged;
+  // an employee gets their twelve destinations plus the two stand-ins.
+  const nav = NAV.filter((n) => (n.only ? n.only === role : canOpen(role, n.to)));
   // The buyer AppShell renders the global toast, but admin pages live outside it,
   // so every showToast() on the console (create user, block, delete, errors…) was
   // silently discarded. Render it here too so admin actions give feedback.
@@ -60,7 +75,7 @@ export function AdminLayout() {
 
   // On the results page the header field should show the term it is displaying,
   // so editing it reads as refining the same search rather than starting over.
-  const headerTerm = location.pathname.startsWith('/admin/search') ? (params.get('q') ?? '') : '';
+  const headerTerm = location.pathname.startsWith(adminPath('search')) ? (params.get('q') ?? '') : '';
 
   const logout = async () => {
     await signOut();
@@ -84,11 +99,11 @@ export function AdminLayout() {
             />
             <div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>
-              <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>Admin</div>
+              <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>{role === 'staff' ? 'Staff' : 'Admin'}</div>
             </div>
           </div>
 
-          {NAV.map((a) => {
+          {nav.map((a) => {
             const on = location.pathname.startsWith(a.to);
             return (
               <button
@@ -132,7 +147,7 @@ export function AdminLayout() {
                 variant="compact"
                 sources={ADMIN_SOURCES}
                 ctx={ADMIN_CTX}
-                resultsPath="/admin/search"
+                resultsPath={adminPath('search')}
                 recentKey="admin"
                 placeholder="Search orders, users, boutiques…"
                 ariaLabel="Search the admin console"
@@ -145,7 +160,7 @@ export function AdminLayout() {
                 variant="icon"
                 sources={ADMIN_SOURCES}
                 ctx={ADMIN_CTX}
-                resultsPath="/admin/search"
+                resultsPath={adminPath('search')}
                 recentKey="admin"
                 placeholder="Search orders, users, boutiques, payouts…"
                 ariaLabel="Search the admin console"
@@ -159,7 +174,7 @@ export function AdminLayout() {
               >
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
               </button>
-              <NotificationBellMenu viewAllTo="/admin/notifications" />
+              <NotificationBellMenu viewAllTo={adminPath('notifications')} />
               <button onClick={logout} title="Log out" style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}>
                 {initial(profile?.full_name ?? 'Admin K')}
               </button>
@@ -180,7 +195,7 @@ export function AdminLayout() {
 
       {/* mobile bottom tab bar — shown ≤900px in place of the sidebar */}
       <nav className="agx-admin-tabbar">
-        {NAV.map((a) => {
+        {nav.map((a) => {
           const on = location.pathname.startsWith(a.to);
           return (
             <button

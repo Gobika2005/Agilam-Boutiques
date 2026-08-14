@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { resetSellerSearchScope } from '@/lib/search/sellerSources';
+import { setConsoleRole } from '@/data/consoleRole';
 import type { Role } from '@/types/database';
 
 type Profile = {
@@ -74,10 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try { sessionStorage.setItem('agx-auth-notice', DISABLED_MESSAGE); } catch { /* storage unavailable */ }
       await supabase.auth.signOut();
       setSession(null);
+      setConsoleRole(undefined);
       setProfile(null);
       return;
     }
     try { sessionStorage.removeItem('agx-auth-notice'); } catch { /* storage unavailable */ }
+    // Publish the role to the data layer before any console screen mounts —
+    // staff read orders and customers through the masking RPCs (0086).
+    setConsoleRole(prof?.role);
     setProfile(prof);
   }
 
@@ -239,6 +244,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // signed in on this device would search the previous seller's shop until the
     // tab was reloaded.
     resetSellerSearchScope();
+    // Same reasoning for the console role — a module variable that outlives the
+    // tree would otherwise still say "staff" for whoever signs in next.
+    setConsoleRole(undefined);
   }
 
   async function refreshProfile() {

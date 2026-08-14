@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
+import { RequireRole, FullscreenLoader, homeFor } from '@/auth/RequireRole';
+import { ADMIN_BASE, adminPath } from '@/lib/adminPath';
+import { useAuth } from '@/auth/AuthContext';
 import { RequireSignIn } from '@/auth/SignInGate';
 import { ScrollManager } from '@/components/layout/ScrollManager';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
@@ -159,6 +161,14 @@ const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveri
 const AdminSearch = lazyNamed(() => import('@/pages/admin/AdminSearch'), 'AdminSearch');
 const Feedback = lazyNamed(() => import('@/pages/admin/Feedback'), 'Feedback');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
+const StaffHome = lazyNamed(() => import('@/pages/admin/StaffHome'), 'StaffHome');
+const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
+
+/** The console root itself — sends each role to the landing page it can open. */
+function ConsoleHome() {
+  const { profile } = useAuth();
+  return <Navigate to={homeFor(profile?.role)} replace />;
+}
 
 export default function App() {
   return (
@@ -212,8 +222,11 @@ export default function App() {
           }
         />
       ))}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+      {/* The console's address is a deploy-time secret (VITE_ADMIN_PATH); see
+          src/lib/adminPath.ts. `/admin` is deliberately NOT routed — it falls
+          through to the 404 like any other unknown URL. */}
+      <Route path={adminPath('login')} element={<AdminLogin />} />
+      <Route path={adminPath('reset-password')} element={<AdminResetPassword />} />
 
       {/*
         ── The public storefront ───────────────────────────────────────────
@@ -362,7 +375,7 @@ export default function App() {
       </Route>
 
       <Route
-        path="/admin"
+        path={ADMIN_BASE}
         element={
           <RequireRole role="admin">
             <Suspense fallback={<FullscreenLoader />}>
@@ -371,8 +384,11 @@ export default function App() {
           </RequireRole>
         }
       >
-        <Route index element={<Navigate to="overview" replace />} />
+        {/* Two console roles, two landing pages — an employee cannot open
+            Overview, which is the revenue screen (migration 0086). */}
+        <Route index element={<ConsoleHome />} />
         <Route path="overview" element={<Overview />} />
+        <Route path="staff" element={<StaffHome />} />
         <Route path="approvals" element={<Approvals />} />
         {/* The catalogue vocabulary sellers pick from and buyers browse by. */}
         <Route path="catalogue" element={<Catalogue />} />
@@ -389,7 +405,7 @@ export default function App() {
         {/* Folded into Overview and Users as tabs to shorten a 20-item sidebar.
             Kept as redirects rather than deleted: both were linked from the nav
             for months, so bookmarks and old notification links exist. */}
-        <Route path="reports" element={<Navigate to="/admin/overview" replace />} />
+        <Route path="reports" element={<Navigate to={adminPath('overview')} replace />} />
         <Route path="payments" element={<Payments />} />
         {/* The outgoing side of the ledger — spends with their receipts (0056). */}
         <Route path="expenses" element={<Expenses />} />
@@ -397,7 +413,11 @@ export default function App() {
         <Route path="coupons" element={<AdminCoupons />} />
         <Route path="notifications" element={<AdminNotifications />} />
         {/* New admin operations surfaces (backend: migration 0048 + admin_activity_log). */}
-        <Route path="customers" element={<Navigate to="/admin/users" replace />} />
+        {/* Was a redirect to /admin/users, back when this page had no nav tile.
+            It is now the staff customer directory — the same aggregate as the
+            Users page's buyer tab, with no account controls and no contact
+            details. Admins still reach customers from Users. */}
+        <Route path="customers" element={<AdminCustomers />} />
         <Route path="refunds" element={<Refunds />} />
         <Route path="reviews" element={<ReviewsAdmin />} />
         <Route path="broadcast" element={<Broadcast />} />

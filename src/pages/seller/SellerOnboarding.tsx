@@ -9,6 +9,7 @@ import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
 import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 import { isMapsLink } from '@/lib/geolocate';
+import { adminPath } from '@/lib/adminPath';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { DeliveryRateCard, describeReach, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
 import { FulfilmentCard, fulfilmentToForm, fulfilmentToPatch, validateFulfilment, type FulfilmentForm } from '@/components/seller/FulfilmentCard';
@@ -337,7 +338,7 @@ export function SellerOnboarding() {
         // An admin has no boutique to register — and the admin role is never
         // self-changeable, so send them back to their own console.
         if (profile?.role === 'admin') {
-          navigate('/admin/overview', { replace: true });
+          navigate(adminPath('overview'), { replace: true });
           return;
         }
         // A shopper already signed in on the buyer app who picked "Create

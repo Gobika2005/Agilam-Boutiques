@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { likeValue, isUuid } from '@/lib/search/query';
+import { isStaffSession } from './consoleRole';
 import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
@@ -70,7 +71,24 @@ export async function fetchOrdersForBoutique(boutiqueId: string): Promise<OrderW
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
+/**
+ * Every order, for the console.
+ *
+ * Staff take a different road to the same place. Migration 0086 gives them no
+ * RLS policy on `orders` at all — a direct select returns nothing — because a
+ * policy cannot withhold a single column and `orders.guest_phone` is the buyer's
+ * mobile number. `staff_orders_feed()` is a SECURITY DEFINER function that
+ * returns the identical shape with the phone masked, so the screens below this
+ * never learn which role fetched their rows.
+ */
+async function staffOrdersFeed(): Promise<OrderWithDetails[]> {
+  const { data, error } = await supabase.rpc('staff_orders_feed');
+  if (error) throw error;
+  return (data ?? []) as unknown as OrderWithDetails[];
+}
+
 export async function fetchAllOrdersAdmin(): Promise<OrderWithDetails[]> {
+  if (isStaffSession()) return staffOrdersFeed();
   const data = await selectOrders((cols) =>
     supabase.from('orders').select(cols).order('created_at', { ascending: false }),
   );
@@ -85,6 +103,16 @@ export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
+  // Staff act through an RPC rather than an UPDATE policy, because a policy is
+  // column-blind — `using (is_staff())` would also let an employee rewrite
+  // `total` or clear `refunded` from the browser console. The RPC additionally
+  // refuses 'rejected' and refuses to touch an order that is already delivered
+  // or rejected, both of which are refund/payout territory (0086).
+  if (isStaffSession()) {
+    const { error } = await supabase.rpc('staff_set_order_status', { p_id: id, p_status: status });
+    if (error) throw error;
+    return;
+  }
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
 }
@@ -132,7 +160,42 @@ export interface OrdersQuery {
   status?: 'all' | 'pending' | 'shipped' | 'delivered' | 'rejected' | 'refunded';
 }
 
+/**
+ * The staff half of `fetchOrdersAdminPaged`.
+ *
+ * PostgREST does the filtering, sorting and counting for an admin. Staff read
+ * through an RPC, which returns the whole feed in one array, so the same three
+ * jobs happen here instead. That is a real trade-off — it fetches every order
+ * to show a page of twenty — and it is fine at the platform's current volume
+ * but is the first thing to revisit when order count grows: the fix is to give
+ * `staff_orders_feed()` limit/offset/search arguments, not to hand staff a
+ * policy on the table.
+ *
+ * Search matches the same three fields as the admin path, except phone — staff
+ * never receive an unmasked number, so there is nothing to match against.
+ */
+async function staffOrdersPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
+  const all = await staffOrdersFeed();
+
+  const term = q.search?.trim().toLowerCase();
+  const filtered = all.filter((o) => {
+    if (q.status === 'refunded') { if (!o.refunded) return false; }
+    else if (q.status && q.status !== 'all') { if (o.status !== q.status) return false; }
+    if (!term) return true;
+    return (
+      o.order_number?.toLowerCase().includes(term) ||
+      (o.guest_name ?? '').toLowerCase().includes(term) ||
+      o.id === term
+    );
+  });
+
+  const from = q.page * q.pageSize;
+  return { rows: filtered.slice(from, from + q.pageSize), total: filtered.length };
+}
+
 export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
+  if (isStaffSession()) return staffOrdersPaged(q);
+
   // `count` rides along with the rows, so this uses its own runner rather than
   // `selectOrders` — but it needs the identical un-migrated fallback, or the
   // admin Orders table goes blank before 0063 is applied.
@@ -233,6 +296,14 @@ export async function fetchCustomersForBoutique(boutiqueId: string): Promise<Cus
 }
 
 export async function fetchCustomersAdmin(): Promise<CustomerStat[]> {
+  // Staff get the same rows with `guest_phone` replaced by a hash of itself, so
+  // anonymous orders still group into one customer without the number leaving
+  // the database. `aggregateCustomers` only ever uses it as a grouping key.
+  if (isStaffSession()) {
+    const { data, error } = await supabase.rpc('staff_customer_rows');
+    if (error) throw error;
+    return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);
+  }
   const { data, error } = await supabase.from('orders').select(CUSTOMER_SELECT);
   if (error) throw error;
   return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);

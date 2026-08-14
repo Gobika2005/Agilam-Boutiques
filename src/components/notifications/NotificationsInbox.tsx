@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { messagePreview } from '@/data/chat';
+import { ADMIN_BASE, consolePath } from '@/lib/adminPath';
 import { useNotifications } from '@/state/NotificationContext';
 
 /**
@@ -51,7 +52,7 @@ export type NotificationConsole = 'buyer' | 'seller' | 'admin';
 const ORDER_PATH: Record<NotificationConsole, (id: string) => string> = {
   buyer: (id) => `/orders/${encodeURIComponent(id)}`,
   seller: (id) => `/seller/orders/${encodeURIComponent(id)}`,
-  admin: (id) => `/admin/orders?q=${encodeURIComponent(id)}`,
+  admin: (id) => `${ADMIN_BASE}/orders?q=${encodeURIComponent(id)}`,
 };
 
 /**
@@ -110,9 +111,14 @@ export function NotificationsInbox({ backTo, console: surface, embedded = false 
    * by users, but a notification is a link the app clicks on the user's behalf,
    * and "starts with a single slash" is the whole guard needed to keep it from
    * ever becoming an off-site redirect.
+   *
+   * Admin links go through `consolePath` because the DB writes them as
+   * `/admin/...` (migration 0081) and the console no longer lives there. The
+   * translation is deliberately client-side: the console's address is a
+   * build-time secret, and Postgres is the last place it should be stored.
    */
   const destination = (n: (typeof items)[number]): string | null => {
-    if (n.link && /^\/[^/]/.test(n.link)) return n.link;
+    if (n.link && /^\/[^/]/.test(n.link)) return consolePath(n.link);
     if (n.order_id) return ORDER_PATH[surface](n.order_id);
     return TYPE_FALLBACK[surface][n.type] ?? null;
   };

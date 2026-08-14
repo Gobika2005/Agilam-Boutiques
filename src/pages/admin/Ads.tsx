@@ -4,6 +4,8 @@ import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique, uploadProductImage } from '@/data/products';
 import { fetchApprovedBoutiques } from '@/data/boutiques';
+import { useAuth } from '@/auth/AuthContext';
+import { canSeePlatformMoney } from '@/lib/staffAccess';
 import {
   fetchAllCampaigns,
   fetchPlacements,
@@ -63,6 +65,10 @@ const FILTERS: { key: AdStatus | 'all'; label: string }[] = [
 
 export function Ads() {
   const { showToast } = useShop();
+  const { profile } = useAuth();
+  // Staff review ad creative; what a seller paid for the slot is platform
+  // revenue and stays with the owner (migration 0086).
+  const showMoney = canSeePlatformMoney(profile?.role);
   const [tab, setTab] = useState<'campaigns' | 'rates'>('campaigns');
   const [statusFilter, setStatusFilter] = useState<AdStatus | 'all'>('all');
   const [search, setSearch] = useSeededSearch();
@@ -171,7 +177,9 @@ export function Ads() {
     <div>
       {/* Summary */}
       <div className="agx-adm-g2" style={css('margin-bottom:16px;')}>
-        <SummaryTile label="Ad revenue" value={money(summary.revenue)} icon="payments" />
+        {/* What sellers have paid the platform for placements — revenue, and
+            so admin-only. Staff review the creative, they do not price it. */}
+        {showMoney && <SummaryTile label="Ad revenue" value={money(summary.revenue)} icon="payments" />}
         <SummaryTile label="Impressions" value={compact(summary.impressions)} icon="visibility" />
         <SummaryTile label="Clicks" value={compact(summary.clicks)} icon="ads_click" />
         <SummaryTile label="Awaiting review" value={String(summary.inReview)} icon="rate_review" highlight={summary.inReview > 0} />
@@ -186,9 +194,15 @@ export function Ads() {
             </button>
           ))}
         </div>
-        <button onClick={() => setComposing(true)} style={css('height:40px;padding:0 18px;border-radius:12px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 14px 30px -18px rgba(214,51,108,.9);')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Create ad
-        </button>
+        {/* Publishing a house ad gives away inventory for free, so it stays with
+            the owner — `admin_create_ad_campaign` still checks is_admin() and
+            would refuse a staff caller anyway (0086). Hidden rather than left to
+            fail, so nobody fills in a form that cannot be submitted. */}
+        {showMoney && (
+          <button onClick={() => setComposing(true)} style={css('height:40px;padding:0 18px;border-radius:12px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 14px 30px -18px rgba(214,51,108,.9);')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Create ad
+          </button>
+        )}
       </div>
 
       {tab === 'campaigns' && (
@@ -242,7 +256,7 @@ export function Ads() {
                       <span>
                         {c.house_ad
                           ? <b style={css('color:var(--ag-crimson);')}>House ad</b>
-                          : <b>{money(c.amount)}</b>} · {c.days}d ({c.days * 24}h)
+                          : showMoney ? <b>{money(c.amount)}</b> : <b>Paid</b>} · {c.days}d ({c.days * 24}h)
                       </span>
                       {c.end_at ? (
                         <span>ends {new Date(c.end_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
@@ -281,7 +295,10 @@ export function Ads() {
                           Rework
                         </button>
                       )}
-                      {(status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
+                      {/* Reject refunds the seller's money through Razorpay, so
+                          it is the owner's call. Staff approve, pause and send
+                          back for rework; they do not move money. */}
+                      {showMoney && (status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
                         <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Reject & refund
                         </button>
