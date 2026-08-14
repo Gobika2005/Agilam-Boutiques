@@ -9,7 +9,8 @@ import {
   Eyebrow,
   LedgerRow,
   Lede,
-  MONO,
+  LABEL_LG,
+  LABEL_SM,
   Point,
   PointList,
   Rule,
@@ -83,7 +84,7 @@ export function SellDelivery() {
 
           <div
             className="agx-sell-table-scroll"
-            style={css('margin-top:30px;border:1px solid var(--ag-border);border-radius:18px;background:var(--ag-surface);')}
+            style={css('margin-top:40px;border:1px solid var(--ag-border);border-radius:0.75rem;background:var(--ag-surface);overflow:hidden;')}
           >
             <table className="agx-sell-table">
               <thead>
@@ -102,7 +103,7 @@ export function SellDelivery() {
             </table>
           </div>
 
-          <div className="agx-sell-two" style={css('margin-top:34px;')}>
+          <div className="agx-sell-two" style={css('margin-top:48px;')}>
             <div>
               <Display size="sm">Leaving a band blank</Display>
               <Text>
@@ -175,7 +176,7 @@ export function SellDelivery() {
             still turn out not to be an order. Every one of them is already paid.
           </Lede>
 
-          <div className="agx-sell-lean" style={css('margin-top:34px;')}>
+          <div className="agx-sell-lean" style={css('margin-top:48px;')}>
             <ol style={css('list-style:none;padding:0;margin:0;')}>
               <Step n={1} title="She pays, we hold it">
                 The full amount is taken online at checkout and held by MangaiMart. Nothing about that
@@ -207,7 +208,7 @@ export function SellDelivery() {
                 'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:clamp(22px,3vw,28px);height:fit-content;',
               )}
             >
-              <div style={css(`font-family:${MONO};font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ag-muted);`)}>
+              <div style={css(`${LABEL_SM}color:var(--ag-muted);padding-bottom:16px;border-bottom:1px solid var(--ag-border);`)}>
                 A delivered order, in full
               </div>
               <LedgerRow label="Two pieces, sold at" value={fmtInr(3200)} />
@@ -274,7 +275,7 @@ function ZoneRow({ band, covers, free }: { band: string; covers: string; free?: 
       <td style={css('color:var(--ag-ink-2);')}>{covers}</td>
       <td
         style={css(
-          `font-family:${MONO};font-size:13px;font-weight:600;white-space:nowrap;` +
+          `${LABEL_LG}white-space:nowrap;` +
             `color:${free ? 'var(--ag-good-text)' : 'var(--ag-muted)'};`,
         )}
       >

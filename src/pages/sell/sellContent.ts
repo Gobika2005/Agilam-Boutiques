@@ -52,32 +52,37 @@ export const SELL_NAV = [
  */
 export const WHAT_YOU_NEED = [
   {
+    icon: 'smartphone',
     need: 'A phone number and an email address',
     detail: 'Your login, and where order alerts land. Nothing else is needed to create the account.',
     required: true,
   },
   {
+    icon: 'location_on',
     need: 'Your shop address, with the map pin',
     detail:
       'Where the parcel is picked up from, and what decides whether a buyer counts as local, district, state or national for your delivery charge.',
     required: true,
   },
   {
+    icon: 'account_balance',
     need: 'A bank account in the shop or owner’s name',
     detail:
       'Account number and IFSC. This is where money is transferred after each delivery — there is no other way to be paid.',
     required: true,
   },
   {
+    icon: 'photo_camera',
     need: 'Photos of what you sell',
     detail:
       'Taken on a phone is fine. A plain wall and daylight beats a studio. You can list your first piece the same hour you are approved.',
     required: true,
   },
   {
+    icon: 'receipt_long',
     need: 'A GST number',
     detail:
-      'Optional. Leave it blank if you do not have one — you can still open the shop, list and be paid. Add it later from Settings whenever you register.',
+      'Leave it blank if you do not have one — you can still open the shop, list and be paid. Add it later from Settings whenever you register.',
     required: false,
   },
 ] as const;

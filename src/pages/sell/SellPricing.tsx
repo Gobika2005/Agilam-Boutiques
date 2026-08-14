@@ -9,7 +9,8 @@ import {
   Eyebrow,
   LedgerRow,
   Lede,
-  MONO,
+  Card,
+  LABEL_SM,
   Point,
   PointList,
   Rule,
@@ -111,21 +112,20 @@ export function SellPricing() {
               </PointList>
             </div>
 
-            <div
-              style={css(
-                'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:clamp(22px,3vw,28px);',
-              )}
-            >
-              <div style={css(`font-family:${MONO};font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ag-muted);`)}>
-                Worked out
-              </div>
-              <div style={css('margin-top:6px;font-size:13.5px;line-height:1.6;color:var(--ag-muted);')}>
+            <Card>
+              <div style={css(`${LABEL_SM}color:var(--ag-muted);`)}>Worked out</div>
+              <div style={css('margin-top:8px;font-size:14px;line-height:1.6;color:var(--ag-muted);')}>
                 What reaches your bank on three ordinary orders. No small print under it.
               </div>
 
               {EXAMPLES.map((price) => (
-                <div key={price} style={css('margin-top:22px;')}>
-                  <div style={css(`font-family:${SERIF};font-size:17px;font-weight:700;color:var(--ag-ink);`)}>
+                <div key={price} style={css('margin-top:32px;')}>
+                  <div
+                    style={css(
+                      `font-family:${SERIF};font-size:24px;font-weight:600;line-height:1.3;color:var(--ag-ink);` +
+                        'padding-bottom:8px;border-bottom:1px solid var(--ag-border);',
+                    )}
+                  >
                     A piece at {fmtInr(price)}
                   </div>
                   <LedgerRow
@@ -136,7 +136,7 @@ export function SellPricing() {
                   <LedgerRow label="Yours" value={fmtInr(terms.netOf(price))} strong />
                 </div>
               ))}
-            </div>
+            </Card>
           </div>
         </Wrap>
       </Band>
@@ -151,7 +151,7 @@ export function SellPricing() {
             price list on MangaiMart, it is this one, and it is the same for every shop on the site.
           </Lede>
 
-          <div className="agx-sell-three" style={css('margin-top:34px;')}>
+          <div className="agx-sell-three" style={css('margin-top:48px;')}>
             <FreeCard
               title="Being here"
               items={['Registration', 'Verification', 'Your shop page', 'A web address to share']}
@@ -245,7 +245,7 @@ function FreeCard({ title, items }: { title: string; items: string[] }) {
           <li key={i} style={css('display:flex;align-items:baseline;gap:9px;font-size:14.5px;color:var(--ag-ink-2);')}>
             <span
               style={css(
-                `font-family:${MONO};font-size:12px;font-weight:600;color:var(--ag-good-text);flex:none;`,
+                `font-family:${SERIF};font-size:16px;font-weight:600;color:var(--ag-good-text);flex:none;`,
               )}
             >
               ₹0
@@ -280,7 +280,7 @@ function AdRates({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
           the number of days, pay for them up front, and the slot runs.
         </Lede>
 
-        <div className="agx-sell-table-scroll" style={css('margin-top:30px;border:1px solid var(--ag-border);border-radius:18px;background:var(--ag-surface);')}>
+        <div className="agx-sell-table-scroll" style={css('margin-top:40px;border:1px solid var(--ag-border);border-radius:0.75rem;background:var(--ag-surface);overflow:hidden;')}>
           <table className="agx-sell-table">
             <thead>
               <tr>
@@ -294,7 +294,7 @@ function AdRates({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
                 <tr key={p.code}>
                   <td style={css('font-weight:700;color:var(--ag-ink);')}>{p.name}</td>
                   <td style={css('color:var(--ag-ink-2);')}>{p.description || '—'}</td>
-                  <td style={css(`font-family:${MONO};font-weight:600;color:var(--ag-deep);white-space:nowrap;`)}>
+                  <td style={css(`font-family:${SERIF};font-size:18px;font-weight:600;color:var(--ag-deep);white-space:nowrap;`)}>
                     {fmtInr(p.daily_rate)}
                   </td>
                 </tr>

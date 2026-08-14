@@ -1060,30 +1060,44 @@ span[style*="Material Symbols Outlined"] {
   .agx-sell-rail { display: flex !important; }
 }
 
-/* No hero grid here on purpose. The /sell hero is a single contained gradient
-   card holding nothing but type — the same shape as the storefront's home hero —
-   so it needs no columns and no breakpoint. It replaced a two-column layout with
-   a collage of live product photographs, which sold the wrong thing: someone on
-   this page is not shopping, she is deciding whether to trust us. */
+/* The hero: copy at ~3/5, photograph at ~2/5, and the photograph is dropped
+   entirely below 1024px. That is the reference's own breakpoint and it is the
+   right one — a square photo stacked above the headline on a phone pushes the
+   offer and the button below the fold, which is the only thing this page has to
+   get right. `HeroArt` also removes itself if the file is missing, and the
+   single-column rule below is what it falls back to. */
+.agx-sell-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; align-items: center; }
+@media (min-width: 1024px) { .agx-sell-hero { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.agx-sell-hero-art { display: none; }
+@media (min-width: 1024px) { .agx-sell-hero-art { display: block; } }
 
-.agx-sell-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); }
-@media (min-width: 860px) { .agx-sell-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.agx-sell-hero-notes {
+  margin-top: 48px; display: flex; flex-direction: column; gap: 24px;
+  font-size: 12px; font-weight: 500; letter-spacing: .02em; color: rgba(255, 255, 255, .78);
+}
+@media (min-width: 640px) { .agx-sell-hero-notes { flex-direction: row; flex-wrap: wrap; gap: 12px 24px; } }
 
-/* A 1.15/0.85 split for a body of text beside a panel that should not dominate. */
-.agx-sell-lean { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); align-items: start; }
-@media (min-width: 900px) { .agx-sell-lean { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } }
+/* Gaps are the reference's: 64px between columns on desktop, 96px where the two
+   halves are a body of text and a panel that must not crowd it. */
+.agx-sell-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 64px); }
+@media (min-width: 860px) { .agx-sell-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; } }
 
-.agx-sell-three { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+/* The 5/7 split the reference uses for "where your fee goes" — a short argument
+   on the left, the long list on the right. */
+.agx-sell-lean { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 6vw, 96px); align-items: start; }
+@media (min-width: 900px) { .agx-sell-lean { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+
+.agx-sell-three { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 720px) { .agx-sell-three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-.agx-sell-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
-@media (min-width: 900px) { .agx-sell-four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.agx-sell-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+@media (min-width: 768px) { .agx-sell-four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-.agx-sell-shops { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.agx-sell-shops { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 @media (min-width: 620px) { .agx-sell-shops { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) { .agx-sell-shops { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-.agx-sell-quotes { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(30px, 4vw, 46px); }
+.agx-sell-quotes { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 64px); }
 @media (min-width: 860px) { .agx-sell-quotes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Wide tables (the delivery zone bands, the ad rate card) scroll inside their
@@ -1091,8 +1105,11 @@ span[style*="Material Symbols Outlined"] {
 .agx-sell-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .agx-sell-table { width: 100%; min-width: 520px; border-collapse: collapse; }
 .agx-sell-table th,
-.agx-sell-table td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--ag-border); font-size: 14.5px; line-height: 1.55; vertical-align: top; }
-.agx-sell-table th { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ag-muted); font-weight: 600; font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.agx-sell-table td { text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--ag-border); font-size: 16px; line-height: 1.55; vertical-align: top; }
+/* label-sm. Was IBM Plex Mono — the seller site has no monospace any more; see
+   the note on SERIF in src/pages/sell/parts.tsx. */
+.agx-sell-table th { font-size: 12px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--ag-muted); background: var(--ag-surface-2); }
+.agx-sell-table tr:last-child td { border-bottom: 0; }
 .agx-sell-table td:last-child, .agx-sell-table th:last-child { text-align: right; }
 
 /* The FAQ's side index. Sticky only where there is a column beside the answers

@@ -69,20 +69,49 @@ real approved boutiques out of the live catalogue, with their real logos, cities
 and product counts, each linking to its real storefront — and hides itself when
 the catalogue is empty.
 
-## The hero
+## The design — "Heritage Modern", in our tokens
 
-One contained gradient card, type only, no photographs. It borrows the shape
-language of the storefront's own home hero — the same crimson gradient, the same
-`clamp(26px,3.2vw,44px)` radius, the same thin gold inset ring — so a seller who
-has seen the shop recognises the house.
+Rebuilt against the `DESIGN.md` reference. What was adopted:
 
-It started as a two-column layout with a collage of three live product photos.
-Removed on your call, and the page is better without it: this hero has one job,
-which is to say what the offer is and put a button under it. Photographs of other
-people's sarees also sell the wrong thing here — the reader is not shopping. As a
-side effect the section now fetches nothing at all, so it paints on the first
-frame with no layout shift and no dependency on the catalogue having loaded.
-The dead `.agx-sell-hero` / `.agx-sell-collage` CSS is gone with it.
+- **Libre Caslon Text** for every heading, added to the global font request in
+  `index.html`. Other pages pay only the extra bytes in the Google Fonts CSS —
+  a browser fetches a WOFF2 only when rendered text uses the family, and nothing
+  outside `/sell` does.
+- **Its type scale**, near verbatim: display-lg 56px/1.1/-0.02em down to
+  label-sm 12px. Where the reference gives one fixed size for a role that has to
+  survive both a 360px phone and a 1280px container, it became a `clamp()`
+  between its own mobile and desktop values.
+- **The 120px / 64px section rhythm**, the 1280px container and the 24px gutter.
+- **Its shape language**: 0.5rem controls, 0.75rem cards, 2rem on the hero.
+- **Tonal layering instead of elevation** — white card, 1px border, and a shadow
+  so soft it reads as warmth. The tint is `--ag-shadow`, not the reference's
+  hardcoded `rgba(139,30,75,.04)`.
+- **No monospace anywhere.** IBM Plex Mono is gone from these pages; figures are
+  set in Caslon and labels in Manrope, which is most of the difference between
+  reading as a dashboard and reading as a printed prospectus.
+
+What was **not** adopted, per your call: its palette. The reference ships its own
+berry ramp in literal hex; every colour here is still `--ag-*`, so `/sell` cannot
+drift from the storefront and CLAUDE.md's "never a literal hex" rule holds. Our
+`--ag-deep` is a near neighbour of its `#6c0034` anyway. Its charcoal footer was
+likewise dropped — ours stays the crimson gradient the storefront already uses.
+
+### The hero photograph — ⚠ you owe me a file
+
+The hero is the reference's: flat berry block, copy at 3/5, a square photo at 2/5
+rotated 3°. **Drop your image at `public/sell-hero.webp` and rebuild — that is the
+whole of it**, no code change. Ideally a styled shot of a boutique (a rail of
+sarees, a counter, a shop with someone in it) rather than a product cut-out, at
+1200px+ on the short edge, subject near the middle since it is cropped square.
+
+I could not use the image in the mockup: it is a temporary Google-hosted URL and
+our CSP blocks external images outright.
+
+**Until that file exists the page is still complete.** `HeroArt` hides itself on
+the image's `onError`, `.agx-sell-hero` collapses to one column and the copy takes
+the full width — a deliberate layout, not a gap. The photo is also dropped below
+1024px on purpose: a square image stacked above the headline on a phone pushes the
+offer and the button below the fold.
 
 ## Needs your hand
 

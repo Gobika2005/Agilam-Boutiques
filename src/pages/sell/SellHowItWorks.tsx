@@ -7,7 +7,7 @@ import {
   Display,
   Eyebrow,
   Lede,
-  MONO,
+  LABEL_SM,
   Point,
   PointList,
   SERIF,
@@ -67,7 +67,7 @@ export function SellHowItWorks() {
           <Eyebrow>Part one · Opening the shop</Eyebrow>
           <Display>Once, at the beginning. About fifteen minutes.</Display>
 
-          <ol style={css('list-style:none;padding:0;margin:34px 0 0;')}>
+          <ol style={css('list-style:none;padding:0;margin:48px 0 0;')}>
             <Step n={1} title="Create your login">
               Your name, your phone number, an email address and a password. That is the account you
               will manage the shop with. Nothing about the boutique is asked yet.
@@ -108,7 +108,7 @@ export function SellHowItWorks() {
           <Eyebrow>Part two · Every order after that</Eyebrow>
           <Display>The same five things happen, every time.</Display>
 
-          <ol style={css('list-style:none;padding:0;margin:34px 0 0;')}>
+          <ol style={css('list-style:none;padding:0;margin:48px 0 0;')}>
             <Step
               n={5}
               title="A buyer pays, and you are told"
@@ -165,7 +165,7 @@ export function SellHowItWorks() {
             All of it is included. None of it is a paid tier — there are no tiers.
           </Lede>
 
-          <div className="agx-sell-three" style={css('margin-top:34px;')}>
+          <div className="agx-sell-three" style={css('margin-top:48px;')}>
             <ConsoleCard
               title="Orders and customers"
               body="Every order with its address, its sizes and its status. A list of the customers who have bought from you, and what they bought."
@@ -230,7 +230,7 @@ export function SellHowItWorks() {
               'margin-top:30px;padding:20px 22px;border-left:3px solid var(--ag-crimson);background:var(--ag-surface-2);border-radius:0 14px 14px 0;',
             )}
           >
-            <div style={css(`font-family:${MONO};font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ag-crimson);`)}>
+            <div style={css(`${LABEL_SM}color:var(--ag-deep);`)}>
               Not promised
             </div>
             <p style={css('margin:9px 0 0;font-size:15px;line-height:1.68;color:var(--ag-ink-2);max-width:62ch;')}>

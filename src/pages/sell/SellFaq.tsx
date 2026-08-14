@@ -4,7 +4,7 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { graph, organizationSchema, breadcrumbSchema, faqSchema } from '@/lib/schema';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 import { Icon } from '@/components/ui/Icon';
-import { Band, CtaPair, Display, Eyebrow, Lede, MONO, SERIF, Text, Wrap } from './parts';
+import { Band, Card, CtaPair, Display, Eyebrow, LABEL_SM, Lede, SERIF, Text, Wrap } from './parts';
 import { ALL_FAQS, FAQ_GROUPS, START_SELLING } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -70,7 +70,7 @@ export function SellFaq() {
                 >
                   <h2
                     style={css(
-                      `font-family:${MONO};font-size:11px;letter-spacing:.18em;text-transform:uppercase;` +
+                      `${LABEL_SM}` +
                         'color:var(--ag-crimson);margin:0 0 6px;',
                     )}
                   >
@@ -96,14 +96,10 @@ export function SellFaq() {
 
             {/* The index. Sticky on desktop, an ordinary list on a phone. */}
             <aside className="agx-sell-faq-index">
-              <div
-                style={css(
-                  'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:20px;padding:22px;',
-                )}
-              >
+              <Card pad={24}>
                 <div
                   style={css(
-                    `font-family:${MONO};font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ag-muted);`,
+                    `${LABEL_SM}color:var(--ag-muted);`,
                   )}
                 >
                   On this page
@@ -142,7 +138,7 @@ export function SellFaq() {
                     {COMPANY.email}
                   </a>
                 </div>
-              </div>
+              </Card>
             </aside>
           </div>
         </Wrap>

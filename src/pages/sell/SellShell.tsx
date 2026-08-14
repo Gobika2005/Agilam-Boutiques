@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { Icon } from '@/components/ui/Icon';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
-import { MONO, SERIF } from './parts';
+import { LABEL_LG, LABEL_SM, SERIF } from './parts';
 import { SELL_NAV, SELLER_SIGNIN, START_SELLING } from './sellContent';
 
 /**
@@ -81,15 +81,14 @@ function SellHeader({ pathname }: { pathname: string }) {
   return (
     <header
       style={css(
-        'position:sticky;top:0;z-index:40;background:var(--ag-frost-strong);' +
-          'backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);' +
-          'border-bottom:1px solid var(--ag-frost-border);',
+        'position:sticky;top:0;z-index:40;background:var(--ag-surface);' +
+          'border-bottom:1px solid var(--ag-border);',
       )}
     >
       <div
         style={css(
-          'max-width:1180px;margin:0 auto;padding:0 clamp(16px,4vw,44px);height:64px;' +
-            'display:flex;align-items:center;gap:clamp(14px,3vw,34px);',
+          'max-width:1280px;margin:0 auto;padding:0 clamp(16px,3vw,24px);height:80px;' +
+            'display:flex;align-items:center;gap:clamp(14px,3vw,32px);',
         )}
       >
         {/* Brand. The wordmark links to the storefront, not to /sell — a seller
@@ -105,7 +104,7 @@ function SellHeader({ pathname }: { pathname: string }) {
           />
           <span
             style={css(
-              `font-family:${MONO};font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;` +
+              `${LABEL_SM}font-size:10px;` +
                 'color:var(--ag-crimson);border-left:1px solid var(--ag-border);padding-left:11px;white-space:nowrap;',
             )}
           >
@@ -121,10 +120,10 @@ function SellHeader({ pathname }: { pathname: string }) {
               end={item.to === '/sell'}
               style={({ isActive }) =>
                 css(
-                  'font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap;padding:6px 0;' +
+                  `${LABEL_LG}text-decoration:none;white-space:nowrap;padding-bottom:4px;` +
                     (isActive
-                      ? 'color:var(--ag-deep);border-bottom:2px solid var(--ag-crimson);'
-                      : 'color:var(--ag-ink-2);border-bottom:2px solid transparent;'),
+                      ? 'color:var(--ag-deep);border-bottom:2px solid var(--ag-deep);'
+                      : 'color:var(--ag-muted);border-bottom:2px solid transparent;'),
                 )
               }
             >
@@ -137,15 +136,15 @@ function SellHeader({ pathname }: { pathname: string }) {
           <Link
             to={SELLER_SIGNIN}
             className="agx-hide-sm"
-            style={css('font-size:14px;font-weight:700;color:var(--ag-ink-2);text-decoration:none;padding:8px 6px;')}
+            style={css(`${LABEL_LG}color:var(--ag-muted);text-decoration:none;padding:8px 6px;`)}
           >
             Sign in
           </Link>
           <Link
             to={START_SELLING}
             style={css(
-              'display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 17px;border-radius:13px;' +
-                'background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-size:14px;font-weight:800;' +
+              'display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:0.5rem;' +
+                `background:var(--ag-deep);color:#fff;${LABEL_LG}` +
                 'text-decoration:none;white-space:nowrap;',
             )}
           >
@@ -194,7 +193,7 @@ function SellFooter() {
           'background:linear-gradient(140deg,#5C1330,#8E1C44 60%,#B02454);color:#fff;',
       )}
     >
-      <div style={css('max-width:1180px;margin:0 auto;padding:clamp(40px,5vw,60px) clamp(20px,5vw,44px) 26px;')}>
+      <div style={css('max-width:1280px;margin:0 auto;padding:clamp(48px,6vw,80px) clamp(20px,3vw,24px) 32px;')}>
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:34px;')}>
           <div style={css('max-width:330px;')}>
             <img

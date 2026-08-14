@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -9,14 +9,17 @@ import { Icon } from '@/components/ui/Icon';
 import { fmtInr } from '@/lib/tokens';
 import {
   Band,
+  Card,
+  CARD_SHADOW,
   CtaPair,
   DeepPanel,
   Display,
   Eyebrow,
   Figure,
+  IconPoint,
+  LABEL_LG,
   LedgerRow,
   Lede,
-  MONO,
   Point,
   PointList,
   PullQuote,
@@ -27,6 +30,11 @@ import {
 } from './parts';
 import { SELLER_STORIES, START_SELLING, WHAT_YOU_NEED } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
+
+/** The "…and here is the next page" link that closes several sections. */
+const arrowLink = css(
+  `${LABEL_LG}color:var(--ag-deep);text-decoration:none;display:inline-flex;align-items:center;gap:8px;`,
+);
 
 /**
  * `/sell` — the page a boutique owner lands on.
@@ -90,75 +98,110 @@ export function SellHome() {
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 
 /**
- * The hero.
+ * The hero — a flat berry block, the copy at two-thirds, a photograph at one.
  *
- * Deliberately a single contained gradient card with nothing but type in it —
- * the same shape language as the storefront's home hero (`HERO_R`/the crimson
- * gradient and the thin gold inset ring in `src/pages/buyer/Home.tsx`), so a
- * seller who has seen the shop recognises the house.
+ * The photograph is the only asset on this site that is not either type or live
+ * data, and it is deliberately a single committed file rather than anything
+ * pulled from the catalogue: it is meant to be a styled shot of a boutique — a
+ * rail of sarees, a counter, a shop with someone in it — which is what a seller
+ * is being asked to picture herself in. A product cut-out would say "shop here"
+ * to a reader who is not shopping.
  *
- * It used to be a collage of three live product photographs. Removed on the
- * owner's call, and the page is better for it: this hero has one job, which is
- * to say what the offer is and put a button under it. Photographs of sarees
- * also sell the wrong thing here — the reader is not shopping, she is deciding
- * whether to trust us, and pretty pictures of other people's stock do not
- * answer that. Nothing in this section fetches anything, so it paints on the
- * first frame with no layout shift and no dependency on the catalogue loading.
+ * See `HERO_PHOTO`. It is optional at runtime: if the file is missing the whole
+ * art column removes itself and the hero becomes the single-column type-only
+ * card it was before, at full width. That is a real fallback, not a broken
+ * image — the page is complete either way.
  */
 function Hero({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
   return (
     <Band>
-      <Wrap wide style={css('padding-bottom:clamp(24px,3vw,36px);')}>
-        <div
-          style={css(
-            'position:relative;border-radius:clamp(26px,3.2vw,44px);overflow:hidden;' +
-              'background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);color:#fff;' +
-              'box-shadow:0 26px 54px -32px var(--ag-shadow),inset 0 0 0 1px rgba(226,190,120,.3);' +
-              'padding:clamp(34px,6vw,84px) clamp(24px,5vw,72px);',
-          )}
-        >
-          <div style={css('max-width:760px;')}>
-            <Eyebrow onDeep>For boutique owners</Eyebrow>
-            <Display level={1} size="lg" onDeep style={css('margin-top:16px;')}>
-              Your boutique, open to all of India.
-            </Display>
-            <Lede onDeep style={css('max-width:56ch;')}>
-              Keep your shop, your name, your pieces and your regulars exactly as they are. We bring
-              you buyers who are already looking for what you make, collect their money before you
-              pack, and send it to your bank once it arrives. That is the whole idea.
-            </Lede>
+      <Wrap wide style={css('padding-bottom:clamp(24px,3vw,40px);')}>
+        <DeepPanel>
+          <div className="agx-sell-hero">
+            <div>
+              <Eyebrow onDeep>For boutique owners</Eyebrow>
+              <Display level={1} size="lg" onDeep style={css('margin-top:24px;')}>
+                Your boutique, open to all of India.
+              </Display>
+              <Lede onDeep style={css('max-width:52ch;')}>
+                Keep your shop, your name, your pieces and your regulars exactly as they are. We
+                bring you buyers who are already looking for what you make, collect their money
+                before you pack, and send it to your bank once it arrives. That is the whole idea.
+              </Lede>
 
-            <CtaPair
-              to={START_SELLING}
-              label="Open your boutique — it’s free"
-              secondaryTo="/sell/how-it-works"
-              secondaryLabel="Show me how it works"
-              onDeep
-            />
+              <CtaPair
+                to={START_SELLING}
+                label="Open your boutique — it’s free"
+                secondaryTo="/sell/how-it-works"
+                secondaryLabel="Show me how it works"
+                onDeep
+              />
 
-            <div
-              style={css(
-                'margin-top:26px;display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13.5px;' +
-                  'color:rgba(255,255,255,.82);',
-              )}
-            >
-              <HeroNote icon="schedule">About fifteen minutes, on your phone</HeroNote>
-              <HeroNote icon="savings">Nothing to pay today, or any month</HeroNote>
-              <HeroNote icon="bolt">
-                Just {terms.commissionPct}% when an order is delivered
-              </HeroNote>
+              <div className="agx-sell-hero-notes">
+                <HeroNote icon="schedule">About fifteen minutes, on your phone</HeroNote>
+                <HeroNote icon="credit_card_off">Nothing to pay today, or any month</HeroNote>
+                <HeroNote icon="bolt">Just {terms.commissionPct}% when an order is delivered</HeroNote>
+              </div>
             </div>
+
+            <HeroArt />
           </div>
-        </div>
+        </DeepPanel>
       </Wrap>
     </Band>
+  );
+}
+
+/**
+ * Where the hero photograph is expected to live.
+ *
+ * A plain path into `public/`, so dropping the file in and rebuilding is the
+ * whole of it — no import, no code change. Portrait-ish and at least 1200px on
+ * the short edge; it is painted into a square frame with `object-fit:cover`, so
+ * the subject wants to be near the middle.
+ */
+const HERO_PHOTO = '/sell-hero.webp';
+
+function HeroArt() {
+  // `hidden` starts false so the frame is laid out immediately and the photo
+  // paints as soon as it decodes. If the file is not there, `onError` fires and
+  // the whole column unmounts — `.agx-sell-hero` then collapses to one column
+  // and the copy takes the full width, which is a deliberate layout, not a gap.
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+
+  return (
+    <div className="agx-sell-hero-art">
+      <div
+        style={css(
+          `position:relative;width:100%;aspect-ratio:1;overflow:hidden;border-radius:1.5rem;` +
+            'transform:rotate(3deg);box-shadow:0 18px 40px -20px rgba(0,0,0,.45);',
+        )}
+      >
+        <img
+          src={HERO_PHOTO}
+          alt="A MangaiMart boutique"
+          width={720}
+          height={720}
+          decoding="async"
+          onError={() => setHidden(true)}
+          style={css('width:100%;height:100%;object-fit:cover;display:block;')}
+        />
+        {/* A whisper of the brand colour over the photo, so a shot in any
+            colour temperature still sits inside the berry block. */}
+        <div
+          aria-hidden="true"
+          style={css('position:absolute;inset:0;background:var(--ag-deep);opacity:.1;mix-blend-mode:multiply;')}
+        />
+      </div>
+    </div>
   );
 }
 
 function HeroNote({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <span style={css('display:inline-flex;align-items:center;gap:8px;')}>
-      <Icon name={icon} style={css('font-size:18px;color:#F4D9A6;')} />
+      <Icon name={icon} style={css("font-size:16px;color:var(--ag-gold-border);font-variation-settings:'wght' 200;")} />
       {children}
     </span>
   );
@@ -166,10 +209,24 @@ function HeroNote({ icon, children }: { icon: string; children: React.ReactNode 
 
 /* ── The four numbers ──────────────────────────────────────────────────────── */
 
+/**
+ * The trust bar.
+ *
+ * On the page ground with a hairline under it, not in a tinted band: the
+ * reference treats this as a rule across the paper rather than as a section,
+ * which is what stops four numbers reading as a dashboard. Its padding is
+ * deliberately tighter than `Wrap`'s section rhythm — it belongs to the hero
+ * above it more than to the section below.
+ */
 function Mechanics({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
   return (
-    <Band tone="panel">
-      <Wrap wide style={css('padding-top:clamp(34px,4vw,52px);padding-bottom:clamp(34px,4vw,52px);')}>
+    <Band>
+      <Wrap
+        wide
+        style={css(
+          'padding-top:clamp(24px,3vw,32px);padding-bottom:clamp(32px,4vw,48px);border-bottom:1px solid var(--ag-border);',
+        )}
+      >
         <div className="agx-sell-four">
           <Figure value="₹0" label="To join, to list your pieces, and every month after that" />
           <Figure
@@ -209,23 +266,21 @@ function TheDeal({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
               back — that order costs you nothing at all. No fee on a sale that did not happen has
               always seemed to us like the only fair way to do this.
             </Text>
-            <div style={css('margin-top:26px;')}>
-              <Link
-                to="/sell/pricing"
-                style={css('font-size:14.5px;font-weight:700;color:var(--ag-deep);display:inline-flex;align-items:center;gap:7px;')}
-              >
+            <div style={css('margin-top:32px;')}>
+              <Link to="/sell/pricing" style={arrowLink}>
                 See every charge, worked out on real prices
-                <Icon name="arrow_forward" style={css('font-size:18px;')} />
+                <Icon name="arrow_forward" style={css('font-size:20px;')} />
               </Link>
             </div>
           </div>
 
-          <div
-            style={css(
-              'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:clamp(22px,3vw,30px);',
-            )}
-          >
-            <div style={css(`font-family:${MONO};font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ag-muted);`)}>
+          <Card>
+            <div
+              style={css(
+                'font-size:12px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--ag-muted);' +
+                  'padding-bottom:16px;border-bottom:1px solid var(--ag-border);',
+              )}
+            >
               One delivered order
             </div>
             <LedgerRow label="A saree, priced by you at" value={fmtInr(example)} />
@@ -236,11 +291,16 @@ function TheDeal({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
               note="This is the only deduction. Nothing else comes off."
             />
             <LedgerRow label="Yours, into your bank" value={fmtInr(terms.netOf(example))} strong />
-            <div style={css('margin-top:18px;font-size:13px;line-height:1.6;color:var(--ag-muted);')}>
+            <p
+              style={css(
+                'margin:16px 0 0;padding:16px;background:var(--ag-surface-2);border-radius:0.5rem;' +
+                  'font-size:12px;font-weight:500;line-height:1.5;color:var(--ag-muted);',
+              )}
+            >
               Sent {terms.holdDays} days after it is delivered, straight to the account you
               registered. No invoice to raise, no one to remind, nothing to follow up.
-            </div>
-          </div>
+            </p>
+          </Card>
         </div>
       </Wrap>
     </Band>
@@ -282,29 +342,29 @@ function WhatTheFeeCovers({ terms }: { terms: ReturnType<typeof useSellerTerms> 
             </Text>
           </div>
 
-          <PointList>
-            <Point icon="credit_card">
-              <strong>Taking the payment.</strong> Every card, UPI and netbanking charge, and the tax
-              on it. On a small order that alone is a meaningful slice of the fee.
-            </Point>
-            <Point icon="travel_explore">
-              <strong>Finding you the buyer.</strong> Search, the collection pages, the feed and the
-              work of getting MangaiMart in front of people who are shopping for what you make.
-            </Point>
-            <Point icon="account_balance">
-              <strong>Holding and moving the money.</strong> Safely, and then into your bank
-              automatically after each delivery — with the statements to match.
-            </Point>
-            <Point icon="shield">
-              <strong>Standing behind the order.</strong> The 30-day cover on a faulty or wrong item
-              is what lets a stranger in another state risk buying from a shop she has never heard
-              of. That trust is the thing you are actually renting.
-            </Point>
-            <Point icon="support_agent">
-              <strong>The console and the people.</strong> Listings, chat, billing, analytics — and
-              someone to pick up the phone when you need them.
-            </Point>
-          </PointList>
+          <div style={css('display:flex;flex-direction:column;gap:40px;')}>
+            <IconPoint icon="payments" title="Taking the payment.">
+              Every card, UPI and netbanking charge, and the tax on it. On a small order that alone
+              is a meaningful slice of the fee.
+            </IconPoint>
+            <IconPoint icon="search" title="Finding you the buyer.">
+              Search, the collection pages, the feed and the work of getting MangaiMart in front of
+              people who are shopping for what you make.
+            </IconPoint>
+            <IconPoint icon="account_balance" title="Holding and moving the money.">
+              Safely, and then into your bank automatically after each delivery — with the
+              statements to match.
+            </IconPoint>
+            <IconPoint icon="shield" title="Standing behind the order.">
+              The 30-day cover on a faulty or wrong item is what lets a stranger in another state
+              risk buying from a shop she has never heard of. That trust is the thing you are
+              actually renting.
+            </IconPoint>
+            <IconPoint icon="support_agent" title="The console and the people.">
+              Listings, chat, billing, analytics — and someone to pick up the phone when you need
+              them.
+            </IconPoint>
+          </div>
         </div>
       </Wrap>
     </Band>
@@ -342,27 +402,27 @@ function RealShops({
           and see exactly what your own shop page would look like — before you decide anything.
         </Lede>
 
-        <div className="agx-sell-shops" style={css('margin-top:34px;')}>
+        <div className="agx-sell-shops" style={css('margin-top:48px;')}>
           {shown.map((b) => (
             <Link
               key={b.id}
               to={`/boutique/${b.slug}`}
               style={css(
-                'display:flex;gap:14px;align-items:center;padding:16px;border-radius:18px;text-decoration:none;' +
-                  'background:var(--ag-surface);border:1px solid var(--ag-border);',
+                'display:flex;gap:16px;align-items:center;padding:20px;border-radius:0.75rem;text-decoration:none;' +
+                  `background:var(--ag-surface);border:1px solid var(--ag-border);box-shadow:${CARD_SHADOW};`,
               )}
             >
-              <BoutiqueLogo name={b.name} src={b.logo} size={46} radius={13} />
+              <BoutiqueLogo name={b.name} src={b.logo} size={48} radius={8} />
               <div style={css('min-width:0;')}>
                 <div
                   style={css(
-                    `font-family:${SERIF};font-weight:700;font-size:16.5px;color:var(--ag-ink);` +
+                    `font-family:${SERIF};font-weight:600;font-size:18px;line-height:1.3;color:var(--ag-ink);` +
                       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
                   )}
                 >
                   {b.name}
                 </div>
-                <div style={css('margin-top:3px;font-size:12.5px;color:var(--ag-muted);')}>
+                <div style={css('margin-top:4px;font-size:12px;font-weight:500;color:var(--ag-muted);')}>
                   {b.city}
                   {b.products > 0 && ` · ${b.products} piece${b.products === 1 ? '' : 's'}`}
                   {b.verified && ' · Verified'}
@@ -372,11 +432,12 @@ function RealShops({
           ))}
         </div>
 
-        <div style={css('margin-top:26px;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;')}>
-          <Link to="/boutiques" style={css('font-size:14px;font-weight:700;color:var(--ag-deep);')}>
-            Browse every shop on MangaiMart →
+        <div style={css('margin-top:32px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;')}>
+          <Link to="/boutiques" style={arrowLink}>
+            Browse every shop on MangaiMart
+            <Icon name="arrow_forward" style={css('font-size:20px;')} />
           </Link>
-          <span style={css('font-size:13px;color:var(--ag-muted);')}>
+          <span style={css('font-size:14px;color:var(--ag-muted);')}>
             {products.length} live piece{products.length === 1 ? '' : 's'}
             {cities.size > 0 && ` across ${cities.size} cit${cities.size === 1 ? 'y' : 'ies'}`}
           </span>
@@ -513,25 +574,40 @@ function WhatYouNeed() {
           company. If you make or stock ethnic wear and you can post a parcel, you’re in.
         </Lede>
 
-        <ul style={css('list-style:none;padding:0;margin:36px 0 0;')}>
+        <ul style={css('list-style:none;padding:0;margin:64px 0 0;display:flex;flex-direction:column;gap:24px;')}>
           {WHAT_YOU_NEED.map((item) => (
-            <li key={item.need} style={css('padding:20px 0;border-top:1px solid var(--ag-border);')}>
-              <div style={css('display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;')}>
-                <span style={css('font-size:16.5px;font-weight:700;color:var(--ag-ink);')}>{item.need}</span>
-                {!item.required && (
-                  <span
-                    style={css(
-                      `font-family:${MONO};font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;` +
-                        'color:var(--ag-good-text);background:var(--ag-good-bg);padding:3px 8px;border-radius:6px;',
+            <li key={item.need}>
+              <Card pad={32} style={css('display:flex;gap:24px;align-items:flex-start;')}>
+                {/* The one place a tinted icon circle earns its keep: this is a
+                    checklist, and the disc reads as a box to tick. */}
+                <div
+                  style={css(
+                    'width:48px;height:48px;border-radius:9999px;background:var(--ag-surface-3);' +
+                      'display:flex;align-items:center;justify-content:center;flex:none;',
+                  )}
+                >
+                  <Icon name={item.icon} style={css('font-size:22px;color:var(--ag-deep);')} />
+                </div>
+                <div>
+                  <div style={css('display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;')}>
+                    <h3 style={css(`${LABEL_LG}color:var(--ag-ink);margin:0;`)}>{item.need}</h3>
+                    {!item.required && (
+                      <span
+                        style={css(
+                          'font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
+                            'color:var(--ag-muted);background:var(--ag-surface-3);' +
+                            'padding:4px 8px;border-radius:0.25rem;',
+                        )}
+                      >
+                        optional
+                      </span>
                     )}
-                  >
-                    optional
-                  </span>
-                )}
-              </div>
-              <p style={css('margin:8px 0 0;font-size:14.5px;line-height:1.65;color:var(--ag-ink-2);max-width:62ch;')}>
-                {item.detail}
-              </p>
+                  </div>
+                  <p style={css('margin:0;font-size:14px;line-height:1.6;color:var(--ag-ink-2);max-width:62ch;')}>
+                    {item.detail}
+                  </p>
+                </div>
+              </Card>
             </li>
           ))}
         </ul>
