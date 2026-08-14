@@ -143,8 +143,57 @@ arguments, **not** to hand staff a policy on `orders`.
   `is_staff()` is false and every query returns empty regardless. Test from the
   browser while signed in as the employee account.
 
+## Two defects found after `0086` was applied
+
+Both were `0086`'s fault and both are repaired. Recorded because they share one
+root cause worth not repeating.
+
+**`0087` — the anonymous storefront went blank.** `0086` revoked `is_staff()`
+from `anon` (correct) and then wrote its sixteen new policies with no `TO` clause
+— which means `TO PUBLIC`, `anon` included. Postgres checks EXECUTE on a
+function inside a policy expression when the expression is initialised, before
+any row is tested, so every anonymous read failed outright with `42501:
+permission denied for function is_staff`. Both consoles looked fine. Never write
+a policy calling `is_staff()` without `to authenticated`.
+
+**`0088` — the console could no longer grant any privileged role.** Changing a
+user to Staff failed with *"not authorized to grant the staff role"*.
+
+`0086` widened six functions by re-issuing them with `create or replace` — the
+right technique, applied to the wrong source. It copied each body from the
+migration that **introduced** the function instead of the latest one to touch it.
+`create or replace` replaces the whole body, so this silently reverts every later
+fix, with no error and a migration that reports success:
+
+| Function | `0086` copied | Current was | Reverted |
+|---|---|---|---|
+| `guard_profile_privileges` | `0010` | **`0029`** | the `is_service_role()` short-circuit |
+| `broadcast_notification` | `0048` | **`0050`** | audience allow-list; admins excluded from broadcasts |
+
+The first is the visible failure: the console does not write profiles from the
+browser, it posts to `/api/admin-create-user`, which uses the service-role key
+where `auth.uid()` is NULL — so `is_admin()` is false and the guard fires against
+the server. That is precisely the bug `0029` was written to fix, reintroduced.
+
+The second was silent: "Everyone" broadcasts reached admin and staff accounts
+again, and an unrecognised audience string was accepted instead of rejected.
+
+The other four were already current (`taxonomy_guard_decision` 0024,
+`platform_feedback_publish_guard` 0084, `admin_pause_ad` 0032,
+`admin_request_ad_changes` 0033), and `admin_approve_ad` correctly used 0037's
+body rather than 0032's.
+
+> **Before widening a gate this way, run
+> `grep -rl "function <name>" supabase/migrations/` and copy the body from the
+> HIGHEST-numbered file.** Finding a function in one migration does not mean that
+> migration still owns it.
+
+`0086` has been corrected in place as well as repaired by `0088`, because `0086`
+is documented as re-runnable — left alone, a re-run would silently undo `0088`.
+
 ## Your hand needed
 
-1. Apply `0086` in the Supabase SQL editor.
+1. Apply `0086`, then `0087`, then `0088` in the Supabase SQL editor, in order.
+   (If you already ran `0086` and `0087`, just run `0088`.)
 2. Admin → Users → Create user, role **Staff**. They get a temp password by
    email and sign in at the same console URL you do.

@@ -123,12 +123,24 @@ grant execute on function is_staff() to authenticated;
 -- applied in the same breath as the CHECK constraint above, which is why it is
 -- in the same file rather than a follow-up.
 --
--- Body is 0010's, unchanged apart from the role list.
+-- ⚠ CORRECTED — this body was originally copied from 0010, which was NOT the
+-- current version: 0029 had since added the service-role short-circuit below.
+-- Losing it broke the admin console's own role editor, because that writes
+-- through /api/admin-create-user with the service-role key, where auth.uid() is
+-- NULL and is_admin() is therefore false. See 0088, which is the repair for
+-- databases that ran the original. Fixed here as well so re-running this
+-- (re-runnable by design) cannot undo 0088.
 create or replace function guard_profile_privileges()
 returns trigger
 language plpgsql
 as $$
 begin
+  -- Trusted server context (0029). Must stay FIRST — everything below assumes a
+  -- browser session with a real auth.uid().
+  if public.is_service_role() then
+    return new;
+  end if;
+
   -- Only an existing admin may grant a privileged role. Staff cannot promote
   -- anyone — not a buyer, not another employee, and not themselves — because
   -- this says is_admin(), not is_staff().
@@ -553,11 +565,18 @@ begin
   if coalesce(trim(p_title), '') = '' or coalesce(trim(p_body), '') = '' then
     raise exception 'title and body are required';
   end if;
+  -- 0050. Without this an unknown audience silently matched nobody and the
+  -- console reported a successful send of zero notifications.
+  if p_audience not in ('all', 'buyer', 'seller') then
+    raise exception 'unknown audience: %', p_audience;
+  end if;
 
   insert into notifications (profile_id, type, title, body)
   select p.id, 'Updates', p_title, p_body
   from profiles p
   where p.deleted_at is null
+    -- 0050: the audience is the marketplace, never the people running it.
+    and p.role in ('buyer', 'seller')
     and (p_audience = 'all' or p.role = p_audience);
 
   get diagnostics n = row_count;
