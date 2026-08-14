@@ -206,7 +206,9 @@ function OrderDetail({ o, onSetStatus }: { o: OrderWithDetails; onSetStatus: (s:
 
       {/* Payment summary */}
       <div style={css('background:var(--ag-surface);border-radius:14px;padding:4px 16px;')}>
-        <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery'} />
+        {/* No payment id means a cash order placed before cash on delivery was
+            withdrawn (migration 0085) — every order since carries one. */}
+        <Field label="Payment" value={o.payment_id ? 'Online (Razorpay)' : 'Cash on delivery (legacy)'} />
         {o.payment_id && <Field label="Payment ID" value={<span style={css('font-size:11.5px;')}>{o.payment_id}</span>} />}
         <Field label="Order total" value={fmtInr(o.total)} />
         <Field label={`Commission (${pct}%)`} value={<span style={css('color:var(--ag-gold-text);')}>{fmtInr(o.total * (pct / 100))}</span>} />

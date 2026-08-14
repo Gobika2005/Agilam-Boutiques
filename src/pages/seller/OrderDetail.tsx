@@ -3,9 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
-import { POLICY_TERMS } from '@/data/company';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchOrder, updateOrderStatus, markCashCollected, markOrderPacked } from '@/data/orders';
+import { fetchOrder, updateOrderStatus, markOrderPacked } from '@/data/orders';
 import type { OrderStatus } from '@/data/types';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -174,21 +173,6 @@ export function OrderDetail() {
       showToast(e instanceof Error ? e.message : 'Could not book this parcel');
     } finally {
       setShipping(false);
-    }
-  };
-
-  /**
-   * Confirm the cash arrived. Kept separate from "Delivered" on purpose: an
-   * order can be handed over and the money still not counted, and recording
-   * payment that never happened is what corrupts the payout report.
-   */
-  const collectCash = async () => {
-    try {
-      await markCashCollected(o.id);
-      showToast(`${fmt(o.collectAmount)} recorded as collected`);
-      reload();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the payment');
     }
   };
 
@@ -469,41 +453,6 @@ export function OrderDetail() {
           )}
         </div>
 
-        {/* The cash instruction, stated once and unmissably. A seller reading
-            this on a doorstep needs the figure, not a status chip. */}
-        {o.isCod && !closed && (
-          <div style={css(`margin-top:12px;border-radius:16px;padding:16px;border:1.5px solid ${settled ? '#CFE6D9' : 'var(--ag-gold-border)'};background:${settled ? '#F3F9F5' : 'var(--ag-gold-bg)'};`)}>
-            <div style={css('display:flex;align-items:center;gap:11px;')}>
-              <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;`)}>
-                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)}>{settled ? 'task_alt' : 'payments'}</span>
-              </span>
-              <div style={css('flex:1;min-width:0;')}>
-                <div style={css(`font-size:11.5px;font-weight:800;letter-spacing:.05em;color:${settled ? '#2C6249' : '#B0862B'};`)}>
-                  {settled ? 'CASH COLLECTED' : 'COLLECT ON DELIVERY'}
-                </div>
-                <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:27px;line-height:1.1;margin-top:2px;color:${settled ? '#2C6249' : 'var(--ag-gold-text)'};`)}>
-                  {fmt(o.grandTotal)}
-                </div>
-              </div>
-            </div>
-            {!settled && (
-              <>
-                <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.55;margin-top:10px;')}>
-                  Take this exact amount in cash when you hand the order over, then tap below. MangaiMart’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
-                  {o.platformDiscount > 0 && ` The customer used a MangaiMart offer, so collect ${fmt(o.platformDiscount)} less — we add it back to your payout.`}
-                </div>
-                <button
-                  onClick={collectCash}
-                  style={css('width:100%;margin-top:12px;height:46px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
-                >
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>check_circle</span>
-                  I collected {fmt(o.grandTotal)}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
         {/* Once dispatched, the docket is the thing the seller gets asked about
             on the phone — so it sits on the order, copyable, not buried. */}
         {shipment && (
@@ -594,7 +543,7 @@ export function OrderDetail() {
             {confirmReject ? (
               <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
                 <div style={css('font-size:13px;font-weight:700;color:#8A2A34;line-height:1.5;')}>
-                  Reject this order? This can’t be undone{o.isCod ? '' : ' and any online payment is refunded'}. The stock returns to your catalogue.
+                  Reject this order? This can’t be undone and the payment is refunded. The stock returns to your catalogue.
                 </div>
                 <div style={css('display:flex;gap:10px;margin-top:11px;')}>
                   <button onClick={() => setConfirmReject(false)} style={css('flex:1;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Keep order</button>
@@ -629,10 +578,10 @@ export function OrderDetail() {
         <ShipSheet
           couriers={couriers ?? []}
           busy={shipping}
-          // COD is deliberately excluded: Shiprocket remits collected cash to
-          // the account holder — us — which would make the platform the money
-          // handler. The seller keeps the cash and owes the commission, so a
-          // COD parcel goes out with their own courier.
+          // Every order is prepaid (migration 0085), so every parcel is
+          // bookable. A legacy cash order is still excluded: Shiprocket remits
+          // collected cash to the account holder — us — which would make the
+          // platform the money handler on an order it never took payment for.
           canBook={Boolean(canBookCourier) && !o.isCod}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}

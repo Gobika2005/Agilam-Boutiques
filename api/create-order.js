@@ -175,7 +175,7 @@ export default async function handler(req, res) {
   // furthest zone — the same fallback the browser applies.
   const shops = await loadShopTerms(supabase, Object.keys(priced.groupTotals));
   const buyerPlace = await loadBuyerPlace(supabase, pincode);
-  const paise = computeCartPricing(priced.groupTotals, coupon, false, shops, buyerPlace).totalPaise;
+  const paise = computeCartPricing(priced.groupTotals, coupon, shops, buyerPlace).totalPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   //

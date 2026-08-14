@@ -79,23 +79,18 @@ export function Dashboard() {
   const orders = rows.map((o, i) => toOrderView(o, i));
 
   // Revenue counts only money that actually landed: a rejected or cancelled
-  // order earned nothing, and a COD order whose cash the seller has not yet
-  // collected is a promise, not revenue. Counting either would flatter the tile.
+  // order earned nothing. The payment_status test still guards a historical cash
+  // order whose money was never collected (cash on delivery was withdrawn in
+  // migration 0085); counting one would flatter the tile.
   const earned = (o: (typeof rows)[number]) =>
     o.status !== 'rejected' &&
     o.status !== 'cancelled' &&
-    (o.payment_method !== 'COD' || (o.payment_status ?? 'paid') === 'paid');
+    (o.payment_status ?? 'paid') === 'paid';
 
   const totalRevenue = rows.filter(earned).reduce((s, o) => s + Number(o.total), 0);
   const todaysOrders = rows.filter((o) => isToday(o.created_at));
   const todaysRevenue = todaysOrders.filter(earned).reduce((s, o) => s + Number(o.total), 0);
   const pendingCount = rows.filter((o) => o.status === 'pending').length;
-  // Cash the seller still has to collect at the door, across all open COD orders.
-  // Summed from the shared order view rather than re-derived here: this tile used
-  // to add only goods + handling and silently dropped the delivery fee, so it
-  // under-reported by ₹79 an order against the Orders banner and the invoice —
-  // the two numbers the seller actually counts cash against.
-  const toCollect = orders.reduce((s, o) => s + o.collectAmount, 0);
   // Guest orders have no buyer_id, so fall back to the phone number before
   // giving up and counting the order itself as its own customer.
   const customerCount = new Set(rows.map((o) => o.buyer_id ?? o.guest_phone ?? o.id)).size;
@@ -155,7 +150,6 @@ export function Dashboard() {
     { label: "Today's orders", value: String(todaysOrders.length), ic: 'var(--ag-info-text)' },
     { label: "Today's revenue", value: fmt(todaysRevenue), ic: 'var(--ag-good)' },
     { label: 'Pending orders', value: String(pendingCount), ic: 'var(--ag-gold-text)' },
-    { label: 'Cash to collect', value: fmt(toCollect), ic: 'var(--ag-gold-text)' },
     { label: 'Low stock', value: String(lowStock.length), ic: 'var(--ag-danger-text)' },
   ];
 

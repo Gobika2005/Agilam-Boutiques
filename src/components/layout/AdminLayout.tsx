@@ -80,7 +80,7 @@ export function AdminLayout() {
               alt="MangaiMart"
               width={44}
               height={44}
-              style={css('width:44px;height:44px;border-radius:12px;object-fit:contain;flex:none;')}
+              style={css('width:44px;height:44px;object-fit:contain;flex:none;')}
             />
             <div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>

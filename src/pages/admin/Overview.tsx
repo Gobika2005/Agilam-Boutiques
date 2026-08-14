@@ -138,7 +138,9 @@ function MarketplaceHealth() {
             <InsightTile label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} foot={`${d?.earnedOrders ?? 0} earned orders`} icon="trending_up" />
             <InsightTile label="Fulfillment rate" value={`${fulfillRate}%`} foot={`${d?.fulfilledOrders ?? 0} shipped/delivered`} icon="local_shipping" bar={fulfillRate} good />
             <InsightTile label="Refund rate" value={`${refundRate}%`} foot={`${compactInr(d?.refunds.amount ?? 0)} refunded`} icon="undo" bar={refundRate} danger />
-            <InsightTile label="Online payments" value={`${onlinePct}%`} foot={`${paidTotal - (d?.paymentSplit.online ?? 0)} COD orders`} icon="credit_card" bar={onlinePct} />
+            {/* Below 100% only because of orders placed before cash on delivery
+                was withdrawn (migration 0085) — every new order is prepaid. */}
+            <InsightTile label="Online payments" value={`${onlinePct}%`} foot={`${paidTotal - (d?.paymentSplit.online ?? 0)} legacy cash orders`} icon="credit_card" bar={onlinePct} />
           </div>
         </>
       )}
@@ -216,7 +218,7 @@ function MarketplaceHealth() {
           <PaySplit online={d?.paymentSplit.online ?? 0} cod={d?.paymentSplit.cod ?? 0} />
           <div style={css('margin-top:16px;display:flex;flex-direction:column;gap:10px;')}>
             <Legend color="#D6336C" label="Online (Razorpay)" value={d?.paymentSplit.online ?? 0} />
-            <Legend color="var(--ag-border)" label="Cash on delivery" value={d?.paymentSplit.cod ?? 0} />
+            <Legend color="var(--ag-border)" label="Cash on delivery (withdrawn)" value={d?.paymentSplit.cod ?? 0} />
           </div>
         </SectionCard>
       </div>

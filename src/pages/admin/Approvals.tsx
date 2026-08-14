@@ -215,7 +215,7 @@ function ReviewDrawer({
         ['Timing', boutique.open_time && boutique.close_time ? `${boutique.open_time} – ${boutique.close_time}` : '—'],
         ['Working days', boutique.working_days?.length ? boutique.working_days.join(', ') : '—'],
         ['Delivery', boutique.delivery_available ? `${dash(boutique.delivery_areas)} · ₹${boutique.delivery_charge ?? 0}` : 'Store pickup only'],
-        ['Payments', [boutique.cod_enabled && 'Cash on delivery', boutique.online_payment_enabled && 'Online'].filter(Boolean).join(', ') || '—'],
+        ['Payments', 'Online only'],
       ],
     },
     {

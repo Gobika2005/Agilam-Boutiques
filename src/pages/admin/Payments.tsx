@@ -115,8 +115,11 @@ export function Payments() {
     : rows;
 
   const totalPayable = rows.reduce((s, r) => s + Math.max(r.net, 0), 0);
-  const totalOwedToUs = rows.reduce((s, r) => s + Math.max(-r.net, 0), 0);
-  const unsettledCommission = rows.reduce((s, r) => s + r.prepaidCommission + r.codCommission, 0);
+  const unsettledCommission = rows.reduce((s, r) => s + r.prepaidCommission, 0);
+  // A negative balance is no longer reachable: it only ever came from netting
+  // COD cash off a payout, and cash on delivery was withdrawn (migration 0085).
+  // The "seller owes us" branches below are kept so a legacy balance recorded
+  // before then still renders correctly rather than as a payment we owe.
 
   // Sellers we owe money to but have no account for. Surfaced as its own number
   // because it is a chase-the-seller job, not a pay-the-seller job.
@@ -265,19 +268,8 @@ export function Payments() {
       },
     },
     {
-      key: 'payout', header: 'ONLINE PAYOUT', width: '1fr', align: 'right',
+      key: 'payout', header: 'GOODS − COMMISSION', width: '1fr', align: 'right',
       render: (r) => <span style={css('font-size:13px;font-weight:700;')}>{fmtInr(r.prepaidPayout)}</span>,
-    },
-    {
-      key: 'cod', header: 'COD OWED', width: '1fr', align: 'right',
-      // Normally the seller owes us (commission + fees on cash they hold), but a
-      // platform coupon they honoured in cash can tip this the other way — then
-      // it is a credit, and printing '—' would silently swallow money we owe.
-      render: (r) => (
-        <span style={css(`font-size:13px;font-weight:700;color:${r.codOwed > 0 ? 'var(--ag-bad-text)' : r.codOwed < 0 ? 'var(--ag-good-text)' : T.muted};`)}>
-          {r.codOwed === 0 ? '—' : (r.codOwed > 0 ? '−' : '+') + fmtInr(Math.abs(r.codOwed))}
-        </span>
-      ),
     },
     {
       key: 'net', header: 'NET', width: '1.2fr', align: 'right',
@@ -344,7 +336,6 @@ export function Payments() {
           sub={overdue.length > 0 ? `${overdue.length} seller${overdue.length === 1 ? '' : 's'} waiting` : 'all on time'}
         />
         <StatCard label="Held — not delivered" value={fmtInr(heldValue)} icon="pause_circle" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" sub={`${heldOrders} paid order${heldOrders === 1 ? '' : 's'}`} />
-        <StatCard label="Owed to platform (COD)" value={fmtInr(totalOwedToUs)} icon="south_west" tint="var(--ag-bad-bg)" ic="var(--ag-bad-text)" sub={`${rows.filter((r) => r.net < 0).length} sellers`} />
         <StatCard label={`Commission (${RATE_PCT}% incl. gateway + tax)`} value={fmtInr(unsettledCommission)} icon="percent" tint="var(--ag-warn-bg)" ic="var(--ag-warn-text)" sub="unsettled" />
       </div>
 
@@ -503,27 +494,9 @@ export function Payments() {
 
             <div style={css('background:var(--ag-surface);border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
               <Field label="Settleable orders" value={selected.orders} />
-              <Field label="Online sales" value={fmtInr(selected.prepaidGoods)} />
+              <Field label="Sales" value={fmtInr(selected.prepaidGoods)} />
               <Field label={`Commission (${RATE_PCT}%)`} value={`− ${fmtInr(selected.prepaidCommission)}`} />
-              <Field label="Online payout" value={<span style={css('color:var(--ag-good-text);')}>{fmtInr(selected.prepaidPayout)}</span>} />
-              {selected.codGoods > 0 && <>
-                <Field label="COD cash held by seller" value={fmtInr(selected.codGoods - selected.codPlatformDiscount)} />
-                <Field label={`Commission owed (${RATE_PCT}%)`} value={`− ${fmtInr(selected.codCommission)}`} />
-                <Field label="Delivery / COD fees owed" value={`− ${fmtInr(selected.codFees)}`} />
-                {/* The seller honoured our coupon in cash they never received,
-                    so we hand that back rather than settling them on it. */}
-                {selected.codPlatformDiscount > 0 && (
-                  <Field label="Platform coupons we fund" value={<span style={css('color:var(--ag-good-text);')}>+ {fmtInr(selected.codPlatformDiscount)}</span>} />
-                )}
-                <Field
-                  label="COD adjustment"
-                  value={
-                    <span style={css(`color:${selected.codOwed >= 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>
-                      {selected.codOwed >= 0 ? '− ' : '+ '}{fmtInr(Math.abs(selected.codOwed))}
-                    </span>
-                  }
-                />
-              </>}
+              <Field label="Payout" value={<span style={css('color:var(--ag-good-text);')}>{fmtInr(selected.prepaidPayout)}</span>} />
             </div>
 
             {/* What the money is actually for. The totals above are the summary

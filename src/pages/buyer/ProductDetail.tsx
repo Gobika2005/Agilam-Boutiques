@@ -11,9 +11,6 @@ import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/share';
-import { AskMyPeopleSheet } from '@/components/buyer/AskMyPeopleSheet';
-import { AccountSheet } from '@/components/buyer/AccountSheet';
-import { useQuickAsk } from '@/hooks/useQuickAsk';
 import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
@@ -89,8 +86,6 @@ export function ProductDetail() {
   // bag already holds for this piece (see `selectedSize` below).
   const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
-  const [asking, setAsking] = useState(false);
-  const quickAsk = useQuickAsk();
   const [zoomOpen, setZoomOpen] = useState(false);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ description: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
@@ -213,7 +208,7 @@ export function ProductDetail() {
     title: ap ? `${ap.title} — ${ap.boutique}` : null,
     description: ap
       ? clampDescription(
-          `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}${ap.color ? ` · ${ap.color}` : ''}. ${ap.stock === 0 ? 'Currently sold out.' : 'In stock'}${ap.stock > 0 ? ', 7-day returns, cash on delivery available.' : ''}`,
+          `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}${ap.color ? ` · ${ap.color}` : ''}. ${ap.stock === 0 ? 'Currently sold out.' : 'In stock'}${ap.stock > 0 ? ', 7-day returns, secure online payment.' : ''}`,
         )
       : null,
     image: ap?.image ?? null,
@@ -337,24 +332,6 @@ export function ProductDetail() {
     state: boutique?.state,
   };
 
-  /**
-   * The delivery line in the shipping panel, before any pincode is entered.
-   *
-   * Says the range rather than one number, because there is no longer one
-   * number: the exact charge comes from the "Deliver to" box above. Printing
-   * only the cheapest here is how a buyer ends up surprised at the payment
-   * screen, which is the thing this whole change exists to stop.
-   */
-  const deliveryNote = (() => {
-    const priced = [shopRates.local, shopRates.district, shopRates.state, shopRates.national]
-      .filter((v): v is number => v != null);
-    if (priced.length === 0) return 'Delivery charged at checkout';
-    const low = Math.min(...priced);
-    const high = Math.max(...priced);
-    if (high === 0) return 'Free delivery';
-    if (low === high) return `${fmt(low)} delivery`;
-    return `Delivery ${low === 0 ? 'free' : fmt(low)}–${fmt(high)} by distance`;
-  })();
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -840,45 +817,6 @@ export function ProductDetail() {
             boutiqueName={boutique?.name}
           />
 
-          {/* ASK MY PEOPLE — sits directly under the buy
-              actions because that is exactly where the hesitation is. A buyer
-              who isn't sure enough to tap "Add to Bag" is about to leave and
-              screenshot this into a family WhatsApp group; this is the same
-              act, as a link that leads back here.
-
-              One tap goes straight to the share sheet. She is looking at the
-              piece she wants to ask about, so there is nothing to choose and
-              nothing to confirm — a picker in between would only be friction at
-              the moment she was about to leave. "Add more pieces" below opens
-              the full sheet for the times she does want to compare. */}
-          <div style={css('display:flex;align-items:center;gap:11px;width:100%;margin-top:14px;padding:13px 15px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);')}>
-            <span style={css('flex:none;width:38px;height:38px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-crimson);")}>groups</span>
-            </span>
-            <span style={css('flex:1;min-width:0;')}>
-              <span style={css('display:block;font-size:14px;font-weight:800;color:var(--ag-ink);')}>Not sure? Ask my people</span>
-              <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:2px;line-height:1.4;')}>
-                They vote on a link — no app, no sign-up for them.{' '}
-                <button
-                  type="button"
-                  onClick={() => setAsking(true)}
-                  style={css('border:none;background:none;padding:0;font-family:inherit;font-size:12px;font-weight:800;color:var(--ag-crimson);cursor:pointer;text-decoration:underline;')}
-                >
-                  Add more pieces
-                </button>
-              </span>
-            </span>
-            <button
-              type="button"
-              disabled={quickAsk.busy}
-              onClick={() => void quickAsk.ask({ productIds: [ap.id], images: [ap.image] })}
-              style={css(`flex:none;height:40px;padding:0 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;opacity:${quickAsk.busy ? 0.6 : 1};`)}
-            >
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>share</span>
-              {quickAsk.busy ? 'Opening…' : 'Ask'}
-            </button>
-          </div>
-
           {/* FEATURE BADGES — the seller's own picks (migration 0054), never a
               claim the app invented. A product listed before the seller form
               grew this simply has no grid. */}
@@ -949,81 +887,64 @@ export function ProductDetail() {
               <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>{ap.washCare}</div>
             ))}
 
+            {/* Every card here is the SELLER's own answer about this parcel.
+                The two summary tiles this panel used to lead with — a delivery
+                figure and a "Verified boutique" badge — were not: the charge is
+                priced by distance and already answered by <DeliveryCheck> above
+                the fold, and verification is a fact about the shop, not about
+                shipping, and is already shown on the boutique row. What is left
+                is what the seller filled in. */}
             {renderPanel('delivery', 'local_shipping', 'Shipping Information', '', (
-              <>
-                <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
-                      {/* This boutique's own delivery rule — which since
-                          migration 0076 is exactly what checkout charges for
-                          its parcel. `delivery_charge` used to be printed here
-                          as a figure the checkout total never used, so the two
-                          contradicted each other; then it was replaced by the
-                          platform's flat fee, which contradicted the seller.
-                          Both screens now read the same numbers.
-
-                          It deliberately does not branch on the seller's
-                          `delivery_available`: that flag records whether the
-                          seller runs their own delivery, and showing "Store
-                          pickup only" told buyers they could not have a piece
-                          delivered that checkout then shipped anyway. */}
-                      {deliveryNote}
-                    </div>
-                  </div>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{boutique?.verified ? 'Verified boutique' : 'Independent boutique'}</div>
-                  </div>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
-                    {/* THIS BOUTIQUE's return window (migration 0078).
-                        It used to print `POLICY_TERMS.returnWindowDays` — a
-                        compile-time 7 — and was the last surface in the app
-                        reading that constant instead of the configured value.
-                        With returns set to 0, as production had them, the page
-                        promised a 7-day window that `request_return()` refused
-                        on sight. The shop's own number is now what is shown and
-                        what the server enforces. */}
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{returnsLabel(fulfilment)}</div>
+              <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;')}>
+                {/* DISPATCH — when the parcel actually leaves, in the seller's
+                    own answer (migration 0078). A single platform "3–7 working
+                    days" covered a shop with stock on the shelf and one that
+                    cuts to measure; only the transit half of that was ever the
+                    platform's to promise, so it stays as the muted second line
+                    rather than being read as the arrival date. */}
+                <div style={css('padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>schedule</span>
+                  <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>{dispatchLabel(fulfilment)}</div>
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>
+                    {`Then ${POLICY_TERMS.deliveryEstimate} in transit.`}
                   </div>
                 </div>
 
-                {/* When the parcel actually leaves, in the seller's own answer.
-                    A single platform "3–7 working days" covered a shop with
-                    stock on the shelf and one that cuts to measure; only the
-                    transit half of that was ever the platform's to promise. */}
-                <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>schedule</span>
-                  <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
-                    <span style={css('font-weight:700;')}>{dispatchLabel(fulfilment)}</span>
-                    {`, then ${POLICY_TERMS.deliveryEstimate} in transit.`}
-                    <div style={css('color:var(--ag-muted);margin-top:3px;')}>{returnsDetail(fulfilment)}</div>
-                  </div>
+                {/* RETURNS — THIS BOUTIQUE's window (migration 0078). It used to
+                    print `POLICY_TERMS.returnWindowDays` — a compile-time 7 —
+                    and was the last surface in the app reading that constant
+                    instead of the configured value. With returns set to 0, as
+                    production had them, the page promised a 7-day window that
+                    `request_return()` refused on sight. The shop's own number is
+                    now what is shown and what the server enforces. */}
+                <div style={css('padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>autorenew</span>
+                  <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>{returnsLabel(fulfilment)}</div>
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>{returnsDetail(fulfilment)}</div>
                 </div>
+
                 {/* The seller's own coverage area, in their words — not every
                     boutique delivers everywhere, and this is the only place
                     that says so before checkout. */}
                 {boutique?.deliveryAvailable !== false && boutique?.deliveryAreas && (
-                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>near_me</span>
-                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
-                      <span style={css('font-weight:700;')}>Delivers to:</span> {boutique.deliveryAreas}
-                    </div>
+                  <div style={css('grid-column:1/-1;padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>near_me</span>
+                    <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>Delivers to</div>
+                    <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>{boutique.deliveryAreas}</div>
                   </div>
                 )}
+
                 {/* Anything true of this piece alone — made to order, ships
                     rolled, longer dispatch. Sits under the shop-wide rules
                     rather than replacing them, so the two can't contradict. */}
                 {ap.shippingInfo?.trim() && (
-                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
-                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;white-space:pre-line;')}>
-                      <span style={css('font-weight:700;')}>About this piece:</span> {ap.shippingInfo}
-                    </div>
+                  <div style={css('grid-column:1/-1;padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>info</span>
+                    <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>About this piece</div>
+                    <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;white-space:pre-line;')}>{ap.shippingInfo}</div>
                   </div>
                 )}
-              </>
+              </div>
             ))}
 
             {/* Always shown, seller's wording or the platform's — a buyer judging
@@ -1173,20 +1094,6 @@ export function ProductDetail() {
         </div>
       )}
 
-      {/* Opens with this piece already ticked — she can add the others she
-          saved without leaving the page. */}
-      {asking && <AskMyPeopleSheet initialProductIds={[ap.id]} onClose={() => setAsking(false)} />}
-
-      {/* The one prompt a direct share cannot avoid: a board has to belong to
-          someone, and the votes have to reach a person. */}
-      {quickAsk.needsSignIn && (
-        <AccountSheet
-          title="Sign in to ask your people"
-          subtitle="A shortlist is yours to keep and share — sign in and we'll tell you the moment someone votes."
-          onDone={quickAsk.closeSignIn}
-          onClose={quickAsk.closeSignIn}
-        />
-      )}
     </div>
   );
 }

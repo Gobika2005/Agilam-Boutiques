@@ -12,8 +12,11 @@
  *      asking twice. Rating the item is also what rates the boutique: 0014's
  *      trigger recomputes `boutiques.rating` from these, which is why there is
  *      no separate "rate the shop" step.
- *   2. **MangaiMart.** Private (migration 0071) — it goes to the operator, is
- *      never published, and no seller can read it.
+ *   2. **MangaiMart.** Private by default (migration 0071) — it goes to the
+ *      operator and no seller can read it. Migration 0084 adds one opt-in: the
+ *      buyer may tick a box to let their words be quoted on the Home page, and
+ *      even then an admin has to approve it. Unticked is the default, and the
+ *      copy says plainly which it is.
  *
  * Closing without submitting records a dismissal, so the other three prompt
  * surfaces stop asking too.
@@ -93,6 +96,8 @@ export function OrderFeedbackSheet({
   const [bodies, setBodies] = useState<Record<string, string>>({});
   const [platformRating, setPlatformRating] = useState(0);
   const [platformBody, setPlatformBody] = useState('');
+  // Opt-IN, so it starts false and stays false unless the buyer acts.
+  const [publishConsent, setPublishConsent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const rated = Object.entries(ratings).filter(([, v]) => v > 0);
@@ -130,6 +135,10 @@ export function OrderFeedbackSheet({
           orderId: order.rowId,
           rating: platformRating,
           body: platformBody,
+          // Consent only means anything alongside words — there is nothing to
+          // quote from a bare star rating, and the RPC filters those out anyway.
+          publishConsent: publishConsent && platformBody.trim().length > 0,
+          authorName: profile?.full_name ?? null,
         });
       }
 
@@ -241,6 +250,35 @@ export function OrderFeedbackSheet({
               placeholder="Anything we could do better?"
               style={css(field + 'margin-top:10px;')}
             />
+          )}
+
+          {/* The one way anything above leaves this room, and it only appears
+              once there are words to quote. Unticked by default: the paragraph
+              above promises privacy, so the exception has to be an act, not an
+              opt-out buried under a pre-ticked box. */}
+          {platformRating > 0 && platformBody.trim().length > 0 && (
+            <label
+              style={css('display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-gold-border);cursor:pointer;')}
+            >
+              <input
+                type="checkbox"
+                checked={publishConsent}
+                onChange={(e) => setPublishConsent(e.target.checked)}
+                style={css('width:18px;height:18px;flex:none;margin:1px 0 0;accent-color:#B02454;cursor:pointer;')}
+              />
+              <span style={css('font-size:12px;color:var(--ag-gold-text);line-height:1.5;')}>
+                You may quote this on the MangaiMart website
+                {profile?.full_name ? <> as <strong>{profile.full_name}</strong></> : null}.
+                {/* Not "you can change your mind by reopening this" — once an
+                    order has feedback, useOrderFeedback stops offering the
+                    sheet, so that would have been a promise the app doesn't
+                    keep. Asking support is the route that actually works. */}
+                <span style={css('display:block;opacity:.85;margin-top:2px;')}>
+                  Optional. Nothing goes up without our checking it first, and you can ask us to take it
+                  down at any time.
+                </span>
+              </span>
+            </label>
           )}
         </div>
 

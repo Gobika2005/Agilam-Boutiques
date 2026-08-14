@@ -99,39 +99,13 @@ function normalizeReview<T extends Record<string, unknown>>(r: T): T & Pick<Revi
   };
 }
 
-export type TopReviewRow = ReviewRow & {
-  product_title: string | null;
-  boutique_name: string | null;
-};
-
-/**
- * The best real reviews across the whole catalogue, for the Home page
- * testimonials — highest rated first, ties broken by newest, and only ones
- * with actual written feedback (a bare star rating reads as filler there).
- * Empty list on any read failure, so Home just hides the section rather than
- * falling back to invented quotes.
+/*
+ * `fetchTopReviews` used to live here and fed the Home page's "What shoppers say
+ * about MangaiMart" section. It was the wrong source: these are reviews of a
+ * garment, and the cards printed "Saree · Boutique" under the buyer's name.
+ * That section now reads consented platform feedback via
+ * `fetchPublicPlatformReviews` in `src/data/feedback.ts` (migration 0084).
  */
-export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, products(title), boutiques(name)')
-    .neq('body', '')
-    .gte('rating', 4)
-    .order('rating', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) {
-    if (!isMissingTable(error)) console.error('fetchTopReviews failed:', error.message);
-    return [];
-  }
-  return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map((row) => {
-    const { products, boutiques, ...rest } = row as unknown as ReviewRow & {
-      products: { title: string } | null;
-      boutiques: { name: string } | null;
-    };
-    return { ...normalizeReview(rest), product_title: products?.title ?? null, boutique_name: boutiques?.name ?? null };
-  });
-}
 
 export type BoutiqueReviewRow = ReviewRow & {
   product_title: string | null;

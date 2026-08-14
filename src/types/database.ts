@@ -607,6 +607,16 @@ export interface Database {
           rating: number;
           body: string;
           created_at: string;
+          /** The buyer ticked "you may quote this publicly" (0084). Theirs to
+           *  set; withdrawing it unpublishes via trigger. */
+          publish_consent: boolean;
+          /** An admin approved it for the Home page (0084). Admin-only — a
+           *  trigger silently reverts this column for anyone else. */
+          published: boolean;
+          published_at: string | null;
+          /** Display name snapshotted at consent time, so renaming an account
+           *  later cannot re-attribute a published quote (0084). */
+          author_name: string | null;
         };
         Insert: Partial<Database['public']['Tables']['platform_feedback']['Row']> & { buyer_id: string; rating: number };
         Update: Partial<Database['public']['Tables']['platform_feedback']['Row']>;
@@ -969,6 +979,26 @@ export interface Database {
       dismiss_order_review: {
         Args: { p_order_id: string };
         Returns: void;
+      };
+      /**
+       * The Home page's "what shoppers say about MangaiMart" quotes (migration
+       * 0084). SECURITY DEFINER rather than a public select policy on
+       * `platform_feedback`: a policy grants the whole row, which would hand an
+       * anonymous visitor `buyer_id` and `order_id`. Returns only consented,
+       * admin-approved rows that actually have words in them.
+       */
+      public_platform_reviews: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          rating: number;
+          body: string;
+          author_name: string;
+          city: string | null;
+          /** Derived: the feedback is tied to a real delivered order. */
+          verified: boolean;
+          created_at: string;
+        }[];
       };
       /**
        * Raise a return on a delivered order (migration 0074). SECURITY DEFINER:

@@ -114,8 +114,9 @@ export function TrackOrder() {
   // Recorded on the order since migration 0022. Older orders never stored it,
   // so fall back to inferring it from whatever the total exceeds the lines by.
   const delivery = order.shippingFee ?? Math.max(0, order.total - itemsTotal - codFee);
-  // Cash still due at the door. Cleared once the boutique records collection,
-  // so a delivered order never keeps asking for money already handed over.
+  // Cash never collected on an order placed before cash on delivery was
+  // withdrawn (migration 0085). Always false on a prepaid order, i.e. on every
+  // order placed since — kept so an old row is not relabelled as "Paid".
   const owes = order.paymentMethod === 'COD' && (order.paymentStatus ?? 'pending') === 'pending' && !rejected;
 
   const chatWithBoutique = () => {
@@ -348,21 +349,6 @@ export function TrackOrder() {
                 {disputing ? 'Sending…' : 'Report'}
               </button>
             )}
-          </div>
-        )}
-
-        {/* ---------- Cash on delivery ---------- */}
-        {owes && (
-          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:18px;')}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:22px;flex:none;")}>payments</span>
-            <div style={css('flex:1;min-width:0;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-gold-text);")}>
-                Keep {fmt(order.total)} ready
-              </div>
-              <div style={css('font-size:13px;color:var(--ag-gold-text);line-height:1.55;margin-top:4px;')}>
-                Pay in cash when this order arrives. Our delivery partner may not carry change, so the exact amount helps.
-              </div>
-            </div>
           </div>
         )}
 

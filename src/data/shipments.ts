@@ -245,9 +245,10 @@ export type ShipmentBooking = {
  * Runs as a Supabase Edge Function, not a Vercel route: `api/` holds exactly 12
  * functions, which is the Hobby ceiling, so a thirteenth would fail the deploy.
  *
- * COD orders are refused — by the function, and again by a trigger. Shiprocket
- * remits COD to the wallet holder (us), which would make the platform the money
- * handler and break the arrangement migration 0022 encodes.
+ * Every order is prepaid (migration 0085), so every parcel is bookable. The
+ * function and its trigger still refuse a historical COD order: Shiprocket
+ * remits collected cash to the wallet holder (us), which for those rows would
+ * make the platform the money handler.
  */
 export async function bookShiprocketShipment(orderId: string): Promise<ShipmentBooking> {
   const { data, error } = await supabase.functions.invoke('shiprocket-book', {
@@ -413,19 +414,22 @@ export async function registerShiprocketPickup(
   return { nickname: data.nickname as string, alreadyRegistered: Boolean(data.alreadyRegistered) };
 }
 
-export type PlatformSwitches = { shiprocket_enabled: boolean; cod_enabled: boolean };
+export type PlatformSwitches = { shiprocket_enabled: boolean };
 
 /**
- * The two master switches (0066 + 0067).
+ * The courier-booking master switch (0067). `cod_enabled` (0066) used to sit
+ * beside it; cash on delivery was withdrawn platform-wide in 0085, so the column
+ * is no longer read — it stays in the table only so historical rows keep their
+ * meaning.
  *
- * Returns null when the columns are not there yet, which the console shows as
- * "migration not applied" rather than as a pair of switches that silently do
- * nothing when toggled.
+ * Returns null when the column is not there yet, which the console shows as
+ * "migration not applied" rather than as a switch that silently does nothing
+ * when toggled.
  */
 export async function fetchPlatformSwitches(): Promise<PlatformSwitches | null> {
   const { data, error } = await supabase
     .from('platform_settings')
-    .select('shiprocket_enabled, cod_enabled')
+    .select('shiprocket_enabled')
     .eq('id', 1)
     .maybeSingle();
   if (error) return null;

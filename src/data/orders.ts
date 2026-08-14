@@ -105,50 +105,16 @@ export async function markOrderPacked(id: string) {
   if (error) throw error;
 }
 
-/**
- * Record that the seller took the cash for a COD order.
+/*
+ * `markCashCollected()` and `cancelCodOrder()` used to sit here — the seller
+ * confirming cash at the door, and the buyer calling off an un-dispatched cash
+ * order. Cash on delivery was withdrawn platform-wide (migration 0085), so
+ * neither has anything to act on: every order is paid in full before it exists.
  *
- * This is the moment a COD order stops being a promise and becomes revenue, so
- * it is a deliberate seller action rather than something inferred from the
- * delivery status — an order can be handed over and the payment still disputed.
- * Migration 0022's trigger refuses this on a prepaid order, where settlement is
- * the gateway's business.
+ * The `cancel_cod_order` function stays in the database. Dropping it is a
+ * schema change we deliberately did not make, and it is harmless — it refuses
+ * any prepaid order by design, which is now every order.
  */
-export async function markCashCollected(id: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ payment_status: 'paid', paid_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-/** Messages the cancel RPC raises, mapped to something a buyer can act on. */
-const CANCEL_ERRORS: Record<string, string> = {
-  ORDER_NOT_FOUND: 'We could not find that order against this phone number.',
-  NOT_CANCELLABLE_PREPAID: 'Prepaid orders cannot be cancelled here — please message the boutique.',
-  NOT_CANCELLABLE_DISPATCHED: 'This order has already been dispatched. Please refuse it at the door or message the boutique.',
-  NOT_CANCELLABLE_PAID: 'This order has already been paid for.',
-};
-
-/**
- * Buyer-side cancellation of an un-dispatched COD order.
- *
- * Goes through the `cancel_cod_order` SECURITY DEFINER function because a guest
- * has no account for RLS to authorise against — the order number plus the phone
- * captured at checkout is the proof of ownership. The function also releases the
- * reserved stock, so cancelling never silently eats inventory.
- */
-export async function cancelCodOrder(orderNumber: string, phone: string, reason?: string) {
-  const { error } = await supabase.rpc('cancel_cod_order', {
-    p_order_number: orderNumber.replace(/^#/, ''),
-    p_phone: phone.replace(/\D/g, ''),
-    p_reason: reason ?? null,
-  });
-  if (error) {
-    const code = Object.keys(CANCEL_ERRORS).find((k) => error.message.includes(k));
-    throw new Error(code ? CANCEL_ERRORS[code] : 'Could not cancel this order. Please try again.');
-  }
-}
 
 /** Flag/unflag an order as refunded (independent of the fulfilment status). */
 export async function setOrderRefunded(id: string, refunded: boolean) {

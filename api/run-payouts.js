@@ -20,8 +20,11 @@ import {
  * (api/razorpayx-webhook.js); a transfer that fails to even submit is unwound
  * immediately (fail_auto_payout releases the orders for the next run).
  *
- * COD is never touched here — the seller holds that cash and owes the platform,
- * which is a manual net-off on the admin console.
+ * Cash on delivery was withdrawn from the platform (migration 0085), so every
+ * new order reaching this endpoint is prepaid. The `payment_method != 'COD'`
+ * filter below is kept as a guard over historical rows only: a legacy cash order
+ * is money the SELLER already holds, and auto-transferring its full value would
+ * pay for those goods twice.
  *
  * Trigger: NOT scheduled. The daily cron entry was removed from vercel.json in
  * 8cddccd (2026-08-01) and payouts are settled by hand from /admin/payments by
@@ -278,6 +281,8 @@ export default async function handler(req, res) {
       .from('orders')
       .select('boutique_id')
       .is('payout_id', null)
+      // Legacy guard — see the header note. No new order can be COD (0085), but
+      // an old one must never be transferred at full value.
       .neq('payment_method', 'COD')
       .eq('payment_status', 'paid')
       .eq('refunded', false)

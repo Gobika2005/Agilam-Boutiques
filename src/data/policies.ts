@@ -12,14 +12,14 @@ import { currentSettings, subscribeSettings, type PlatformSettings } from './set
  * ── Where the numbers come from ─────────────────────────────────────────────
  *
  * The commercial terms quoted in the copy — delivery fee, free-delivery
- * threshold, return window, COD cap, commission — are read from the LIVE
+ * threshold, return window, commission — are read from the LIVE
  * `platform_settings` row, the same source `src/lib/pricing.ts` prices a bag
  * from. They used to be the compile-time `POLICY_TERMS` constants, and the two
  * drifted: the Delivery Policy promised a ₹79 delivery fee while checkout
  * charged ₹89, the Return Policy advertised a 7-day window against a configured
- * window of zero, and the COD cap on the Terms page was double the one the bag
- * actually enforced. Those are published contractual terms, so a buyer was
- * being charged something other than what the site promised.
+ * window of zero, and the cash-order cap on the Terms page was double the one
+ * the bag actually enforced. Those are published contractual terms, so a buyer
+ * was being charged something other than what the site promised.
  *
  * Keeping them in step "by hand" is what failed. Now the promise and the charge
  * are the same value by construction: change the fee in Platform Settings and
@@ -91,10 +91,11 @@ function copyTerms(s: PlatformSettings): PolicyCopyTerms {
   return {
     // Live, admin-editable — these are what the buyer is actually charged.
     //
-    // Delivery, COD and the return window are no longer among them: each
-    // boutique sets its own charge, threshold, cash-handling fee, cap
-    // (migrations 0076/0077) and change-of-mind window (0078), so there is no
-    // single figure this copy could quote that would be true for every shop.
+    // Delivery and the return window are no longer among them: each boutique
+    // sets its own charge and threshold (migrations 0076/0077) and its own
+    // change-of-mind window (0078), so there is no single figure this copy could
+    // quote that would be true for every shop. Cash on delivery is not among
+    // them either — it was withdrawn platform-wide (0085).
     // The sections below describe the rule instead and point at the number the
     // product page and checkout actually show — which is the mistake that was
     // made the other way round before, when these pages quoted a frozen ₹79
@@ -483,12 +484,11 @@ export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
         ],
       },
       {
-        heading: 'Cash on delivery',
+        heading: 'How you pay',
         blocks: [
-          'Where the boutique offers it, you may pay in cash when your order is delivered. The boutique sets its own cash-handling fee and its own upper limit for cash orders; both are applied and shown on the payment screen before you confirm, and the total there is what you hand over at the door.',
-          'Because a cart spanning several boutiques is delivered separately by each, the handling fee applies once per delivery, and each delivery is paid for on arrival.',
-          'Please keep the exact amount ready — our delivery partners may not carry change. If payment is refused at the door the order is returned to the boutique and may count against future cash-on-delivery eligibility.',
-          'A cash-on-delivery order can be cancelled free of charge from "My orders" at any time before it is dispatched. Nothing has been charged, so there is no refund to process.',
+          'Every order on MangaiMart is paid in full online before it is placed — by UPI, credit or debit card, or net banking, through our payment gateway. We do not offer cash on delivery.',
+          'Your card and bank details are entered on the gateway’s own secure screen and are never stored by us.',
+          'Because payment is taken up front, cancelling an order means a refund rather than simply calling it off: see the Cancellation and Refund policy for how and when that money comes back.',
         ],
       },
       {

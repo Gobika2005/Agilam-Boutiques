@@ -219,7 +219,7 @@ function introFor(kind: LandingKind, term: string, items: Product[]): string {
     budget: `${count} ${piece} under ₹${Number(term).toLocaleString('en-IN')} from ${houses} across ${where}, starting at ${fmt(from)}.`,
   };
 
-  return `${opener[kind]} Every shop on MangaiMart is verified before it can list, you can message the owner directly before you buy, and delivery is across India with cash on delivery available.`;
+  return `${opener[kind]} Every shop on MangaiMart is verified before it can list, you can message the owner directly before you buy, and we deliver across India with secure online payment.`;
 }
 
 /** Questions a shopper actually types, answered on the page and in FAQ schema. */
@@ -245,7 +245,7 @@ function faqsFor(kind: LandingKind, term: string, items: Product[]): { q: string
     },
     {
       q: `Do you deliver ${noun} across India?`,
-      a: `Yes — MangaiMart delivers across India. Standard delivery takes 3–7 working days, 2–4 in metros, and cash on delivery is available on eligible orders.`,
+      a: `Yes — MangaiMart delivers across India. Standard delivery takes 3–7 working days, 2–4 in metros, and every order is paid securely online by UPI, card or net banking.`,
     },
   ];
 }

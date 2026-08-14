@@ -142,11 +142,10 @@ export interface BoutiqueRow {
   /**
    * What this boutique charges to deliver, and the terms around it. These are
    * the seller's numbers, not the platform's: since migration 0076 the buyer is
-   * charged `delivery_charge` per boutique in the bag (waived once that
-   * boutique's goods reach `free_delivery_over`, where that is set), plus
-   * `cod_fee` per cash delivery, capped at `cod_max_order`.
+   * charged `delivery_charge` per boutique in the bag, waived once that
+   * boutique's goods reach `free_delivery_over` where that is set.
    *
-   * The three added in 0076 are optional on the type because the query drops
+   * The ones added in 0076 are optional on the type because the query drops
    * them on a deployment where the migration has not been applied yet.
    */
   delivery_charge: number;
@@ -170,9 +169,10 @@ export interface BoutiqueRow {
   dispatch_days_min?: number;
   dispatch_days_max?: number;
   return_window_days?: number;
-  cod_enabled: boolean;
-  cod_fee?: number;
-  cod_max_order?: number;
+  /* `cod_enabled`, `cod_fee` and `cod_max_order` still exist as columns but are
+   * no longer selected or written as a seller choice: cash on delivery was
+   * withdrawn platform-wide (migration 0085), which forces the flag off for
+   * every shop. See src/pages/seller/Settings.tsx. */
   online_payment_enabled: boolean;
   // Step 7 — submission
   onboarding_step: number;
@@ -228,10 +228,12 @@ export interface OrderWithDetails {
   refunded?: boolean;
   channel?: 'online' | 'offline';
   payment_method?: string | null;
-  /** Settlement state — 'pending' on a COD order until the cash is collected. */
+  /** Settlement state. Always 'paid' on a new order — every one is prepaid
+   *  (migration 0085); 'pending' only survives on a legacy cash order. */
   payment_status?: PaymentStatus;
   paid_at?: string | null;
-  /** COD handling fee on this delivery; 0 on prepaid orders. */
+  /** Cash-handling fee. Always 0 except on a pre-0085 cash order, where it is
+   *  part of what the buyer paid and so part of what its invoice must show. */
   cod_fee?: number;
   /** Delivery fee on this order (cart-level, so it lands on the first order). */
   shipping_fee?: number;

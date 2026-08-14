@@ -90,16 +90,6 @@ export type Boutique = {
   image: string;
   /** Shop logo (`boutiques.logo_url`). Optional — surfaces fall back to a monogram. */
   logo?: string;
-  /**
-   * Whether this boutique takes cash on delivery (its store setting). Checkout
-   * offers COD only when every boutique in the bag accepts it; the server
-   * re-checks the same flag, so this is for the buyer's benefit, not security.
-   *
-   * Cash is opt-in: unset reads as NOT accepting, matching the column default
-   * from migration 0066 and the seller forms. An unpaid order that leaves the
-   * shop is the seller's risk, so it is never assumed on their behalf.
-   */
-  codEnabled?: boolean;
   /** When the boutique row was created — the denominator of its sales rate. */
   createdAt?: string;
   /** Units and fulfilled orders across the shop (migration 0023). */
@@ -130,8 +120,6 @@ export type Boutique = {
   deliveryChargeState?: number | null;
   deliveryChargeNational?: number | null;
   freeDeliveryOver?: number;
-  codFee?: number;
-  codMaxOrder?: number;
   /**
    * What this shop promises about fulfilment (migration 0078). `dispatchMin/Max`
    * are working days to pack, before transit; `returnWindowDays` is its own
@@ -223,17 +211,16 @@ export const TRACK_STAGES = [
 // server in api/_pricing.js. The old hardcoded COUPONS list was removed with that
 // migration.
 
-// Prepaid only — every order settles through the gateway before it is placed.
 /**
- * `online` methods all open the same Razorpay modal — the buyer picks the exact
- * instrument there — so they differ only in copy. `cod` is the one method that
- * skips the gateway entirely and writes an unpaid order.
+ * Prepaid only — every order settles through the gateway before it is placed.
+ * Cash on delivery was withdrawn from the platform (migration 0085), so these
+ * are all `online`: they open the same Razorpay modal and the buyer picks the
+ * exact instrument there, which is why they differ only in copy.
  */
 export const PAY_METHODS = [
   { key: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm & more', icon: 'qr_code_2', kind: 'online' as const },
   { key: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: 'credit_card', kind: 'online' as const },
   { key: 'netbanking', label: 'Net Banking', sub: 'All major banks supported', icon: 'account_balance', kind: 'online' as const },
-  { key: 'cod', label: 'Cash on Delivery', sub: 'Pay the delivery partner in cash', icon: 'payments', kind: 'cod' as const },
 ];
 
 /**

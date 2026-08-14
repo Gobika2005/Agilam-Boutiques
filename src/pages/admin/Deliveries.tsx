@@ -66,7 +66,7 @@ export function Deliveries() {
   const [shop, setShop] = useState<ShiprocketShopRow | null>(null);
   const [registering, setRegistering] = useState(false);
 
-  const toggleSwitch = async (key: 'shiprocket_enabled' | 'cod_enabled', on: boolean) => {
+  const toggleSwitch = async (key: 'shiprocket_enabled', on: boolean) => {
     try {
       await savePlatformSwitches({ [key]: on });
       showToast(on ? 'Switched on' : 'Switched off');
@@ -333,7 +333,7 @@ export function Deliveries() {
                   <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
                     When on, sellers can book a parcel instead of typing a docket number, and a courier scan —
                     not the seller — marks the order delivered. Needs the Edge Functions deployed and a funded
-                    Shiprocket wallet. Cash-on-delivery orders are never booked this way.
+                    Shiprocket wallet. Every order is prepaid, so nothing here handles cash.
                   </div>
                 </div>
                 <GhostButton
@@ -342,26 +342,6 @@ export function Deliveries() {
                   onClick={() => toggleSwitch('shiprocket_enabled', !switches.shiprocket_enabled)}
                 >
                   {switches.shiprocket_enabled ? 'On' : 'Off'}
-                </GhostButton>
-              </div>
-
-              <div style={css(`height:1px;background:${T.field};margin:16px 0;`)} />
-
-              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;')}>
-                <div style={css('flex:1;min-width:240px;')}>
-                  <div style={css('font-weight:800;font-size:14px;')}>Cash on delivery</div>
-                  <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
-                    The master switch. Turning it off refuses every COD checkout across the platform, whatever
-                    individual shops have set. New boutiques already default to prepaid — leave this on unless
-                    you want to stop cash orders everywhere at once.
-                  </div>
-                </div>
-                <GhostButton
-                  icon={switches.cod_enabled ? 'toggle_on' : 'toggle_off'}
-                  tone={switches.cod_enabled ? 'primary' : undefined}
-                  onClick={() => toggleSwitch('cod_enabled', !switches.cod_enabled)}
-                >
-                  {switches.cod_enabled ? 'On' : 'Off'}
                 </GhostButton>
               </div>
             </Card>

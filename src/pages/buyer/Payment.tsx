@@ -6,31 +6,24 @@ import { useShop } from '@/state/ShopContext';
 import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
 import { readPendingPayment, clearPendingPayment } from '@/lib/pendingPayment';
-import { baseCodFee } from '@/lib/pricing';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   usePageMeta({ title: 'Payment', description: 'Choose how to pay for your MangaiMart order.' });
   const navigate = useNavigate();
   const {
-    payMethod, setPayMethod, subtotal, discount, shipFee, codFee, total,
-    guest, orderItems, appliedCoupon, coupon, boutiqueSubtotals, shopTerms,
-    placeOrder, placeCodOrder, retryPendingPayment, showToast, undeliverable,
-    payingCash, codUnavailableReason, codDeliveries,
+    payMethod, setPayMethod, subtotal, discount, shipFee, total,
+    guest, orderItems, appliedCoupon, coupon,
+    placeOrder, retryPendingPayment, showToast, undeliverable,
     cart,
   } = useShop();
-  // What cash would cost on this bag, priced before the buyer picks it — the
-  // live `codFee` is 0 until they do. Each boutique sets its own handling fee
-  // (migration 0076), so this is their sum, not one platform rate × deliveries.
-  const codFeePreview = baseCodFee(boutiqueSubtotals, shopTerms);
   // Same guard as checkout: an empty bag has nothing to pay for, and a step-3
   // screen quoting ₹0 is only a slower way of saying so.
   const bagIsEmpty = Object.keys(cart).length === 0;
   const [processing, setProcessing] = useState(false);
   // `processing` disables the button, but React re-renders asynchronously, so a
   // same-frame double-tap can fire onPlaceOrder twice before the DOM updates.
-  // A synchronous ref closes that window — critical for COD, which has no
-  // payment_id replay guard server-side and would otherwise write two orders.
+  // A synchronous ref closes that window.
   const inFlight = useRef(false);
   // A payment that was captured but never became an order (dropped connection,
   // server hiccup, closed tab). Read once on mount so the buyer is offered the
@@ -60,17 +53,8 @@ export function Payment() {
     inFlight.current = true;
     setProcessing(true);
     try {
-      if (payingCash) {
-        // No gateway involved: the order is written unpaid and the money is
-        // counted at the door. Nothing can be stranded, so there is no pending
-        // payment to recover from if this fails.
-        await placeCodOrder();
-        navigate('/order-confirmation');
-        return;
-      }
-
-      // Prepaid: the gateway settles first, then we record the order
-      // server-side with the verified payment.
+      // The gateway settles first, then we record the order server-side with
+      // the verified payment.
       const payment = await payWithRazorpay({
         items: orderItems,
         couponCode: appliedCoupon,
@@ -90,11 +74,11 @@ export function Payment() {
       });
       navigate('/order-confirmation');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : payingCash ? 'Could not place the order' : 'Payment failed';
+      const msg = err instanceof Error ? err.message : 'Payment failed';
       // If the money left the buyer's account but the order didn't land, say so
       // plainly and show the retry — "Payment failed" would be a lie that sends
       // them to pay twice.
-      const stranded = payingCash ? null : readPendingPayment();
+      const stranded = readPendingPayment();
       setPending(stranded);
       showToast(stranded ? `${msg} Your payment is safe — tap Complete my order.` : msg, 'error');
     } finally {
@@ -171,40 +155,26 @@ export function Payment() {
           <div style={css('display:flex;flex-direction:column;gap:12px;')}>
             {PAY_METHODS.map((m) => {
               const on = payMethod === m.key;
-              // Cash is offered only when the whole bag qualifies. Showing it
-              // greyed out with the reason beats hiding it, which just leaves
-              // the buyer wondering where COD went.
-              const blocked = m.kind === 'cod' ? codUnavailableReason : null;
               return (
                 <div
                   key={m.key}
-                  onClick={() => !blocked && setPayMethod(m.key)}
-                  style={css(`display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:16px;cursor:${blocked ? 'default' : 'pointer'};border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};opacity:${blocked ? 0.55 : 1};`)}
+                  onClick={() => setPayMethod(m.key)}
+                  style={css(`display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:16px;cursor:pointer;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};`)}
                 >
                   <span style={css(`width:46px;height:46px;flex:none;border-radius:13px;background:${on ? '#D6336C' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;`)}>
                     <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${on ? '#fff' : '#D6336C'};`)}>{m.icon}</span>
                   </span>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{m.label}</div>
-                    <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;line-height:1.45;')}>
-                      {blocked ?? (m.kind !== 'cod'
-                        ? m.sub
-                        : codFeePreview <= 0
-                          ? `${m.sub} · no handling fee`
-                          : codDeliveries > 1
-                            ? `${m.sub} · ${fmt(codFeePreview)} handling across ${codDeliveries} deliveries`
-                            : `${m.sub} · ${fmt(codFeePreview)} handling fee`)}
-                    </div>
+                    <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;line-height:1.45;')}>{m.sub}</div>
                   </div>
-                  {!blocked && (
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{on ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
-                  )}
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{on ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
                 </div>
               );
             })}
             <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;color:var(--ag-muted);font-size:12.5px;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-good);")}>lock</span>
-              {payingCash ? 'Keep the exact amount ready — our partner may not carry change.' : '100% secure payments · encrypted end-to-end'}
+              100% secure payments · encrypted end-to-end
             </div>
           </div>
 
@@ -232,26 +202,15 @@ export function Payment() {
                 <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
               )}
               <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
-              {codFee > 0 && (
-                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
-                  <span>Cash handling{codDeliveries > 1 ? ` (${codDeliveries} deliveries)` : ''}</span>
-                  <span style={css('font-weight:700;')}>{fmt(codFee)}</span>
-                </div>
-              )}
             </div>
             <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
-              <span style={css('font-weight:800;')}>{payingCash ? 'Pay on delivery' : 'To pay'}</span>
+              <span style={css('font-weight:800;')}>To pay</span>
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
             </div>
-            {payingCash && codDeliveries > 1 && (
-              <div style={css('margin-top:8px;font-size:12px;color:var(--ag-muted);line-height:1.5;')}>
-                Your bag comes from {codDeliveries} boutiques, so it arrives as {codDeliveries} separate deliveries — you pay each one on arrival.
-              </div>
-            )}
             <button onClick={onPlaceOrder} disabled={processing} style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{payingCash ? 'local_shipping' : 'lock'}</span>
-              {processing ? 'Processing…' : payingCash ? 'Place order' : `Pay ${fmt(total)}`}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>lock</span>
+              {processing ? 'Processing…' : `Pay ${fmt(total)}`}
             </button>
             <button onClick={() => navigate('/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:var(--ag-muted);font-weight:800;font-size:13px;')}>Back to delivery</button>
           </div>

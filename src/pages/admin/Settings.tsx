@@ -16,11 +16,11 @@ type NumField = { key: keyof PlatformSettings; label: string; help: string; pref
  * Fulfilment terms are no longer set here.
  *
  * "Standard shipping", "Free delivery over", "COD fee" and "COD order cap" used
- * to be four fields on this page. They belong to the boutique that packs the
- * parcel and collects the cash, not to the marketplace, so since migration 0076
- * each seller sets their own in the seller console and the buyer is charged per
- * boutique. Re-adding them here would have no effect: nothing reads those
- * columns any more.
+ * to be four fields on this page. Delivery belongs to the boutique that packs
+ * the parcel, not to the marketplace, so since migration 0076 each seller sets
+ * their own in the seller console and the buyer is charged per boutique; cash on
+ * delivery was withdrawn entirely in 0085. Re-adding any of them here would have
+ * no effect: nothing reads those columns any more.
  *
  * `return_window_days` survived, but its meaning changed with migration 0078:
  * it is now only the STARTING value for a newly-created boutique. Each shop
@@ -123,20 +123,20 @@ export function Settings() {
         </Card>
       ))}
 
-      {/* Says where the four fields that used to sit here went, so nobody spends
-          ten minutes looking for the COD fee. */}
+      {/* Says where the fields that used to sit here went, so nobody spends ten
+          minutes looking for the delivery fee. */}
       <Card>
         <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:8px;')}>
           <Icon name="local_shipping" size={19} color={T.muted} />
-          <div style={css('font-weight:800;font-size:15px;')}>Delivery & cash on delivery</div>
+          <div style={css('font-weight:800;font-size:15px;')}>Delivery & payment</div>
         </div>
         <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.7;`)}>
           Each boutique sets its own delivery charges (priced by distance), free-delivery
-          threshold, cash-handling fee, COD cap, dispatch time and change-of-mind return window
-          in its own console — the shop that packs the parcel and collects the cash is the one
-          that prices and promises it. Buyers are charged per boutique, and each order stores the
-          fees it carried. Two things stay ours: the 30-day cover for a faulty or wrong item, and
-          the platform-wide switch for turning COD off everywhere, on the Deliveries page.
+          threshold, dispatch time and change-of-mind return window in its own console — the shop
+          that packs the parcel is the one that prices and promises it. Buyers are charged per
+          boutique, and each order stores the fees it carried. The 30-day cover for a faulty or
+          wrong item stays ours. Cash on delivery has been withdrawn platform-wide: every order is
+          paid in full through Razorpay before it is placed, and there is nothing to switch.
         </div>
       </Card>
 

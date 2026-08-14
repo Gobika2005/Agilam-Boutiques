@@ -27,7 +27,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0082`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0086`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
@@ -38,11 +38,11 @@ deployed to Vercel.
    legitimate checkouts start failing.
 3. **Commercial terms split two ways.** The commission, returns window and payout
    hold are platform-wide, admin-editable in the `platform_settings` row via
-   `api/_settings.js` / `src/data/settings.ts`. Delivery and cash-on-delivery are
-   **the seller's** (0076) and priced **by distance** (0077): `delivery_charge`
+   `api/_settings.js` / `src/data/settings.ts`. Delivery is **the seller's**
+   (0076) and priced **by distance** (0077): `delivery_charge`
    is the shop's own town, `delivery_charge_district` / `_state` / `_national`
    the wider bands (NULL = does not deliver there), plus `free_delivery_over`
-   (local + district only), `cod_fee`, `cod_max_order`. The buyer's pincode
+   (local + district only). The buyer's pincode
    picks the band via `resolveZone` (`src/lib/deliveryZone.ts`), mirrored by
    `zoneFor` in `api/_pricing.js`; both read district/state from the lazily
    filled `pincodes` table so they cannot disagree. Dispatch time and the
@@ -64,6 +64,13 @@ deployed to Vercel.
 8. **`supabase/seed.sql` is locked.** Its rows are real rows in the live DB, which
    is why they show up in admin as "mock data". Purging is `purge_seed.sql`, run
    by the user.
+9. **There is no cash on delivery.** Withdrawn in `0085`; every order is prepaid
+   through Razorpay before `api/place-order.js` writes it, and DB triggers pin
+   `cod_enabled` false and refuse a COD insert. The columns (`orders.cod_fee`,
+   `boutiques.cod_*`, `payouts.cod_adjustment`) and `settle_boutique_payout`'s
+   netting are kept ON PURPOSE — pre-0085 cash orders are real money that still
+   has to add up on their invoices and payout statements. Don't add a cash
+   option, and don't "tidy away" those columns.
 
 ## Commands
 
@@ -78,8 +85,8 @@ npm run verify:seo     # builds, then asserts crawler-visible meta
 
 Commission + ads only. **No subscriptions, no "Featured" tier** — deliberately
 removed. Revenue is a percentage commission per order plus flat day-rate ad
-placements. COD adds a per-delivery fee with a cart cap; the seller keeps the
-cash and owes the commission.
+placements. Every order is prepaid, so the platform holds the money and settles
+goods − commission to the seller after delivery.
 
 ## Working style
 

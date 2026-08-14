@@ -18,14 +18,18 @@ import type { OrderWithDetails } from '@/data/types';
  *
  *   • Prepaid online orders are collected by MangaiMart, so commission comes off
  *     the top and the remainder is settled to the seller's payout account.
- *   • Cash on delivery is collected by the SELLER at the door. MangaiMart never
- *     touches that money, so its commission on those orders becomes a debt the
- *     seller carries, netted off their next online payout rather than invoiced.
+ *   • Cash on delivery was collected by the SELLER at the door. MangaiMart never
+ *     touched that money, so its commission on those orders is a debt the seller
+ *     carries, netted off their next payout rather than invoiced. This stream is
+ *     CLOSED — cash on delivery was withdrawn platform-wide (migration 0085) —
+ *     but the arithmetic stays here because a shop that traded before then still
+ *     has those orders in its history, and dropping it would silently restate
+ *     their lifetime earnings. It contributes nothing on a prepaid-only shop.
  *   • Offline / walk-in bills (the POS flow) are the seller's own trade — no
  *     payout is due and no commission is charged.
  *
  * Rejected and cancelled orders are excluded throughout: they are not money
- * anyone earned. So is any COD order whose cash has not been collected yet —
+ * anyone earned. So is any legacy cash order whose money was never collected —
  * a promise of payment is not revenue.
  */
 
@@ -216,13 +220,15 @@ export function Earnings() {
         ))}
       </div>
 
-      {/* Cash on delivery — the seller holds the money, so MangaiMart's cut on it
-          is a debt rather than a deduction. Stated plainly, with the figure. */}
+      {/* Cash on delivery (withdrawn, migration 0085) — the seller held the
+          money, so MangaiMart's cut on it is a debt rather than a deduction.
+          Only renders for a shop that traded before the withdrawal and still has
+          an unsettled balance; on every other shop both figures are zero. */}
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery · withdrawn</div>
           </div>
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>

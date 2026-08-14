@@ -106,9 +106,9 @@ async function checkDatabase() {
   }
 
   probes.push(await probe('boutiques.select', () =>
-    supabase.from('boutiques').select('id, name, cod_enabled, status').limit(1)));
+    supabase.from('boutiques').select('id, name, status').limit(1)));
   probes.push(await probe('orders.select', () =>
-    supabase.from('orders').select('id, order_number, payment_status, cod_fee, shipping_fee').limit(1)));
+    supabase.from('orders').select('id, order_number, payment_status, shipping_fee').limit(1)));
   // Empty array is a deliberate no-op: it proves the function exists and is
   // callable by this role without touching a single unit of stock.
   probes.push(await probe('rpc.reserve_stock', () => supabase.rpc('reserve_stock', { p_items: [] })));

@@ -19,7 +19,7 @@ import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
 import { trackAdClick, trackAdImpression } from '@/data/ads';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchTopReviews } from '@/data/reviews';
+import { fetchPublicPlatformReviews } from '@/data/feedback';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
@@ -62,7 +62,7 @@ export function Home() {
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
   const { ads, heroPending } = useLiveAds();
-  const { data: topReviews } = useAsync(() => fetchTopReviews(3), []);
+  const { data: topReviews } = useAsync(() => fetchPublicPlatformReviews(3), []);
   const REVIEWS = topReviews ?? [];
 
   // The hero carousel is now purely paid placements: only live `home_hero`
@@ -599,12 +599,21 @@ export function Home() {
         ))}
       </div>
 
-      {/* CUSTOMER REVIEWS (full-bleed)
-          Real reviews pulled from the `reviews` table (highest-rated, with
-          written feedback), not invented testimonials — so the section quietly
-          disappears rather than lying when the catalogue has none yet. Each
-          card is a proper pull-quote: the mark, the words, then the person —
-          equal height whatever the quote length. */}
+      {/* WHAT SHOPPERS SAY ABOUT MANGAIMART (full-bleed)
+          Reviews of the PLATFORM, not of a garment. This used to read from
+          `reviews`, which is the product table — so a section headed "about
+          MangaiMart" was quoting someone on a saree's fabric and printing the
+          shop's name underneath it.
+
+          The source is now `platform_feedback` (0071), where buyers rate us
+          after delivery, filtered to the ones who ticked "you may quote me" and
+          that an admin then approved (0084). Nothing given in confidence
+          appears here.
+
+          Still real or absent: the section quietly disappears rather than
+          inventing testimonials when nothing has been approved yet. Each card
+          is a proper pull-quote — the mark, the words, then the person — equal
+          height whatever the quote length. */}
       {REVIEWS.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,var(--ag-surface-2) 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
@@ -614,12 +623,13 @@ export function Home() {
               What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>MangaiMart</span>
             </div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;line-height:1.6;')}>
-              Real reviews from buyers who found their piece through a local boutique.
+              In their own words, after their order arrived — shared with their permission.
             </div>
           </div>
 
           <div className="agx-testimonials" style={css('margin-top:clamp(24px,3vw,38px);')}>
             {REVIEWS.map((r) => {
+              // The RPC already defaults a blank name; this is the belt.
               const name = r.author_name?.trim() || 'MangaiMart buyer';
               const tone = TONES[Math.abs(name.charCodeAt(0)) % TONES.length];
               return (
@@ -657,14 +667,15 @@ export function Home() {
                     </span>
                     <span style={css('min-width:0;')}>
                       <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{name}</span>
-                      {(r.product_title || r.boutique_name) && (
-                        <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
-                          {r.product_title}{r.product_title && r.boutique_name ? ' · ' : ''}{r.boutique_name}
-                        </span>
-                      )}
+                      {/* The buyer's city, never a product or a shop — this
+                          section is about MangaiMart, and naming a boutique
+                          here reads as an endorsement they did not give. */}
+                      <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                        {r.city ? `Shopper · ${r.city}` : 'MangaiMart shopper'}
+                      </span>
                     </span>
-                    {r.verified_purchase && (
-                      <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
+                    {r.verified && (
+                      <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Left after a delivered order">
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
                       </span>
                     )}

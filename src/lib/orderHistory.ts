@@ -42,10 +42,12 @@ export type PlacedOrder = {
   status: OrderStatus;
   total: number;
   items: PlacedOrderItem[];
-  /** 'COD' or 'Razorpay'. Absent on orders placed before COD existed. */
+  /** 'Razorpay', or 'COD' on an order placed before cash on delivery was
+   *  withdrawn (migration 0085). Absent on the oldest orders of all. */
   paymentMethod?: string | null;
   paymentStatus?: PaymentStatus;
-  /** COD handling fee on this delivery, already included in `total`. */
+  /** Cash-handling fee, already included in `total`. Only ever non-zero on a
+   *  pre-0085 cash order — kept so its history still adds up. */
   codFee?: number;
   /** Delivery fee on this order, already included in `total`. */
   shippingFee?: number;
@@ -115,14 +117,12 @@ export function isFailedShipment(lastScan?: string | null): boolean {
   return lastScan === 'rto' || lastScan === 'failed';
 }
 
-/** True while a COD order can still be called off from the buyer's side. */
-export function isCancellable(o: PlacedOrder): boolean {
-  return (
-    o.paymentMethod === 'COD' &&
-    (o.paymentStatus ?? 'pending') === 'pending' &&
-    (o.status === 'pending' || o.status === 'accepted')
-  );
-}
+/*
+ * `isCancellable()` used to live here — a buyer could call off an un-dispatched
+ * cash order because nobody had paid anything yet. Cash on delivery was
+ * withdrawn (migration 0085) and every order is now prepaid, so cancelling means
+ * refunding: it goes through the boutique, not a self-service button.
+ */
 
 export function readOrders(): PlacedOrder[] {
   return orderState;

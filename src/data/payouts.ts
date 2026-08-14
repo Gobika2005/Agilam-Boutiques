@@ -10,10 +10,16 @@ import { fetchBoutiquePrivate } from './boutiques';
  *
  *   • The platform take is a flat 10% of goods, already covering the gateway fee
  *     and tax.
- *   • Prepaid orders: platform holds the money → it owes  goods − 10%.
- *   • COD orders: seller holds the cash → seller owes  10% + shipping + COD fee,
- *     netted off the payout (so a boutique can settle to a negative figure).
+ *   • Every order is prepaid (migration 0085): the platform holds the money, so
+ *     it owes  goods − 10%.
  *   • Offline / walk-in POS sales are the seller's own till — excluded.
+ *
+ * Cash on delivery was withdrawn platform-wide, so the COD netting this module
+ * used to do is gone. `settle_boutique_payout` still carries its half of that
+ * arithmetic, deliberately: it is the authority when money is actually recorded,
+ * and a historical cash order must still net rather than be paid twice. No such
+ * row can reach the balance below — a settled order carries a `payout_id` and is
+ * filtered out — so the two do not disagree.
  *
  * ── Delivery is the gate (migration 0078) ──────────────────────────────────
  *
@@ -44,17 +50,10 @@ export interface PayoutSummary {
   prepaidGoods: number;
   prepaidCommission: number;
   prepaidFees: number;
-  codGoods: number;
-  codCommission: number;
-  codFees: number;
-  /** Platform-funded coupon money the seller never collected in cash on their
-   *  COD orders, and which we therefore owe them back (migration 0053). */
-  codPlatformDiscount: number;
-  /** What we owe the seller (goods − commission for prepaid). */
+  /** What we owe the seller (goods − commission). */
   prepaidPayout: number;
-  /** What the seller owes us on COD cash they hold (shown as a positive owed). */
-  codOwed: number;
-  /** Net payable — can be negative (seller owes the platform). */
+  /** Net payable. Identical to `prepaidPayout` now that every order is prepaid;
+   *  kept as its own field because it is what every caller settles against. */
   net: number;
   /** Delivery time of the longest-waiting order in this balance. The payout
    *  clock runs from here; null only if the rows predate `delivered_at`. */
@@ -68,10 +67,7 @@ export interface PayoutSummary {
 interface OrderCalcRow {
   boutique_id: string;
   total: number;
-  cod_fee: number | null;
   shipping_fee: number | null;
-  platform_discount: number | null;
-  payment_method: string | null;
   channel: string | null;
   status: string;
   delivered_at: string | null;
@@ -85,8 +81,7 @@ const emptySummary = (r: OrderCalcRow): PayoutSummary => ({
   tone: r.boutique?.tone ?? 0,
   orders: 0,
   prepaidGoods: 0, prepaidCommission: 0, prepaidFees: 0,
-  codGoods: 0, codCommission: 0, codFees: 0, codPlatformDiscount: 0,
-  prepaidPayout: 0, codOwed: 0, net: 0,
+  prepaidPayout: 0, net: 0,
   oldestDeliveredAt: null,
   heldOrders: 0, heldValue: 0,
 });
@@ -103,7 +98,7 @@ const emptySummary = (r: OrderCalcRow): PayoutSummary => ({
 export async function fetchPayoutSummaries(): Promise<PayoutSummary[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('boutique_id, total, cod_fee, shipping_fee, platform_discount, payment_method, channel, status, delivered_at, delivery_disputed, boutique:boutiques(name, tone)')
+    .select('boutique_id, total, shipping_fee, channel, status, delivered_at, delivery_disputed, boutique:boutiques(name, tone)')
     .is('payout_id', null)
     .eq('payment_status', 'paid')
     .eq('refunded', false)
@@ -132,29 +127,16 @@ export async function fetchPayoutSummaries(): Promise<PayoutSummary[]> {
       s.oldestDeliveredAt = r.delivered_at;
     }
 
-    const commission = round2(goods * PAYOUT_RATE);
-    const fees = Number(r.cod_fee ?? 0) + Number(r.shipping_fee ?? 0);
     s.orders += 1;
-    if (r.payment_method === 'COD') {
-      s.codGoods += goods;
-      s.codCommission += commission;
-      s.codFees += fees;
-      // The seller collected the cash MINUS any platform coupon, but is settled
-      // on the full goods value — so we owe them that gap back. Mirrors
-      // settle_boutique_payout (migration 0053, restored in 0078).
-      s.codPlatformDiscount += Number(r.platform_discount ?? 0);
-    } else {
-      s.prepaidGoods += goods;
-      s.prepaidCommission += commission;
-      s.prepaidFees += fees;
-    }
+    s.prepaidGoods += goods;
+    s.prepaidCommission += round2(goods * PAYOUT_RATE);
+    s.prepaidFees += Number(r.shipping_fee ?? 0);
   }
 
   const list = [...map.values()];
   for (const s of list) {
     s.prepaidPayout = round2(s.prepaidGoods - s.prepaidCommission);
-    s.codOwed = round2(s.codCommission + s.codFees - s.codPlatformDiscount);
-    s.net = round2(s.prepaidPayout - s.codOwed);
+    s.net = s.prepaidPayout;
   }
   // A boutique with nothing delivered has no balance to act on; it stays in the
   // list only while it has something held, so the admin can still see it.
@@ -345,10 +327,12 @@ export function payoutWhatsAppText(opts: {
   reference?: string | null;
 }): string {
   const rupees = (n: number) => '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN');
+  // Only reachable on a balance carried over from before cash on delivery was
+  // withdrawn (migration 0085) — a prepaid-only balance is never negative.
   if (opts.amount < 0) {
     return (
       `Hello ${opts.boutiqueName}, your MangaiMart statement is ready. ` +
-      `This cycle your COD commission (${rupees(opts.amount)}) was more than your online earnings, so no transfer was made and the balance carries forward. ` +
+      `This cycle you owe ${rupees(opts.amount)} on cash you collected, which is more than your earnings, so no transfer was made and the balance carries forward. ` +
       `The order-by-order breakdown is in your seller app under Earnings.`
     );
   }
@@ -381,6 +365,14 @@ export async function fetchBoutiquePayouts(boutiqueId: string): Promise<PayoutRe
  * here from the stored order, not stored on a line table: the 10% is the one in
  * `PAYOUT_RATE`, and the payout row snapshots only the totals. That keeps the
  * statement honest against a historical payout without a schema for it.
+ *
+ * The COD arithmetic below survives the withdrawal of cash on delivery (0085)
+ * ON PURPOSE, and is the one place in the app that still does it. This is the
+ * screen a seller opens on a payout from BEFORE the withdrawal; those orders are
+ * still in the database with `payment_method = 'COD'`, and dropping the branch
+ * would show them contributing goods − 10% when they actually netted the other
+ * way. The statement would then not add up to the payout it belongs to. No new
+ * order can take this path.
  */
 
 export interface StatementItem {
@@ -399,6 +391,7 @@ export interface StatementOrder {
   created_at: string;
   delivered_at: string | null;
   payment_method: string | null;
+  /** True only on an order placed before cash on delivery was withdrawn. */
   isCod: boolean;
   buyerName: string;
   /** Goods value the commission is charged on. */

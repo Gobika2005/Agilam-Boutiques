@@ -28,7 +28,6 @@ type Form = {
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
   fulfilment: FulfilmentForm;
-  codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
 };
 
@@ -37,7 +36,6 @@ const EMPTY: Form = {
   openTime: '', closeTime: '', workingDays: [],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
   fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
-  codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
 
@@ -83,10 +81,6 @@ export function Settings() {
       rates: zoneRatesToForm(boutique),
       fulfilment: fulfilmentToForm(boutique),
       freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
-      codEnabled: boutique.cod_enabled ?? false,
-      codFee: boutique.cod_fee != null ? String(boutique.cod_fee) : '0',
-      codMaxOrder: boutique.cod_max_order != null ? String(boutique.cod_max_order) : '0',
-      onlinePaymentEnabled: boutique.online_payment_enabled ?? true,
       notifyOrders: boutique.notify_orders ?? true,
       notifyMessages: boutique.notify_messages ?? true,
       notifyPromotions: boutique.notify_promotions ?? false,
@@ -116,7 +110,6 @@ export function Settings() {
     if (form.deliveryAvailable && !form.deliveryAreas.trim()) next.deliveryAreas = 'List the areas you deliver to';
     const badFulfilment = validateFulfilment(form.fulfilment);
     if (badFulfilment) next.fulfilment = badFulfilment;
-    if (!form.codEnabled && !form.onlinePaymentEnabled) next.codEnabled = 'Enable at least one payment method';
     if (Object.keys(next).length) {
       setErrors(next);
       return showToast('Please fix the highlighted fields');
@@ -138,10 +131,10 @@ export function Settings() {
       ...zoneRatesToPatch(form.rates),
       ...fulfilmentToPatch(form.fulfilment),
       free_delivery_over: Number(form.freeDeliveryOver || 0),
-      cod_enabled: form.codEnabled,
-      cod_fee: Number(form.codFee || 0),
-      cod_max_order: Number(form.codMaxOrder || 0),
-      online_payment_enabled: form.onlinePaymentEnabled,
+      // Prepaid-only platform. `cod_enabled` is deliberately NOT written here —
+      // a trigger in migration 0085 pins it false on every insert and update, so
+      // the database owns it and no client can turn it back on.
+      online_payment_enabled: true,
       notify_orders: form.notifyOrders,
       notify_messages: form.notifyMessages,
       notify_promotions: form.notifyPromotions,
@@ -279,16 +272,19 @@ export function Settings() {
           </SectionCard>
         )}
 
+        {/* No longer a setting — MangaiMart withdrew cash on delivery. Kept as a
+            visible statement rather than deleted outright, because a seller who
+            had it switched on will come looking for the toggle. */}
         <SectionCard title="Payments accepted">
-          <Toggle label="Cash on delivery" description="Off by default. Turn it on only if you are willing to send stock before it is paid for" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
-          {form.codEnabled && (
-            <Row>
-              <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />
-              <Field label="Cash order limit (₹)" value={form.codMaxOrder} onChange={(v) => set('codMaxOrder', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Largest order you will send unpaid. 0 = no limit." />
-            </Row>
-          )}
-          <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
-          {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
+          <div style={css('display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
+            <div style={css('font-size:13px;line-height:1.55;color:var(--ag-ink-2);')}>
+              <div style={css('font-weight:800;color:var(--ag-ink);')}>Online payment only</div>
+              Every order is paid in full through Razorpay before it reaches you — card, UPI or netbanking.
+              Cash on delivery has been withdrawn across MangaiMart, so you no longer send stock that has not
+              been paid for, and there is no cash to count or hand back at the door.
+            </div>
+          </div>
         </SectionCard>
 
         <SectionCard title="Notifications" subtitle="What lands in your notifications inbox.">

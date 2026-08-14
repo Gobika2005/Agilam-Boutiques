@@ -13,16 +13,23 @@ const INPUT_ERR = INPUT.replace('var(--ag-border)', 'var(--ag-border)').replace(
 const TEXTAREA = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;resize:vertical;min-height:88px;';
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
 const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
+const WARN = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-warn-text);';
 const HINT = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);';
 
 export function Field({
-  label, value, onChange, placeholder, error, hint, type = 'text', inputMode, maxLength, disabled, suggestions,
+  label, value, onChange, placeholder, error, warning, hint, type = 'text', inputMode, maxLength, disabled, suggestions,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   error?: string;
+  /**
+   * A value that is accepted but probably wrong. Unlike `error` it never blocks
+   * saving — it is shown under the input in amber, and only when there is no
+   * error to show instead.
+   */
+  warning?: string;
   hint?: string;
   type?: string;
   inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'url';
@@ -57,7 +64,9 @@ export function Field({
           {suggestions?.map((s) => <option key={s} value={s} />)}
         </datalist>
       )}
-      {error ? <span style={css(ERR)}>{error}</span> : hint ? <span style={css(HINT)}>{hint}</span> : null}
+      {error ? <span style={css(ERR)}>{error}</span>
+        : warning ? <span style={css(WARN)}>{warning}</span>
+        : hint ? <span style={css(HINT)}>{hint}</span> : null}
     </label>
   );
 }

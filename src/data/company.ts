@@ -113,11 +113,12 @@ export const CONTACT_LINKS = {
  * 0048 has not been applied. Keep them plausible, but the database is the
  * authority.
  *
- * Delivery and cash-on-delivery are gone from this list entirely. Since
- * migration 0076 each boutique sets its own delivery charge, free-delivery
- * threshold, cash-handling fee and COD cap (`ShopTerms` in src/lib/pricing.ts),
- * so there is no platform-wide figure left to fall back to — and a stale one
- * sitting here would be the same trap as before, just quieter.
+ * Delivery is gone from this list entirely. Since migration 0076 each boutique
+ * sets its own delivery charge and free-delivery threshold (`ShopTerms` in
+ * src/lib/pricing.ts), so there is no platform-wide figure left to fall back to
+ * — and a stale one sitting here would be the same trap as before, just quieter.
+ * Cash on delivery is gone for a different reason: it was withdrawn from the
+ * platform (migration 0085), so there is no fee or cap to state at all.
  *
  * The copy-only terms below (`refundWorkingDays`, `deliveryEstimate`,
  * `metroDeliveryEstimate`, `cancellationWindowHours`) have no settings column

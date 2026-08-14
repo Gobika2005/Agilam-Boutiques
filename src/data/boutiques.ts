@@ -30,7 +30,7 @@ const BASE_COLUMNS = [
   'category', 'years_in_business',
   'open_time', 'close_time', 'working_days',
   'delivery_available', 'delivery_areas', 'delivery_charge',
-  'cod_enabled', 'online_payment_enabled',
+  'online_payment_enabled',
   'onboarding_step', 'onboarding_complete', 'submitted_at', 'reviewed_at',
   'notify_orders', 'notify_messages', 'notify_promotions',
 ].join(', ');
@@ -44,17 +44,17 @@ const BASE_COLUMNS = [
 const COUNTER_COLUMNS = 'units_sold, orders_count';
 
 /**
- * The seller's own delivery/COD terms and map pin (migration 0076), in their own
+ * The seller's own delivery terms and map pin (migration 0076), in their own
  * optional group for the same reason as the counters above.
  *
  * If they are missing the storefront still works: `shopTerms` in
  * src/state/ShopContext.tsx falls back to charging `delivery_charge` with no
- * free-delivery threshold and no COD fee — and api/_pricing.js falls back
- * identically, which is what keeps the client and server totals in step on a
- * deployment where 0076 has not been applied yet. A mismatch there would reject
- * legitimate checkouts as underpaid.
+ * free-delivery threshold — and api/_pricing.js falls back identically, which is
+ * what keeps the client and server totals in step on a deployment where 0076 has
+ * not been applied yet. A mismatch there would reject legitimate checkouts as
+ * underpaid.
  */
-const TERMS_COLUMNS = 'latitude, longitude, free_delivery_over, cod_fee, cod_max_order';
+const TERMS_COLUMNS = 'latitude, longitude, free_delivery_over';
 
 /**
  * The per-zone delivery rates (migration 0077), in their own group again —
@@ -114,7 +114,7 @@ async function selectBoutiques<T>(
       console.warn('[boutiques] delivery zone rates unavailable — apply migration 0077. Every address will be charged the shop’s local rate.');
     } else if (termsAvailable) {
       termsAvailable = false;
-      console.warn('[boutiques] seller delivery terms unavailable — apply migration 0076. Delivery will be charged at each shop’s delivery_charge with no COD fee.');
+      console.warn('[boutiques] seller delivery terms unavailable — apply migration 0076. Delivery will be charged at each shop’s delivery_charge with no free-delivery threshold.');
     } else if (countersAvailable) {
       countersAvailable = false;
       console.warn('[boutiques] sales counters unavailable — apply migration 0023. Ranking will use ratings only.');
@@ -294,9 +294,6 @@ export type BoutiquePatch = Partial<{
   dispatch_days_max: number;
   return_window_days: number;
   free_delivery_over: number;
-  cod_enabled: boolean;
-  cod_fee: number;
-  cod_max_order: number;
   online_payment_enabled: boolean;
   bank_account_name: string | null;
   bank_account_number: string | null;

@@ -158,12 +158,14 @@ function renderHtml(d, brief) {
   ${section('Yesterday', kv([
     ['Orders', o.count ?? 0, delta(o.count, o.prevCount)],
     ['GMV', inr(m.gmv), delta(m.gmv, m.prevGmv)],
-    ['Goods value', inr(m.goods), 'excl. shipping &amp; COD fee'],
+    ['Goods value', inr(m.goods), 'excl. shipping'],
     [`Commission (${m.commissionPct ?? 10}%)`, inr(m.commission), 'on goods value'],
     ['Average order', inr(m.aov)],
     (o.units ? ['Units sold', o.units] : null),
     (m.prepaidCount ? ['Prepaid', `${m.prepaidCount} · ${inr(m.prepaidValue)}`] : null),
-    (m.codCount ? ['COD receivable', `${m.codCount} · ${inr(m.codValue)}`, 'sellers hold this cash'] : null),
+    // Cash on delivery was withdrawn (migration 0085); this line only appears if
+    // a legacy cash order is still unsettled, and is expected to stay absent.
+    (m.codCount ? ['COD receivable (legacy)', `${m.codCount} · ${inr(m.codValue)}`, 'sellers hold this cash'] : null),
     (Number(m.platformDiscount) ? ['Platform coupons', '−' + inr(m.platformDiscount), 'our cost'] : null),
     (o.cancelled ? ['Cancelled', o.cancelled, 'excluded above'] : null),
     (o.offline ? ['Offline / POS', o.offline, 'walk-in, no commission'] : null),

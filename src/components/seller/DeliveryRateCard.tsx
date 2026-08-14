@@ -55,6 +55,8 @@ export function describeReach(f: ZoneRateForm, city?: string, district?: string,
   return city ? `${city} only` : 'Your town only';
 }
 
+type Places = { city?: string; district?: string; state?: string };
+
 const ZONES: { key: keyof ZoneRateForm; label: (p: Places) => string; hint: string; required?: boolean }[] = [
   {
     key: 'local',
@@ -79,7 +81,37 @@ const ZONES: { key: keyof ZoneRateForm; label: (p: Places) => string; hint: stri
   },
 ];
 
-type Places = { city?: string; district?: string; state?: string };
+/**
+ * Bands that undercut a nearer band, keyed by the band at fault.
+ *
+ * The fields are listed nearest-first and read as a ladder, which makes it easy
+ * to type ₹40 for "Rest of India" under a ₹200 "Rest of Tamil Nadu" without
+ * noticing — the shop then eats the courier bill on exactly its most expensive
+ * parcels. A cheaper far band is not impossible (a bulk contract to one metro,
+ * say), so this warns rather than blocks: nothing here stops a save.
+ *
+ * Blank bands are "I don't deliver there", not a price, so they neither warn nor
+ * count as the band to beat. Each band is compared against the dearest nearer
+ * band, so a gap in the middle can't hide an undercut further out.
+ */
+export function zoneRateWarnings(f: ZoneRateForm, places: Places = {}): Partial<Record<keyof ZoneRateForm, string>> {
+  const out: Partial<Record<keyof ZoneRateForm, string>> = {};
+  let dearest: { label: string; amount: number } | null = null;
+
+  for (const z of ZONES) {
+    const raw = f[z.key].trim();
+    if (raw === '') continue;
+    const amount = Number(raw);
+    if (!Number.isFinite(amount)) continue;
+
+    if (dearest && amount < dearest.amount) {
+      out[z.key] = `Cheaper than ${dearest.label} (₹${dearest.amount}). Farther usually costs more — check this.`;
+    }
+    if (!dearest || amount > dearest.amount) dearest = { label: z.label(places), amount };
+  }
+
+  return out;
+}
 
 export function DeliveryRateCard({
   value, onChange, places, freeDeliveryOver, onFreeDeliveryOverChange,
@@ -95,6 +127,8 @@ export function DeliveryRateCard({
     onChange({ ...value, [key]: raw.replace(/[^\d.]/g, '') });
 
   const reaches = describeReach(value, places.city, places.district, places.state);
+  const warnings = zoneRateWarnings(value, places);
+  const undercut = ZONES.filter((z) => warnings[z.key]);
 
   return (
     <div style={css('display:flex;flex-direction:column;gap:14px;')}>
@@ -112,9 +146,26 @@ export function DeliveryRateCard({
           onChange={(v) => set(z.key, v)}
           placeholder={z.required ? '0' : 'Not delivered'}
           inputMode="numeric"
+          warning={warnings[z.key]}
           hint={z.hint}
         />
       ))}
+
+      {/* The per-field line is easy to scroll past on a phone, where only one or
+          two bands are on screen at a time, so the mismatch is also stated once
+          where the seller can see both numbers together. */}
+      {undercut.length > 0 && (
+        <div style={css('display:flex;gap:8px;padding:11px 13px;border-radius:12px;background:var(--ag-warn-bg);font-size:11.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.6;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;flex:none;")}>warning</span>
+          <span>
+            <strong style={css('font-weight:800;')}>Check your rate card.</strong>{' '}
+            {undercut.map((z) => `${z.label(places)} (₹${Number(value[z.key])})`).join(', ')}{' '}
+            {undercut.length > 1 ? 'cost' : 'costs'} a buyer less than a nearer
+            band. You can still save this — just make sure the courier bill on
+            those parcels is one you meant to carry.
+          </span>
+        </div>
+      )}
 
       <Field
         label="Free delivery over (₹)"

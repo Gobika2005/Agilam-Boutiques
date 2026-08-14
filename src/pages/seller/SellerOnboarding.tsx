@@ -107,7 +107,6 @@ type Form = {
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
   fulfilment: FulfilmentForm;
-  codEnabled: boolean; codFee: string; codMaxOrder: string; onlinePaymentEnabled: boolean;
   bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
 };
 
@@ -120,7 +119,6 @@ const EMPTY: Form = {
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
   fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
-  codEnabled: false, codFee: '0', codMaxOrder: '0', onlinePaymentEnabled: true,
   bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
 };
 
@@ -180,7 +178,6 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
     if (f.deliveryAvailable && !f.deliveryAreas.trim()) e.deliveryAreas = 'List the areas you deliver to';
     const badFulfilment = validateFulfilment(f.fulfilment);
     if (badFulfilment) e.fulfilment = badFulfilment;
-    if (!f.codEnabled && !f.onlinePaymentEnabled) e.codEnabled = 'Enable at least one payment method';
   }
   if (step === 6) {
     // Bank details are now the ONLY payout destination — payouts are made
@@ -261,10 +258,11 @@ function toPatch(f: Form): BoutiquePatch {
     ...zoneRatesToPatch(f.rates),
     ...fulfilmentToPatch(f.fulfilment),
     free_delivery_over: Number(f.freeDeliveryOver || 0),
-    cod_enabled: f.codEnabled,
-    cod_fee: Number(f.codFee || 0),
-    cod_max_order: Number(f.codMaxOrder || 0),
-    online_payment_enabled: f.onlinePaymentEnabled,
+    // Prepaid-only platform: every shop takes online payment, and there is no
+    // COD switch to set. `cod_enabled` is deliberately NOT written here — a
+    // trigger in migration 0085 pins it false on every insert and update, so the
+    // database owns it and no client can turn it back on.
+    online_payment_enabled: true,
     bank_account_name: orNull(f.bankAccountName),
     bank_account_number: orNull(f.bankAccountNumber),
     bank_ifsc: orNull(f.bankIfsc.toUpperCase()),
@@ -408,10 +406,6 @@ export function SellerOnboarding() {
           rates: zoneRatesToForm(row),
           fulfilment: fulfilmentToForm(row),
           freeDeliveryOver: row.free_delivery_over != null ? String(row.free_delivery_over) : '0',
-          codEnabled: row.cod_enabled ?? false,
-          codFee: row.cod_fee != null ? String(row.cod_fee) : '0',
-          codMaxOrder: row.cod_max_order != null ? String(row.cod_max_order) : '0',
-          onlinePaymentEnabled: row.online_payment_enabled ?? true,
           bankAccountName: priv?.bank_account_name ?? '',
           bankAccountNumber: priv?.bank_account_number ?? '',
           bankIfsc: priv?.bank_ifsc ?? '',
@@ -937,16 +931,19 @@ export function SellerOnboarding() {
               <FulfilmentCard value={form.fulfilment} onChange={(next) => set('fulfilment', next)} error={errors.fulfilment} />
             </SectionCard>
 
+            {/* Not a choice any more: MangaiMart is prepaid-only, so there is no
+                toggle to get wrong. Said out loud rather than left silent —
+                "how do I turn on cash on delivery" is the question this
+                answers. */}
             <SectionCard title="Payments accepted">
-              <Toggle label="Cash on delivery" description="Off by default. Turn it on only if you are willing to send stock before it is paid for" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
-              {form.codEnabled && (
-                <Row>
-                  <Field label="Cash handling fee (₹)" value={form.codFee} onChange={(v) => set('codFee', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Added once per cash delivery. 0 = no fee." />
-                  <Field label="Cash order limit (₹)" value={form.codMaxOrder} onChange={(v) => set('codMaxOrder', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Largest order you will send unpaid. 0 = no limit." />
-                </Row>
-              )}
-              <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
-              {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
+              <div style={css('display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
+                <div style={css('font-size:13px;line-height:1.55;color:var(--ag-ink-2);')}>
+                  <div style={css('font-weight:800;color:var(--ag-ink);')}>Online payment only</div>
+                  Every order is paid in full through Razorpay — card, UPI or netbanking — before it reaches you.
+                  MangaiMart does not offer cash on delivery, so you never send stock that has not been paid for.
+                </div>
+              </div>
             </SectionCard>
           </div>
         )}
@@ -1122,7 +1119,7 @@ function ReviewStep({
         ['Delivery', form.deliveryAvailable ? `${describeReach(form.rates, form.city, form.district, form.state)} · from ₹${form.rates.local || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver} nearby` : ''}` : 'Store pickup only'],
         ['Dispatch', dispatchLabel(shopFulfilment({ dispatchMin: Number(form.fulfilment.dispatchMin), dispatchMax: Number(form.fulfilment.dispatchMax) }))],
         ['Returns', Number(form.fulfilment.returnWindowDays) > 0 ? `${form.fulfilment.returnWindowDays} days` : 'Faults only'],
-        ['Payments', [form.codEnabled && `Cash on delivery${Number(form.codFee) > 0 ? ` (₹${form.codFee} fee)` : ''}`, form.onlinePaymentEnabled && 'Online'].filter(Boolean).join(', ') || '—'],
+        ['Payments', 'Online only — paid in full before the order reaches you'],
       ],
     },
     {

@@ -14,7 +14,7 @@
  *     filter can exclude 95% of the catalogue, and filtering a fetched batch
  *     instead would leave the buyer looking at two cards with no way to know
  *     more exist further down.
- *   • Shop-level filters (verified, cash on delivery) are applied to the fetched
+ *   • Shop-level filters (verified) are applied to the fetched
  *     rows against the boutique list the app already holds in memory — see
  *     `matchesShopFilters`. They remove a small fraction at most, and doing it
  *     this way needs no join and no extra granted column.
@@ -40,7 +40,6 @@ export type FeedFilters = {
   maxPrice: number;
   inStockOnly: boolean;
   newOnly: boolean;
-  codOnly: boolean;
   city: string | null;
   verifiedOnly: boolean;
 };
@@ -60,7 +59,6 @@ export const NO_FEED_FILTERS: FeedFilters = {
   maxPrice: FEED_MAX_PRICE,
   inStockOnly: false,
   newOnly: false,
-  codOnly: false,
   city: null,
   verifiedOnly: false,
 };
@@ -76,7 +74,6 @@ export function feedFilterCount(f: FeedFilters): number {
     (f.maxPrice < FEED_MAX_PRICE ? 1 : 0) +
     (f.inStockOnly ? 1 : 0) +
     (f.newOnly ? 1 : 0) +
-    (f.codOnly ? 1 : 0) +
     (f.city ? 1 : 0) +
     (f.verifiedOnly ? 1 : 0)
   );
@@ -96,7 +93,6 @@ export function feedFilterKey(f: FeedFilters): string {
     f.maxPrice,
     f.inStockOnly,
     f.newOnly,
-    f.codOnly,
     f.city,
     f.verifiedOnly,
   ]);
@@ -174,14 +170,10 @@ export function boutiqueIdsForCity(boutiques: Boutique[], city: string | null): 
  * The shop-level half. `undefined` boutique means "not in the catalogue we hold"
  * — which can only happen mid-load, and is treated as a pass so the feed does
  * not blink empty while the boutique list resolves.
- *
- * `codEnabled` undefined is treated as accepting COD, matching the field's
- * documented meaning (older rows predate the setting).
  */
 export function matchesShopFilters(b: Boutique | undefined, f: FeedFilters): boolean {
   if (!b) return true;
   if (f.verifiedOnly && !b.verified) return false;
-  if (f.codOnly && b.codEnabled === false) return false;
   return true;
 }
 

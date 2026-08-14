@@ -19,23 +19,20 @@ import {
 } from '@/lib/deliveryZone';
 
 /**
- * Delivery and cash-on-delivery are the SELLER's terms, not the platform's.
+ * Delivery is the SELLER's term, not the platform's.
  *
  * Until migration 0076 the buyer paid a flat platform delivery fee (free over a
- * platform threshold) and a flat platform COD fee, both set in the admin
- * console — and `boutiques.delivery_charge`, which the seller had been filling
- * in since onboarding, was collected and never charged. That is now inverted:
- * the seller's own numbers are what the buyer pays, and the admin console no
- * longer carries these knobs at all.
+ * platform threshold), set in the admin console — and `boutiques.delivery_charge`,
+ * which the seller had been filling in since onboarding, was collected and never
+ * charged. That is now inverted: the seller's own numbers are what the buyer
+ * pays, and the admin console no longer carries these knobs at all.
  *
  * The consequences of it being per-boutique rather than per-cart:
  *
  *   • a bag spanning two boutiques becomes two orders, shipped separately, so
  *     it carries two delivery charges — one shop cannot ship another's parcel;
  *   • free delivery is measured against THAT boutique's goods in the bag, not
- *     the cart total, because it is that seller who gives it up;
- *   • the COD cap is per boutique for the same reason — the seller is the one
- *     carrying the cash risk on their own order.
+ *     the cart total, because it is that seller who gives it up.
  *
  * Migration 0077 then split the delivery charge itself by DISTANCE: each shop
  * prices its own town, its district, its state and the rest of India
@@ -47,9 +44,13 @@ import {
  * shop's furthest zone, because quoting the cheapest and then raising it at the
  * payment screen is the version of this that loses carts.
  *
- * `freeDeliveryOver: 0` means "never free" and `codMaxOrder: 0` means "no cap",
- * which is also what an un-migrated deployment falls back to (see
- * `TERMS_COLUMNS` in src/data/boutiques.ts). The server falls back identically.
+ * `freeDeliveryOver: 0` means "never free", which is also what an un-migrated
+ * deployment falls back to (see `TERMS_COLUMNS` in src/data/boutiques.ts). The
+ * server falls back identically.
+ *
+ * Cash on delivery was removed from the platform (migration 0085). Every order
+ * is prepaid, so there is no cash-handling fee and no cash cap here any more —
+ * `api/_pricing.js` dropped the same two fields in the same change.
  */
 export type ShopTerms = {
   /**
@@ -62,10 +63,6 @@ export type ShopTerms = {
   /** This boutique's goods value that earns free delivery. 0 = never free.
    *  Applies in the shop's own town and district only — see zoneEarnsFreeDelivery. */
   freeDeliveryOver: number;
-  /** Cash-handling fee, charged once per cash delivery. */
-  codFee: number;
-  /** Largest this boutique's order may be and still be paid in cash. 0 = no cap. */
-  codMaxOrder: number;
   /** Where the shop is, which is what the buyer's address is measured against. */
   place: ShopPlace;
   /** Only for the "which shop is refusing?" message. */
@@ -78,8 +75,6 @@ export type ShopTermsMap = Record<string, ShopTerms>;
 export const DEFAULT_SHOP_TERMS: ShopTerms = {
   rates: { local: 0, district: 0, state: 0, national: 0 },
   freeDeliveryOver: 0,
-  codFee: 0,
-  codMaxOrder: 0,
   place: {},
 };
 
@@ -188,11 +183,6 @@ export function undeliverableReason(
   return null;
 }
 
-/** Cash handling for the whole bag — one fee per boutique, i.e. per delivery. */
-export function baseCodFee(boutiqueSubtotals: Record<string, number>, shops: ShopTermsMap): number {
-  return shopsInBag(boutiqueSubtotals).reduce((sum, id) => sum + Math.max(0, termsFor(shops, id).codFee), 0);
-}
-
 /**
  * Whether this coupon can be redeemed on the current bag: not expired, its
  * applicable base has actually reached the minimum, and — for a seller coupon —
@@ -256,8 +246,8 @@ export function findCoupon(
  * to the whole cart, so it is split proportionally to each boutique's goods,
  * with the rounding remainder on the largest so the shares add back up to the
  * discount exactly. This is a line-for-line mirror of the same split in
- * api/_pricing.js — it decides each boutique's order value, which is what the
- * per-boutique COD cap is measured against on both sides.
+ * api/_pricing.js — it decides each boutique's own order value, which is what
+ * the server writes to `orders.total` and asserts the payment against.
  */
 function allocateDiscount(
   coupon: CouponRow | undefined,
@@ -286,14 +276,9 @@ function allocateDiscount(
 /**
  * The bag's totals under an optional (already-resolved) coupon.
  *
- * `payingCash` replaces the old `codDeliveries` count: the COD fee is no longer
- * one platform rate times the number of deliveries but each boutique's own fee,
- * so the count alone can no longer price it.
- *
  * `perBoutiquePayable` is what each boutique's own order comes to — its goods,
- * less its share of the discount, plus its own delivery and cash-handling fees.
- * It is what the per-boutique COD cap is checked against, and the server derives
- * the identical map.
+ * less its share of the discount, plus its own delivery fee. The server derives
+ * the identical map and binds the Razorpay payment to the sum of it.
  *
  * `buyer` is where the parcel is going, which is what picks each shop's delivery
  * rate (migration 0077). Null until an address is known — see the note at the
@@ -303,7 +288,6 @@ export function computeTotals(
   cartSubtotal: number,
   boutiqueSubtotals: Record<string, number>,
   coupon: CouponRow | undefined,
-  payingCash = false,
   shops: ShopTermsMap = {},
   buyer: BuyerPlace | null = null,
 ) {
@@ -311,7 +295,6 @@ export function computeTotals(
   const freeShip = eligible?.type === 'ship';
   const discount = eligible && !freeShip ? couponSavings(eligible, cartSubtotal, boutiqueSubtotals, shops, buyer) : 0;
   const shipFee = freeShip ? 0 : baseShipFee(boutiqueSubtotals, shops, buyer);
-  const codFee = payingCash ? baseCodFee(boutiqueSubtotals, shops) : 0;
 
   const allocated = allocateDiscount(eligible && !freeShip ? eligible : undefined, discount, cartSubtotal, boutiqueSubtotals);
   const perBoutiquePayable: Record<string, number> = {};
@@ -321,7 +304,7 @@ export function computeTotals(
     perBoutiqueShipFee[id] = freeShip ? 0 : (shopShipFee(boutiqueSubtotals[id], t, buyer) ?? 0);
     perBoutiquePayable[id] = Math.max(
       0,
-      boutiqueSubtotals[id] - (allocated[id] ?? 0) + perBoutiqueShipFee[id] + (payingCash ? Math.max(0, t.codFee) : 0),
+      boutiqueSubtotals[id] - (allocated[id] ?? 0) + perBoutiqueShipFee[id],
     );
   }
 
@@ -329,40 +312,8 @@ export function computeTotals(
     coupon: eligible,
     discount,
     shipFee,
-    codFee,
     perBoutiquePayable,
     perBoutiqueShipFee,
-    total: Math.max(0, cartSubtotal - discount) + shipFee + codFee,
+    total: Math.max(0, cartSubtotal - discount) + shipFee,
   };
-}
-
-/**
- * Why this bag cannot be paid in cash, or null if it can.
- *
- * `codEnabledEverywhere` comes from the boutiques in the bag: a seller who
- * turned COD off in their store settings must not have cash orders forced on
- * them, so one opted-out boutique disqualifies the whole bag. The cap is checked
- * the same way — per boutique, against that boutique's own order value, since
- * each shop sets its own limit and collects its own cash.
- */
-export function codBlockedReason(
-  cartSubtotal: number,
-  boutiqueSubtotals: Record<string, number>,
-  coupon: CouponRow | undefined,
-  codEnabledEverywhere: boolean,
-  shops: ShopTermsMap = {},
-  buyer: BuyerPlace | null = null,
-): string | null {
-  if (!codEnabledEverywhere) return 'One of the boutiques in your bag does not accept cash on delivery.';
-  // Priced as a cash order, because the handling fee is part of what the buyer
-  // would owe at the door and so part of what the cap has to cover.
-  const { perBoutiquePayable } = computeTotals(cartSubtotal, boutiqueSubtotals, coupon, true, shops, buyer);
-  for (const id of Object.keys(perBoutiquePayable)) {
-    const t = termsFor(shops, id);
-    if (t.codMaxOrder > 0 && perBoutiquePayable[id] > t.codMaxOrder) {
-      const who = t.name ? `${t.name} accepts` : 'One of the boutiques in your bag accepts';
-      return `${who} cash on delivery on orders up to ₹${t.codMaxOrder.toLocaleString('en-IN')}.`;
-    }
-  }
-  return null;
 }

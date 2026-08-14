@@ -280,7 +280,7 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
     }),
     areaServed: { '@type': 'Country', name: 'India' },
     currenciesAccepted: 'INR',
-    paymentAccepted: 'UPI, Credit Card, Debit Card, Net Banking, Cash on Delivery',
+    paymentAccepted: 'UPI, Credit Card, Debit Card, Net Banking',
     foundingDate: boutique.since ? String(boutique.since) : undefined,
     hasMap: boutique.mapUrl || undefined,
     parentOrganization: { '@id': `${SITE_URL}/#organization` },

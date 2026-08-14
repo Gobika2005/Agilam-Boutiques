@@ -383,7 +383,7 @@ const PAGES: { title: string; sub: string; icon: string; to: string; keywords: s
   { title: 'Promote', sub: 'Buy an ad placement', icon: 'campaign', to: '/seller/promote', keywords: 'ads advertising sponsored boost' },
   { title: 'Coupons', sub: 'Your discount codes', icon: 'local_offer', to: '/seller/coupons', keywords: 'discount offer promo code sale' },
   { title: 'Boutique profile', sub: 'How buyers see your shop', icon: 'storefront', to: '/seller/boutique', keywords: 'shop store profile about logo cover' },
-  { title: 'Settings', sub: 'Delivery, COD and preferences', icon: 'settings', to: '/seller/settings', keywords: 'delivery cod charges preferences account' },
+  { title: 'Settings', sub: 'Delivery, dispatch and preferences', icon: 'settings', to: '/seller/settings', keywords: 'delivery charges dispatch preferences account' },
   { title: 'Verification', sub: 'Your approval status', icon: 'verified', to: '/seller/verification', keywords: 'approval kyc documents status' },
   { title: 'Help', sub: 'Guides and support', icon: 'help', to: '/seller/help', keywords: 'support faq guide contact' },
 ];

@@ -172,7 +172,6 @@ export function InspireFilterSheet({
           {([
             { key: 'inStockOnly', label: 'In stock', icon: 'inventory_2' },
             { key: 'newOnly', label: 'New this month', icon: 'auto_awesome' },
-            { key: 'codOnly', label: 'Cash on delivery', icon: 'payments' },
             { key: 'verifiedOnly', label: 'Verified boutiques', icon: 'verified' },
           ] as const).map((t) => (
             <button
