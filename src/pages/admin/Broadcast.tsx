@@ -5,7 +5,8 @@ import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { broadcast, fetchAudienceSizes, type Audience } from '@/data/broadcast';
 import { logAdminAction } from '@/data/activityLog';
-import { Card, GhostButton, ConfirmDialog, Icon, T } from '@/components/admin/kit';
+import { EmailBroadcast } from '@/pages/admin/EmailBroadcast';
+import { Card, GhostButton, ConfirmDialog, Icon, TabBar, T } from '@/components/admin/kit';
 
 const AUDIENCES: { key: Audience; label: string; icon: string }[] = [
   { key: 'all', label: 'Everyone', icon: 'public' },
@@ -13,7 +14,38 @@ const AUDIENCES: { key: Audience; label: string; icon: string }[] = [
   { key: 'seller', label: 'Sellers', icon: 'storefront' },
 ];
 
+/**
+ * Broadcast — two channels for the same job, kept apart on purpose.
+ *
+ * The bell reaches people inside the app the moment they next open it: instant,
+ * free, low stakes, and open to staff, because 0086 widened
+ * `broadcast_notification` to is_staff() precisely so employees could send buyer
+ * updates. Email leaves the building. It lands under the company's sending
+ * domain next to order receipts, it cannot be recalled, and a careless one costs
+ * deliverability for the transactional mail too — so that tab is admins only,
+ * enforced again by is_admin() inside the Edge Function.
+ */
+const TABS = [
+  { key: 'bell' as const, label: 'Notification bell' },
+  { key: 'email' as const, label: 'Email' },
+];
+
 export function Broadcast() {
+  const { profile } = useAuth();
+  const [tab, setTab] = useState<'bell' | 'email'>('bell');
+
+  // Staff see no tab strip at all rather than a tab that rejects them.
+  if (profile?.role !== 'admin') return <BellBroadcast />;
+
+  return (
+    <div>
+      <TabBar tabs={TABS} value={tab} onChange={setTab} />
+      {tab === 'bell' ? <BellBroadcast /> : <EmailBroadcast />}
+    </div>
+  );
+}
+
+function BellBroadcast() {
   const { data: sizes } = useAsync(() => fetchAudienceSizes(), []);
   const { showToast } = useShop();
   const { profile } = useAuth();

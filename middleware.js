@@ -84,6 +84,10 @@ const NOINDEX_PREFIXES = [
   // the token is a credential, and an indexed one is a leaked one.
   "/shortlists",
   "/shortlist",
+  // The one-click unsubscribe target (migration 0089). Same reasoning as the
+  // shortlist links: the query token IS the credential, and a crawler that
+  // followed one would opt a real person out of email on their behalf.
+  "/unsubscribe",
   "/buyer"
 ];
 function escapeHtml(value) {

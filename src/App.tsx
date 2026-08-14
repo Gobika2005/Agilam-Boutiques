@@ -50,6 +50,7 @@ const Wishlist = lazyNamed(() => import('@/pages/buyer/Wishlist'), 'Wishlist');
 const Shortlists = lazyNamed(() => import('@/pages/buyer/Shortlists'), 'Shortlists');
 const ShortlistDetail = lazyNamed(() => import('@/pages/buyer/ShortlistDetail'), 'ShortlistDetail');
 const SharedBoard = lazyNamed(() => import('@/pages/buyer/SharedBoard'), 'SharedBoard');
+const Unsubscribe = lazyNamed(() => import('@/pages/buyer/Unsubscribe'), 'Unsubscribe');
 const FilterSheet = lazyNamed(() => import('@/pages/buyer/FilterSheet'), 'FilterSheet');
 const SortSheet = lazyNamed(() => import('@/pages/buyer/SortSheet'), 'SortSheet');
 const Cart = lazyNamed(() => import('@/pages/buyer/Cart'), 'Cart');
@@ -354,6 +355,14 @@ export default function App() {
         <Route path="messages" element={<BuyerMessages />} />
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
+
+        {/* Where the unsubscribe link in a marketing email lands (migration
+            0089). No account, no session — the token in the query IS the
+            credential, same as a shared shortlist, which is why it is noindex in
+            middleware.js. The public `unsubscribe` Edge Function normally acts on
+            the token first and redirects here; this page also handles the token
+            itself when someone pastes the link straight into a browser. */}
+        <Route path="unsubscribe" element={<Unsubscribe />} />
 
         {/* Policies, About and Help sit at the root — `/privacy-policy`, not
             `/privacy-policy`. Registered one route per known slug

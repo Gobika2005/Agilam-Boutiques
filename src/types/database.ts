@@ -80,6 +80,20 @@ export interface Database {
           deleted_at: string | null;
           updated_at: string | null;
           created_at: string;
+          /**
+           * Marketing consent (migration 0089). True = no announcements, new
+           * arrivals or festival greetings. It never gates transactional mail —
+           * orders, payouts, access changes and service updates go out either
+           * way, which is why the sender keys off the TEMPLATE, not the flag.
+           */
+          marketing_opt_out: boolean;
+          marketing_opt_out_at: string | null;
+          /**
+           * Bearer credential for the one-click unsubscribe link (0089). Only the
+           * two SECURITY DEFINER RPCs should ever read it; never select it into a
+           * list the browser renders.
+           */
+          unsubscribe_token: string;
         };
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string };
         Update: Partial<Database['public']['Tables']['profiles']['Row']>;
@@ -213,6 +227,11 @@ export interface Database {
           reviews_count: number;
           status: ProductStatus;
           deleted_at: string | null;
+          /** Hidden because its boutique was rejected, not by the seller
+           *  (migration 0038) — re-approval clears it and the listing returns. */
+          auto_hidden: boolean;
+          /** SEO slug, `title-slug-idprefix` (migration 0057). */
+          slug: string | null;
           description: string;
           mrp: number | null;
           /** Packed weight of one unit in grams (migration 0065). NULL falls
@@ -473,6 +492,43 @@ export interface Database {
         };
         Insert: Partial<Database['public']['Tables']['notifications']['Row']> & { profile_id: string; title: string };
         Update: Partial<Database['public']['Tables']['notifications']['Row']>;
+        Relationships: [];
+      };
+      /**
+       * One row per admin email blast (migration 0089) — the inbox counterpart
+       * of a `notifications` fan-out.
+       *
+       * Read-only from the app: every write comes from the `broadcast-email`
+       * Edge Function under the service role, so Insert/Update are `never`. An
+       * email cannot be recalled, which is exactly why the record of it must not
+       * be editable by the console that sent it.
+       */
+      email_broadcasts: {
+        Row: {
+          id: string;
+          created_at: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          audience: 'all' | 'buyer' | 'seller' | 'selected';
+          template: 'announcement' | 'arrivals' | 'festival' | 'feature' | 'service';
+          subject: string;
+          preheader: string | null;
+          heading: string | null;
+          body: string;
+          cta_label: string | null;
+          cta_url: string | null;
+          product_ids: string[];
+          recipient_ids: string[];
+          recipients: number;
+          sent: number;
+          failed: number;
+          skipped_opt_out: number;
+          also_notified: boolean;
+          status: 'sending' | 'sent' | 'partial' | 'failed';
+          error: string | null;
+        };
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       subscriptions: {
@@ -816,6 +872,22 @@ export interface Database {
       broadcast_notification: {
         Args: { p_audience: string; p_title: string; p_body: string };
         Returns: number;
+      };
+      /**
+       * One-click unsubscribe from marketing email (migration 0089).
+       *
+       * Callable by `anon` on purpose — the reader is in a mail client with no
+       * session. The token IS the credential, so it returns only a masked address
+       * rather than confirming which real one it matched.
+       */
+      unsubscribe_by_token: {
+        Args: { p_token: string };
+        Returns: { ok: boolean; masked_email: string | null }[];
+      };
+      /** The undo, for "unsubscribed by mistake" (migration 0089). */
+      resubscribe_by_token: {
+        Args: { p_token: string };
+        Returns: { ok: boolean; masked_email: string | null }[];
       };
       toggle_product_like: {
         Args: { pid: string; do_like: boolean };
