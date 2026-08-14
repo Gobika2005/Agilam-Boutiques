@@ -42,6 +42,16 @@
 -- contact details back off the anon key. A staff member calling PostgREST by
 -- hand gets nothing; the RPC is the only door, and it masks on the way out.
 --
+-- ⚠ EVERY policy below is `to authenticated`, and that is load-bearing, not
+-- decoration. As first shipped they had no TO clause — which means TO PUBLIC,
+-- i.e. attached to `anon` as well. Postgres checks EXECUTE on a policy's
+-- function when the expression is initialised, so with `is_staff()` revoked from
+-- anon (below) every anonymous read of products/boutiques/taxonomy/reviews/ads
+-- failed with `42501: permission denied for function is_staff` and the buyer
+-- storefront went completely blank while both consoles looked fine. 0087 is the
+-- repair for databases that already ran the broken version. Never add a policy
+-- calling is_staff() without `to authenticated`.
+--
 -- Requires 0006 (profiles.status/deleted_at), 0010 (privilege guard), 0024
 -- (taxonomy), 0032/0033/0037 (ads), 0038 (auto_hidden), 0045 (seller_reply),
 -- 0048 (reviews.hidden, broadcast), 0063 (shipments), 0084 (feedback guard).
@@ -347,12 +357,13 @@ grant execute on function staff_customer_rows() to authenticated;
 -- Products. Read everything (including listings from unapproved shops, which is
 -- the point of a moderation queue).
 do $$ begin
-  create policy "products: staff read" on products for select using (is_staff());
+  create policy "products: staff read" on products for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "products: staff moderate" on products for update
-    using (is_staff()) with check (is_staff());
+    to authenticated using (is_staff()) with check (is_staff());
 exception when duplicate_object then null; end $$;
 
 -- ...but that UPDATE policy is column-blind, so a trigger says which columns a
@@ -387,12 +398,13 @@ create trigger trg_products_guard_staff_writes
 -- and stays that way, so an employee approving a shop sees the shop, not its
 -- bank account.
 do $$ begin
-  create policy "boutiques: staff read" on boutiques for select using (is_staff());
+  create policy "boutiques: staff read" on boutiques for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "boutiques: staff decide" on boutiques for update
-    using (is_staff()) with check (is_staff());
+    to authenticated using (is_staff()) with check (is_staff());
 exception when duplicate_object then null; end $$;
 
 create or replace function boutiques_guard_staff_writes()
@@ -423,12 +435,13 @@ create trigger trg_boutiques_guard_staff_writes
 
 -- Taxonomy (the category / occasion / fabric vocabulary).
 do $$ begin
-  create policy "taxonomy: staff reads all" on taxonomy for select using (is_staff());
+  create policy "taxonomy: staff reads all" on taxonomy for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "taxonomy: staff writes" on taxonomy for all
-    using (is_staff()) with check (is_staff());
+    to authenticated using (is_staff()) with check (is_staff());
 exception when duplicate_object then null; end $$;
 
 -- 0024's guard raises unless is_admin(), which would block a staff approval.
@@ -454,12 +467,13 @@ end $$;
 
 -- Reviews. Moderation and the public reply.
 do $$ begin
-  create policy "reviews: staff read" on reviews for select using (is_staff());
+  create policy "reviews: staff read" on reviews for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "reviews: staff moderate" on reviews for update
-    using (is_staff()) with check (is_staff());
+    to authenticated using (is_staff()) with check (is_staff());
 exception when duplicate_object then null; end $$;
 
 create or replace function reviews_guard_staff_writes()
@@ -487,32 +501,37 @@ create trigger trg_reviews_guard_staff_writes
 
 -- Ads. Read the queue; the three review actions are RPCs, relaxed below.
 do $$ begin
-  create policy "ad_campaigns: staff read" on ad_campaigns for select using (is_staff());
+  create policy "ad_campaigns: staff read" on ad_campaigns for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 -- Catalogue artwork, so a staff member approving a term can give it a tile.
 do $$ begin
   create policy "catalogue-images: staff upload" on storage.objects for insert
-    with check (bucket_id = 'catalogue-images' and is_staff());
+    to authenticated with check (bucket_id = 'catalogue-images' and is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "catalogue-images: staff update" on storage.objects for update
+    to authenticated
     using (bucket_id = 'catalogue-images' and is_staff())
     with check (bucket_id = 'catalogue-images' and is_staff());
 exception when duplicate_object then null; end $$;
 
 -- ══ 7) Fulfilment — shipments and couriers ═══════════════════════════════════
 do $$ begin
-  create policy "shipments: staff read" on shipments for select using (is_staff());
+  create policy "shipments: staff read" on shipments for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create policy "couriers: staff read" on couriers for select using (is_staff());
+  create policy "couriers: staff read" on couriers for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create policy "shipment_events: staff read" on shipment_events for select using (is_staff());
+  create policy "shipment_events: staff read" on shipment_events for select
+    to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 -- ══ 8) Comms — broadcast and buyer feedback ══════════════════════════════════
@@ -551,12 +570,12 @@ grant execute on function broadcast_notification(text, text, text) to authentica
 -- Platform feedback: read the queue and approve a testimonial for the homepage.
 do $$ begin
   create policy "platform_feedback: staff read" on platform_feedback
-    for select using (is_staff());
+    for select to authenticated using (is_staff());
 exception when duplicate_object then null; end $$;
 
 do $$ begin
   create policy "platform_feedback: staff moderate" on platform_feedback
-    for update using (is_staff()) with check (is_staff());
+    for update to authenticated using (is_staff()) with check (is_staff());
 exception when duplicate_object then null; end $$;
 
 -- Body is 0084's, with the two gates widened. Consent still overrides everyone:

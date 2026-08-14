@@ -27,7 +27,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0086`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0088`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
@@ -60,7 +60,13 @@ deployed to Vercel.
    That failure is silent: the shop browses fine while every order dies. Check
    `GET /api/health` first when orders break.
 7. **RLS is the security boundary.** Buyers browse anonymously; ownership is
-   enforced by policy, not by client-side checks.
+   enforced by policy, not by client-side checks. A policy with no `TO` clause is
+   `TO PUBLIC` — it attaches to `anon` too, and Postgres checks EXECUTE on any
+   function it calls before testing a single row. So a policy calling a helper
+   that `anon` cannot execute makes the whole anonymous read fail `42501`, not
+   return fewer rows. `is_admin()` is safe (never revoked); `is_staff()` is
+   revoked from anon, so every policy using it MUST say `to authenticated`.
+   That mistake in 0086 blanked the entire storefront — see 0087.
 8. **`supabase/seed.sql` is locked.** Its rows are real rows in the live DB, which
    is why they show up in admin as "mock data". Purging is `purge_seed.sql`, run
    by the user.
