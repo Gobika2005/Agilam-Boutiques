@@ -985,3 +985,119 @@ span[style*="Material Symbols Outlined"] {
   white-space: nowrap;
   border: 0;
 }
+
+/* ── /sell is light, always ─────────────────────────────────────────────────
+   The rest of the app follows the device and the user's saved choice. The
+   seller site does not: it is a marketing surface, its one crimson-on-cream
+   look is the brand, and it is read by someone who has never seen MangaiMart
+   before and should see it the way it was designed.
+
+   Done by re-declaring the light palette on the shell's own element rather than
+   by hunting down every colour in the pages. Custom properties inherit, and a
+   declaration on a descendant beats one inherited from `:root[data-theme=dark]`
+   no matter what that ancestor rule's specificity is — so every `var(--ag-*)`
+   inside `/sell` resolves light while the storefront, the seller console and
+   the admin console keep their dark mode untouched.
+
+   Values are copied verbatim from the `:root` block at the top of this file and
+   cover exactly the set that `:root[data-theme="dark"]` overrides. If a token is
+   ever added to that dark block, add it here too, or it will be the one thing on
+   the page that goes dark. */
+.agx-sell-light {
+  /* Native form controls, scrollbars and the like follow this, not our vars. */
+  color-scheme: light;
+
+  --ag-bg: #FBF6F2;
+  --ag-surface: #FFFFFF;
+  --ag-surface-2: #FDEEF4;
+  --ag-surface-3: #F2E4EA;
+  --ag-border: #F0D8E2;
+  --ag-border-soft: #EFDCE4;
+  --ag-ink: #241019;
+  --ag-ink-2: #4B3840;
+  --ag-ink-3: #6B4A56;
+  --ag-muted: #775D66;
+  --ag-muted-soft: #836B74;
+  --ag-label: #6B5560;
+  --ag-crimson: #B02454;
+  --ag-deep: #8E1C44;
+  --ag-purple: #9B7FC7; --ag-purple-bg: #F3ECFA; --ag-purple-text: #6E4E93;
+  --ag-frost: rgba(251,246,242,.88);
+  --ag-frost-strong: rgba(255,255,255,.94);
+  --ag-frost-border: #EFDCE4;
+  --ag-shadow: rgba(107,20,54,.55);
+  --ag-cover-fade: rgba(251,246,242,.55);
+  --ag-shimmer-1: #F1E5EC;
+  --ag-shimmer-2: #F9F0F4;
+  --ag-unread: #FFF3F8;
+  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
+  --ag-star: #AD7D08;
+  --ag-warn-bg: #FBF0DA; --ag-warn-text: #8A6420;
+  --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;
+  --ag-info-bg: #E6F0FA; --ag-info-text: #3A6EA5;
+  --ag-gold: #C99A3F; --ag-gold-text: #8A6420; --ag-gold-bg: #FFF8E8; --ag-gold-border: #F0DCB4;
+  --ag-danger-text: #AD2439;
+}
+
+/* The wordmark knock-out is keyed to the dark THEME, not to the ground it sits
+   on — and inside /sell the header is cream in either theme, so a dark-mode
+   visitor got a white-on-cream logo, i.e. no logo. Selector is deliberately
+   longer than the rule it corrects (0,4,0 vs 0,3,0) so it wins on specificity
+   rather than on source order. The footer's own knock-out is left alone: that
+   ground is crimson in both themes and always needs it. */
+:root[data-theme="dark"] .agx-sell-light .agx-brand-mark { filter: none; }
+
+/* ═══ The public seller site (/sell) ════════════════════════════════════════
+   These screens are read rather than used, so they are laid out as a page:
+   one measure of text, a two-column split that collapses early, and a hero
+   collage of real listings. Grid definitions live here rather than inline
+   because they are the one thing on those pages that needs media queries. */
+
+/* Header: the inline nav above 940px, a scrollable rail below it. Swapped
+   rather than hidden behind a hamburger — five destinations is not a menu. */
+@media (max-width: 939px) {
+  .agx-sell-nav { display: none !important; }
+  .agx-sell-rail { display: flex !important; }
+}
+
+/* No hero grid here on purpose. The /sell hero is a single contained gradient
+   card holding nothing but type — the same shape as the storefront's home hero —
+   so it needs no columns and no breakpoint. It replaced a two-column layout with
+   a collage of live product photographs, which sold the wrong thing: someone on
+   this page is not shopping, she is deciding whether to trust us. */
+
+.agx-sell-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); }
+@media (min-width: 860px) { .agx-sell-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+/* A 1.15/0.85 split for a body of text beside a panel that should not dominate. */
+.agx-sell-lean { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); align-items: start; }
+@media (min-width: 900px) { .agx-sell-lean { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } }
+
+.agx-sell-three { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+@media (min-width: 720px) { .agx-sell-three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.agx-sell-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
+@media (min-width: 900px) { .agx-sell-four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.agx-sell-shops { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 620px) { .agx-sell-shops { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .agx-sell-shops { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.agx-sell-quotes { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(30px, 4vw, 46px); }
+@media (min-width: 860px) { .agx-sell-quotes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Wide tables (the delivery zone bands, the ad rate card) scroll inside their
+   own box rather than pushing the page sideways on a phone. */
+.agx-sell-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.agx-sell-table { width: 100%; min-width: 520px; border-collapse: collapse; }
+.agx-sell-table th,
+.agx-sell-table td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--ag-border); font-size: 14.5px; line-height: 1.55; vertical-align: top; }
+.agx-sell-table th { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ag-muted); font-weight: 600; font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.agx-sell-table td:last-child, .agx-sell-table th:last-child { text-align: right; }
+
+/* The FAQ's side index. Sticky only where there is a column beside the answers
+   to be sticky against — below 900px `.agx-sell-lean` is one column and a
+   sticky box would just pin itself over the text it is indexing. */
+@media (min-width: 900px) {
+  .agx-sell-faq-index { position: sticky; top: 88px; }
+}

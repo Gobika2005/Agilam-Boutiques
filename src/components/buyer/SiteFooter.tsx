@@ -154,7 +154,12 @@ export function SiteFooter() {
 
           {col('For boutiques', (
             <>
-              <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
+              {/* Was pointed at /about, which is the buyer-facing story of the
+                  company and answers none of what a boutique owner wants to
+                  know. /sell is the seller site: what it costs, how it works,
+                  when you are paid. */}
+              <a href="/sell" onClick={(e) => { e.preventDefault(); navigate('/sell'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
+              <a href="/sell/pricing" onClick={(e) => { e.preventDefault(); navigate('/sell/pricing'); }} style={linkStyle}>What selling costs</a>
               {/* "Open your boutique" sat directly under "Sell on MangaiMart"
                   and read as the same offer twice — this one is the actual
                   sign-up form, so it says so. */}

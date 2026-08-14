@@ -76,6 +76,16 @@ const BestSellers = lazyNamed(() => import('@/pages/buyer/BestSellers'), 'BestSe
 const TopBoutiques = lazyNamed(() => import('@/pages/buyer/TopBoutiques'), 'TopBoutiques');
 const NotFound = lazyNamed(() => import('@/pages/buyer/NotFound'), 'NotFound');
 
+/* The public seller site at /sell. A separate tree from both the storefront and
+   the seller console: it is read by people who do not have an account yet, so it
+   is indexable, unauthenticated, and split off so no buyer ever downloads it. */
+const SellShell = lazyNamed(() => import('@/pages/sell/SellShell'), 'SellShell');
+const SellHome = lazyNamed(() => import('@/pages/sell/SellHome'), 'SellHome');
+const SellHowItWorks = lazyNamed(() => import('@/pages/sell/SellHowItWorks'), 'SellHowItWorks');
+const SellPricing = lazyNamed(() => import('@/pages/sell/SellPricing'), 'SellPricing');
+const SellDelivery = lazyNamed(() => import('@/pages/sell/SellDelivery'), 'SellDelivery');
+const SellFaq = lazyNamed(() => import('@/pages/sell/SellFaq'), 'SellFaq');
+
 /* The login flows are their own destinations, never rendered inside another
    screen, so they cost the storefront nothing until someone signs in. */
 const SignIn = lazyNamed(() => import('@/pages/auth/SignIn'), 'SignIn');
@@ -222,6 +232,29 @@ export default function App() {
           }
         />
       ))}
+      {/*
+        ── The public seller site ──────────────────────────────────────────
+        `/sell` is the page a boutique owner reads BEFORE she has an account:
+        what it costs, how it works, when she is paid. It has to be crawlable,
+        so it sits at the root and outside every auth gate.
+
+        It is `/sell`, not `/seller` — deliberately. `/seller` is the signed-in
+        console and is a noindex prefix in both `src/lib/seo.ts` and
+        `middleware.js`; putting the marketing pages under it would have made
+        the one part of the app most worth ranking permanently invisible. Both
+        buttons on these pages point back into the existing flows —
+        `/seller/register` for the wizard, `/auth/signin/seller` to sign in.
+      */}
+      <Route path="/sell" element={<SellShell />}>
+        <Route index element={<SellHome />} />
+        <Route path="how-it-works" element={<SellHowItWorks />} />
+        <Route path="pricing" element={<SellPricing />} />
+        <Route path="delivery-and-payouts" element={<SellDelivery />} />
+        <Route path="faq" element={<SellFaq />} />
+        {/* An unknown /sell/* path is a 404, not an empty shell. */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+
       {/* The console's address is a deploy-time secret (VITE_ADMIN_PATH); see
           src/lib/adminPath.ts. `/admin` is deliberately NOT routed — it falls
           through to the 404 like any other unknown URL. */}

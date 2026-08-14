@@ -959,6 +959,39 @@ const STATIC_META = {
     title: "Inspire \u2014 New Pieces from Indian Boutiques",
     description: "A live feed of what MangaiMart boutiques are listing right now."
   },
+  // \u2500\u2500 The seller site \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Public, unauthenticated and the highest-intent search there is on this
+  // domain: a boutique owner typing "how to sell sarees online". These are
+  // /sell, NOT /seller \u2014 `/seller` is the signed-in console and a noindex
+  // prefix above, and the recruitment pages must be the opposite of that.
+  //
+  // The descriptions carry no rate. The platform fee and the payout timings are
+  // admin-editable rows the client reads live (see useSellerTerms), and a
+  // number frozen into a meta description is a number that goes stale in a
+  // search result we cannot see \u2014 the same defect the buyer policy pages had.
+  //
+  // The wording is "platform fee", never "commission", matching every seller-
+  // facing line in src/pages/sell \u2014 see the note at the top of sellContent.ts.
+  "/sell": {
+    title: "Sell on MangaiMart \u2014 Open Your Boutique Online",
+    description: "Open your boutique to buyers across India. Free to join and free to list, a small platform fee only when an order is delivered, every order paid online before you pack, and delivery stays in your hands."
+  },
+  "/sell/how-it-works": {
+    title: "How Selling on MangaiMart Works \u2014 Step by Step",
+    description: "From creating your login to money reaching your bank: every step of selling on MangaiMart, what you do, what we do, and how long each part takes."
+  },
+  "/sell/pricing": {
+    title: "Seller Pricing \u2014 Free to List, Pay Only on Delivery",
+    description: "What it costs to sell on MangaiMart: nothing to join, nothing to list, no monthly fee. One small platform fee on delivered orders, worked out on real prices so you can see it clearly."
+  },
+  "/sell/delivery-and-payouts": {
+    title: "Delivery & Payouts for Sellers \u2014 How Both Work",
+    description: "You set four delivery rates by distance, your own dispatch window and your own return window. MangaiMart collects the money up front and transfers it after delivery."
+  },
+  "/sell/faq": {
+    title: "Seller Questions \u2014 GST, Fees, Payouts, Delivery",
+    description: "Straight answers for boutique owners: whether you need GST to sell, what it costs, when you are paid, who delivers the parcel, and what happens with returns."
+  },
   // \u2500\u2500 The written pages \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // These are in the sitemap, so crawlers ask for them \u2014 but they had no entry
   // here, which meant all nine shared one title ("MangaiMart") and one generic
@@ -1770,6 +1803,17 @@ function urlEntry(loc, opts = {}) {
   }
   return `<url>${parts.join("")}</url>`;
 }
+// The public seller site. Mirrors the /sell routes in src/App.tsx and the
+// STATIC_META block above — a path listed here with no meta entry would be
+// advertised to crawlers with the generic site title.
+const SELL_PATHS = [
+  "/sell",
+  "/sell/how-it-works",
+  "/sell/pricing",
+  "/sell/delivery-and-payouts",
+  "/sell/faq"
+];
+
 const POLICY_SLUGS = [
   "about",
   "help",
@@ -1936,6 +1980,14 @@ async function sitemapPagesXml(origin) {
   }
   for (const slug of cities) {
     entries.push(urlEntry(`${origin}/boutiques/${slug}`, { lastmod: newest, changefreq: "weekly", priority: "0.75" }));
+  }
+
+  // The seller site. Ranked high on purpose: "sell sarees online", "boutique
+  // online business" and the like are the searches that bring us the supply
+  // side, and these five pages are the only thing on the domain that answers
+  // them. `changefreq: monthly` is honest — the copy changes when the terms do.
+  for (const path of SELL_PATHS) {
+    entries.push(urlEntry(`${origin}${path}`, { lastmod: newest, changefreq: "monthly", priority: path === "/sell" ? "0.9" : "0.7" }));
   }
 
   for (const slug of POLICY_SLUGS) {

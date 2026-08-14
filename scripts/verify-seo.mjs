@@ -563,6 +563,28 @@ await check('help FAQ schema', '/help', [
   is('FAQPage', (o) => (o.schema || '').includes('FAQPage')),
 ]);
 
+/*
+ * The public seller site.
+ *
+ * The failure this guards against is specific and silent: `/seller` is a
+ * noindex prefix, and `isNoIndex` matches on prefixes. Anything that widened
+ * that rule — or a rename of these routes to sit under /seller — would make
+ * the recruitment pages `noindex, nofollow` while they still rendered
+ * perfectly in a browser. Nobody would notice until the traffic never came.
+ */
+for (const path of ['/sell', '/sell/pricing', '/sell/faq']) {
+  await check(`seller site ${path}`, path, [
+    is('200', (o) => o.status === 200),
+    is('indexable', (o) => (o.robots || '').startsWith('index') && !(o.xRobots || '').includes('noindex')),
+    is('has its own title', (o) => !!o.title && !/^MangaiMart$/.test(o.title)),
+    is('canonical is itself', (o) => (o.canonical || '').endsWith(path)),
+  ]);
+}
+await check('seller site is in the page sitemap', '/sitemap-pages.xml', [
+  is('/sell listed', () => pagesXml.includes('/sell</loc>')),
+  is('/sell/pricing listed', () => pagesXml.includes('/sell/pricing</loc>')),
+]);
+
 // A category landing, discovered from the page sitemap.
 const collectionUrl = (pagesXml.match(/<loc>[^<]*(\/collections\/[^<]+)<\/loc>/) || [])[1];
 if (collectionUrl) {
