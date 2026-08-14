@@ -194,7 +194,15 @@ function requireAdminPath(env: Record<string, string>) {
   if (!value) {
     throw new Error(
       'VITE_ADMIN_PATH is not set — the admin console would be published at /admin.\n' +
-        '  Set it in the Vercel project settings (and in .env for a local build).',
+        '\n' +
+        '  Vercel:  Project → Settings → Environment Variables → Add\n' +
+        '             Key    VITE_ADMIN_PATH\n' +
+        '             Value  the console segment, e.g. mangai-office\n' +
+        '             Tick   Production, Preview AND Development — a build fails\n' +
+        '                    in whichever environment is left unticked.\n' +
+        '           Then redeploy: the value is baked in at build time, so an\n' +
+        '           existing deployment does not pick it up on its own.\n' +
+        '  Local:   add the same line to .env (gitignored; see .env.example).\n',
     );
   }
   if (!/^[a-z0-9][a-z0-9-]*$/.test(value)) {
