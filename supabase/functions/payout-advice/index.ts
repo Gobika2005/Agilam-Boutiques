@@ -39,6 +39,14 @@ const RATE_PCT = 10;
 const BRAND = 'MangaiMart';
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\/$/, '');
 
+/**
+ * The wordmark. Pinned to the production origin rather than built from APP_URL,
+ * because APP_URL is localhost in a dev environment and a localhost logo is a
+ * broken image in the seller's inbox. PNG, not WebP — Outlook cannot decode it.
+ * Mirrors LOGO_URL in api/_email.js.
+ */
+const LOGO_URL = Deno.env.get('EMAIL_LOGO_URL') ?? 'https://mangaimart.com/mangaimart-wordmark.png';
+
 const inr = (n: number) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
 
 const esc = (s: unknown) =>
@@ -117,20 +125,24 @@ function layout({ heading, intro, bodyHtml, ctaLabel, ctaHref, footerNote }: {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6F2;padding:24px 12px;">
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #EFDCE4;">
-    <tr><td style="background:#B02454;padding:18px 24px;">
-      <span style="color:#FFFFFF;font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;letter-spacing:.02em;">${BRAND}</span>
+    <tr><td align="center" style="background:#FFF8F4;padding:22px 24px 20px;border-bottom:1px solid #F4E7ED;">
+      <a href="https://mangaimart.com" style="text-decoration:none;">
+        <img src="${LOGO_URL}" width="210" alt="${BRAND}" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
+      </a>
     </td></tr>
-    <tr><td style="padding:26px 24px 8px;">
-      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.25;color:#241019;font-weight:700;">${esc(heading)}</h1>
-      <p style="margin:10px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#4B3840;">${esc(intro)}</p>
+    <tr><td align="center" style="padding:26px 24px 8px;text-align:center;">
+      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
     </td></tr>
-    <tr><td style="padding:14px 24px 0;">${bodyHtml}</td></tr>
-    ${ctaHref ? `<tr><td style="padding:22px 24px 4px;">
-      <a href="${esc(ctaHref)}" style="display:inline-block;background:#B02454;color:#FFFFFF;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:12px 22px;border-radius:10px;">${esc(ctaLabel || 'View')}</a>
+    <tr><td align="left" style="padding:10px 24px 0;text-align:left;">
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#4B3840;text-align:left;">${esc(intro)}</p>
+    </td></tr>
+    <tr><td align="left" style="padding:14px 24px 0;text-align:left;">${bodyHtml}</td></tr>
+    ${ctaHref ? `<tr><td align="center" style="padding:24px 24px 4px;text-align:center;">
+      <a href="${esc(ctaHref)}" style="display:inline-block;background:#B02454;color:#FFFFFF;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:10px;">${esc(ctaLabel || 'View')}</a>
     </td></tr>` : ''}
-    <tr><td style="padding:22px 24px 26px;">
-      ${footerNote ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#775D66;">${esc(footerNote)}</p>` : ''}
-      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
+    <tr><td align="center" style="padding:24px 24px 26px;text-align:center;">
+      ${footerNote ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#775D66;text-align:center;">${esc(footerNote)}</p>` : ''}
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
         ${BRAND} — ethnic wear from verified independent boutiques.<br />
         This is a transactional message about your payout, not marketing.
       </p>

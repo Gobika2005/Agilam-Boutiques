@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
 import { loginPathForRole, sendAccessEmail } from './_accessEmail.js';
+import { esc, layout } from './_email.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,105 +85,50 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
     staff: 'Orders, deliveries, approvals and moderation. Payouts, refunds and platform settings stay with the owner.',
   }[role];
 
+  // Credentials, next steps and the shared brand shell. This used to be ~100
+  // lines of bespoke gradient HTML that looked like a different company from
+  // every other message we send; it now goes through layout() in _email.js, so
+  // the centred wordmark, heading and button follow the rest of the mail
+  // automatically and there is one design to maintain instead of two.
+  const credentials = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #EFDCE4;border-radius:14px;background:#FFFAFC;">
+      <tr><td style="padding:16px 18px;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9D556F;font-weight:700;margin-bottom:10px;">Your sign-in details</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#775D66;margin-bottom:3px;">Email</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;color:#241019;font-weight:700;word-break:break-word;margin-bottom:12px;">${esc(email)}</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#775D66;margin-bottom:5px;">Temporary password</div>
+        <div style="display:inline-block;padding:10px 14px;border-radius:10px;background:#FFFFFF;border:1px solid #EDD5DF;font-family:'Courier New',Courier,monospace;font-size:17px;letter-spacing:.1em;color:#651B36;font-weight:700;">${esc(tempPassword)}</div>
+      </td></tr>
+    </table>`;
+
+  const steps = ['Open your account with the button below.', 'Sign in with the temporary password above.', 'Change it to something only you know, and finish your profile.']
+    .map(
+      (step, i) =>
+        `<tr>
+          <td width="30" valign="top" style="padding:0 0 10px;">
+            <div style="width:22px;height:22px;border-radius:999px;background:#B02454;color:#FFFFFF;text-align:center;line-height:22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;">${i + 1}</div>
+          </td>
+          <td style="padding:1px 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#4B3840;">${esc(step)}</td>
+        </tr>`,
+    )
+    .join('');
+
   return {
     to: email,
-    subject: `Welcome to MangaiMart - ${roleLabel} Account Created`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="margin:0;padding:0;background:#f6efe8;font-family:Georgia,'Times New Roman',serif;color:#24161d;">
-        <div style="background:
-          radial-gradient(circle at top left, rgba(214,51,108,0.18), transparent 30%),
-          radial-gradient(circle at top right, rgba(176,36,84,0.12), transparent 28%),
-          linear-gradient(180deg,#f8f1eb 0%,#f3e7df 100%);
-          padding:32px 16px;">
-          <div style="max-width:640px;margin:0 auto;">
-            <div style="text-align:center;margin-bottom:14px;">
-              <div style="display:inline-block;padding:8px 14px;border:1px solid rgba(176,36,84,0.18);border-radius:999px;background:rgba(255,255,255,0.72);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#9b4762;">
-                MangaiMart Welcome Suite
-              </div>
-            </div>
-            <div style="background:#fff;border:1px solid rgba(176,36,84,0.10);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px -40px rgba(83,24,43,0.55);">
-              <div style="padding:44px 40px 30px;background:
-                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.30), transparent 26%),
-                linear-gradient(135deg,#7f173d 0%,#b02454 42%,#d85b83 100%);
-                color:#fff;">
-                <div style="font-size:34px;line-height:1;font-weight:700;letter-spacing:0.04em;">MangaiMart</div>
-                <div style="width:72px;height:1px;background:rgba(255,255,255,0.6);margin:18px 0;"></div>
-                <div style="font-size:13px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.86;margin-bottom:14px;">Your account is ready</div>
-                <div style="font-size:32px;line-height:1.2;font-weight:700;max-width:430px;">Welcome, ${fullName}</div>
-                <p style="margin:16px 0 0;font-size:15px;line-height:1.8;max-width:470px;color:rgba(255,255,255,0.9);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                  Your ${roleLabel} has been prepared by the MangaiMart team with access tailored for a premium boutique experience.
-                </p>
-              </div>
-
-              <div style="padding:34px 40px 22px;background:#fff;">
-                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;">
-                  <div style="flex:1 1 220px;padding:18px 20px;border-radius:20px;background:linear-gradient(180deg,#fff8fb 0%,#f9eef3 100%);border:1px solid #f2d7e1;">
-                    <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#a05a72;margin-bottom:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Access Level</div>
-                    <div style="font-size:22px;font-weight:700;color:#651b36;margin-bottom:8px;">${roleLabel}</div>
-                    <div style="font-size:13px;line-height:1.7;color:#6d5460;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${roleDetail}</div>
-                  </div>
-                  <div style="flex:1 1 220px;padding:18px 20px;border-radius:20px;background:linear-gradient(180deg,#fffdfa 0%,#f6eee7 100%);border:1px solid #efe1d5;">
-                    <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#9c7155;margin-bottom:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Security Reminder</div>
-                    <div style="font-size:22px;font-weight:700;color:#5e3320;margin-bottom:8px;">Temporary Sign-In</div>
-                    <div style="font-size:13px;line-height:1.7;color:#6d5a4f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Use the one-time password below, then update it after your first login for account security.</div>
-                  </div>
-                </div>
-
-                <div style="border:1px solid #ecd6df;border-radius:24px;overflow:hidden;margin-bottom:24px;">
-                  <div style="padding:14px 20px;background:#fcf4f7;border-bottom:1px solid #f3dfe7;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:#9d556f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                    Login Credentials
-                  </div>
-                  <div style="padding:22px 20px;background:#fffafc;">
-                    <div style="margin-bottom:14px;">
-                      <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#a17386;margin-bottom:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Email</div>
-                      <div style="font-size:15px;color:#311d25;font-weight:600;font-family:'Segoe UI',sans-serif;word-break:break-word;">${email}</div>
-                    </div>
-                    <div>
-                      <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#a17386;margin-bottom:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Temporary Password</div>
-                      <div style="display:inline-block;padding:12px 16px;border-radius:14px;background:#ffffff;border:1px solid #edd5df;font-size:18px;letter-spacing:0.12em;color:#651b36;font-weight:700;font-family:'Courier New',monospace;">
-                        ${tempPassword}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="padding:24px;border-radius:24px;background:linear-gradient(180deg,#fff 0%,#fbf5f1 100%);border:1px solid #efe3da;margin-bottom:28px;">
-                  <div style="font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#9b6f57;margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Next Steps</div>
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">1</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Open your MangaiMart account using the secure button below.</td></tr>
-                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">2</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Sign in with your email and temporary password.</td></tr>
-                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">3</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Choose a new password and complete your profile details.</td></tr>
-                  </table>
-                </div>
-
-                <div style="text-align:center;margin-bottom:28px;">
-                  <a href="${loginUrl}" style="display:inline-block;padding:16px 34px;border-radius:999px;background:linear-gradient(135deg,#7f173d 0%,#b02454 55%,#d85b83 100%);color:#fff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.04em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 18px 34px -20px rgba(127,23,61,0.9);">
-                    Access Your Account
-                  </a>
-                </div>
-
-                <div style="padding:18px 20px;border-radius:18px;background:#faf4ef;border:1px solid #efe0d4;font-size:13px;line-height:1.8;color:#6b5b55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                  If you did not expect this invitation, please contact
-                  <a href="mailto:support@mangaimart.com" style="color:#8d2348;text-decoration:none;font-weight:600;">support@mangaimart.com</a>
-                  before signing in.
-                </div>
-              </div>
-
-              <div style="padding:20px 24px;background:#f8f1ec;border-top:1px solid #eee2d8;text-align:center;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#987567;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-                MangaiMart • Curated Marketplace Experience
-              </div>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `,
+    subject: `Welcome to MangaiMart — your ${roleLabel.toLowerCase()} is ready`,
+    html: layout({
+      heading: `Welcome, ${fullName}`,
+      intro: `Your ${roleLabel} has been created by the MangaiMart team. ${roleDetail}`,
+      bodyHtml:
+        credentials +
+        `<div style="margin:22px 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#241019;">Next steps</div>` +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${steps}</table>`,
+      ctaLabel: 'Access your account',
+      ctaHref: loginUrl,
+      footerNote:
+        'The temporary password is single-use in spirit — please change it the first time you sign in. If you were not expecting this invitation, contact support@mangaimart.com before signing in.',
+      tagline: 'This is a message about your MangaiMart account, not marketing.',
+    }),
     text: [
       `Welcome to MangaiMart, ${fullName}!`,
       '',

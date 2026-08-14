@@ -42,9 +42,6 @@ export function Loading() {
       <div style={css('margin-top:36px;width:132px;height:4px;border-radius:4px;background:rgba(142,28,68,.14);overflow:hidden;')}>
         <div style={css('width:38%;height:100%;border-radius:4px;background:linear-gradient(90deg,#D6336C,#8E1C44);animation:agxBar 1.3s ease-in-out infinite;')} />
       </div>
-      <div style={css('margin-top:16px;font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:#9A4A63;font-weight:700;')}>
-        All Boutiques · One Place
-      </div>
     </div>
   );
 }

@@ -148,9 +148,18 @@ function renderHtml(d, brief) {
     a.lowStock && `${a.lowStock} product(s) down to 3 or fewer`,
   ].filter(Boolean);
 
+  // Masthead, matching every other email the platform sends (api/_email.js).
+  // Pinned to the production origin, not APP_URL: this script runs from a cloud
+  // routine whose APP_URL may be anything, and a logo that 404s makes the one
+  // report the owner reads every morning look broken. The data tables below stay
+  // left/right aligned — a centred number column cannot be scanned.
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:620px;margin:0 auto;color:${C.ink}">
-  <h1 style="font-size:19px;margin:0 0 2px">MangaiMart — daily report</h1>
-  <p style="margin:0 0 20px;color:${C.mute};font-size:13px">${esc(d.day)}</p>
+  <div style="text-align:center;padding:6px 0 18px;border-bottom:1px solid ${C.line};margin-bottom:20px">
+    <img src="https://mangaimart.com/mangaimart-wordmark.png" width="190" alt="MangaiMart"
+         style="display:block;margin:0 auto 12px;width:190px;max-width:70%;height:auto;border:0" />
+    <h1 style="font-size:19px;margin:0 0 2px;text-align:center">Daily report</h1>
+    <p style="margin:0;color:${C.mute};font-size:13px;text-align:center">${esc(d.day)}</p>
+  </div>
 
   ${brief ? `<div style="background:${C.soft};border-left:3px solid ${C.ink};padding:12px 16px;
     margin-bottom:20px;white-space:pre-wrap;font-size:14px;line-height:1.55">${esc(brief)}</div>` : ''}

@@ -50,6 +50,15 @@ const BRAND = 'MangaiMart';
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\/$/, '');
 const SUPPORT_EMAIL = 'support@mangaimart.com';
 
+/**
+ * The wordmark, centred at the top of every message. Pinned to the production
+ * origin rather than derived from APP_URL — that is localhost in a dev
+ * environment, and a localhost logo is a broken image in every inbox it reaches.
+ * PNG, not the smaller WebP beside it in /public: Outlook on Windows cannot
+ * decode WebP and would fall back to the alt text. Mirrors api/_email.js.
+ */
+const LOGO_URL = Deno.env.get('EMAIL_LOGO_URL') ?? 'https://mangaimart.com/mangaimart-wordmark.png';
+
 /** Resend accepts at most 100 messages per batch call. */
 const BATCH_SIZE = 100;
 /** Its default rate limit is 2 requests/second; one pause per chunk stays clear. */
@@ -132,10 +141,16 @@ function richText(body: string, color = '#4B3840'): string {
     .join('');
 }
 
+/**
+ * Full-width table with a centred cell, rather than a shrink-to-fit table with
+ * `margin:auto`: Outlook ignores auto margins on tables, so the button would sit
+ * hard left there and centred everywhere else. This way the centring survives
+ * even though the body copy around it is left-aligned.
+ */
 function ctaButton(label: string, href: string): string {
   if (!href) return '';
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 4px;"><tr><td style="border-radius:10px;background:#B02454;">
-    <a href="${esc(href)}" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(label || 'Shop now')}</a>
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 4px;"><tr><td align="center" style="text-align:center;">
+    <a href="${esc(href)}" style="display:inline-block;background:#B02454;border-radius:10px;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(label || 'Shop now')}</a>
   </td></tr></table>`;
 }
 
@@ -196,9 +211,6 @@ type ShellArgs = {
  */
 function shell({ template, preheader, heading, bodyHtml, unsubscribeUrl }: ShellArgs): string {
   const isService = template === 'service';
-  const accentBar = template === 'festival'
-    ? 'background:linear-gradient(135deg,#7F173D 0%,#B02454 55%,#D85B83 100%);'
-    : 'background:#B02454;';
 
   return `<!doctype html>
 <html lang="en">
@@ -212,18 +224,20 @@ function shell({ template, preheader, heading, bodyHtml, unsubscribeUrl }: Shell
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6F2;padding:24px 12px;">
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #EFDCE4;">
-    <tr><td style="${accentBar}padding:18px 24px;">
-      <span style="color:#FFFFFF;font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;letter-spacing:.02em;">${BRAND}</span>
+    <tr><td align="center" style="background:#FFF8F4;padding:22px 24px 20px;border-bottom:1px solid #F4E7ED;">
+      <a href="${esc(APP_URL)}" style="text-decoration:none;">
+        <img src="${LOGO_URL}" width="210" alt="${BRAND}" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
+      </a>
     </td></tr>
-    ${isService ? `<tr><td style="padding:16px 24px 0;">
+    ${isService ? `<tr><td align="center" style="padding:18px 24px 0;text-align:center;">
       <span style="display:inline-block;padding:5px 11px;border-radius:999px;background:#FFF4E0;color:#8A6D00;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Service update</span>
     </td></tr>` : ''}
-    <tr><td style="padding:26px 24px 6px;">
-      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.28;color:#241019;font-weight:700;">${esc(heading)}</h1>
+    <tr><td align="center" style="padding:24px 24px 6px;text-align:center;">
+      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
     </td></tr>
-    <tr><td style="padding:14px 24px 6px;">${bodyHtml}</td></tr>
-    <tr><td style="padding:18px 24px 26px;border-top:1px solid #F4E7ED;">
-      <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
+    <tr><td align="left" style="padding:14px 24px 6px;text-align:left;">${bodyHtml}</td></tr>
+    <tr><td align="center" style="padding:18px 24px 26px;border-top:1px solid #F4E7ED;text-align:center;">
+      <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
         ${BRAND} — ethnic wear from verified independent boutiques.<br />
         Questions? Write to <a href="mailto:${SUPPORT_EMAIL}" style="color:#B02454;text-decoration:none;">${SUPPORT_EMAIL}</a>.
       </p>

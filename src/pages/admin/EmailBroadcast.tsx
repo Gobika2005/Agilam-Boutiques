@@ -665,21 +665,27 @@ function EmailPreview({
       </div>
 
       <div style={css('padding:0;')}>
-        <div style={css('background:var(--ag-crimson);padding:12px 16px;')}>
-          <span style={css("color:#fff;font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:15px;")}>MangaiMart</span>
+        {/* Cream masthead with the centred wordmark — the same treatment the
+            sender applies. The asset is served from /public, so this is the real
+            logo rather than a stand-in for it. */}
+        <div style={css('background:#FFF8F4;padding:16px;text-align:center;border-bottom:1px solid var(--ag-border-soft);')}>
+          <img src="/mangaimart-wordmark.png" alt="MangaiMart" style={css('display:block;margin:0 auto;width:170px;max-width:72%;height:auto;')} />
         </div>
 
         <div style={css(`background:var(--ag-surface);padding:16px;${centred ? 'text-align:center;' : ''}`)}>
           {template === 'service' && (
-            <span style={css('display:inline-block;padding:4px 9px;border-radius:999px;background:var(--ag-gold-bg);color:#8A6D00;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;')}>
-              Service update
-            </span>
+            <div style={css('text-align:center;')}>
+              <span style={css('display:inline-block;padding:4px 9px;border-radius:999px;background:var(--ag-gold-bg);color:#8A6D00;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;')}>
+                Service update
+              </span>
+            </div>
           )}
-          <div style={css("font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:18px;line-height:1.3;color:var(--ag-ink);")}>
+          {/* Heading centred, body left — matches shell() in the Edge Function. */}
+          <div style={css("font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:18px;line-height:1.3;color:var(--ag-ink);text-align:center;")}>
             {heading.trim() || subject.trim() || 'Your heading'}
           </div>
 
-          <div style={css('margin-top:10px;')}>
+          <div style={css(`margin-top:10px;${centred ? '' : 'text-align:left;'}`)}>
             {blocks.length === 0 && (
               <p style={css(`font-size:13px;line-height:1.7;color:${T.muted};margin:0;`)}>Your message appears here.</p>
             )}
@@ -711,14 +717,14 @@ function EmailPreview({
           )}
 
           {ctaLabel.trim() && (
-            <div style={css(`margin-top:12px;${centred ? '' : 'text-align:left;'}`)}>
+            <div style={css('margin-top:14px;text-align:center;')}>
               <span style={css('display:inline-block;background:var(--ag-crimson);color:#fff;font-size:12.5px;font-weight:700;padding:10px 20px;border-radius:9px;')}>
                 {ctaLabel.trim()}
               </span>
             </div>
           )}
 
-          <div style={css(`margin-top:16px;padding-top:12px;border-top:1px solid var(--ag-border-soft);font-size:10.5px;color:${T.muted};line-height:1.6;text-align:left;`)}>
+          <div style={css(`margin-top:16px;padding-top:12px;border-top:1px solid var(--ag-border-soft);font-size:10.5px;color:${T.muted};line-height:1.6;text-align:center;`)}>
             MangaiMart — ethnic wear from verified independent boutiques.<br />
             {marketing
               ? <>You are receiving this because you have a MangaiMart account. <u>Unsubscribe from marketing email</u>.</>

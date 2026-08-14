@@ -17,7 +17,8 @@ export const COMPANY = {
   short: 'MangaiMart',
   /** TODO: registered legal entity as it appears on the incorporation certificate. */
   legalName: 'MangaiMart Private Limited',
-  tagline: 'All Boutiques • One Place',
+  // No `tagline`: "All Boutiques • One Place" was retired from the logo lockup,
+  // so nothing is left to render it and a stale copy here would drift back in.
   description:
     'MangaiMart brings India’s independent boutiques online — discover verified stores, chat directly with the owner, and shop handpicked ethnic wear delivered across India.',
 
