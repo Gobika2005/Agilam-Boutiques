@@ -59,6 +59,33 @@ const SUPPORT_EMAIL = 'support@mangaimart.com';
  */
 const LOGO_URL = Deno.env.get('EMAIL_LOGO_URL') ?? 'https://mangaimart.com/mangaimart-wordmark.png';
 
+/**
+ * The one stylesheet an email is allowed. Two jobs, both about the phone:
+ *
+ *   • `text-size-adjust:100%` stops Android WebViews (Gmail) and iOS Safari
+ *     running their own font-boosting pass over the message.
+ *   • The media query drops heading, body and side padding a step below 600px.
+ *     On a 360px phone the card is ~336px wide, so 24px of padding either side
+ *     and a 23px serif heading left four or five words per line.
+ *
+ * A refinement, never a requirement: a client that strips `<style>` shows the
+ * inline values, which are sized to be correct on their own. `!important` is
+ * what lets a rule here beat the inline style it overrides.
+ *
+ * Mirrors HEAD_STYLE in api/_email.js — change all three shells together.
+ */
+const HEAD_STYLE = `<style>
+  body, table, td, p, h1, li, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; text-size-adjust:100%; }
+  @media only screen and (max-width:600px) {
+    .ag-pad { padding-left:18px !important; padding-right:18px !important; }
+    .ag-h1 { font-size:19px !important; line-height:1.32 !important; }
+    .ag-logo { width:168px !important; }
+    .ag-body p, .ag-body li { font-size:13.5px !important; line-height:1.6 !important; }
+    .ag-btn { font-size:13.5px !important; padding:12px 22px !important; }
+    .ag-small { font-size:11px !important; }
+  }
+</style>`;
+
 /** Resend accepts at most 100 messages per batch call. */
 const BATCH_SIZE = 100;
 /** Its default rate limit is 2 requests/second; one pause per chunk stays clear. */
@@ -127,14 +154,14 @@ function richText(body: string, color = '#4B3840'): string {
         const items = lines
           .map(
             (l) =>
-              `<li style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.7;color:${color};">${esc(
+              `<li style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:${color};">${esc(
                 l.replace(/^\s*[-•]\s+/, ''),
               )}</li>`,
           )
           .join('');
         return `<ul style="margin:0 0 14px;padding-left:20px;">${items}</ul>`;
       }
-      return `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.75;color:${color};">${esc(
+      return `<p style="margin:0 0 13px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:${color};">${esc(
         lines.join(' '),
       ).replace(/\n/g, '<br />')}</p>`;
     })
@@ -150,7 +177,7 @@ function richText(body: string, color = '#4B3840'): string {
 function ctaButton(label: string, href: string): string {
   if (!href) return '';
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 4px;"><tr><td align="center" style="text-align:center;">
-    <a href="${esc(href)}" style="display:inline-block;background:#B02454;border-radius:10px;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(label || 'Shop now')}</a>
+    <a href="${esc(href)}" class="ag-btn" style="display:inline-block;background:#B02454;border-radius:10px;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(label || 'Shop now')}</a>
   </td></tr></table>`;
 }
 
@@ -215,7 +242,8 @@ function shell({ template, preheader, heading, bodyHtml, unsubscribeUrl }: Shell
   return `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>${esc(heading)}</title></head>
+<title>${esc(heading)}</title>
+${HEAD_STYLE}</head>
 <body style="margin:0;padding:0;background:#FBF6F2;">
 <!-- Preview text: what the inbox list shows next to the subject. The spacer
      stops the client filling the rest of the preview with the header markup. -->
@@ -226,26 +254,26 @@ function shell({ template, preheader, heading, bodyHtml, unsubscribeUrl }: Shell
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #EFDCE4;">
     <tr><td align="center" style="background:#FFF8F4;padding:22px 24px 20px;border-bottom:1px solid #F4E7ED;">
       <a href="${esc(APP_URL)}" style="text-decoration:none;">
-        <img src="${LOGO_URL}" width="210" alt="${BRAND}" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
+        <img src="${LOGO_URL}" width="210" alt="${BRAND}" class="ag-logo" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
       </a>
     </td></tr>
-    ${isService ? `<tr><td align="center" style="padding:18px 24px 0;text-align:center;">
+    ${isService ? `<tr><td align="center" class="ag-pad" style="padding:18px 24px 0;text-align:center;">
       <span style="display:inline-block;padding:5px 11px;border-radius:999px;background:#FFF4E0;color:#8A6D00;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Service update</span>
     </td></tr>` : ''}
-    <tr><td align="center" style="padding:24px 24px 6px;text-align:center;">
-      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
+    <tr><td align="center" class="ag-pad" style="padding:24px 24px 6px;text-align:center;">
+      <h1 class="ag-h1" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
     </td></tr>
-    <tr><td align="left" style="padding:14px 24px 6px;text-align:left;">${bodyHtml}</td></tr>
-    <tr><td align="center" style="padding:18px 24px 26px;border-top:1px solid #F4E7ED;text-align:center;">
-      <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
+    <tr><td align="left" class="ag-pad ag-body" style="padding:14px 24px 6px;text-align:left;">${bodyHtml}</td></tr>
+    <tr><td align="center" class="ag-pad" style="padding:18px 24px 26px;border-top:1px solid #F4E7ED;text-align:center;">
+      <p class="ag-small" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
         ${BRAND} — ethnic wear from verified independent boutiques.<br />
         Questions? Write to <a href="mailto:${SUPPORT_EMAIL}" style="color:#B02454;text-decoration:none;">${SUPPORT_EMAIL}</a>.
       </p>
-      ${unsubscribeUrl ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
+      ${unsubscribeUrl ? `<p class="ag-small" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
         You are receiving this because you have a ${BRAND} account.
         <a href="${esc(unsubscribeUrl)}" style="color:#836B74;text-decoration:underline;">Unsubscribe from marketing email</a>.
         You will still get order and account messages.
-      </p>` : `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
+      </p>` : `<p class="ag-small" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;">
         This is a service message about your ${BRAND} account, not marketing.
       </p>`}
     </td></tr>
@@ -272,7 +300,7 @@ type Payload = {
  */
 function renderBody(p: Payload, greetingName: string): string {
   const hello = greetingName
-    ? `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.75;color:#4B3840;">Hello ${esc(greetingName)},</p>`
+    ? `<p style="margin:0 0 13px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#4B3840;">Hello ${esc(greetingName)},</p>`
     : '';
   const cta = ctaButton(p.ctaLabel, p.ctaUrl);
 

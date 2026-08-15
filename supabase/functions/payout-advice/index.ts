@@ -47,6 +47,24 @@ const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\
  */
 const LOGO_URL = Deno.env.get('EMAIL_LOGO_URL') ?? 'https://mangaimart.com/mangaimart-wordmark.png';
 
+/**
+ * Phone sizing. `text-size-adjust` stops the WebView inflating the type on its
+ * own; the media query takes the heading, body and side padding down a step on a
+ * narrow screen. A refinement only — a client that strips `<style>` gets the
+ * inline values, which stand on their own. Mirrors HEAD_STYLE in api/_email.js.
+ */
+const HEAD_STYLE = `<style>
+  body, table, td, p, h1, li, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; text-size-adjust:100%; }
+  @media only screen and (max-width:600px) {
+    .ag-pad { padding-left:18px !important; padding-right:18px !important; }
+    .ag-h1 { font-size:19px !important; line-height:1.32 !important; }
+    .ag-logo { width:168px !important; }
+    .ag-body p, .ag-body li { font-size:13.5px !important; line-height:1.6 !important; }
+    .ag-btn { font-size:13.5px !important; padding:12px 22px !important; }
+    .ag-small { font-size:11px !important; }
+  }
+</style>`;
+
 const inr = (n: number) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
 
 const esc = (s: unknown) =>
@@ -120,29 +138,30 @@ function layout({ heading, intro, bodyHtml, ctaLabel, ctaHref, footerNote }: {
   return `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>${esc(heading)}</title></head>
+<title>${esc(heading)}</title>
+${HEAD_STYLE}</head>
 <body style="margin:0;padding:0;background:#FBF6F2;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6F2;padding:24px 12px;">
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #EFDCE4;">
     <tr><td align="center" style="background:#FFF8F4;padding:22px 24px 20px;border-bottom:1px solid #F4E7ED;">
       <a href="https://mangaimart.com" style="text-decoration:none;">
-        <img src="${LOGO_URL}" width="210" alt="${BRAND}" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
+        <img src="${LOGO_URL}" width="210" alt="${BRAND}" class="ag-logo" style="display:block;margin:0 auto;width:210px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;" />
       </a>
     </td></tr>
-    <tr><td align="center" style="padding:26px 24px 8px;text-align:center;">
-      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
+    <tr><td align="center" class="ag-pad" style="padding:26px 24px 8px;text-align:center;">
+      <h1 class="ag-h1" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;color:#241019;font-weight:700;text-align:center;">${esc(heading)}</h1>
     </td></tr>
-    <tr><td align="left" style="padding:10px 24px 0;text-align:left;">
-      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#4B3840;text-align:left;">${esc(intro)}</p>
+    <tr><td align="left" class="ag-pad ag-body" style="padding:10px 24px 0;text-align:left;">
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#4B3840;text-align:left;">${esc(intro)}</p>
     </td></tr>
-    <tr><td align="left" style="padding:14px 24px 0;text-align:left;">${bodyHtml}</td></tr>
-    ${ctaHref ? `<tr><td align="center" style="padding:24px 24px 4px;text-align:center;">
-      <a href="${esc(ctaHref)}" style="display:inline-block;background:#B02454;color:#FFFFFF;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:10px;">${esc(ctaLabel || 'View')}</a>
+    <tr><td align="left" class="ag-pad ag-body" style="padding:14px 24px 0;text-align:left;">${bodyHtml}</td></tr>
+    ${ctaHref ? `<tr><td align="center" class="ag-pad" style="padding:24px 24px 4px;text-align:center;">
+      <a href="${esc(ctaHref)}" class="ag-btn" style="display:inline-block;background:#B02454;color:#FFFFFF;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:10px;">${esc(ctaLabel || 'View')}</a>
     </td></tr>` : ''}
-    <tr><td align="center" style="padding:24px 24px 26px;text-align:center;">
-      ${footerNote ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#775D66;text-align:center;">${esc(footerNote)}</p>` : ''}
-      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
+    <tr><td align="center" class="ag-pad" style="padding:24px 24px 26px;text-align:center;">
+      ${footerNote ? `<p class="ag-small" style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#775D66;text-align:center;">${esc(footerNote)}</p>` : ''}
+      <p class="ag-small" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.6;color:#836B74;text-align:center;">
         ${BRAND} — ethnic wear from verified independent boutiques.<br />
         This is a transactional message about your payout, not marketing.
       </p>
