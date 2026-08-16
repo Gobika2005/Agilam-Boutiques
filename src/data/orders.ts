@@ -102,6 +102,78 @@ export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
   return data as unknown as OrderWithDetails | null;
 }
 
+/** The extra facts a printable receipt needs, beyond what the order screen holds. */
+export interface ReceiptExtras {
+  paymentId: string | null;
+  paidAt: string | null;
+  buyer: { name: string | null; phone: string | null; address: string | null; city: string | null; pincode: string | null };
+  shop: {
+    name: string;
+    logoUrl: string | null;
+    addressLine: string | null;
+    city: string | null;
+    district: string | null;
+    state: string | null;
+    pincode: string | null;
+  } | null;
+}
+
+/**
+ * Everything the buyer's downloadable receipt needs that `PlacedOrder` doesn't
+ * carry: the payment reference, when it was paid, the address the order was
+ * actually placed with, and the boutique's own postal details and logo.
+ *
+ * Fetched on demand — when the buyer taps "Download receipt" — rather than
+ * folded into the orders query that runs on every visit to the orders list.
+ * These fields are needed on one screen by one action, and `fetchOrdersForBuyer`
+ * already returns every order a buyer has ever placed.
+ *
+ * Two queries, not a join: `boutiques` has column-level grants (migration 0021),
+ * so it is selected by name from its own statement where the granted list is
+ * obvious. Both are ordinary RLS reads — the order by `buyer_id`, the boutique
+ * from the public storefront columns — so this needs no new policy.
+ *
+ * Returns null if the order isn't readable, which is the honest answer for a
+ * guest's locally-mirrored order: it has no row the server will hand back.
+ */
+export async function fetchReceiptExtras(orderRowId: string): Promise<ReceiptExtras | null> {
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('payment_id, paid_at, created_at, boutique_id, guest_name, guest_phone, guest_address, guest_city, guest_pincode')
+    .eq('id', orderRowId)
+    .maybeSingle();
+  if (error || !order) return null;
+
+  const { data: shop } = await supabase
+    .from('boutiques')
+    .select('name, logo_url, address_line, city, district, state, pincode')
+    .eq('id', order.boutique_id)
+    .maybeSingle();
+
+  return {
+    paymentId: order.payment_id ?? null,
+    paidAt: order.paid_at ?? order.created_at ?? null,
+    buyer: {
+      name: order.guest_name ?? null,
+      phone: order.guest_phone ?? null,
+      address: order.guest_address ?? null,
+      city: order.guest_city ?? null,
+      pincode: order.guest_pincode ?? null,
+    },
+    shop: shop
+      ? {
+          name: shop.name,
+          logoUrl: shop.logo_url ?? null,
+          addressLine: shop.address_line ?? null,
+          city: shop.city ?? null,
+          district: shop.district ?? null,
+          state: shop.state ?? null,
+          pincode: shop.pincode ?? null,
+        }
+      : null,
+  };
+}
+
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   // Staff act through an RPC rather than an UPDATE policy, because a policy is
   // column-blind — `using (is_staff())` would also let an employee rewrite

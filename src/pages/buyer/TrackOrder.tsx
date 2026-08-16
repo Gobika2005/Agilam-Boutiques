@@ -13,6 +13,8 @@ import { useOrderFeedback } from '@/hooks/useOrderFeedback';
 import { OrderFeedbackSheet } from '@/components/buyer/OrderFeedbackSheet';
 import { ReturnRequestSheet } from '@/components/buyer/ReturnRequestSheet';
 import { fetchReturnForOrder, RETURN_REASON_LABEL, RETURN_STATUS_LABEL } from '@/data/returns';
+import { fetchReceiptExtras } from '@/data/orders';
+import { printReceipt } from '@/lib/printReceipt';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /**
@@ -53,6 +55,7 @@ export function TrackOrder() {
   const [disputed, setDisputed] = useState(false);
   const [showAllScans, setShowAllScans] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [receiptBusy, setReceiptBusy] = useState(false);
   const feedback = useOrderFeedback(orders);
 
   // The return on this order, if one has been raised (migration 0074).
@@ -118,6 +121,28 @@ export function TrackOrder() {
   // withdrawn (migration 0085). Always false on a prepaid order, i.e. on every
   // order placed since — kept so an old row is not relabelled as "Paid".
   const owes = order.paymentMethod === 'COD' && (order.paymentStatus ?? 'pending') === 'pending' && !rejected;
+
+  /**
+   * Re-open the payment receipt that was emailed at checkout.
+   *
+   * The shop's postal details and the payment reference aren't in the order
+   * screen's data, so they're fetched here — on the tap, not on every visit.
+   * A failed fetch still prints: `printReceipt` falls back to the order's own
+   * figures, and a receipt missing the boutique's street address beats no
+   * receipt at all when someone is trying to file an expense.
+   */
+  const downloadReceipt = async () => {
+    if (receiptBusy) return;
+    setReceiptBusy(true);
+    try {
+      const extras = order.rowId ? await fetchReceiptExtras(order.rowId).catch(() => null) : null;
+      // Pop-ups are blocked by default in several browsers, and a button that
+      // silently does nothing reads as broken — so say what happened.
+      if (!printReceipt(order, extras)) showToast('Allow pop-ups to download your receipt');
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
 
   const chatWithBoutique = () => {
     navigate(`/chat/${order.boutiqueId}`, {
@@ -527,6 +552,22 @@ export function TrackOrder() {
                 ? owes ? 'Cash on delivery · pay when it arrives' : 'Cash on delivery · payment received'
                 : 'Paid online · payment verified'}
             </div>
+
+            {/* The same receipt that was emailed at checkout, on demand — the
+                moment someone wants a receipt is rarely the moment it arrived.
+                Hidden while money is still owed: there is nothing to receipt
+                until it has been paid (only ever true of a pre-0085 cash
+                order, which is why it is a guard and not a removal). */}
+            {!owes && (
+              <button
+                onClick={downloadReceipt}
+                disabled={receiptBusy}
+                style={css(`margin-top:12px;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-ink-2);border-radius:14px;font-weight:800;font-size:13.5px;cursor:${receiptBusy ? 'default' : 'pointer'};opacity:${receiptBusy ? '.6' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;width:100%;`)}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>receipt_long</span>
+                {receiptBusy ? 'Preparing…' : 'Download receipt'}
+              </button>
+            )}
           </div>
         </div>
 

@@ -57,7 +57,21 @@ async function login(): Promise<{ token: string; expiresAt: Date }> {
   });
   const body = await res.json().catch(() => null);
   if (!res.ok || !body?.token) {
-    throw new SrError(502, `Shiprocket login failed (${res.status})`, body);
+    // Carry THEIR wording through. A bare "(403)" sends whoever reads it into
+    // our code, where the fault never is — login is the first call we make, so
+    // a non-2xx here is always the account, never the order or the seller.
+    // 403 in particular has one overwhelmingly common cause: the secrets hold a
+    // panel login. The external API only accepts a user created under
+    // Settings → API → Configure → Create an API User.
+    const detail = (body as { message?: string } | null)?.message;
+    const hint = res.status === 403
+      ? ' — check SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD hold a Shiprocket *API user* (Settings → API → Configure), not your panel login, and that the password has no stray spaces'
+      : '';
+    throw new SrError(
+      502,
+      `Shiprocket login failed (${res.status})${detail ? `: ${detail}` : ''}${hint}`,
+      body,
+    );
   }
   // Their docs state 240 hours and the response carries no expiry field, so the
   // lifetime is computed rather than read. The margin above absorbs the drift.

@@ -4,6 +4,7 @@ import { computeCartPricing, loadBuyerPlace, loadCoupon, loadShopTerms, redeemCo
 import { enforceRateLimit } from './_rateLimit.js';
 import { clientFor, verifyPaymentSignature } from './_razorpay.js';
 import { sendEmail, layout, rowsTable, inr, esc, appUrl, isValidEmail } from './_email.js';
+import { receiptBody, receiptText } from './_receipt.js';
 
 /**
  * Vercel serverless function: create the real order(s) for a checkout.
@@ -130,7 +131,11 @@ async function emailOrderPlaced(supabase, created, guestFields, buyerEmail) {
     const boutiqueIds = [...new Set(created.map((o) => o.boutique_id))];
     const { data: boutiques } = await supabase
       .from('boutiques')
-      .select('id, name, email')
+      // Named columns, never `select('*')` — `boutiques` has had column-level
+      // grants since the onboarding work. The address and logo are here for the
+      // buyer's receipt: it bills FROM the shop, so it has to say who the shop
+      // is and show their mark.
+      .select('id, name, email, logo_url, address_line, city, district, state, pincode')
       .in('id', boutiqueIds);
     const shopById = new Map((boutiques ?? []).map((b) => [b.id, b]));
 
@@ -161,25 +166,35 @@ async function emailOrderPlaced(supabase, created, guestFields, buyerEmail) {
       ]);
 
       // ── Buyer ──────────────────────────────────────────────────────────────
+      // This IS the receipt. Razorpay's own post-payment receipt feature only
+      // covers Payment Links and Payment Pages, and checkout here settles a
+      // Razorpay *order* (api/create-order.js), so nothing the dashboard is
+      // configured to send can ever fire for a MangaiMart purchase. The one
+      // that reaches the buyer is this one — see api/_receipt.js.
       if (isValidEmail(buyerEmail)) {
+        const receiptOrder = { ...order, payment_id: guestFields.payment_id, paid_at: guestFields.paid_at };
+        const receiptBuyer = {
+          name: guestFields.guest_name,
+          email: buyerEmail,
+          phone: guestFields.guest_phone,
+          address: guestFields.guest_address,
+          city: guestFields.guest_city,
+          pincode: guestFields.guest_pincode,
+        };
         const r = await sendEmail({
           to: buyerEmail,
-          subject: `Order ${order.order_number} confirmed · ${shop?.name ?? 'MangaiMart'}`,
+          subject: `Payment receipt · ${order.order_number} · ${inr(payable)}`,
           html: layout({
-            heading: `Thanks, ${buyerName} — your order is in.`,
-            intro: `${shop?.name ?? 'The boutique'} has your order ${order.order_number} and will start getting it ready. We'll let you know the moment it ships.`,
-            bodyHtml: `${itemsTable}<div style="height:14px"></div>${summary}`,
+            heading: 'Payment Receipt',
+            intro: `Thanks, ${buyerName} — ${shop?.name ?? 'the boutique'} has your payment of ${inr(payable)} and is getting order ${order.order_number} ready. We'll tell you the moment it ships.`,
+            bodyHtml: receiptBody({ order: receiptOrder, shop, buyer: receiptBuyer }),
             ctaLabel: 'Track this order',
             ctaHref: `${appUrl}/orders/${order.id}`,
-            footerNote: 'Your payment has been received in full.',
+            footerNote: 'Keep this receipt — it is your proof of payment for this order.',
           }),
-          text:
-            `Order ${order.order_number} confirmed.\n` +
-            `${shop?.name ?? 'The boutique'} is getting it ready.\n` +
-            `${payLine}: ${inr(payable)}\n` +
-            `Track it: ${appUrl}/orders/${order.id}\n`,
+          text: receiptText({ order: receiptOrder, shop, buyer: receiptBuyer, appUrl }),
         });
-        if (!r.ok) console.error('place-order: buyer email failed:', order.order_number, r.error);
+        if (!r.ok) console.error('place-order: buyer receipt email failed:', order.order_number, r.error);
       }
 
       // ── Seller ─────────────────────────────────────────────────────────────
@@ -603,6 +618,10 @@ export default async function handler(req, res) {
           order_number: order.order_number,
           boutique_id: order.boutique_id,
           total: Number(order.total),
+          // Seller-funded coupon, already netted off `total`. Carried through so
+          // the buyer's receipt can name it as the boutique's own offer instead
+          // of quietly printing a line total that doesn't reconcile.
+          discount: Number(order.discount ?? 0),
           platform_discount: Number(order.platform_discount ?? 0),
           shipping_fee: Number(order.shipping_fee ?? 0),
           created_at: order.created_at,
