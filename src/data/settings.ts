@@ -44,6 +44,10 @@ export interface PlatformSettings {
   maintenance_mode: boolean;
   support_email: string;
   razorpay_account: RazorpayAccount;
+  /** Master switch for WhatsApp order updates (migration 0090). False leaves the
+   *  outbox filling and unsent — the triggers always queue, so the queue can be
+   *  inspected before a single message goes out. */
+  whatsapp_enabled: boolean;
   updated_at: string | null;
 }
 
@@ -55,6 +59,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   maintenance_mode: false,
   support_email: COMPANY.supportEmail,
   razorpay_account: 'primary',
+  // Off until the Meta credentials are set and the templates are approved. A
+  // deployment without migration 0090 also lands here, and must stay off.
+  whatsapp_enabled: false,
   updated_at: null,
 };
 

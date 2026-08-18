@@ -644,6 +644,10 @@ export interface Database {
           /** Master Shiprocket switch (migration 0067). Off by default — an
            *  admin turns it on once credentials are set. */
           shiprocket_enabled: boolean;
+          /** Master WhatsApp switch (migration 0090). Off by default. False
+           *  makes wa_claim_batch return nothing, so the triggers keep queueing
+           *  and the wa-drain Edge Function sends none of it. */
+          whatsapp_enabled: boolean;
           updated_at: string;
           updated_by: string | null;
         };
@@ -888,6 +892,42 @@ export interface Database {
       resubscribe_by_token: {
         Args: { p_token: string };
         Returns: { ok: boolean; masked_email: string | null }[];
+      };
+      /**
+       * WhatsApp outbox read-out for the admin console (migration 0090).
+       *
+       * `whatsapp_outbox` has RLS on with no policies, so it is unreadable by
+       * anything but the service role — these two SECURITY DEFINER functions are
+       * the console's only window onto it, both gated on `is_admin()` inside.
+       * Granted `to authenticated`, never PUBLIC.
+       */
+      wa_outbox_stats: {
+        Args: Record<string, never>;
+        Returns: { bucket: string; total: number; newest: string | null }[];
+      };
+      /** Recent give-ups, with the recipient masked — enough to recognise a
+       *  number you know, not enough to harvest one you do not. */
+      wa_outbox_failures: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string; template: string; audience: string; recipient_masked: string;
+          attempts: number; last_error: string | null; created_at: string;
+        }[];
+      };
+      /**
+       * Queue one WhatsApp template message (migration 0090). Normalises the
+       * phone, drops opted-out recipients, sanitises every parameter and
+       * de-duplicates on the key — so a caller cannot get any of that wrong.
+       * Called by the DB triggers and by api/place-order.js; never from the
+       * browser, which has no business sending on our number.
+       */
+      wa_enqueue: {
+        Args: {
+          p_recipient: string; p_template: string; p_params: string[];
+          p_dedupe_key: string; p_audience?: string;
+          p_order_id?: string | null; p_boutique_id?: string | null; p_profile_id?: string | null;
+        };
+        Returns: string | null;
       };
       toggle_product_like: {
         Args: { pid: string; do_like: boolean };

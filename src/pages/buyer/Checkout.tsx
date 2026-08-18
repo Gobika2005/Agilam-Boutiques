@@ -110,6 +110,13 @@ export function Checkout() {
                 <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
                 <input value={guest.phone} onChange={(e) => setGuest({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} inputMode="numeric" placeholder="10-digit number" style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')} />
               </div>
+              {/* Consent for the WhatsApp order updates (migration 0090). There is
+                  no tick-box: consent here is implied by placing the order, which
+                  only holds up if the buyer was actually told — at the moment they
+                  hand over the number, in plain words, with the way out named. */}
+              <span style={css('display:block;margin-top:7px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.5;')}>
+                We&rsquo;ll send order updates to this number on WhatsApp. Reply STOP any time to opt out.
+              </span>
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
               Flat / House no. &amp; area

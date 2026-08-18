@@ -107,6 +107,102 @@ async function notifySellers(supabase, created, guestFields) {
 }
 
 /**
+ * Queue the WhatsApp confirmation for the buyer and the new-order alert for each
+ * seller (migration 0090).
+ *
+ * WHY THESE TWO ARE NOT TRIGGERS
+ * Every other WhatsApp message in the system is queued by a Postgres trigger, so
+ * that a status change fires wherever it comes from. Placement is the exception:
+ * the confirmation wants the basket summary and the seller alert wants the unit
+ * count, and both are already in hand here. A trigger would have to re-read
+ * order_items to rebuild what this function is holding — and would fire once per
+ * boutique order with no way to tell a two-shop checkout from two checkouts.
+ *
+ * `wa_enqueue` does the rest: it normalises the phone, drops anyone on the
+ * opt-out list, sanitises every parameter, and de-duplicates on the key. Nothing
+ * is sent from here — the wa-drain Edge Function does that on its next tick, and
+ * only if the admin kill switch is on.
+ *
+ * Best-effort, like everything past the order write: the buyer has already paid,
+ * so a queueing failure is logged and never surfaced.
+ */
+async function queueWhatsApp(supabase, created, guestFields, buyerId) {
+  try {
+    const boutiqueIds = [...new Set(created.map((o) => o.boutique_id))];
+    // The service-role client reads `whatsapp` and `phone` straight through the
+    // column grants 0021/0073 put on boutiques — the same reason emailOrderPlaced
+    // below can read `email`. Columns are named, never select('*').
+    const { data: boutiques, error } = await supabase
+      .from('boutiques')
+      .select('id, name, owner_id, whatsapp, phone')
+      .in('id', boutiqueIds);
+    if (error) throw error;
+
+    const byId = new Map((boutiques ?? []).map((b) => [b.id, b]));
+    const buyerFirstName = String(guestFields.guest_name || '').trim().split(/\s+/)[0] || 'there';
+
+    for (const order of created) {
+      const shop = byId.get(order.boutique_id);
+      const units = order.lines.reduce((sum, l) => sum + l.qty, 0);
+      const first = order.lines[0]?.title ?? 'your order';
+      const rest = order.lines.length > 1 ? ` +${order.lines.length - 1} more` : '';
+      // What the buyer was actually charged for this boutique's order, matching
+      // the receipt: goods and delivery, less the platform-funded discount.
+      // No COD fee term — every order is prepaid since 0085, so it is always 0.
+      const billed = Math.round(
+        Number(order.total || 0) +
+          Number(order.shipping_fee || 0) -
+          Number(order.platform_discount || 0),
+      );
+
+      // One message per boutique order, not one per checkout — a bag spanning
+      // two shops becomes two orders that ship and track separately, so a single
+      // combined message would misdescribe what the buyer has.
+      const { error: buyerErr } = await supabase.rpc('wa_enqueue', {
+        p_recipient: guestFields.guest_phone,
+        p_template: 'order_confirmed',
+        p_params: [
+          buyerFirstName,
+          order.order_number,
+          `${units} item${units === 1 ? '' : 's'} — ${first}${rest}`,
+          `₹${billed.toLocaleString('en-IN')}`,
+          shop?.name ?? 'the boutique',
+        ],
+        p_dedupe_key: `order:${order.id}:confirmed`,
+        p_audience: 'buyer',
+        p_order_id: order.id,
+        p_boutique_id: order.boutique_id,
+        p_profile_id: buyerId ?? null,
+      });
+      if (buyerErr) throw buyerErr;
+
+      if (!shop) continue;
+      const { error: sellerErr } = await supabase.rpc('wa_enqueue', {
+        p_recipient: shop.whatsapp || shop.phone,
+        p_template: 'seller_new_order',
+        p_params: [
+          shop.name ?? 'Seller',
+          order.order_number,
+          String(units),
+          // The seller's side of the same order: goods value, before our
+          // commission. Every order is prepaid (0085), so there is nothing to
+          // collect on delivery.
+          `₹${Math.round(Number(order.total || 0)).toLocaleString('en-IN')}`,
+        ],
+        p_dedupe_key: `order:${order.id}:new`,
+        p_audience: 'seller',
+        p_order_id: order.id,
+        p_boutique_id: order.boutique_id,
+        p_profile_id: shop.owner_id ?? null,
+      });
+      if (sellerErr) throw sellerErr;
+    }
+  } catch (err) {
+    console.error('place-order: WhatsApp queue failed (order still placed):', err?.message ?? err);
+  }
+}
+
+/**
  * Email the buyer their confirmation, and each seller their new order.
  *
  * Until this existed the platform sent no transactional email whatsoever: a
@@ -255,6 +351,23 @@ export default async function handler(req, res) {
     return res.status(400).json({
       error: 'Cash on delivery is no longer available on MangaiMart. Please pay online to place this order.',
       code: 'COD_WITHDRAWN',
+    });
+  }
+
+  // A reachable mobile number is now mandatory on every order (migration 0090).
+  // Until COD was withdrawn this rule existed only on the cash path, where a
+  // courier had to be able to ring the door; it went with 0085 and nothing
+  // replaced it, so a scripted request could place a prepaid order with no way
+  // to contact the buyer at all. WhatsApp order updates make that a real gap
+  // rather than a tidy one — a queued message with no recipient is a buyer who
+  // hears nothing. The checkout form has always validated this same rule
+  // client-side, so in practice only a tampered or hand-rolled request is
+  // turned away here.
+  const guestPhone = String(guest?.phone ?? '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(guestPhone)) {
+    return res.status(400).json({
+      error: 'A 10-digit mobile number is required so we can send you order updates.',
+      code: 'PHONE_REQUIRED',
     });
   }
 
@@ -525,7 +638,9 @@ export default async function handler(req, res) {
 
     const guestFields = {
       guest_name: guest?.name ?? null,
-      guest_phone: guest?.phone ?? null,
+      // Normalised above, and validated — never the raw string, so what the
+      // WhatsApp triggers read is a number they can always resolve.
+      guest_phone: guestPhone,
       guest_city: guest?.city ?? null,
       guest_address: guest?.address ?? null,
       guest_pincode: guest?.pincode ? String(guest.pincode).replace(/\D/g, '').slice(0, 6) : null,
@@ -651,6 +766,7 @@ export default async function handler(req, res) {
     // turn a successful checkout into an error for the buyer.
     await notifySellers(supabase, created, guestFields);
     await emailOrderPlaced(supabase, created, guestFields, buyerEmail);
+    await queueWhatsApp(supabase, created, guestFields, buyerId);
 
     return res.status(200).json({
       orders: created.map(({ id, order_number, boutique_id, total, platform_discount, shipping_fee, created_at }) => ({
