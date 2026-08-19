@@ -37,6 +37,7 @@ const NAV = [
   { label: 'Advertisements', icon: 'campaign', to: adminPath('ads'), title: 'Advertisements', sub: 'Campaigns and promotions' },
   { label: 'Coupons', icon: 'local_offer', to: adminPath('coupons'), title: 'Coupons', sub: 'Platform & seller discount codes' },
   { label: 'Broadcast', icon: 'send', to: adminPath('broadcast'), title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
+  { label: 'WhatsApp', icon: 'forum', to: adminPath('whatsapp'), title: 'WhatsApp Log', sub: 'Every message sent and received on the platform number' },
   { label: 'Audit', icon: 'history', to: adminPath('audit'), title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
   { label: 'Settings', icon: 'settings', to: adminPath('settings'), title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
 ];

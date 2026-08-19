@@ -413,3 +413,34 @@ The reply ends "someone from our team will reply here shortly". That is only tru
 if a person is watching **Meta Business Suite** — messages no longer reach the
 WhatsApp phone app. If nobody is monitoring it, the auto-reply is making a
 commitment the business does not keep, which is worse than saying nothing.
+
+
+---
+
+## Admin message log (added 2026-08-19) — needs migration 0091
+
+A read-only, threaded view of every WhatsApp message sent and received, at
+**console → WhatsApp**. Admin only; it is deliberately NOT in `STAFF_ROUTES`, and
+the RPCs are `is_admin()`-gated so the two layers agree.
+
+**Migration `0091_whatsapp_inbound_log.sql` must be applied.** Until it is, the
+page shows an explanatory card instead of crashing, and `wa-webhook` logs a
+failed insert while still handling STOP and auto-replies normally — inbound
+messages simply are not recorded yet.
+
+**Read-only on purpose.** Replies stay in Meta Business Suite, so a customer is
+never answered from two places. What Business Suite cannot do — and the whole
+reason this screen exists — is show the conversation next to the order it is
+about, and let someone look a thread up without a Meta account of their own.
+
+**The masking is real, not cosmetic.** `wa_threads` returns numbers already
+masked, keyed by an md5 hash, so the full number is not in the payload behind the
+list — an open DevTools panel shows nothing. `wa_reveal_msisdn` returns one
+number at a time and the console writes an `admin_activity_log` entry for each
+reveal, so "who looked up this customer" stays answerable.
+
+**What an outbound row can show.** An auto-reply stores its finished text and
+renders verbatim. A template send stores only the parameters — the wording lives
+at Meta and we never held it — so those render as the template name plus the
+values passed. That is honest about what we have rather than reconstructing a
+body we do not.

@@ -915,6 +915,35 @@ export interface Database {
         }[];
       };
       /**
+       * Threaded WhatsApp message log for the admin console (migration 0091).
+       *
+       * `wa_threads` returns numbers ALREADY masked plus a hash key; the real
+       * number is never in that payload. `wa_reveal_msisdn` is the only path by
+       * which a full customer number reaches the browser — one at a time, and
+       * the console writes an audit entry each time. Returning full numbers and
+       * hiding them in CSS would be the appearance of masking, not masking.
+       * All three are admin-gated internally and granted `to authenticated`.
+       */
+      wa_threads: {
+        Args: { p_limit?: number };
+        Returns: {
+          thread_key: string; masked: string; profile_name: string | null;
+          last_at: string; last_body: string; last_dir: string;
+          in_count: number; out_count: number; opted_out: boolean;
+        }[];
+      };
+      wa_thread_messages: {
+        Args: { p_key: string; p_limit?: number };
+        Returns: {
+          at: string; dir: string; body: string | null; msg_type: string | null;
+          status: string | null; delivery: string | null; err: string | null;
+        }[];
+      };
+      wa_reveal_msisdn: {
+        Args: { p_key: string };
+        Returns: string | null;
+      };
+      /**
        * Queue one WhatsApp template message (migration 0090). Normalises the
        * phone, drops opted-out recipients, sanitises every parameter and
        * de-duplicates on the key — so a caller cannot get any of that wrong.

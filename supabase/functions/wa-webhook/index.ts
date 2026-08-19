@@ -325,6 +325,33 @@ Deno.serve(async (req) => {
             .toLowerCase();
           const word = bodyText.replace(/[^a-z]/g, '');
 
+          // Record it before acting on it (migration 0091). Every inbound
+          // message goes in the log, STOP included — an opt-out is exactly the
+          // kind of thing you want evidence of later. `wa_message_id` is unique,
+          // so Meta redelivering a webhook cannot turn one customer message into
+          // three rows.
+          {
+            const { error } = await supabase.from('whatsapp_inbound').upsert(
+              {
+                msisdn: from,
+                wa_message_id: msg?.id ?? null,
+                msg_type: String(msg?.type ?? 'text'),
+                // The original casing, not the lowercased matching copy.
+                body:
+                  msg?.text?.body ??
+                  msg?.button?.text ??
+                  msg?.interactive?.button_reply?.title ??
+                  null,
+                profile_name: value?.contacts?.[0]?.profile?.name ?? null,
+                received_at: msg?.timestamp
+                  ? new Date(Number(msg.timestamp) * 1000).toISOString()
+                  : null,
+              },
+              { onConflict: 'wa_message_id', ignoreDuplicates: true },
+            );
+            if (error) console.error('wa-webhook: inbound log failed:', error.message);
+          }
+
           if (STOP_WORDS.has(word)) {
             const { error } = await supabase
               .from('whatsapp_optout')

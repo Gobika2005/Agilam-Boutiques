@@ -58,3 +58,62 @@ export async function fetchWaFailures(limit = 20): Promise<WaFailure[]> {
   if (error || !data) return [];
   return data as WaFailure[];
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Message log (migration 0091)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Read-only, admin-only. Replies are still written in Meta Business Suite —
+ * this exists so a conversation can be read next to the order it is about,
+ * which Business Suite cannot do because it has no idea what an order number
+ * means.
+ *
+ * NUMBERS ARE MASKED AT THE SOURCE, NOT IN CSS
+ * `wa_threads` returns `masked` and a `thread_key` hash; the real number is
+ * never in these payloads. `revealMsisdn` is a separate, deliberate call for one
+ * number at a time — so an open DevTools panel on the list page shows nothing,
+ * and a reveal is a distinct action worth writing to the audit log.
+ */
+
+export type WaThread = {
+  thread_key: string;
+  masked: string;
+  profile_name: string | null;
+  last_at: string;
+  last_body: string;
+  last_dir: 'in' | 'out';
+  in_count: number;
+  out_count: number;
+  opted_out: boolean;
+};
+
+export type WaMessage = {
+  at: string;
+  dir: 'in' | 'out';
+  body: string | null;
+  msg_type: string | null;
+  /** Outbound only: 'utility' for a template send, 'service' for an auto-reply. */
+  status: string | null;
+  delivery: string | null;
+  err: string | null;
+};
+
+export async function fetchWaThreads(limit = 100): Promise<WaThread[]> {
+  const { data, error } = await supabase.rpc('wa_threads', { p_limit: limit });
+  if (error || !data) return [];
+  return data as WaThread[];
+}
+
+export async function fetchWaThreadMessages(key: string, limit = 200): Promise<WaMessage[]> {
+  const { data, error } = await supabase.rpc('wa_thread_messages', { p_key: key, p_limit: limit });
+  if (error || !data) return [];
+  return data as WaMessage[];
+}
+
+/** The only path by which a full customer number reaches the browser. */
+export async function revealMsisdn(key: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('wa_reveal_msisdn', { p_key: key });
+  if (error) return null;
+  return (data as string) || null;
+}
