@@ -10,15 +10,14 @@
  * function once a minute to send what is waiting. Queueing in a transaction also
  * means a send can never be attributed to an order that rolled back.
  *
- * DEPLOY (JWT verification left ON, unlike wa-webhook):
- *   supabase functions deploy wa-drain
+ * DEPLOY — --no-verify-jwt, same as wa-webhook, because the caller is pg_cron
+ * presenting our own secret rather than a Supabase-issued JWT:
+ *   supabase functions deploy wa-drain --no-verify-jwt
  * Then schedule it; see WHATSAPP_AUTOMATION_PLAN.md Phase 2.8.
  *
  * WHO MAY CALL IT
- * The bearer must be the service-role key itself, compared here rather than
- * merely being a valid JWT. Supabase's own gate only proves a token is signed by
- * the project — any signed-in buyer holds one of those, and this endpoint sends
- * WhatsApp messages at our expense.
+ * A shared secret of our own, `WA_DRAIN_SECRET`, presented as the bearer. See
+ * authorised() for why it is not the service-role key.
  *
  * WHAT IS DECIDED IN SQL, NOT HERE
  * The kill switch, the second opt-out check and the staleness sweep all live in
@@ -32,6 +31,8 @@ const PHONE_NUMBER_ID = Deno.env.get('WA_PHONE_NUMBER_ID') ?? '';
 const ACCESS_TOKEN = Deno.env.get('WA_ACCESS_TOKEN') ?? '';
 const GRAPH_VERSION = Deno.env.get('WA_GRAPH_VERSION') ?? 'v21.0';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+/** Ours, not the platform's — see authorised(). */
+const DRAIN_SECRET = Deno.env.get('WA_DRAIN_SECRET') ?? '';
 
 /** One tick's worth. 20 × ~300ms sits well inside the function's time budget. */
 const BATCH = Number(Deno.env.get('WA_BATCH_SIZE') ?? 20);
@@ -134,13 +135,51 @@ async function send(row: Row): Promise<{ ok: true; id: string } | { ok: false; p
   return { ok: false, permanent: PERMANENT.has(code), error: `${code || res.status}: ${detail}` };
 }
 
+/**
+ * Is this caller allowed to drain the queue?
+ *
+ * WHY A SECRET OF OUR OWN, AND NOT THE SERVICE-ROLE KEY
+ * Two earlier versions of this check both broke on the same root cause, so it is
+ * worth stating plainly: the `SUPABASE_*` credentials are issued, injected and
+ * rotated by the platform, not by us.
+ *
+ *   1. Comparing the bearer to `SUPABASE_SERVICE_ROLE_KEY` failed because the
+ *      value the deployed function saw had drifted from the project's key.
+ *   2. Reading the `role` claim failed for a different reason: the project is on
+ *      Supabase's newer API keys, where the dashboard hands you an
+ *      `sb_secret_...` string that is not a JWT at all. The platform's own gate
+ *      rejected it with UNAUTHORIZED_INVALID_JWT_FORMAT before this code ran.
+ *
+ * Both failures looked identical from the outside — a cron job quietly 401/403ing
+ * every minute while orders queued and nothing sent. So authorisation no longer
+ * depends on any Supabase-issued credential or its format. `WA_DRAIN_SECRET` is
+ * ours, it changes only when we change it, and it is the same shape as
+ * SHIPROCKET_WEBHOOK_TOKEN elsewhere in this project.
+ *
+ * That means the function is deployed --no-verify-jwt and THIS is the only gate,
+ * exactly as the HMAC is the only gate on wa-webhook. Fails closed: an unset
+ * secret refuses everyone rather than admitting everyone.
+ *
+ * The function's own service-role key is accepted too, so an operator holding it
+ * can poke the endpoint by hand. That is an exact string match, not a decoded
+ * claim: with --no-verify-jwt nothing upstream checks a signature any more, so
+ * trusting a `role` claim read out of an unverified token would accept anything
+ * a caller cared to base64 for themselves.
+ */
+function authorised(req: Request): boolean {
+  const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!bearer) return false;
+  if (DRAIN_SECRET && bearer === DRAIN_SECRET) return true;
+  if (SERVICE_KEY && bearer === SERVICE_KEY) return true;
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return json({ error: 'method not allowed' }, 405);
   }
 
-  const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
-  if (!SERVICE_KEY || bearer !== SERVICE_KEY) {
+  if (!authorised(req)) {
     return json({ error: 'forbidden' }, 403);
   }
 

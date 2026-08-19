@@ -39,10 +39,12 @@ carries both halves of what we need: delivery receipts and the inbound STOP.
 
 | Piece | State |
 |---|---|
-| `supabase/migrations/0090_whatsapp_automation.sql` | **Written, NOT applied.** You must run it. |
+| `supabase/migrations/0090_whatsapp_automation.sql` | **Applied** — confirmed live 2026-08-19 |
 | `supabase/functions/wa-webhook` | **Deployed** (`--no-verify-jwt`) and responding correctly |
-| `supabase/functions/wa-drain` | **Deployed**. Inert: no credentials, and the kill switch is off |
+| `supabase/functions/wa-drain` | **Deployed**, auth gate fixed 2026-08-19, returns `{claimed:0,sent:0,failed:0}` |
 | `WA_VERIFY_TOKEN` secret | **Set** |
+| `WA_PHONE_NUMBER_ID` / `WA_ACCESS_TOKEN` / `WA_APP_SECRET` | **Set 2026-08-19 and verified live** — see below |
+| Webhook registered in Meta | **Done** — `active: true`, subscribed to `messages` |
 | `api/place-order.js` | Queues `order_confirmed` + `seller_new_order`; now requires a mobile number |
 | `src/pages/buyer/Checkout.tsx` | Consent line under the phone field |
 | `src/pages/admin/Settings.tsx` | Kill switch + queue counts + last 20 failures |
@@ -81,14 +83,86 @@ is the one change that can reject a checkout that previously went through.
 
 ## What is left — all of it yours
 
-### 1. Apply the migration
+### ~~1. Apply the migration~~ — DONE, confirmed live 2026-08-19
 
-Run `supabase/migrations/0090_whatsapp_automation.sql` in the Supabase SQL editor.
-It is idempotent. **Until you do, `wa-drain` fails on a missing `wa_claim_batch`
-and `place-order` logs a failed queue** — neither breaks an order, but nothing
-queues either.
+`whatsapp_outbox`, `whatsapp_optout`, `platform_settings.whatsapp_enabled` (false)
+and `wa_claim_batch` all exist and answer. The queueing path was exercised
+end-to-end against the live database and behaved as designed:
 
-### 2. Set the three remaining secrets
+| Input | Result |
+|---|---|
+| `+91 98765 43210` | stored `919876543210` — normalised to Meta's bare E.164 |
+| `"  Priya  "` | `"Priya"` — trimmed |
+| `"Shop
+Name    With   Gaps"` | `"Shop Name With Gaps"` — the newline and space-runs squeezed, which is what prevents Meta error 132012 |
+| Same `dedupe_key` twice | second call returned null, nothing queued |
+| Recipient `"12345"` | returned null, nothing queued — an unusable number never becomes a row that fails five times at Meta |
+| Drain with a row queued, switch **off** | `claimed:0` and the row untouched — the kill switch holds |
+
+The test row was deleted afterwards; the outbox is empty.
+
+### 1b. The bug this actually surfaced — `wa-drain` returned 403 to its own cron
+
+The first version of `wa-drain` authorised callers by comparing the bearer token
+against `SUPABASE_SERVICE_ROLE_KEY` as a string. That broke: `SUPABASE_*` secrets
+are injected and rotated by the platform, not by us, and the value the deployed
+function saw had drifted from the project's service-role key (Supabase re-injected
+that whole block on 2026-08-18 and the project now also carries the newer
+`SUPABASE_SECRET_KEYS`). Every cron tick would have been a silent 403 — the exact
+invisible failure this design exists to prevent, and it would have looked like a
+bug in the drainer rather than a key rotation.
+
+Fixed and redeployed: the function now checks the **`role` claim** on the token.
+That is sound because the platform gate verifies the signature before our code
+runs (`wa-drain` is deployed *with* JWT verification, unlike `wa-webhook`), so an
+unsigned or self-signed token never reaches it. A buyer's token does reach it, and
+is turned away for carrying `role: authenticated`. Verified after redeploy:
+
+```
+service-role bearer → {"claimed":0,"sent":0,"failed":0}
+anon bearer         → {"error":"forbidden"}
+```
+
+### ~~2. Set the three remaining secrets~~ — DONE 2026-08-19
+
+All three are set, and each was checked against the live Graph API rather than
+assumed:
+
+| Check | Result |
+|---|---|
+| Token type | `SYSTEM_USER`, **never expires** — the right kind, not the 24-hour one |
+| Token scopes | `whatsapp_business_messaging`, `whatsapp_business_management`, `business_management` |
+| App id behind it | `1078110141480805` ("MangaiMart") |
+| `WA_PHONE_NUMBER_ID` resolves to | **+91 93442 94969**, verified name "MangaiMart", `code_verification_status: VERIFIED`, `platform_type: CLOUD_API` |
+| App secret | Valid — an app access token built from it authenticates |
+| Webhook subscription | `callback_url` = our function, `active: true`, `messages` subscribed |
+| HMAC gate, end to end | Correctly-signed POST → `200 ok`; forged signature → `401`; unsigned → `401` |
+
+> **⚠ You are on the LIVE number, not the test number.** `WA_PHONE_NUMBER_ID`
+> resolves to +91 93442 94969 — the published support line — already registered
+> and verified. Plan step 0.8, the irreversible one, has therefore already
+> happened: that number is off the WhatsApp Business phone app, its chat history
+> is gone, and inbound replies now land in Meta Business Suite. Make sure whoever
+> handles support knows, and that they have Business Suite access.
+>
+> The practical consequence for the rest of this setup is that **there is no free
+> safety net left on this number**. Every test send is a real message from the
+> real support line, billed, and counting against a number whose
+> `quality_rating` is still `UNKNOWN` on `STANDARD` throughput — a new number on
+> the starting tier, where a burst of rejected or unanswered sends throttles you.
+> Keep the first walkthrough to your own mobile.
+
+> **⚠ Rotate the access token before real traffic.** It was pasted into a chat
+> transcript on 2026-08-19. It is permanent and can send messages as your
+> business at your expense, so treat it as disclosed: Business Settings → Users →
+> System Users → the user → **Generate new token** (same two scopes), then
+> re-run the `supabase secrets set` below with the new value. Nothing needs
+> redeploying afterwards.
+
+<details>
+<summary>The original instructions, kept for when you rotate</summary>
+
+### Setting the three secrets
 
 Do this yourself; do not paste them into a chat. A System User token can send
 messages as your business.
@@ -111,7 +185,9 @@ Until `WA_APP_SECRET` is set, `wa-webhook` refuses every POST with `bad signatur
 That is deliberate — it fails closed rather than trusting an unsigned body — but it
 means delivery receipts and STOP replies are dropped until you set it.
 
-### 3. Enable the extensions and schedule the drain
+</details>
+
+### 2. Enable the extensions and schedule the drain
 
 Supabase Dashboard → Database → Extensions: enable **`pg_cron`** and **`pg_net`**.
 Then once in the SQL editor:
@@ -130,10 +206,24 @@ buyer expects of a shipping notice. `wa-drain` compares that bearer against the
 service-role key itself, not merely "is this a valid JWT": any signed-in buyer
 holds a valid JWT, and this endpoint spends money.
 
-### 4. Submit the nine templates
+### 3. Submit the nine templates
 
-WhatsApp Manager → Message Templates. All **Utility**, language **English (`en`)**.
+WhatsApp Manager → Message Templates. Settings that are the same for all nine:
+
+| Field | Value |
+|---|---|
+| Category | **Utility** |
+| Language | **English** — that is `en`, which is what `whatsapp_outbox.lang` defaults to. NOT "English (US)" (`en_US`); a language mismatch is Meta error 132001 |
+| Type of variable | **Number** (positional `{{1}}`, `{{2}}` — the code sends parameters positionally) |
+| Header / Footer / Buttons | leave all empty |
+| Message validity period | leave off. The default is ample: the cron drains within ~60s |
+
 Approval is usually minutes; budget a day.
+
+**Variable samples are mandatory** — Meta will not accept a submission without one
+per variable. They are used for review only and never sent. The samples below are
+deliberately hyphenated rather than em-dashed: some reviewers flag unusual
+punctuation in sample text, though the bodies themselves are fine either way.
 
 The variable order below is what the code sends. **If you reword a body, keep the
 numbering** — Meta rejects a mismatched parameter count with error 132000, and
@@ -142,29 +232,47 @@ numbering** — Meta rejects a mismatched parameter count with error 132000, and
 #### `order_confirmed` — {{1}} name, {{2}} order no., {{3}} items, {{4}} amount, {{5}} boutique
 > Hi {{1}}, your MangaiMart order {{2}} is confirmed. {{3}}, {{4}} paid. {{5}} will pack and dispatch it shortly. You can follow it in the app under My Orders. Reply STOP to opt out of order updates.
 
+**Samples:** `Priya` · `AGL-M8K2P4A1B2` · `2 items - Kanchipuram silk saree +1 more` · `₹4,250` · `Meenakshi Silks`
+
 #### `order_shipped` — {{1}} name, {{2}} order no., {{3}} boutique
 > Hi {{1}}, good news — your MangaiMart order {{2}} has been dispatched by {{3}}. Follow it in the app under My Orders. Reply STOP to opt out of order updates.
+
+**Samples:** `Priya` · `AGL-M8K2P4A1B2` · `Meenakshi Silks`
 
 #### `order_delivered` — {{1}} name, {{2}} order no.
 > Hi {{1}}, your MangaiMart order {{2}} has been delivered. We hope you love it — a quick rating in the app helps the boutique and other shoppers. Reply STOP to opt out of order updates.
 
+**Samples:** `Priya` · `AGL-M8K2P4A1B2`
+
 #### `order_cancelled` — {{1}} name, {{2}} order no., {{3}} reason
 > Hi {{1}}, your MangaiMart order {{2}} has been cancelled. Reason: {{3}}. Anything you paid is returned to your original payment method within 5-7 working days. Reply STOP to opt out of order updates.
+
+**Samples:** `Priya` · `AGL-M8K2P4A1B2` · `the item is out of stock`
 
 #### `order_refunded` — {{1}} name, {{2}} order no., {{3}} amount
 > Hi {{1}}, the refund for your MangaiMart order {{2}} has been processed — {{3}} is on its way back to your original payment method, and reaches it within 5-7 working days. Reply STOP to opt out of order updates.
 
+**Samples:** `Priya` · `AGL-M8K2P4A1B2` · `₹4,250`
+
 #### `seller_new_order` — {{1}} boutique, {{2}} order no., {{3}} units, {{4}} amount
 > New MangaiMart order for {{1}}. Order {{2}}, {{3}} item(s), {{4}} prepaid. Open your seller console to accept and dispatch it.
+
+**Samples:** `Meenakshi Silks` · `AGL-M8K2P4A1B2` · `2` · `₹4,250`
 
 #### `seller_payout_paid` — {{1}} boutique, {{2}} amount, {{3}} reference
 > Payout update for {{1}}: MangaiMart has transferred {{2}} to your registered bank account. Reference: {{3}}. The itemised statement is in your seller console under Payouts.
 
+**Samples:** `Meenakshi Silks` · `₹3,825` · `N24081912345678`
+
 #### `seller_boutique_decision` — {{1}} boutique, {{2}} decision, {{3}} note
 > Update on your MangaiMart shop {{1}} — your application has been {{2}}. {{3}} Open your seller console for the full details.
 
+**Samples:** `Meenakshi Silks` · `approved` · `You can start listing right away.`
+
 #### `seller_low_stock` — {{1}} boutique, {{2}} product, {{3}} units left
 > Stock alert for {{1}}: your listing {{2}} is down to {{3}} left. Restock it in your seller console so it keeps selling.
+
+**Samples:** `Meenakshi Silks` · `Kanchipuram silk saree - maroon` · `2`
 
 **Two Meta rules these bodies already respect**, and that a rewrite easily breaks:
 a body may not begin or end with a variable, and the variables must appear in
@@ -172,22 +280,17 @@ ascending order. That is why `seller_new_order` opens with "New MangaiMart order
 for" rather than the shop name, and why `seller_payout_paid` leads with "Payout
 update for {{1}}".
 
-### 5. The irreversible step — only after the above is proven
+### 4. ~~The irreversible step~~ — already done
 
-Everything so far can be done on the **test number**, which sends to five
-recipients you nominate, free, with no verification. Prove the whole pipeline on
-it first.
++91 93442 94969 is already registered and verified on the Cloud API, so this step
+is behind you. Two consequences to keep in mind rather than actions to take:
 
-Only then: export the chat history from +91 93442 94969 (it does **not** migrate),
-tell whoever handles support that replies now arrive in Meta Business Suite, delete
-the WhatsApp Business account on that number, register it in API Setup, and update
-`WA_PHONE_NUMBER_ID`. Do it at a quiet hour — between deletion and successful
-registration, inbound messages can be lost.
+- Replies to that number now arrive **only** in Meta Business Suite. Whoever
+  answers support needs access to it.
+- `wa.me/919344294969` links in `src/data/company.ts` keep working unchanged, as
+  planned. No code change was needed.
 
-`wa.me/919344294969` links in `src/data/company.ts` keep working throughout. No
-code change.
-
-### 6. Flip the switch
+### 5. Flip the switch
 
 Admin console → Settings → **WhatsApp order updates**. The same card shows
 Waiting / Sent / Failed / Opted out / Expired and the last 20 failures with Meta's
@@ -199,17 +302,20 @@ count with the same error on every row is the only signal you get.
 
 ## Going-live walkthrough
 
-1. Apply 0090. **[you]**
-2. Set the three secrets, enable pg_cron + pg_net, schedule the drain. **[you]**
-3. Register the webhook + subscribe to `messages`. **[you — the screen you are on]**
-4. Submit and get the nine templates approved. **[you]**
-5. With the switch still **off**, place a real order and confirm `whatsapp_outbox`
+1. ~~Apply 0090~~ — done and verified 2026-08-19.
+2. ~~Set the three secrets~~ — done and verified 2026-08-19.
+3. ~~Register the webhook + subscribe to `messages`~~ — done, `active: true`.
+4. Enable pg_cron + pg_net, schedule the drain. **[you]**
+5. Submit and get the nine templates approved. **[you]**
+6. With the switch still **off**, place a real order and confirm `whatsapp_outbox`
    fills with `queued` rows carrying the right recipient and params. Nothing sends.
-6. Add your own number as a test recipient, flip the switch on, and walk one order
-   pending → shipped → delivered. All three should arrive.
-7. Reply **STOP** from that number. Confirm `whatsapp_optout` gains a row and the
+7. Flip the switch on and walk ONE order pending → shipped → delivered, with your
+   own mobile as the buyer. All three should arrive. Not a stranger's number —
+   every send from here is real and billed.
+8. Reply **STOP** from that number. Confirm `whatsapp_optout` gains a row and the
    next message for it lands `suppressed`, not `sent`. Reply **START** to undo.
-8. Watch the Failed count for 48h before calling it done.
+9. Watch the Failed count for 48h before calling it done.
+10. Rotate the access token (see the warning above) and re-set the secret.
 
 ## Costs and limits
 
