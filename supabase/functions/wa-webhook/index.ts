@@ -34,13 +34,51 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const VERIFY_TOKEN = Deno.env.get('WA_VERIFY_TOKEN') ?? '';
 const APP_SECRET = Deno.env.get('WA_APP_SECRET') ?? '';
+const PHONE_NUMBER_ID = Deno.env.get('WA_PHONE_NUMBER_ID') ?? '';
+const ACCESS_TOKEN = Deno.env.get('WA_ACCESS_TOKEN') ?? '';
+const GRAPH_VERSION = Deno.env.get('WA_GRAPH_VERSION') ?? 'v21.0';
 
 const text = (body: string, status = 200) =>
   new Response(body, { status, headers: { 'Content-Type': 'text/plain' } });
 
-/** The words that stop messages, and the ones that start them again. */
-const STOP_WORDS = new Set(['stop', 'unsubscribe', 'cancel', 'quit', 'stopall']);
+/**
+ * The words that stop messages, and the ones that start them again.
+ *
+ * `cancel` is deliberately NOT here. A buyer typing "cancel" on WhatsApp almost
+ * always means cancel my ORDER, not stop messaging me — treating it as an
+ * opt-out would silently cut them off from updates about the very order they
+ * were asking to cancel, and they would never know why the messages stopped.
+ * It now falls through to the auto-reply and to a human.
+ */
+const STOP_WORDS = new Set(['stop', 'unsubscribe', 'quit', 'stopall', 'optout']);
 const START_WORDS = new Set(['start', 'unstop', 'resume', 'subscribe']);
+
+/**
+ * Don't answer the same person more than once inside this many minutes.
+ *
+ * The rule chosen was "reply instantly, always", and this does not weaken it —
+ * it only stops a burst. Someone sending "hi", "hello?", "are you there" in
+ * fifteen seconds gets one answer rather than three, which is both what a human
+ * would do and what keeps Meta's quality rating out of trouble.
+ */
+const AUTO_REPLY_COOLDOWN_MINUTES = 5;
+
+/** Message types that are not a person asking something. */
+const NON_CONVERSATIONAL = new Set(['reaction', 'system', 'order', 'unsupported']);
+
+/**
+ * How each order status reads to a buyer. Status only — no amount, no address —
+ * because possession of a handset is weak proof of identity, and a borrowed
+ * phone should not expose what someone bought or where it is going.
+ */
+const STATUS_LINE: Record<string, string> = {
+  pending: 'is with the boutique for confirmation',
+  accepted: 'has been accepted and is being prepared',
+  shipped: 'has been dispatched and is on its way',
+  delivered: 'has been delivered',
+  cancelled: 'was cancelled',
+  rejected: 'could not be accepted by the boutique',
+};
 
 /**
  * Meta signs the raw body with the app secret. Verify against the BYTES exactly
@@ -70,6 +108,136 @@ async function signatureOk(raw: string, header: string | null): Promise<boolean>
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
   return diff === 0;
+}
+
+/**
+ * Send a plain text message, and log it in the outbox.
+ *
+ * FREE-FORM, NOT A TEMPLATE — AND WHY THAT IS ALLOWED
+ * Business-initiated messages must use an approved template. This is not one:
+ * it only ever runs in response to an inbound message, which opens a 24-hour
+ * customer service window in which plain text is permitted. That is also why it
+ * costs nothing — service conversations are not billed — and why the auto-reply
+ * could ship today rather than waiting on template approval.
+ *
+ * The outbox row is deliberate. `whatsapp_outbox` is the audit trail for every
+ * message this platform sends, and an auto-reply is no less a message the
+ * business sent than an order confirmation is. It doubles as the cooldown's
+ * memory, so no extra table and no migration is needed. `category: 'service'`
+ * is what separates these from the billed `utility` template sends.
+ */
+async function sendText(supabase: any, to: string, body: string): Promise<void> {
+  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
+    console.error('wa-webhook: auto-reply skipped, WA_PHONE_NUMBER_ID / WA_ACCESS_TOKEN not set');
+    return;
+  }
+
+  let waId: string | null = null;
+  let failure: string | null = null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body, preview_url: false },
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (res.ok) waId = payload?.messages?.[0]?.id ?? null;
+    else failure = `${payload?.error?.code ?? res.status}: ${payload?.error?.message ?? 'send failed'}`;
+  } catch (err) {
+    failure = `network: ${(err as Error)?.message ?? err}`;
+  }
+
+  if (failure) console.error('wa-webhook: auto-reply send failed:', failure);
+
+  // Logged whether it succeeded or not — a silent failure to answer customers is
+  // exactly the thing that needs to show up in the admin panel's Failed count.
+  const { error } = await supabase.from('whatsapp_outbox').insert({
+    recipient: to,
+    template: 'auto_reply',
+    category: 'service',
+    audience: 'buyer',
+    lang: 'en',
+    params: [body],
+    status: failure ? 'failed' : 'sent',
+    wa_message_id: waId,
+    last_error: failure,
+    sent_at: failure ? null : new Date().toISOString(),
+  });
+  if (error) console.error('wa-webhook: auto-reply log failed:', error.message);
+}
+
+/**
+ * Answer someone who wrote to the support number.
+ *
+ * WHAT IT DOES AND DELIBERATELY DOES NOT DO
+ * It looks up the sender's most recent order and states its status, then says a
+ * person will follow up. It does not attempt to interpret the question, quote a
+ * policy, promise a date, or discuss money — every one of those is a statement
+ * the business would be making on WhatsApp, and a wrong one about a refund is
+ * worse than no answer at all. Anything beyond "where is my order" is a human's
+ * job, and the message says so plainly rather than pretending otherwise.
+ *
+ * OPT-OUT IS NOT CONSULTED, ON PURPOSE
+ * `whatsapp_optout` suppresses business-INITIATED notifications, which is what
+ * the checkout notice promises ("order updates ... reply STOP to opt out").
+ * Someone who opted out and then writes in with a question is asking us
+ * something; staying silent would be a worse reading of their intent than
+ * answering. STOP itself never reaches here — it is handled above.
+ *
+ * MATCHING IS ON THE LAST TEN DIGITS
+ * `orders.guest_phone` holds whatever checkout captured, which for older rows
+ * predates the normalisation added in 0090. Meta always hands us `91XXXXXXXXXX`,
+ * so matching the trailing ten digits is what reconciles the two without a
+ * migration.
+ */
+async function autoReply(supabase: any, from: string, msisdnLocal: string): Promise<void> {
+  // Cooldown, read from the outbox itself.
+  const since = new Date(Date.now() - AUTO_REPLY_COOLDOWN_MINUTES * 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from('whatsapp_outbox')
+    .select('id')
+    .eq('recipient', from)
+    .eq('template', 'auto_reply')
+    .gte('created_at', since)
+    .limit(1);
+  if (recent?.length) return;
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('order_number, status, created_at, delivered_at')
+    .like('guest_phone', `%${msisdnLocal}`)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const order = orders?.[0];
+  let body: string;
+
+  if (order) {
+    const line = STATUS_LINE[order.status as string] ?? 'is being processed';
+    const on =
+      order.status === 'delivered' && order.delivered_at
+        ? ` on ${new Date(order.delivered_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+        : '';
+    body =
+      `Thanks for messaging MangaiMart.\n\n` +
+      `Your most recent order *${order.order_number}* ${line}${on}. ` +
+      `You can see the full details in the app under My Orders.\n\n` +
+      `Someone from our team will reply here shortly if you need anything else.`;
+  } else {
+    // No match is common and innocent: ordered on a different number, or never
+    // ordered at all. Say so without implying they have done something wrong.
+    body =
+      `Thanks for messaging MangaiMart.\n\n` +
+      `We could not find a recent order against this number — if you ordered using a different mobile, please share the order number.\n\n` +
+      `Someone from our team will reply here shortly.`;
+  }
+
+  await sendText(supabase, from, body);
 }
 
 const db = () =>
@@ -166,11 +334,22 @@ Deno.serve(async (req) => {
           } else if (START_WORDS.has(word)) {
             const { error } = await supabase.from('whatsapp_optout').delete().eq('msisdn', from);
             if (error) console.error('wa-webhook: opt-in delete failed:', error.message);
+          } else if (!NON_CONVERSATIONAL.has(String(msg?.type ?? 'text'))) {
+            // A real person asking something. Answer with what we can state
+            // safely, and tell them a human is coming. A reaction or a system
+            // notice is not a question, so it gets nothing.
+            //
+            // Meta hands us 91XXXXXXXXXX; `orders.guest_phone` holds whatever
+            // checkout captured, so the last ten digits are the common ground.
+            try {
+              await autoReply(supabase, from, from.slice(-10));
+            } catch (err) {
+              // Never fail the webhook over a reply. Meta retries a non-2xx and
+              // eventually disables the subscription, which would cost us the
+              // opt-out handling above — far more important than an auto-reply.
+              console.error('wa-webhook: auto-reply failed:', (err as Error)?.message ?? err);
+            }
           }
-          // Anything else is a real person writing to the support number. It is
-          // waiting for whoever answers Meta Business Suite's inbox; there is no
-          // auto-reply here on purpose, because an automated reply to an inbound
-          // message opens a paid 24-hour service window we get nothing from.
         }
       }
     }

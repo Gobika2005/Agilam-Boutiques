@@ -48,6 +48,7 @@ carries both halves of what we need: delivery receipts and the inbound STOP.
 | `api/place-order.js` | Queues `order_confirmed` + `seller_new_order`; now requires a mobile number |
 | `src/pages/buyer/Checkout.tsx` | Consent line under the phone field |
 | `src/pages/admin/Settings.tsx` | Kill switch + queue counts + last 20 failures |
+| Inbound auto-reply | **Live and tested 2026-08-19** — see below |
 | Meta account, templates, real number | **Yours.** See "What is left" below |
 
 `npm run build` and `npm run lint` both pass.
@@ -196,15 +197,33 @@ Then once in the SQL editor:
 select cron.schedule('wa-drain', '* * * * *', $$
   select net.http_post(
     url := 'https://mtxmuaskmyhnqczctwlp.supabase.co/functions/v1/wa-drain',
-    headers := '{"Authorization":"Bearer <SERVICE-ROLE-KEY>"}'::jsonb
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer <WA_DRAIN_SECRET>"}'::jsonb
   );
 $$);
 ```
 
-One minute is pg_cron's floor, so worst-case latency is ~60s — well inside what a
-buyer expects of a shipping notice. `wa-drain` compares that bearer against the
-service-role key itself, not merely "is this a valid JWT": any signed-in buyer
-holds a valid JWT, and this endpoint spends money.
+Re-running this with the same job name replaces the existing job; no unschedule
+needed. One minute is pg_cron's floor, so worst-case latency is ~60s — well
+inside what a buyer expects of a shipping notice.
+
+**The bearer is `WA_DRAIN_SECRET`, not a Supabase key.** That is the third
+iteration of this check, and the reason is worth recording because it cost most
+of a day:
+
+| Attempt | Why it failed |
+|---|---|
+| `bearer === SUPABASE_SERVICE_ROLE_KEY` | The platform injects and rotates `SUPABASE_*` itself; the value the deployed function saw had drifted from the project key. Silent 403 every minute. |
+| Decode the JWT and check `role === 'service_role'` | This project is on Supabase's newer API keys, where the dashboard hands you an `sb_secret_...` string that is not a JWT. The platform gate rejected it with `UNAUTHORIZED_INVALID_JWT_FORMAT` before our code ran. Silent 401 every minute. |
+| **`bearer === WA_DRAIN_SECRET`** | Ours. Changes only when we change it. Same shape as `SHIPROCKET_WEBHOOK_TOKEN` elsewhere in this project. |
+
+Both earlier failures looked identical from outside — a cron job erroring every
+minute while orders queued and nothing sent. Authorisation here must not depend
+on a credential someone else owns.
+
+Because of that, `wa-drain` is deployed **`--no-verify-jwt`** and the secret is
+the ONLY gate, exactly as the HMAC is the only gate on `wa-webhook`. Verified
+after deploy: drain secret → `{"claimed":0,"sent":0,"failed":0}`; no auth, wrong
+secret, and the anon key → `forbidden`.
 
 ### 3. Submit the nine templates
 
@@ -333,3 +352,64 @@ POS bill auto-send, marketing and abandoned-cart campaigns, per-seller WABA
 numbers, and Tamil templates. The last is worth revisiting for a Tamil-branded
 storefront — templates are per-language, so it means re-submitting the nine
 bodies, not re-architecting anything.
+
+
+---
+
+## Inbound auto-reply (added 2026-08-19)
+
+Someone who messages +91 93442 94969 now gets an immediate answer, built into
+`wa-webhook` rather than a separate tool.
+
+**Why not n8n.** It was considered. The logic is ~120 lines inside a function that
+already receives every inbound message, so n8n would have meant a VPS to run and
+patch (~₹400-800/mo, against ~₹20/mo of actual message cost), a second copy of the
+permanent Meta token, and — because **Meta allows exactly one callback URL per
+WABA** — either n8n in front of our webhook or vice versa. Putting n8n in front
+would make opt-out recording depend on it being up, and a silently-lost STOP is
+the one failure here with a compliance consequence.
+
+**What it answers.** It looks up the sender's most recent order by the last ten
+digits of their number (`orders.guest_phone` predates 0090's normalisation, so
+trailing-digit matching is what reconciles old rows with Meta's `91XXXXXXXXXX`)
+and states its status. Then it says a person will follow up.
+
+**Status only — no amount, no address.** Possession of a handset is weak proof of
+identity; a borrowed phone should not reveal what was bought or where it ships.
+
+**What it deliberately will not do:** interpret the question, quote a policy,
+promise a date, or discuss money. Each of those is a statement the business would
+be making on WhatsApp, and a wrong one about a refund is worse than no answer.
+
+**It is free.** Replies only ever follow an inbound message, which opens a 24-hour
+customer service window where plain text is allowed and not billed. That is also
+why it shipped before the nine templates were approved.
+
+### Guards, all verified live
+
+| Guard | Behaviour |
+|---|---|
+| Burst cooldown | One reply per sender per 5 minutes. Three further messages produced no second reply |
+| Reactions / system messages | Ignored — a 👍 is not a question |
+| STOP | Still silent, and still recorded. Auto-replying to an opt-out is rude and pointless |
+| Opt-out list | **Not** consulted. It suppresses business-INITIATED notifications, which is what checkout promises; someone who writes in is asking us something |
+| Failures | Logged to `whatsapp_outbox` as `failed`, so a broken auto-reply shows in the admin Failed count instead of vanishing |
+
+Every auto-reply is logged in `whatsapp_outbox` with `template: 'auto_reply'` and
+`category: 'service'` — the audit trail is the same one the order messages use,
+which is also what the cooldown reads, so no extra table and no migration.
+
+### Behaviour change: `cancel` no longer opts anyone out
+
+`cancel` used to sit in the STOP word list. A buyer typing "cancel" on WhatsApp
+almost always means cancel my ORDER — treating it as an opt-out silently cut them
+off from updates about the very order they were asking about, with no way for
+them to know why the messages stopped. It now falls through to the auto-reply and
+to a human. `optout` was added in its place.
+
+### The one promise you have to keep
+
+The reply ends "someone from our team will reply here shortly". That is only true
+if a person is watching **Meta Business Suite** — messages no longer reach the
+WhatsApp phone app. If nobody is monitoring it, the auto-reply is making a
+commitment the business does not keep, which is worse than saying nothing.
