@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { fetchBoutiquePrivate } from '@/data/boutiques';
 import type { BoutiqueStatus } from '@/data/types';
+import { Skeleton, SkeletonGroup, SkeletonText } from '@/components/ui/Skeleton';
 
 /**
  * Where a seller lands after submitting their setup wizard, and the screen the
@@ -83,7 +84,16 @@ export function Verification() {
   }, [loading, boutique, navigate]);
 
   if (loading || !boutique) {
-    return <div style={css('min-height:100%;background:var(--ag-bg);padding:40px 20px;color:var(--ag-muted);font-size:14px;')}>Loading…</div>;
+    return (
+      <div style={css('min-height:100%;background:var(--ag-bg);padding:28px 20px;')}>
+        <SkeletonGroup label="Loading your verification status…">
+          <Skeleton w={64} h={64} radius={20} />
+          <Skeleton w="62%" h={24} radius={9} style="margin-top:18px;" />
+          <div style={css('margin-top:14px;')}><SkeletonText lines={2} /></div>
+          <Skeleton w="100%" h={140} radius={18} style="margin-top:24px;" />
+        </SkeletonGroup>
+      </div>
+    );
   }
 
   const status = (boutique.status === 'approved' ? 'pending' : boutique.status) as Exclude<BoutiqueStatus, 'approved'>;

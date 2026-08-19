@@ -9,7 +9,7 @@ import { useNotifications } from '@/state/NotificationContext';
  * the inbox route each console already has: /notifications,
  * /seller/notifications, /admin/notifications.
  */
-export function NotificationBellMenu({ viewAllTo }: { viewAllTo: string; orderBasePath?: string }) {
+export function NotificationBellMenu({ viewAllTo }: { viewAllTo: string }) {
   const navigate = useNavigate();
   const { unreadCount } = useNotifications();
 

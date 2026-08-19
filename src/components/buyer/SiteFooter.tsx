@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
+import { shopPath } from '@/lib/searchParams';
 import { COMPANY, COMPANY_ADDRESS_LINE, CONTACT_LINKS } from '@/data/company';
+import { InstagramIcon, FacebookIcon, YouTubeIcon, WhatsAppIcon } from '@/components/ui/SocialIcons';
 
 /**
  * The marketplace footer, shared by every full-bleed buyer page.
@@ -35,10 +37,10 @@ const POLICY_LINKS = [
 ];
 
 const SOCIALS = [
-  { icon: 'photo_camera', label: 'Instagram', href: CONTACT_LINKS.instagram },
-  { icon: 'thumb_up', label: 'Facebook', href: CONTACT_LINKS.facebook },
-  { icon: 'smart_display', label: 'YouTube', href: CONTACT_LINKS.youtube },
-  { icon: 'chat', label: 'WhatsApp', href: CONTACT_LINKS.whatsapp },
+  { Icon: InstagramIcon, label: 'Instagram', href: CONTACT_LINKS.instagram },
+  { Icon: FacebookIcon, label: 'Facebook', href: CONTACT_LINKS.facebook },
+  { Icon: YouTubeIcon, label: 'YouTube', href: CONTACT_LINKS.youtube },
+  { Icon: WhatsAppIcon, label: 'WhatsApp', href: CONTACT_LINKS.whatsapp },
 ].filter((s) => !!s.href);
 
 const linkStyle = css('color:#fff;font-size:13.5px;opacity:.86;');
@@ -48,13 +50,16 @@ export function SiteFooter() {
   const { setFilters, setQuery } = useShop();
 
   // Footer shop links land on a clean results grid rather than inheriting
-  // whatever filters the buyer left behind on a previous screen.
+  // whatever filters the buyer left behind on a previous screen. The sort rides
+  // in the URL: `Results` adopts the address on mount, so a bare `/shop` would
+  // have reset "Best sellers" back to Latest the moment it opened — see
+  // `shopPath`.
   const goShop = (to: string, sort?: string) => {
-    if (to === '/shop') {
-      setQuery('');
-      setFilters({ ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort });
-    }
-    navigate(to);
+    if (to !== '/shop') return navigate(to);
+    const filters = { ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort };
+    setQuery('');
+    setFilters(filters);
+    navigate(shopPath({ filters }));
   };
 
   const col = (title: string, children: React.ReactNode) => (
@@ -70,7 +75,35 @@ export function SiteFooter() {
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:36px;')}>
           {/* Identity + contact */}
           <div style={css('max-width:340px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;letter-spacing:-.01em;")}>{COMPANY.short}</div>
+            {/*
+              The wordmark, not the name set in Playfair.
+
+              Same file the header already loads on every screen, so it is served
+              from cache here and costs no extra request — and `width`/`height`
+              are attributes as well as styles so the box is reserved before the
+              stylesheet resolves, rather than the contact block jumping down
+              when the art lands.
+
+              `agx-brand-mark-footer` knocks the art out to white and crops its
+              transparent border. The mark is crimson-and-gold lettering on
+              transparency and the footer is a deep crimson gradient in BOTH
+              themes, so the colour version reads as a dark smudge on a dark
+              ground. It is the same treatment the header already uses in dark
+              mode (`agx-brand-mark`), applied unconditionally because this
+              ground never lightens.
+
+              204x82 is the source's own 2.5:1, so nothing is letterboxed.
+            */}
+            <img
+              className="agx-brand-mark-footer"
+              src="/mangaimart-wordmark.webp"
+              alt={COMPANY.short}
+              width={204}
+              height={82}
+              loading="lazy"
+              decoding="async"
+              style={css('display:block;width:204px;height:82px;max-width:100%;object-fit:contain;object-position:left center;')}
+            />
             <div style={css('font-size:13.5px;line-height:1.6;opacity:.82;margin-top:10px;')}>{COMPANY.description}</div>
 
             <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:18px;font-size:13px;opacity:.9;')}>
@@ -86,10 +119,6 @@ export function SiteFooter() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>location_on</span>
                 {COMPANY_ADDRESS_LINE}
               </div>
-              <div style={css('display:flex;align-items:flex-start;gap:9px;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#F4D9A6;flex:none;")}>schedule</span>
-                {COMPANY.supportHours}
-              </div>
             </div>
 
             {SOCIALS.length > 0 && (
@@ -102,9 +131,9 @@ export function SiteFooter() {
                     rel="noreferrer noopener"
                     aria-label={s.label}
                     title={s.label}
-                    style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;')}
+                    style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#F4D9A6;display:flex;align-items:center;justify-content:center;')}
                   >
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#F4D9A6;")}>{s.icon}</span>
+                    <s.Icon size={19} />
                   </a>
                 ))}
               </div>
@@ -125,8 +154,16 @@ export function SiteFooter() {
 
           {col('For boutiques', (
             <>
-              <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
-              <a href="/seller/register" onClick={(e) => { e.preventDefault(); navigate('/seller/register'); }} style={linkStyle}>Open your boutique</a>
+              {/* Was pointed at /about, which is the buyer-facing story of the
+                  company and answers none of what a boutique owner wants to
+                  know. /sell is the seller site: what it costs, how it works,
+                  when you are paid. */}
+              <a href="/sell" onClick={(e) => { e.preventDefault(); navigate('/sell'); }} style={linkStyle}>Sell on {COMPANY.short}</a>
+              <a href="/sell/pricing" onClick={(e) => { e.preventDefault(); navigate('/sell/pricing'); }} style={linkStyle}>What selling costs</a>
+              {/* "Open your boutique" sat directly under "Sell on MangaiMart"
+                  and read as the same offer twice — this one is the actual
+                  sign-up form, so it says so. */}
+              <a href="/seller/register" onClick={(e) => { e.preventDefault(); navigate('/seller/register'); }} style={linkStyle}>Register your boutique</a>
               <a href="/auth/signin/seller" onClick={(e) => { e.preventDefault(); navigate('/auth/signin/seller'); }} style={linkStyle}>Boutique sign in</a>
               <a href={CONTACT_LINKS.whatsapp} target="_blank" rel="noreferrer noopener" style={linkStyle}>Partner support</a>
             </>

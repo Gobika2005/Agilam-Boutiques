@@ -6,6 +6,8 @@
  * module only loads the hosted checkout widget and talks to those endpoints.
  */
 
+import { supabase } from '@/lib/supabase';
+
 const CHECKOUT_SRC = 'https://checkout.razorpay.com/v1/checkout.js';
 const KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
 
@@ -56,6 +58,14 @@ type PayArgs = {
    */
   items?: { product_id: string; qty: number; size: string }[];
   couponCode?: string | null;
+  /**
+   * The delivery address's pincode. Not a price the browser is proposing — it
+   * selects which of each boutique's distance bands applies (migration 0077),
+   * and the server resolves it against the same `pincodes` directory the cart
+   * quoted from. Omitting it prices every shop at its furthest zone, so the
+   * amount would not match what the buyer was shown.
+   */
+  pincode?: string | null;
   /** Amount in paise (₹1 = 100). Must be at least 100. Fallback when `items` is absent. */
   amountPaise: number;
   name: string;
@@ -72,6 +82,7 @@ type PayArgs = {
 export async function payWithRazorpay({
   items,
   couponCode,
+  pincode,
   amountPaise,
   name,
   description,
@@ -81,15 +92,26 @@ export async function payWithRazorpay({
   await loadCheckout();
   if (!window.Razorpay) throw new Error('Payment gateway unavailable');
 
+  // Ordering requires an account, so the buyer's token goes with the request —
+  // /api/create-order refuses to open checkout without it. getSession() also
+  // refreshes an access token that expired while they were shopping, which is
+  // what keeps a long browse from turning into a rejected payment.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
   const orderRes = await fetch('/api/create-order', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     // Send the cart so the server can price the order itself (defense-in-depth),
     // plus the displayed amount as a resilient fallback. The authoritative check
     // still happens at /api/place-order, which re-binds the paid amount.
     body: JSON.stringify({
       items: items && items.length ? items : undefined,
       couponCode: couponCode ?? null,
+      pincode: pincode ?? null,
       amount: amountPaise,
       currency: 'INR',
       receipt,
@@ -99,7 +121,10 @@ export async function payWithRazorpay({
   // The endpoint can return HTML (e.g. an SPA fallback when /api isn't served),
   // so parse defensively rather than assuming JSON.
   const raw = await orderRes.text();
-  let order: { order_id?: string; amount?: number; currency?: string; key_id?: string; error?: string } = {};
+  let order: {
+    order_id?: string; amount?: number; currency?: string; key_id?: string;
+    error?: string; couponApplied?: boolean;
+  } = {};
   try {
     order = raw ? JSON.parse(raw) : {};
   } catch {
@@ -114,11 +139,35 @@ export async function payWithRazorpay({
     );
   }
 
+  /**
+   * Stop if the coupon the buyer applied did not survive the server's re-check.
+   *
+   * A code can be exhausted, expired or deactivated between the moment it was
+   * applied to the bag and the moment Pay is tapped, and the redemption cap in
+   * particular is invisible to the browser by design (`usage_limit` and
+   * `used_count` are withheld from the buyer's coupon columns). The server
+   * silently priced the order without it, so the modal would have opened for
+   * MORE than the total the buyer had just agreed to — money taken on terms
+   * they never saw.
+   *
+   * Aborting before the modal opens is the honest outcome: nothing is charged,
+   * and the bag can be re-priced with the coupon removed.
+   */
+  if (couponCode && order.couponApplied === false) {
+    throw new Error(
+      `The code ${couponCode.trim().toUpperCase()} is no longer available — it may have expired or been fully claimed. ` +
+        'Remove it from your bag to see the current total.',
+    );
+  }
+
   return new Promise((resolve, reject) => {
     const rzp = new window.Razorpay!({
       // Prefer the key the server used to create THIS order — it is guaranteed
       // valid and to match order_id. VITE_RAZORPAY_KEY_ID is only a fallback,
-      // so a misconfigured build-time var can't break checkout.
+      // so a misconfigured build-time var can't break checkout. This is also
+      // what makes the admin's emergency account switch work end to end: the
+      // order is opened on whichever merchant account is selected server-side,
+      // and the modal follows it without a rebuild.
       key: order.key_id || KEY_ID,
       order_id: order.order_id,
       amount: order.amount,

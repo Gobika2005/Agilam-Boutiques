@@ -133,7 +133,9 @@ export function StoryViewer({
     <div style={css('position:fixed;inset:0;z-index:1300;background:#140810;display:flex;flex-direction:column;animation:agx-fade .18s ease;')}>
       {/* ── Photo ── */}
       <div style={css(`position:absolute;inset:0;background:${TONES[current.tone % TONES.length]};`)}>
-        <ImageSlot src={current.image} placeholder={current.title} alt={current.title} className="agx-prod-fill" />
+        {/* Full-screen: the default grid-tile `sizes` would have the browser
+            fetch a half-width file for a photo that fills the display. */}
+        <ImageSlot src={current.image} placeholder={current.title} alt={current.title} className="agx-prod-fill" sizes="100vw" detail />
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,8,16,.75) 0%,rgba(20,8,16,0) 26%,rgba(20,8,16,0) 52%,rgba(20,8,16,.85) 100%);')} />
       </div>
 

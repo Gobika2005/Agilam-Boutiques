@@ -1,5 +1,6 @@
 import { serviceClient } from './_supabase.js';
 import { enforceRateLimit } from './_rateLimit.js';
+import { activeAccountKey, configuredAccounts } from './_razorpay.js';
 
 /**
  * Vercel serverless function: is checkout actually able to work right now?
@@ -24,9 +25,6 @@ import { enforceRateLimit } from './_rateLimit.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
-const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
-
 function configured(value) {
   if (typeof value !== 'string') return false;
   const v = value.trim();
@@ -108,9 +106,9 @@ async function checkDatabase() {
   }
 
   probes.push(await probe('boutiques.select', () =>
-    supabase.from('boutiques').select('id, name, cod_enabled, status').limit(1)));
+    supabase.from('boutiques').select('id, name, status').limit(1)));
   probes.push(await probe('orders.select', () =>
-    supabase.from('orders').select('id, order_number, payment_status, cod_fee, shipping_fee').limit(1)));
+    supabase.from('orders').select('id, order_number, payment_status, shipping_fee').limit(1)));
   // Empty array is a deliberate no-op: it proves the function exists and is
   // callable by this role without touching a single unit of stock.
   probes.push(await probe('rpc.reserve_stock', () => supabase.rpc('reserve_stock', { p_items: [] })));
@@ -187,29 +185,59 @@ function keyFormatOf(key) {
  * 401 /api/create-order would hit. Only the gateway's own message is reported —
  * never the key.
  */
-async function checkRazorpay() {
-  if (!configured(razorpayKeyId) || !configured(razorpayKeySecret)) {
-    return { ok: false, error: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not both set' };
-  }
-  const mode = razorpayKeyId.startsWith('rzp_live') ? 'live' : razorpayKeyId.startsWith('rzp_test') ? 'test' : 'unknown';
+async function probeAccount(account) {
+  const base = { account: account.key, label: account.label, mode: account.mode };
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString('base64');
+    const auth = Buffer.from(`${account.keyId}:${account.keySecret}`).toString('base64');
     const r = await fetch('https://api.razorpay.com/v1/payments?count=1', {
       headers: { Authorization: `Basic ${auth}` },
       signal: AbortSignal.timeout(8000),
     });
-    if (r.ok) return { ok: true, mode, status: r.status };
+    if (r.ok) return { ...base, ok: true, status: r.status };
     let description = `HTTP ${r.status}`;
     try {
       const body = await r.json();
       description = body?.error?.description || description;
     } catch { /* keep the status line */ }
-    return { ok: false, mode, status: r.status, error: description };
+    return { ...base, ok: false, status: r.status, error: description };
   } catch (err) {
     // A network/DNS failure reaching Razorpay is not proof the keys are wrong,
     // so say so rather than branding them invalid.
-    return { ok: false, mode, error: `Could not reach Razorpay: ${err?.message ?? String(err)}` };
+    return { ...base, ok: false, error: `Could not reach Razorpay: ${err?.message ?? String(err)}` };
   }
+}
+
+/**
+ * Probe every configured merchant account, and report which one the admin
+ * switch has money going to right now.
+ *
+ * Both accounts are probed, not just the active one, because the whole point of
+ * the standby is that you find out it works BEFORE you need it. `ok` tracks the
+ * ACTIVE account — a healthy standby does not make a dead live account fine.
+ */
+async function checkRazorpay(supabase) {
+  const accounts = configuredAccounts();
+  if (accounts.length === 0) {
+    return { ok: false, error: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not both set' };
+  }
+
+  const activeKey = await activeAccountKey(supabase);
+  const probes = await Promise.all(accounts.map(probeAccount));
+  // What the code will actually use: activeAccount() falls back to the first
+  // configured account when the selected one has no keys.
+  const effective = probes.find((p) => p.account === activeKey) ?? probes[0];
+
+  return {
+    ok: effective.ok,
+    mode: effective.mode,
+    ...(effective.status && { status: effective.status }),
+    ...(effective.error && { error: effective.error }),
+    activeAccount: effective.account,
+    ...(effective.account !== activeKey && {
+      switchWarning: `Settings select the '${activeKey}' account, but its keys are not configured; payments are being taken on '${effective.account}'.`,
+    }),
+    accounts: probes,
+  };
 }
 
 export default async function handler(req, res) {
@@ -220,7 +248,14 @@ export default async function handler(req, res) {
 
   if (!(await enforceRateLimit(req, res, { key: 'health', limit: 30, windowMs: 60_000 }))) return;
 
-  const [database, razorpay] = await Promise.all([checkDatabase(), checkRazorpay()]);
+  // A separate lightweight client just for reading which Razorpay account the
+  // switch selects; checkDatabase() deliberately owns its own so its probes stay
+  // an exact replay of what place-order does.
+  const settingsClient = configured(supabaseUrl) && configured(serviceRoleKey)
+    ? serviceClient(supabaseUrl, serviceRoleKey)
+    : null;
+
+  const [database, razorpay] = await Promise.all([checkDatabase(), checkRazorpay(settingsClient)]);
 
   // Orders need both: the gateway to take the money and the service role to
   // write the row. Either one down means checkout is down.

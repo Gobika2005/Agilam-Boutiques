@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
+import { cityKey } from '@/lib/cities';
 import { clampDescription, routes } from '@/lib/seo';
 import { boutiqueSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { shareBoutique } from '@/lib/share';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { BoutiqueReviews } from '@/components/buyer/BoutiqueReviews';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { useShop } from '@/state/ShopContext';
@@ -67,7 +69,7 @@ export function BoutiqueProfile() {
     description: ab
       ? clampDescription(
           ab.desc?.trim() ||
-            `Shop ${ab.name}, a verified boutique in ${ab.city}, Tamil Nadu. ${shopProductCount} ${shopProductCount === 1 ? 'piece' : 'pieces'} listed, direct chat with the owner, delivery across India.`,
+            `Shop ${ab.name}, a verified boutique in ${ab.city}. ${shopProductCount} ${shopProductCount === 1 ? 'piece' : 'pieces'} listed, direct chat with the owner, delivery across India.`,
         )
       : null,
     image: ab?.logo ?? ab?.image ?? null,
@@ -130,6 +132,45 @@ export function BoutiqueProfile() {
     [PRODUCTS, ab, bqFilter],
   );
 
+  /**
+   * Jump from the rating in the header to the reviews behind it.
+   *
+   * `scrollIntoView` on the section rather than a `#hash` link: the profile is
+   * one screen with no routing of its own, and a hash would put a stray
+   * `#reviews` in the address bar and a dead entry in the back stack.
+   *
+   * Honours a reduced-motion preference — a long smooth scroll down a page this
+   * tall is exactly the kind of movement that setting exists to stop.
+   */
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const scrollToReviews = useCallback(() => {
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    reviewsRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+  }, []);
+
+  /**
+   * Other shops to look at — the rail that stops this page being a dead end.
+   *
+   * Same city first, because that is what a buyer means by "who else is near
+   * me", and it is the strongest reason to pick a second shop (one delivery
+   * area, one set of terms). If the city has nobody else, it widens to the
+   * marketplace rather than showing nothing: a shop with no neighbours is
+   * common on a young marketplace and is not a reason to strand the reader.
+   *
+   * Only shops with something listed — an empty boutique is not a
+   * recommendation — and best-rated first.
+   */
+  const { nearby, nearbyInCity } = useMemo(() => {
+    if (!ab) return { nearby: [], nearbyInCity: false };
+    const others = BOUTIQUES.filter((b) => b.id !== ab.id && b.products > 0);
+    const sameCity = others.filter((b) => cityKey(b.city) === cityKey(ab.city));
+    const pool = sameCity.length > 0 ? sameCity : others;
+    return {
+      nearby: [...pool].sort((a, b) => b.rating - a.rating || b.products - a.products).slice(0, 10),
+      nearbyInCity: sameCity.length > 0,
+    };
+  }, [BOUTIQUES, ab]);
+
   if (!ab) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ag-muted);')}>
@@ -187,7 +228,8 @@ export function BoutiqueProfile() {
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);padding-bottom:40px;')}>
       {/* ---------- Cover ---------- */}
       <div className="agx-zoom" style={css(`position:relative;height:clamp(210px,36vw,360px);background:${TONES[ab.tone]};overflow:hidden;`)}>
-        <ImageSlot src={ab.image} placeholder={ab.name} fallback="brand" style={css('position:absolute;inset:0;')} />
+        {/* Full-bleed cover — it spans the viewport at every width. */}
+        <ImageSlot src={ab.image} placeholder={ab.name} fallback="brand" sizes="100vw" detail style={css('position:absolute;inset:0;')} />
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,.3) 0%,rgba(30,8,18,0) 30%,rgba(30,8,18,0) 62%,var(--ag-cover-fade) 100%);pointer-events:none;')} />
 
         <button
@@ -220,12 +262,20 @@ export function BoutiqueProfile() {
             )}
           </div>
 
-          {/* Rating */}
-          <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:15px;font-weight:700;')}>
+          {/* Rating — and the way to the reviews it summarises.
+              It stated a number and offered no way to the evidence, which is
+              the one thing a reader wants the moment they read it. Tapping it
+              takes them to the rail at the bottom of the page. */}
+          <button
+            onClick={scrollToReviews}
+            aria-label={`${ab.rating} out of 5 from ${ab.reviews} reviews — read them`}
+            style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin:9px auto 0;padding:4px 10px;border:none;background:none;border-radius:999px;font-size:15px;font-weight:700;color:inherit;font-family:inherit;cursor:pointer;')}
+          >
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-star);")}>star</span>
             {ab.rating}
             <span style={css('color:var(--ag-muted);font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
-          </div>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>expand_more</span>
+          </button>
 
           {/* Location */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;color:var(--ag-muted);font-size:14px;')}>
@@ -353,22 +403,37 @@ export function BoutiqueProfile() {
                     onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
                     className="agx-card-wish"
                   />
-                  {p.reviews > 0 && (
-                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
-                      {p.rating}
-                    </div>
-                  )}
+                  {/* The rating used to sit here as a badge over the photo. It
+                      now lives opposite the price in the caption, the way every
+                      other grid in the app shows it — keeping both would print
+                      the same number twice on one card. */}
                   {p.stock === 0 && (
                     <div style={css('position:absolute;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;')}>
                       <span style={css('background:#241019;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:999px;')}>Sold out</span>
                     </div>
                   )}
                 </div>
-                <div style={css('padding:11px 2px 0;text-align:center;')}>
-                  <div className="agx-card-title" style={css('font-size:13.5px;font-weight:700;')}>{p.title}</div>
-                  <div style={css("display:inline-block;margin-top:8px;font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16px;border:1px solid var(--ag-border);border-radius:12px;padding:6px 16px;background:var(--ag-surface);")}>
-                    {fmt(p.price)}
+                {/* Caption matches the Home rails and every other product grid:
+                    left-aligned title, then price left / rating right on one
+                    row. This page was the last surface still centring its
+                    caption and boxing the price in a bordered chip, which made
+                    a boutique's own shelf read as a different product card from
+                    the one the buyer had just tapped on Home.
+                    The boutique name is the one line deliberately NOT carried
+                    over — on a boutique's own page it would repeat the shop
+                    name under every single tile. */}
+                <div style={css('padding:12px 2px 0;')}>
+                  <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
+                  <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                    {/* Guarded on `reviews`, as the old badge was: an unrated
+                        piece would otherwise advertise "★ 0". */}
+                    {p.reviews > 0 && (
+                      <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
+                        {p.rating}
+                      </span>
+                    )}
                   </div>
                 </div>
               </CardLink>
@@ -387,6 +452,47 @@ export function BoutiqueProfile() {
               </button>
             )}
           </div>
+        )}
+
+        {/* ---------- Reviews ----------
+            `scroll-margin-top` clears the sticky app header, which would
+            otherwise sit over the heading the jump just landed on. */}
+        <div ref={reviewsRef} style={css('scroll-margin-top:84px;')}>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+            What buyers say
+          </div>
+        </div>
+        <BoutiqueReviews boutiqueId={ab.id} />
+
+        {/* ---------- Other boutiques ---------- */}
+        {nearby.length > 0 && (
+          <>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+              {nearbyInCity ? `More boutiques in ${ab.city}` : 'More boutiques'}
+            </div>
+            <div className="agx-scroll" style={css('display:flex;gap:12px;overflow-x:auto;padding:16px 0 8px;')}>
+              {nearby.map((b) => (
+                <Link
+                  key={b.id}
+                  to={routes.boutique(b)}
+                  className="agx-lift"
+                  style={css('flex:none;width:150px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;padding:16px 12px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;text-decoration:none;color:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
+                >
+                  <BoutiqueLogo name={b.name} src={b.logo} size={54} ring={2} />
+                  <span style={css('font-weight:800;font-size:13.5px;line-height:1.25;color:var(--ag-ink);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{b.name}</span>
+                  <span style={css('display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>
+                    {b.reviews > 0 && (
+                      <>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
+                        {b.rating} ·
+                      </>
+                    )}
+                    {b.products} {b.products === 1 ? 'style' : 'styles'}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -12,17 +12,49 @@
   own, written server-side by `middleware.ts` before the HTML is sent (which is
   what non-JavaScript crawlers and link-preview bots read) and kept in step
   during client-side navigation by `usePageMeta`.
+
+  The marker comments are load-bearing. The edge REPLACES this block rather than
+  adding to it: it emits its own description/robots/author/geo tags, and with
+  the block left in place every crawled page shipped two `description` and two
+  `geo.region` tags — leaving Google free to pick the generic fallback over the
+  page's real copy. `headFor()` in middleware.js must keep emitting every tag
+  named between these markers.
 -->
 <title>MangaiMart</title>
-<meta name="description" content="Shop verified Tamil Nadu boutiques in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop." />
+<!-- ag:shell-meta:start -->
+<meta name="description" content="Shop verified independent boutiques across India in one place — sarees, kurta sets, kurtis and more, with direct chat to the shop." />
 <meta name="author" content="MangaiMart" />
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-<!-- Local signals: this is a Tamil Nadu marketplace, and "boutiques in
-     Coimbatore" is a query it should be able to win. -->
-<meta name="geo.region" content="IN-TN" />
-<meta name="geo.placename" content="Tamil Nadu, India" />
-<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
-<link rel="apple-touch-icon" href="/favicon.png" />
+<!-- Geo signal at country level. This was IN-TN, which pinned the whole
+     marketplace to one state; the per-boutique ClothingStore nodes still carry
+     the real city, which is what wins "boutiques in <city>". -->
+<meta name="geo.region" content="IN" />
+<meta name="geo.placename" content="India" />
+<!-- ag:shell-meta:end -->
+<!-- ── Icons ────────────────────────────────────────────────────────────────
+     Cut from `Fav no BG.png` — the mark alone. The previous icon was
+     `icon-500.png`, the full lockup including the "MangaiMart" wordmark; at the
+     16–32 px a tab actually renders, that type is an unreadable pink smudge.
+
+     `favicon.ico` carries 16/32/48 and exists as a real file for a second
+     reason: `vercel.json` rewrites everything that isn't a static file to `/`,
+     so a request for `/favicon.ico` — which Google's favicon crawler, feed
+     readers and older browsers make regardless of what this markup says — was
+     being answered with the HTML of the home page. It is transparent, so it
+     sits on the browser's own tab colour in both light and dark chrome.
+
+     Both are tiny (≈7 kB and ≈2 kB). A favicon is requested on every cold load
+     and shares the connection with the JavaScript bundle and the LCP image, so
+     weight here is taken directly from what the page is waiting on — which is
+     why the 983 kB `favicon.png` and the 110 kB `icon-500.png` are no longer
+     referenced. Both files stay on disk: older bookmarks and already-cached
+     manifests still point at them. -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+<!-- iOS ignores the manifest for the home-screen icon and composites any
+     transparency onto black, so this one is pre-flattened onto the brand ground. -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.webmanifest" />
 <!-- Resolve the theme before first paint so there's never a wrong-theme flash.
      A saved choice wins; otherwise follow the device's prefers-color-scheme. -->
 <script>try{var p=localStorage.getItem('ag-theme-pref');var t=(p==='light'||p==='dark')?p:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark'){document.documentElement.dataset.theme='dark';document.querySelector('meta[name=theme-color]').setAttribute('content','#120A0E');}}catch(e){}</script>
@@ -47,7 +79,7 @@
   rel="stylesheet"
   media="print"
   onload="this.media='all';this.onload=null"
-  href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Libre+Caslon+Text:wght@400;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
 />
 <!-- Icon font stays on `display=block`: with `swap` the browser would paint the
      ligature source text first, so every icon would flash the literal word
@@ -59,7 +91,7 @@
   href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block"
 />
 <noscript>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Libre+Caslon+Text:wght@400;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" rel="stylesheet" />
 </noscript>
 <!-- ── First paint ──────────────────────────────────────────────────────────
@@ -82,17 +114,23 @@
   #ag-boot .ag-boot-mark{font-family:'Playfair Display',Georgia,'Times New Roman',serif;
     font-size:38px;font-weight:700;letter-spacing:-.5px;color:#B02454;line-height:1}
   html[data-theme="dark"] #ag-boot .ag-boot-mark{color:#E85088}
-  #ag-boot .ag-boot-tag{font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
-    font-size:10px;letter-spacing:.22em;font-weight:700;
-    color:#775D66;text-transform:uppercase}
-  html[data-theme="dark"] #ag-boot .ag-boot-tag{color:#A98D99}
   #ag-boot .ag-boot-ring{width:26px;height:26px;border-radius:50%;
     border:2.5px solid #F0D8E2;border-top-color:#B02454;
     animation:ag-boot-spin .8s linear infinite}
   html[data-theme="dark"] #ag-boot .ag-boot-ring{border-color:#3A2730;border-top-color:#E85088}
   @keyframes ag-boot-spin{to{transform:rotate(360deg)}}
-  /* The app has mounted — retire the splash. */
-  #root:not(:empty)+#ag-boot{opacity:0;pointer-events:none;visibility:hidden}
+  /* The app has mounted — retire the splash.
+
+     `~` and not `+`. The edge injects its crawlable <noscript> body directly
+     before #ag-boot (see the prerender block in middleware.js), and <noscript>
+     is a real element node even when scripting is on — so with `+` the splash
+     stopped being #root's NEXT sibling and the rule silently stopped matching.
+     Every prerendered page then sat under a full-screen spinner forever, with
+     the app mounted and painted underneath it at z-index 9999.
+
+     The general sibling combinator matches wherever #ag-boot sits after #root,
+     so nothing that gets injected between the two can break it again. */
+  #root:not(:empty)~#ag-boot{opacity:0;pointer-events:none;visibility:hidden}
   @media (prefers-reduced-motion:reduce){
     #ag-boot .ag-boot-ring{animation-duration:2s}
     #ag-boot{transition:none}
@@ -103,7 +141,6 @@
 <div id="root"></div>
 <div id="ag-boot" role="status" aria-live="polite">
   <span class="ag-boot-mark">MangaiMart</span>
-  <span class="ag-boot-tag">All boutiques · one place</span>
   <span class="ag-boot-ring" aria-hidden="true"></span>
   <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Loading MangaiMart…</span>
 </div>

@@ -1,14 +1,14 @@
 /**
  * The buyer's own order history, held in memory for the current visit.
  *
- * Buyers browse and check out anonymously (no account), so the orders they
- * place can't be read back from Supabase — RLS only exposes an order to its
- * `buyer_id`, and guest orders leave that null (see supabase/schema.sql and
- * api/place-order.js). We therefore mirror each successfully-placed order into
- * memory at checkout time, so "My orders" and order-tracking work for the rest
- * of this visit. It's not persisted: a guest who refreshes or comes back later
- * only sees their orders again once they sign in, at which point the account's
- * DB-backed orders (see data/orders.ts) become the source of truth.
+ * Ordering requires an account, so the authoritative copy of an order lives in
+ * Supabase and is read back through the `buyer_id` RLS policy (see
+ * data/orders.ts). This mirror exists for the seconds either side of that: the
+ * just-placed order shows on "My orders" and the tracker immediately, without
+ * waiting on a round-trip, and it still carries the orders of anyone who
+ * checked out before the sign-in requirement (those rows have a null `buyer_id`
+ * and RLS will never hand them back). It is not persisted — a refresh falls
+ * through to the account's DB-backed orders, which are the source of truth.
  */
 
 export type { OrderStatus } from '@/types/database';
@@ -42,10 +42,12 @@ export type PlacedOrder = {
   status: OrderStatus;
   total: number;
   items: PlacedOrderItem[];
-  /** 'COD' or 'Razorpay'. Absent on orders placed before COD existed. */
+  /** 'Razorpay', or 'COD' on an order placed before cash on delivery was
+   *  withdrawn (migration 0085). Absent on the oldest orders of all. */
   paymentMethod?: string | null;
   paymentStatus?: PaymentStatus;
-  /** COD handling fee on this delivery, already included in `total`. */
+  /** Cash-handling fee, already included in `total`. Only ever non-zero on a
+   *  pre-0085 cash order — kept so its history still adds up. */
   codFee?: number;
   /** Delivery fee on this order, already included in `total`. */
   shippingFee?: number;
@@ -56,6 +58,11 @@ export type PlacedOrder = {
   acceptedAt?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
+  /** Migration 0063 — the two timeline stages that never had a source. */
+  packedAt?: string | null;
+  outForDeliveryAt?: string | null;
+  /** The buyer reported it never arrived; the seller's payout is frozen. */
+  deliveryDisputed?: boolean;
 };
 
 let orderState: PlacedOrder[] = [];
@@ -71,19 +78,51 @@ export const STATUS_STAGE: Record<OrderStatus, number> = {
   pending: 0,
   accepted: 1,
   shipped: 3,
-  delivered: 5,
+  delivered: 6,
   rejected: 0,
   cancelled: 0,
 };
 
-/** True while a COD order can still be called off from the buyer's side. */
-export function isCancellable(o: PlacedOrder): boolean {
-  return (
-    o.paymentMethod === 'COD' &&
-    (o.paymentStatus ?? 'pending') === 'pending' &&
-    (o.status === 'pending' || o.status === 'accepted')
-  );
+/** Normalised courier scan stage (migration 0067's `mapStage`). */
+export type ScanStage = 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+
+/**
+ * How far along the timeline this order actually is.
+ *
+ * `STATUS_STAGE` alone can only ever reach "Shipped": the order's own status
+ * has no value for the two steps in between, because only the courier knows
+ * them. So the order status sets the floor and the courier's latest scan pushes
+ * it further — which is why a parcel moving through a hub finally shows the
+ * buyer something new instead of sitting on "Shipped" for four days.
+ *
+ * `packed_at` also lifts an accepted order to "Packed" without a status of its
+ * own; packing is a real event that deliberately isn't a lifecycle status.
+ *
+ * RTO and failed scans do NOT advance anything — the parcel is going backwards,
+ * and the screen says so separately rather than pretending it progressed.
+ */
+export function trackStage(order: PlacedOrder, lastScan?: string | null): number {
+  if (order.status === 'delivered') return 6;
+  let stage = STATUS_STAGE[order.status];
+  if (order.packedAt && stage < 2) stage = 2;
+  if (order.outForDeliveryAt) return Math.max(stage, 5);
+  const scan = (lastScan ?? '') as ScanStage;
+  if (scan === 'out_for_delivery') return Math.max(stage, 5);
+  if (scan === 'in_transit' || scan === 'picked_up') return Math.max(stage, 4);
+  return stage;
 }
+
+/** True when the parcel is heading back to the boutique or has failed outright. */
+export function isFailedShipment(lastScan?: string | null): boolean {
+  return lastScan === 'rto' || lastScan === 'failed';
+}
+
+/*
+ * `isCancellable()` used to live here — a buyer could call off an un-dispatched
+ * cash order because nobody had paid anything yet. Cash on delivery was
+ * withdrawn (migration 0085) and every order is now prepaid, so cancelling means
+ * refunding: it goes through the boutique, not a self-service button.
+ */
 
 export function readOrders(): PlacedOrder[] {
   return orderState;
@@ -123,6 +162,9 @@ export type BuyerDbOrder = {
   accepted_at?: string | null;
   shipped_at?: string | null;
   delivered_at?: string | null;
+  packed_at?: string | null;
+  out_for_delivery_at?: string | null;
+  delivery_disputed?: boolean;
   payment_method?: string | null;
   payment_status?: PaymentStatus;
   cod_fee?: number;
@@ -160,6 +202,9 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     acceptedAt: o.accepted_at ?? null,
     shippedAt: o.shipped_at ?? null,
     deliveredAt: o.delivered_at ?? null,
+    packedAt: o.packed_at ?? null,
+    outForDeliveryAt: o.out_for_delivery_at ?? null,
+    deliveryDisputed: o.delivery_disputed ?? false,
     // `pid` is what the order screens look the product photo up by, so it has to
     // survive the round-trip through the server copy — without it every line
     // falls back to the empty placeholder tile.

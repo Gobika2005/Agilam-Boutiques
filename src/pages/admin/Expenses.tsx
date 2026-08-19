@@ -17,6 +17,7 @@ import {
   T, StatCard, Card, DataTable, EmptyState, GhostButton, IconButton, SearchInput, Select,
   Drawer, ConfirmDialog, Icon, type Column,
 } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 /**
  * Expenses — the outgoing half of the platform ledger.
@@ -50,7 +51,7 @@ export function Expenses() {
   const { profile } = useAuth();
   const { data, loading, error, reload } = useAsync(() => fetchExpenses(), []);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useSeededSearch();
   const [category, setCategory] = useState('all');
   const [month, setMonth] = useState('all');
   const [editing, setEditing] = useState<Editing | null>(null);

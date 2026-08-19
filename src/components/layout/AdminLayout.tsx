@@ -1,44 +1,67 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { GlobalSearchBox } from '@/components/search/GlobalSearchBox';
+import { ADMIN_SOURCES, type AdminCtx } from '@/lib/search/adminSources';
 import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
 import { useTheme } from '@/state/ThemeContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 import { NotificationBellMenu } from '@/components/notifications/NotificationBellMenu';
+import { canOpen } from '@/lib/staffAccess';
+import { adminPath } from '@/lib/adminPath';
 
+/**
+ * `only: 'staff'` marks a tile that exists solely because an employee cannot
+ * reach the admin equivalent — the work queue standing in for Overview, and the
+ * customer directory standing in for the Users page. Admins never see them, so
+ * their sidebar is exactly what it was before migration 0086. Every other tile
+ * is filtered by `canOpen`, which reads the same list RLS was written against.
+ */
 const NAV = [
-  { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health at a glance' },
-  { label: 'Approvals', icon: 'verified', to: '/admin/approvals', title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
-  { label: 'Catalogue', icon: 'sell', to: '/admin/catalogue', title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
-  { label: 'Boutiques', icon: 'storefront', to: '/admin/boutiques', title: 'Boutiques', sub: 'All boutiques on the platform' },
-  { label: 'Users', icon: 'group', to: '/admin/users', title: 'Users', sub: 'Buyers and sellers management' },
-  { label: 'Customers', icon: 'person_search', to: '/admin/customers', title: 'Customer 360°', sub: 'Search a buyer and see their full history' },
-  { label: 'Products', icon: 'shopping_bag', to: '/admin/products', title: 'Products', sub: 'Moderation and inventory' },
-  { label: 'Reviews', icon: 'reviews', to: '/admin/reviews', title: 'Reviews', sub: 'Moderate product & boutique reviews' },
-  { label: 'Orders', icon: 'receipt_long', to: '/admin/orders', title: 'Orders', sub: 'Fulfillment and refunds' },
-  { label: 'Refunds', icon: 'currency_exchange', to: '/admin/refunds', title: 'Refunds', sub: 'Record and track order refunds' },
-  { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
-  { label: 'Payouts', icon: 'account_balance', to: '/admin/payments', title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
-  { label: 'Expenses', icon: 'savings', to: '/admin/expenses', title: 'Expenses', sub: 'What the platform spends, with proof attached' },
-  { label: 'Advertisements', icon: 'campaign', to: '/admin/ads', title: 'Advertisements', sub: 'Campaigns and promotions' },
-  { label: 'Coupons', icon: 'local_offer', to: '/admin/coupons', title: 'Coupons', sub: 'Platform & seller discount codes' },
-  { label: 'Broadcast', icon: 'send', to: '/admin/broadcast', title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
-  { label: 'Audit', icon: 'history', to: '/admin/audit', title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
-  { label: 'Settings', icon: 'settings', to: '/admin/settings', title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
+  { label: 'Overview', icon: 'dashboard', to: adminPath('overview'), title: 'Overview', sub: 'Marketplace health, trends and analytics' },
+  { label: 'My Work', icon: 'checklist', to: adminPath('staff'), title: 'My Work', sub: 'Everything waiting on you right now', only: 'staff' },
+  { label: 'Customers', icon: 'diversity_3', to: adminPath('customers'), title: 'Customers', sub: 'Who is buying, and how often', only: 'staff' },
+  { label: 'Approvals', icon: 'verified', to: adminPath('approvals'), title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
+  { label: 'Catalogue', icon: 'sell', to: adminPath('catalogue'), title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
+  { label: 'Boutiques', icon: 'storefront', to: adminPath('boutiques'), title: 'Boutiques', sub: 'All boutiques on the platform' },
+  { label: 'Users', icon: 'group', to: adminPath('users'), title: 'Users', sub: 'Accounts, and Customer 360° buyer history' },
+  { label: 'Products', icon: 'shopping_bag', to: adminPath('products'), title: 'Products', sub: 'Moderation and inventory' },
+  { label: 'Reviews', icon: 'reviews', to: adminPath('reviews'), title: 'Reviews', sub: 'Moderate product & boutique reviews' },
+  { label: 'Orders', icon: 'receipt_long', to: adminPath('orders'), title: 'Orders', sub: 'Fulfillment and refunds' },
+  { label: 'Deliveries', icon: 'local_shipping', to: adminPath('deliveries'), title: 'Deliveries', sub: 'Delivery disputes, stalled parcels and the courier list' },
+  { label: 'Feedback', icon: 'rate_review', to: adminPath('feedback'), title: 'Buyer Feedback', sub: 'What buyers say about MangaiMart — private, never published' },
+  { label: 'Refunds', icon: 'currency_exchange', to: adminPath('refunds'), title: 'Refunds', sub: 'Record and track order refunds' },
+  { label: 'Payouts', icon: 'account_balance', to: adminPath('payments'), title: 'Seller Payouts', sub: 'Settlements after commission and deductions' },
+  { label: 'Expenses', icon: 'savings', to: adminPath('expenses'), title: 'Expenses', sub: 'What the platform spends, with proof attached' },
+  { label: 'Advertisements', icon: 'campaign', to: adminPath('ads'), title: 'Advertisements', sub: 'Campaigns and promotions' },
+  { label: 'Coupons', icon: 'local_offer', to: adminPath('coupons'), title: 'Coupons', sub: 'Platform & seller discount codes' },
+  { label: 'Broadcast', icon: 'send', to: adminPath('broadcast'), title: 'Broadcast', sub: 'Send a notification to buyers or sellers' },
+  { label: 'WhatsApp', icon: 'forum', to: adminPath('whatsapp'), title: 'WhatsApp Log', sub: 'Every message sent and received on the platform number' },
+  { label: 'Audit', icon: 'history', to: adminPath('audit'), title: 'Audit Trail', sub: 'Every sensitive admin action, logged' },
+  { label: 'Settings', icon: 'settings', to: adminPath('settings'), title: 'Platform Settings', sub: 'Commission, fees, return window and more' },
 ];
 
 /** Console routes with no sidebar tile — opened from the header bell, not the
  *  nav. They still need a title, so they are resolved alongside NAV. */
 const OFF_NAV = [
-  { label: 'Notifications', icon: 'notifications', to: '/admin/notifications', title: 'Notifications', sub: 'Alerts across the marketplace' },
+  { label: 'Notifications', icon: 'notifications', to: adminPath('notifications'), title: 'Notifications', sub: 'Alerts across the marketplace' },
+  { label: 'Search', icon: 'search', to: adminPath('search'), title: 'Search', sub: 'Everything the console can find' },
 ];
+
+/** Stable object identity — the search hook keys its effect on this. */
+const ADMIN_CTX: AdminCtx = {};
 
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const role = profile?.role;
+  // Sidebar and mobile tab bar both render this. An admin gets NAV unchanged;
+  // an employee gets their twelve destinations plus the two stand-ins.
+  const nav = NAV.filter((n) => (n.only ? n.only === role : canOpen(role, n.to)));
   // The buyer AppShell renders the global toast, but admin pages live outside it,
   // so every showToast() on the console (create user, block, delete, errors…) was
   // silently discarded. Render it here too so admin actions give feedback.
@@ -51,6 +74,10 @@ export function AdminLayout() {
     OFF_NAV.find((n) => location.pathname.startsWith(n.to)) ??
     NAV[0];
 
+  // On the results page the header field should show the term it is displaying,
+  // so editing it reads as refining the same search rather than starting over.
+  const headerTerm = location.pathname.startsWith(adminPath('search')) ? (params.get('q') ?? '') : '';
+
   const logout = async () => {
     await signOut();
     navigate('/', { replace: true });
@@ -62,18 +89,22 @@ export function AdminLayout() {
         {/* admin sidebar — desktop only (hidden ≤900px, replaced by bottom tab bar) */}
         <div className="agx-scroll agx-admin-sidebar" style={css('width:238px;flex:none;background:var(--ag-surface-2);border-right:1px solid var(--ag-border);padding:20px 14px;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;')}>
           <div style={css('display:flex;align-items:center;gap:11px;padding:0 8px 18px;')}>
+            {/* 96px WebP, not the 1.7 MB source PNG: this is a 44px sidebar
+                mark, and it was the heaviest asset in the admin console. */}
             <img
-              src="/mangaimart-logo.png"
+              src="/mangaimart-logo-96.webp"
               alt="MangaiMart"
-              style={css('width:44px;height:44px;border-radius:12px;object-fit:contain;flex:none;')}
+              width={44}
+              height={44}
+              style={css('width:44px;height:44px;object-fit:contain;flex:none;')}
             />
             <div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>
-              <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>Admin</div>
+              <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>{role === 'staff' ? 'Staff' : 'Admin'}</div>
             </div>
           </div>
 
-          {NAV.map((a) => {
+          {nav.map((a) => {
             const on = location.pathname.startsWith(a.to);
             return (
               <button
@@ -107,10 +138,35 @@ export function AdminLayout() {
               <div style={css('color:var(--ag-muted);font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{active.sub}</div>
             </div>
             <div style={css('display:flex;align-items:center;gap:14px;flex:none;')}>
-              <div className="agx-admin-search" style={css('display:flex;align-items:center;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:0 12px;height:40px;width:220px;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
-                <input placeholder="Search…" style={css('border:none;background:none;flex:1;font-size:13px;min-width:0;color:var(--ag-ink);')} />
-              </div>
+              {/* Was an uncontrolled <input> wired to nothing — it looked like a
+                  search box and had never searched anything. It now runs the
+                  console's twelve sources (orders, users, boutiques, products,
+                  coupons, refunds, payouts, expenses, reviews, ads, catalogue
+                  terms and the pages themselves) against the database. */}
+              <GlobalSearchBox
+                className="agx-admin-search"
+                variant="compact"
+                sources={ADMIN_SOURCES}
+                ctx={ADMIN_CTX}
+                resultsPath={adminPath('search')}
+                recentKey="admin"
+                placeholder="Search orders, users, boutiques…"
+                ariaLabel="Search the admin console"
+                initialTerm={headerTerm}
+              />
+              {/* Phones get the icon + full-screen sheet instead; the header has
+                  no room for a field once the title has it. */}
+              <GlobalSearchBox
+                className="agx-console-search-icon"
+                variant="icon"
+                sources={ADMIN_SOURCES}
+                ctx={ADMIN_CTX}
+                resultsPath={adminPath('search')}
+                recentKey="admin"
+                placeholder="Search orders, users, boutiques, payouts…"
+                ariaLabel="Search the admin console"
+                initialTerm={headerTerm}
+              />
               <button
                 onClick={toggleTheme}
                 title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
@@ -119,7 +175,7 @@ export function AdminLayout() {
               >
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
               </button>
-              <NotificationBellMenu viewAllTo="/admin/notifications" />
+              <NotificationBellMenu viewAllTo={adminPath('notifications')} />
               <button onClick={logout} title="Log out" style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}>
                 {initial(profile?.full_name ?? 'Admin K')}
               </button>
@@ -129,7 +185,9 @@ export function AdminLayout() {
           {/* `agx-scroll-main` marks this as the page's scroller, so ScrollManager
               resets it on navigation — the window never scrolls in the console. */}
           <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:var(--ag-bg);')}>
-            <RouteErrorBoundary>
+            {/* Keyed on the route so navigating away from a crashed page
+                recovers — React never clears a boundary by itself. */}
+            <RouteErrorBoundary key={location.pathname} surface="Admin page">
               <Outlet />
             </RouteErrorBoundary>
           </div>
@@ -138,7 +196,7 @@ export function AdminLayout() {
 
       {/* mobile bottom tab bar — shown ≤900px in place of the sidebar */}
       <nav className="agx-admin-tabbar">
-        {NAV.map((a) => {
+        {nav.map((a) => {
           const on = location.pathname.startsWith(a.to);
           return (
             <button

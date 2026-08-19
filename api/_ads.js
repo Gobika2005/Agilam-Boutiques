@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
-import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
 import { priceCampaign } from './_adPricing.js';
+import {
+  activeAccount, clientFor, configuredAccounts, findPaymentAccount, verifyPaymentSignature,
+} from './_razorpay.js';
 
 /**
  * Ad endpoint logic, shared by the single `api/ads.js` router.
@@ -15,11 +17,11 @@ import { priceCampaign } from './_adPricing.js';
  * The payment paths mirror api/place-order.js exactly: server-side pricing from
  * the `ad_placements` rate card, signature verification, amount binding, capture
  * of an authorised payment, replay guard on the unique payment_id, and an
- * auto-refund on any mismatch.
+ * auto-refund on any mismatch — including the multi-account handling, so ad
+ * purchases follow the admin's Razorpay account switch the same way checkout
+ * does, and an ad paid for on one account is still refundable after a switch.
  */
 
-const keyId = process.env.RAZORPAY_KEY_ID;
-const keySecret = process.env.RAZORPAY_KEY_SECRET;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const adCronSecret = process.env.AD_CRON_SECRET || process.env.PAYOUT_CRON_SECRET;
@@ -37,15 +39,6 @@ function safeEqual(a, b) {
   const x = Buffer.from(String(a));
   const y = Buffer.from(String(b));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
-}
-
-function verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
-  if (!keySecret || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return false;
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest('hex');
-  return safeEqual(expected, razorpay_signature);
 }
 
 async function refundPayment(razorpay, paymentId, amountPaise) {
@@ -72,7 +65,9 @@ async function callerId(supabase, req) {
 
 // ── create-order ─────────────────────────────────────────────────────────────
 export async function createAdOrder(req, res) {
-  if (!keyId || !keySecret) return res.status(401).json({ error: 'Razorpay credentials are not configured' });
+  if (configuredAccounts().length === 0) {
+    return res.status(401).json({ error: 'Razorpay credentials are not configured' });
+  }
 
   const supabase = serviceClient(supabaseUrl, serviceRoleKey);
   if (!supabase) return res.status(500).json({ error: 'Ad service is not configured' });
@@ -155,8 +150,11 @@ export async function createAdOrder(req, res) {
       return res.status(400).json({ error: 'This campaign’s price is below the minimum payable amount.' });
     }
 
-    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-    const order = await razorpay.orders.create({
+    // Follows the admin's Razorpay account switch, exactly like checkout does.
+    const account = await activeAccount(supabase);
+    if (!account) return res.status(401).json({ error: 'Razorpay credentials are not configured' });
+
+    const order = await clientFor(account).orders.create({
       amount: priced.paise,
       currency: 'INR',
       receipt: `ad_${campaignId.slice(0, 30)}`,
@@ -166,7 +164,9 @@ export async function createAdOrder(req, res) {
     const { error: refErr } = await supabase.rpc('set_ad_order_ref', { p_id: campaignId, p_order_id: order.id });
     if (refErr) console.error('ads.create-order: set_ad_order_ref failed (non-fatal):', refErr?.message ?? refErr);
 
-    return res.status(200).json({ order_id: order.id, amount: order.amount, currency: order.currency, key_id: keyId });
+    return res.status(200).json({
+      order_id: order.id, amount: order.amount, currency: order.currency, key_id: account.keyId,
+    });
   } catch (err) {
     const status = err?.statusCode === 401 ? 401 : 500;
     console.error('ads.create-order failed:', err?.error ?? err?.message ?? err);
@@ -182,11 +182,16 @@ export async function activateAd(req, res) {
   const { campaignId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body ?? {};
   if (!campaignId) return res.status(400).json({ error: 'campaignId is required' });
 
-  if (!verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature })) {
+  // Accepted from ANY configured account, and the match names the account that
+  // holds the money — the same rule checkout settles by, so a seller who was
+  // mid-payment when the account switch flipped is not told their genuine
+  // payment is invalid.
+  const account = verifyPaymentSignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature });
+  if (!account) {
     return res.status(400).json({ error: 'Payment could not be verified' });
   }
 
-  const razorpay = keyId && keySecret ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : null;
+  const razorpay = clientFor(account);
   if (!razorpay) return res.status(500).json({ error: 'Payment verification is not configured' });
 
   const uid = await callerId(supabase, req);
@@ -318,8 +323,19 @@ export async function refundAd(req, res) {
       return res.status(400).json({ error: 'This ad has no captured payment to refund.' });
     }
 
-    const razorpay = keyId && keySecret ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : null;
-    if (!razorpay) return res.status(500).json({ error: 'Refunds are not configured' });
+    if (configuredAccounts().length === 0) return res.status(500).json({ error: 'Refunds are not configured' });
+
+    // An admin refund arrives with no signature to identify the merchant
+    // account, and the ad may have been paid for before an account switch — so
+    // locate the account that actually holds the payment before refunding it.
+    // Refunding blind on the currently-active account would fail with a
+    // misleading "payment does not exist".
+    const found = await findPaymentAccount(campaign.payment_id);
+    if (!found.account) {
+      console.error('ads.refund: payment not found on any Razorpay account:', campaign.payment_id, found.error);
+      return res.status(502).json({ error: 'Could not issue the refund. The ad was left unchanged.' });
+    }
+    const razorpay = clientFor(found.account);
 
     const amountPaise = Math.round(Number(campaign.amount) * 100);
     try {

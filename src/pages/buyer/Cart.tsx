@@ -4,6 +4,7 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { useSignedIn, signInPath } from '@/auth/SignInGate';
 import { TONES, fmt } from '@/data/demo';
 
 export function Cart() {
@@ -12,9 +13,13 @@ export function Cart() {
   const {
     cart, cartQty, removeCart,
     appliedCoupon, removeCoupon, coupon,
-    subtotal, discount, shipFee, total,
+    subtotal, discount, shipFee, total, buyerPlace, undeliverable,
   } = useShop();
   const { productById } = useCatalog();
+  // Ordering needs a real account (see @/auth/SignInGate). The route guard on
+  // /checkout would catch it anyway, but saying so on the button is kinder than
+  // a silent bounce to a login screen the buyer didn't ask for.
+  const { signedIn, loading: authLoading } = useSignedIn();
 
   const items = Object.entries(cart)
     .map(([id, line]) => {
@@ -33,9 +38,14 @@ export function Cart() {
     .filter((x): x is NonNullable<typeof x> => x != null);
 
   const hasCart = items.length > 0;
+  const checkoutLabel = signedIn || authLoading ? 'Proceed to checkout' : 'Sign in to checkout';
+  const goCheckout = () => navigate(signedIn ? '/checkout' : signInPath('/checkout'));
 
   return (
-    <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
+    // `agx-cart-root` is what retires the nav dock in favour of the pinned
+    // checkout bar below 840px — and only when there is something to check out,
+    // so an empty bag keeps the dock and is not a dead end. See index.css.
+    <div className={hasCart ? 'agx-cart-root' : undefined} style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 1 of 3 · Bag</div>
@@ -109,7 +119,21 @@ export function Cart() {
                 {discount > 0 && (
                   <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Coupon discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
                 )}
-                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
+                <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
+                  <span>Delivery{buyerPlace ? '' : ' (estimate)'}</span>
+                  <span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span>
+                </div>
+                {/* Each shop charges by distance (migration 0077), so without a
+                    pincode this is their furthest rate. It can only fall at
+                    checkout, never rise — but say which it is. */}
+                {!buyerPlace && (
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;line-height:1.5;')}>
+                    Delivery is priced by distance. The exact charge is confirmed once you enter your pincode at checkout.
+                  </div>
+                )}
+                {undeliverable && (
+                  <div style={css('font-size:11.5px;color:var(--ag-danger-text);font-weight:700;line-height:1.5;')}>{undeliverable}</div>
+                )}
               </div>
 
               <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
@@ -118,9 +142,24 @@ export function Cart() {
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
               </div>
 
-              <button onClick={() => navigate('/checkout')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-                Proceed to checkout<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+              {/* Desktop only. Below 840px this card is no longer a sticky
+                  sidebar, so its button would sit at the very bottom of the
+                  page — the pinned bar at the end of this file carries the
+                  action there instead. */}
+              <button
+                className="agx-cart-cta"
+                onClick={goCheckout}
+                disabled={authLoading}
+                style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${authLoading ? 'wait' : 'pointer'};opacity:${authLoading ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}
+              >
+                {checkoutLabel}
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{signedIn || authLoading ? 'arrow_forward' : 'lock'}</span>
               </button>
+              {!signedIn && !authLoading && (
+                <div className="agx-cart-cta" style={css('text-align:center;font-size:12px;line-height:1.5;color:var(--ag-muted);font-weight:600;margin-top:10px;')}>
+                  You need an account to place an order — it keeps your order history, tracking and returns in one place. Your bag is saved.
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -134,6 +173,36 @@ export function Cart() {
           </div>
         )}
       </div>
+
+      {/* The phone's checkout bar — pinned to the bottom edge, in the dock's
+          place. It restates the total because on a phone the summary card is
+          several screens up by the time the bag has more than a couple of
+          pieces, and the number is the thing you check before you commit.
+          CSS-hidden from 840px up, where the sidebar's own button is in view. */}
+      {hasCart && (
+        <div className="agx-cart-bar">
+          {!signedIn && !authLoading && (
+            <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12.5px;font-weight:700;color:var(--ag-ink-2);')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>lock</span>
+              <span style={css('flex:1;min-width:0;')}>Sign in to place this order — your bag is saved.</span>
+            </div>
+          )}
+          <div className="agx-cart-bar-row" style={css('display:flex;align-items:center;gap:14px;')}>
+            <div style={css('flex:none;')}>
+              <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);')}>Total</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:22px;line-height:1.15;")}>{fmt(total)}</div>
+            </div>
+            <button
+              onClick={goCheckout}
+              disabled={authLoading}
+              style={css(`flex:1;min-width:0;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${authLoading ? 'wait' : 'pointer'};opacity:${authLoading ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);`)}
+            >
+              {checkoutLabel}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{signedIn || authLoading ? 'arrow_forward' : 'lock'}</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

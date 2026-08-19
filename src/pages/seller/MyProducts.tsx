@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { errMessage } from '@/lib/errMessage';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
@@ -52,6 +53,7 @@ export function MyProducts() {
         occasion: form.occasion.trim(),
         description: form.description.trim(),
         mrp: form.mrp.trim() ? Number(form.mrp) : null,
+        weight_grams: form.weightGrams.trim() ? Number(form.weightGrams) : null,
         sizes: form.sizes,
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,
@@ -67,7 +69,7 @@ export function MyProducts() {
       setEditing(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not update product');
+      showToast(errMessage(e, 'Could not update product'));
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export function MyProducts() {
       setConfirmDelete(false);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete product');
+      showToast(errMessage(e, 'Could not delete product'));
     } finally {
       setBusy(false);
     }
@@ -209,6 +211,7 @@ export function MyProducts() {
                   stock: String(editing.stock),
                   description: editing.description ?? '',
                   mrp: editing.mrp != null ? String(editing.mrp) : '',
+                  weightGrams: editing.weight_grams != null ? String(editing.weight_grams) : '',
                   sizes: editing.sizes ?? [],
                   washCare: editing.wash_care ?? '',
                   imageUrl: editing.image_url ?? '',

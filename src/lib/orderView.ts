@@ -30,10 +30,16 @@ export type OrderView = {
   items: OrderWithDetails['items'];
   channel: 'online' | 'offline';
   paymentMethod: string | null;
-  /** True when the money is still to be collected at the door. */
+  /**
+   * A cash-on-delivery order. Only ever true on a row placed BEFORE cash on
+   * delivery was withdrawn (migration 0085) — every order since is prepaid. Kept
+   * so an old order still renders as what it actually was: its stored `cod_fee`
+   * is part of what the buyer paid, and an invoice that drops it does not add up.
+   */
   isCod: boolean;
   /** Cash still owed on this order — 0 once collected, or on a prepaid order. */
   collectAmount: number;
+  /** Cash-handling fee this order carried. Always 0 on a prepaid order. */
   codFee: number;
   shippingFee: number;
   /**

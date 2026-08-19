@@ -75,7 +75,7 @@ export function ProfileEditSheet({
 
           <label style={labelStyle}>
             Mobile number
-            <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
+            <div className="agx-field" style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${touched && !phoneValid ? '#E0748C' : 'var(--ag-border)'};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
               <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
               <input
                 value={phone}

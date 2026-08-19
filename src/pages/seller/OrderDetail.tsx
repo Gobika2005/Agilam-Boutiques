@@ -3,16 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
-import { POLICY_TERMS } from '@/data/company';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchOrder, updateOrderStatus, markCashCollected } from '@/data/orders';
+import { fetchOrder, updateOrderStatus, markOrderPacked } from '@/data/orders';
 import type { OrderStatus } from '@/data/types';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
 import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
+import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import {
+  bookShiprocketShipment, createShipment, fetchCouriers, fetchShipment, fetchShiprocketAvailability,
+} from '@/data/shipments';
+import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
+import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -24,12 +29,70 @@ export function OrderDetail() {
   const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
   const [sharing, setSharing] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [shipOpen, setShipOpen] = useState(false);
+  // The buyer's return request on this order, if any (migration 0074).
+  const [returnBump, setReturnBump] = useState(0);
+  const [rejectNote, setRejectNote] = useState('');
+  const [askingReject, setAskingReject] = useState(false);
+  const [returnBusy, setReturnBusy] = useState(false);
+  const [shipping, setShipping] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Both read separately from the order (see src/data/shipments.ts): an
+  // un-migrated deploy must degrade to "no tracking", never to a dead screen.
+  const { data: couriers } = useAsync(() => fetchCouriers().catch(() => []), []);
+  const { data: returnReq } = useAsync(
+    () => (orderId ? fetchReturnForOrder(orderId) : Promise.resolve(null)),
+    [orderId, returnBump],
+  );
+
+  /**
+   * Record the seller's decision. `resolve_return_request` is the authority —
+   * it re-checks shop ownership and refuses a rejection with no reason — so a
+   * failure here is shown verbatim rather than translated.
+   */
+  const answerReturn = async (status: 'approved' | 'rejected', note?: string) => {
+    if (!returnReq) return;
+    setReturnBusy(true);
+    try {
+      await resolveReturnRequest(returnReq.id, status, note);
+      showToast(status === 'approved' ? 'Return approved — the buyer has been told' : 'Buyer notified');
+      setAskingReject(false);
+      setRejectNote('');
+      setReturnBump((n) => n + 1);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save that decision');
+    } finally {
+      setReturnBusy(false);
+    }
+  };
+  const { data: shipment, reload: reloadShipment } = useAsync(
+    () => (orderId ? fetchShipment(orderId) : Promise.resolve(null)),
+    [orderId],
+  );
+  // Both switches on and a registered pickup location, or the booking mode is
+  // never offered. Failing closed matters: the alternative is a seller tapping
+  // "Book & ship" and getting a refusal from the Edge Function instead.
+  const { data: canBookCourier } = useAsync(
+    () => (boutique ? fetchShiprocketAvailability(boutique.id).catch(() => false) : Promise.resolve(false)),
+    [boutique?.id],
+  );
+
+  if (!row && loading) {
+    return (
+      <SkeletonGroup label="Loading order…" style="padding:16px 20px;">
+        <Skeleton w="52%" h={26} radius={9} />
+        <Skeleton w="34%" h={12} style="margin-top:12px;" />
+        <div style={css('margin-top:20px;')}><SkeletonRows rows={3} height={72} /></div>
+        <Skeleton w="100%" h={120} radius={18} style="margin-top:16px;" />
+      </SkeletonGroup>
+    );
+  }
 
   if (!row) {
     return (
       <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:var(--ag-muted);font-size:15px;')}>
-        {loading ? 'Loading order…' : 'Order not found.'}
+        Order not found.
       </div>
     );
   }
@@ -48,17 +111,68 @@ export function OrderDetail() {
   };
 
   /**
-   * Confirm the cash arrived. Kept separate from "Delivered" on purpose: an
-   * order can be handed over and the money still not counted, and recording
-   * payment that never happened is what corrupts the payout report.
+   * Record the parcel, then move the order to 'shipped'.
+   *
+   * Order matters: migration 0063's trigger refuses the transition until a
+   * shipment row exists, so the write has to land first. If the status update
+   * then fails the shipment row is left behind — harmless, and the seller simply
+   * ships again (the unique constraint on order_id means the retry updates
+   * nothing rather than duplicating).
    */
-  const collectCash = async () => {
+  const shipOrder = async (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => {
+    if (!row) return;
+    setShipping(true);
     try {
-      await markCashCollected(o.id);
-      showToast(`${fmt(o.collectAmount)} recorded as collected`);
+      await createShipment({
+        orderId: o.id,
+        boutiqueId: row.boutique_id,
+        courierId: v.courierId,
+        courierName: v.courierName,
+        awb: v.awb,
+        trackingUrl: v.trackingUrl,
+      });
+      await updateOrderStatus(o.id, 'shipped');
+      setShipOpen(false);
+      showToast(`Shipped via ${v.courierName}`);
+      reloadShipment();
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the payment');
+      showToast(e instanceof Error ? e.message : 'Could not ship this order');
+    } finally {
+      setShipping(false);
+    }
+  };
+
+  /**
+   * Book the parcel with Shiprocket, which also ships the order.
+   *
+   * Everything happens server-side in the `shiprocket-book` Edge Function — it
+   * creates their order, gets an AWB assigned, writes the shipment row and
+   * flips the status — because the whole sequence needs the service role and
+   * must not be half-completed by a browser that navigated away mid-flight.
+   *
+   * There is no retry here on purpose. A failure after the AWB is issued means
+   * a real parcel exists, and a second attempt would book (and pay for) a
+   * second one; the function returns an explicit "do not book again" in that
+   * case and it is surfaced verbatim.
+   */
+  const bookOrder = async () => {
+    setShipping(true);
+    try {
+      const booked = await bookShiprocketShipment(o.id);
+      setShipOpen(false);
+      showToast(`Booked with ${booked.courierName} · ${booked.awb}`);
+      if (booked.weightEstimated) {
+        // Worth interrupting for: the courier weighs the parcel themselves and
+        // bills the difference, so a guessed weight becomes a real charge.
+        showToast('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.');
+      }
+      reloadShipment();
+      reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not book this parcel');
+    } finally {
+      setShipping(false);
     }
   };
 
@@ -114,6 +228,85 @@ export function OrderDetail() {
       </div>
 
       <div style={css('flex:1;padding:4px 20px 0;')}>
+        {/* ---------- Return request (migration 0074) ---------- */}
+        {/* First card on the page when there is one: a buyer waiting on a
+            return answer is the most time-sensitive thing on this screen, and
+            it used to have no seller-side surface at all. */}
+        {returnReq && (
+          <div style={css(`background:var(--ag-surface);border:1.5px solid ${returnReq.status === 'requested' ? 'var(--ag-warn-text)' : 'var(--ag-border)'};border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);`)}>
+            <div style={css('display:flex;align-items:center;gap:8px;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-gold-text);")}>autorenew</span>
+              <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>
+                RETURN {returnReq.status === 'requested' ? 'REQUESTED' : returnReq.status.toUpperCase()}
+              </div>
+            </div>
+            <div style={css('font-size:14px;font-weight:800;margin-top:9px;')}>{RETURN_REASON_LABEL[returnReq.reason]}</div>
+            {returnReq.note && (
+              <div style={css('font-size:13px;color:var(--ag-ink-2);line-height:1.5;margin-top:4px;')}>{returnReq.note}</div>
+            )}
+            {returnReq.photos.length > 0 && (
+              <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;')}>
+                {returnReq.photos.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer" style={css('width:64px;height:64px;border-radius:11px;overflow:hidden;border:1px solid var(--ag-border);display:block;')}>
+                    <img src={url} alt="Buyer's photo of the problem" style={css('width:100%;height:100%;object-fit:cover;')} />
+                  </a>
+                ))}
+              </div>
+            )}
+            {returnReq.status === 'requested' ? (
+              askingReject ? (
+                <div style={css('margin-top:12px;')}>
+                  <textarea
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value.slice(0, 300))}
+                    rows={2}
+                    placeholder="Tell the buyer why — this is required."
+                    style={css('display:block;width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-bg);color:var(--ag-ink);font-family:inherit;font-size:13.5px;resize:vertical;')}
+                  />
+                  <div style={css('display:flex;gap:9px;margin-top:9px;')}>
+                    <button
+                      onClick={() => { setAskingReject(false); setRejectNote(''); }}
+                      style={css('flex:1;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;font-weight:700;font-size:13px;color:var(--ag-label);cursor:pointer;font-family:inherit;')}
+                    >
+                      Back
+                    </button>
+                    <button
+                      disabled={returnBusy || !rejectNote.trim()}
+                      onClick={() => void answerReturn('rejected', rejectNote)}
+                      style={css(`flex:1;height:42px;border:none;border-radius:12px;background:var(--ag-danger-text);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;opacity:${returnBusy || !rejectNote.trim() ? 0.6 : 1};`)}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={css('display:flex;gap:9px;margin-top:13px;')}>
+                  <button
+                    disabled={returnBusy}
+                    onClick={() => setAskingReject(true)}
+                    style={css('flex:1;height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;font-weight:700;font-size:13px;color:var(--ag-label);cursor:pointer;font-family:inherit;')}
+                  >
+                    Can't accept
+                  </button>
+                  <button
+                    disabled={returnBusy}
+                    onClick={() => void answerReturn('approved')}
+                    style={css('flex:1;height:44px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+                  >
+                    Approve return
+                  </button>
+                </div>
+              )
+            ) : (
+              returnReq.seller_note && (
+                <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:9px;line-height:1.5;')}>
+                  Your reply: {returnReq.seller_note}
+                </div>
+              )
+            )}
+          </div>
+        )}
+
         <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
           <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>CUSTOMER</div>
           <div style={css('display:flex;align-items:center;gap:11px;margin-top:8px;')}>
@@ -260,37 +453,37 @@ export function OrderDetail() {
           )}
         </div>
 
-        {/* The cash instruction, stated once and unmissably. A seller reading
-            this on a doorstep needs the figure, not a status chip. */}
-        {o.isCod && !closed && (
-          <div style={css(`margin-top:12px;border-radius:16px;padding:16px;border:1.5px solid ${settled ? '#CFE6D9' : 'var(--ag-gold-border)'};background:${settled ? '#F3F9F5' : 'var(--ag-gold-bg)'};`)}>
-            <div style={css('display:flex;align-items:center;gap:11px;')}>
-              <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;`)}>
-                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:23px;color:${settled ? 'var(--ag-good)' : 'var(--ag-gold-text)'};`)}>{settled ? 'task_alt' : 'payments'}</span>
+        {/* Once dispatched, the docket is the thing the seller gets asked about
+            on the phone — so it sits on the order, copyable, not buried. */}
+        {shipment && (
+          <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+            <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>SHIPMENT</div>
+            <div style={css('display:flex;align-items:center;gap:11px;margin-top:10px;')}>
+              <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>local_shipping</span>
               </span>
               <div style={css('flex:1;min-width:0;')}>
-                <div style={css(`font-size:11.5px;font-weight:800;letter-spacing:.05em;color:${settled ? '#2C6249' : '#B0862B'};`)}>
-                  {settled ? 'CASH COLLECTED' : 'COLLECT ON DELIVERY'}
-                </div>
-                <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:27px;line-height:1.1;margin-top:2px;color:${settled ? '#2C6249' : 'var(--ag-gold-text)'};`)}>
-                  {fmt(o.grandTotal)}
-                </div>
+                <div style={css('font-weight:800;font-size:14px;')}>{shipment.courier_name}</div>
+                <div style={css('font-size:12.5px;color:var(--ag-muted);word-break:break-all;')}>{shipment.awb}</div>
               </div>
+              <button
+                onClick={() => { void navigator.clipboard?.writeText(shipment.awb); showToast('Tracking number copied'); }}
+                aria-label="Copy tracking number"
+                style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>content_copy</span>
+              </button>
             </div>
-            {!settled && (
-              <>
-                <div style={css('font-size:12.5px;color:var(--ag-gold-text);font-weight:600;line-height:1.55;margin-top:10px;')}>
-                  Take this exact amount in cash when you hand the order over, then tap below. MangaiMart’s {POLICY_TERMS.commissionPct}% commission on this order is added to what you owe and settled against your next online payout.
-                  {o.platformDiscount > 0 && ` The customer used a MangaiMart offer, so collect ${fmt(o.platformDiscount)} less — we add it back to your payout.`}
-                </div>
-                <button
-                  onClick={collectCash}
-                  style={css('width:100%;margin-top:12px;height:46px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
-                >
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>check_circle</span>
-                  I collected {fmt(o.grandTotal)}
-                </button>
-              </>
+            {shipment.tracking_url && (
+              <a
+                href={shipment.tracking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:12px;height:44px;border-radius:13px;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;text-decoration:none;')}
+              >
+                Track shipment
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
+              </a>
             )}
           </div>
         )}
@@ -327,10 +520,30 @@ export function OrderDetail() {
 
         return (
           <div style={css('position:sticky;bottom:0;background:var(--ag-bg);padding:12px 20px 16px;')}>
+            {/* Packing isn't a lifecycle status — it sits between accepted and
+                shipped without changing either. It's here so the buyer's
+                "Packed" step finally shows a real time instead of a blank. */}
+            {o.rawStatus === 'accepted' && !row.packed_at && !confirmReject && (
+              <button
+                onClick={async () => {
+                  try {
+                    await markOrderPacked(o.id);
+                    showToast('Marked as packed');
+                    reload();
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : 'Could not update this order');
+                  }
+                }}
+                style={css('width:100%;height:42px;margin-bottom:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>inventory_2</span>
+                Mark packed
+              </button>
+            )}
             {confirmReject ? (
               <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
                 <div style={css('font-size:13px;font-weight:700;color:#8A2A34;line-height:1.5;')}>
-                  Reject this order? This can’t be undone{o.isCod ? '' : ' and any online payment is refunded'}. The stock returns to your catalogue.
+                  Reject this order? This can’t be undone and the payment is refunded. The stock returns to your catalogue.
                 </div>
                 <div style={css('display:flex;gap:10px;margin-top:11px;')}>
                   <button onClick={() => setConfirmReject(false)} style={css('flex:1;height:48px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}>Keep order</button>
@@ -343,13 +556,38 @@ export function OrderDetail() {
                   <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
                 )}
                 {forward && (
-                  <button onClick={() => setStatus(forward.status, forward.msg)} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}>{forward.label}</button>
+                  <button
+                    onClick={() => {
+                      // Shipping is the one step that needs data first — the
+                      // sheet collects it and does the transition itself.
+                      if (forward.status === 'shipped') setShipOpen(true);
+                      else setStatus(forward.status, forward.msg);
+                    }}
+                    style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}
+                  >
+                    {forward.label}
+                  </button>
                 )}
               </div>
             )}
           </div>
         );
       })()}
+
+      {shipOpen && (
+        <ShipSheet
+          couriers={couriers ?? []}
+          busy={shipping}
+          // Every order is prepaid (migration 0085), so every parcel is
+          // bookable. A legacy cash order is still excluded: Shiprocket remits
+          // collected cash to the account holder — us — which would make the
+          // platform the money handler on an order it never took payment for.
+          canBook={Boolean(canBookCourier) && !o.isCod}
+          onCancel={() => setShipOpen(false)}
+          onConfirm={shipOrder}
+          onBook={bookOrder}
+        />
+      )}
     </div>
   );
 }

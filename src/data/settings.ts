@@ -14,29 +14,54 @@ import { POLICY_TERMS, COMPANY } from '@/data/company';
  * admin form saved values nothing ever read, and the storefront quietly kept
  * charging the compile-time constants.
  */
+/**
+ * Which Razorpay merchant account collects money right now. The keys themselves
+ * live in the server environment (RAZORPAY_KEY_ID/_SECRET and the `_B` pair) —
+ * this only names the slot, which is why it is safe under the table's public
+ * read policy.
+ */
+export type RazorpayAccount = 'primary' | 'backup';
+
+/**
+ * Delivery and cash-on-delivery are deliberately absent.
+ *
+ * The delivery charge, the free-delivery threshold, the cash-handling fee and
+ * the COD cap were platform-wide knobs here until migration 0076; they are now
+ * each boutique's own, set in the seller console and priced per boutique by
+ * src/lib/pricing.ts. The columns still exist in the table — dropping live
+ * columns is not worth the risk — but nothing reads them, and they are gone from
+ * this type so nothing accidentally starts to again.
+ */
 export interface PlatformSettings {
   commission_pct: number;
-  cod_fee: number;
-  cod_max_order: number;
-  free_delivery_over: number;
-  standard_shipping: number;
   return_window_days: number;
   payout_hold_days: number;
+  /** Hours after delivery within which a seller payout is promised (migration
+   *  0078). The admin Payouts console counts down against it and flags anything
+   *  past it; the seller console publishes it. Delivery decides what is payable
+   *  — this only decides when it is late. */
+  payout_sla_hours: number;
   maintenance_mode: boolean;
   support_email: string;
+  razorpay_account: RazorpayAccount;
+  /** Master switch for WhatsApp order updates (migration 0090). False leaves the
+   *  outbox filling and unsent — the triggers always queue, so the queue can be
+   *  inspected before a single message goes out. */
+  whatsapp_enabled: boolean;
   updated_at: string | null;
 }
 
 export const DEFAULT_SETTINGS: PlatformSettings = {
   commission_pct: POLICY_TERMS.commissionPct,
-  cod_fee: POLICY_TERMS.codFee,
-  cod_max_order: POLICY_TERMS.codMaxOrder,
-  free_delivery_over: POLICY_TERMS.freeDeliveryOver,
-  standard_shipping: POLICY_TERMS.standardShipping,
   return_window_days: POLICY_TERMS.returnWindowDays,
   payout_hold_days: 3,
+  payout_sla_hours: 8,
   maintenance_mode: false,
   support_email: COMPANY.supportEmail,
+  razorpay_account: 'primary',
+  // Off until the Meta credentials are set and the templates are approved. A
+  // deployment without migration 0090 also lands here, and must stay off.
+  whatsapp_enabled: false,
   updated_at: null,
 };
 
@@ -90,6 +115,40 @@ export async function saveSettings(patch: Partial<PlatformSettings>, updatedBy?:
   // Push the saved values into the live cache so pricing, the policy copy and
   // every open screen pick them up without a reload.
   publish({ ...current, ...patch });
+  return { ok: true };
+}
+
+/**
+ * Flip which Razorpay merchant account collects money, as its own write.
+ *
+ * Deliberately NOT folded into the commercial-terms form. Two reasons:
+ *
+ *   • It is an emergency control. It has to take effect the moment it is
+ *     tapped, not when someone remembers to press "Save changes" — and it must
+ *     not ride along with an unrelated half-finished edit to the COD fee.
+ *   • It writes a column added in migration 0064. Sending it inside the main
+ *     patch would make the ENTIRE settings form fail to save on any deployment
+ *     where 0064 hasn't been applied yet, taking commission and fees down with
+ *     it. Isolated, a missing column only breaks the switch, and says so.
+ *
+ * The next /api/create-order reads the new value, so the change is live for the
+ * following checkout — no redeploy.
+ */
+export async function setRazorpayAccount(account: RazorpayAccount, updatedBy?: string | null): Promise<SaveResult> {
+  const { error } = await supabase
+    .from('platform_settings')
+    .update({ razorpay_account: account, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null })
+    .eq('id', 1);
+  if (error) {
+    if (isMissingTable(error)) return { ok: false, error: 'Settings are not enabled yet — apply migration 0048.' };
+    // PGRST204 = "column not found in schema cache", i.e. 0064 hasn't been run.
+    if (error.code === 'PGRST204' || /razorpay_account/i.test(error.message ?? '')) {
+      return { ok: false, error: 'The payment-account switch needs migration 0064 applied first.' };
+    }
+    console.error('setRazorpayAccount failed:', error.message);
+    return { ok: false, error: 'Could not switch the payment account. Please try again.' };
+  }
+  publish({ ...current, razorpay_account: account });
   return { ok: true };
 }
 
@@ -176,6 +235,16 @@ function subscribe(fn: () => void): () => void {
   listeners.add(fn);
   return () => { listeners.delete(fn); };
 }
+
+/**
+ * Subscribe to settings changes from outside this module.
+ *
+ * Exported for `src/data/policies.ts`, which builds the buyer-facing legal copy
+ * from these same values and needs its own `useSyncExternalStore` over them.
+ * Importing `useSettings` there instead would be circular — settings.ts already
+ * imports the copy-only terms from company.ts, which policies.ts also uses.
+ */
+export const subscribeSettings = subscribe;
 
 /** Re-renders the component when the platform settings land or change. */
 export function useSettings(): PlatformSettings {

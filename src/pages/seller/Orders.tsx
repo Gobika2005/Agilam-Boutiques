@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { csvDocument } from '@/lib/csv';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
@@ -8,10 +9,11 @@ import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { printInvoice } from '@/lib/printInvoice';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
-// "To collect" is not a fulfilment status — it is every COD order whose cash is
-// still outstanding, which is the list a seller actually chases at end of day.
-const TABS = ['All', 'Pending', 'Accepted', 'Shipped', 'Delivered', 'To collect'];
+// Cash on delivery was withdrawn (migration 0085), so there is no "To collect"
+// tab any more: every order arrives paid in full.
+const TABS = ['All', 'Pending', 'Accepted', 'Shipped', 'Delivered'];
 const PERIODS = ['All time', 'Today', 'This week', 'This month'] as const;
 type Period = (typeof PERIODS)[number];
 
@@ -47,7 +49,7 @@ export function Orders() {
   const from = cutoff(period);
   const filtered = all.filter(({ view: o, at }) => {
     if (at < from) return false;
-    if (tab !== 'All' && (tab === 'To collect' ? o.collectAmount <= 0 : o.status !== tab)) return false;
+    if (tab !== 'All' && o.status !== tab) return false;
     if (!q) return true;
     // Search by order id, customer name, or any product name on the order.
     return (
@@ -57,18 +59,24 @@ export function Orders() {
     );
   });
 
-  const outstanding = all.reduce((sum, { view }) => sum + view.collectAmount, 0);
-
   const exportCsv = () => {
+    // The customer name and the item titles are text other people typed, so
+    // every cell is formula-neutralised as well as quoted (src/lib/csv.ts).
     const head = ['Order', 'Date', 'Customer', 'Phone', 'Items', 'Qty', 'Amount', 'Status', 'Payment'];
-    const lines = filtered.map(({ view: o }) => {
-      const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-      const items = (o.items ?? []).map((it) => `${it.title} x${it.qty}`).join('; ');
-      return [o.number, o.date, o.customer, o.phone ?? '', items, o.qty, o.grandTotal, o.status, o.paymentMethod ?? 'Online']
-        .map(cell)
-        .join(',');
-    });
-    const csv = [head.join(','), ...lines].join('\n');
+    const csv = csvDocument(
+      head,
+      filtered.map(({ view: o }) => [
+        o.number,
+        o.date,
+        o.customer,
+        o.phone ?? '',
+        (o.items ?? []).map((it) => `${it.title} x${it.qty}`).join('; '),
+        o.qty,
+        o.grandTotal,
+        o.status,
+        o.paymentMethod ?? 'Online',
+      ]),
+    );
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;
@@ -90,7 +98,7 @@ export function Orders() {
 
       {/* Search */}
       <div style={css('padding:2px 20px 10px;')}>
-        <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
+        <div className="agx-field" style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
           <input
             value={search}
@@ -105,19 +113,6 @@ export function Orders() {
           )}
         </div>
       </div>
-
-      {outstanding > 0 && (
-        <div
-          onClick={() => setTab('To collect')}
-          style={css('margin:2px 20px 10px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
-        >
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:21px;")}>payments</span>
-          <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--ag-gold-text);line-height:1.5;')}>
-            <strong>{fmt(outstanding)}</strong> still to collect in cash across your open COD orders.
-          </span>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#C9AE7F;")}>chevron_right</span>
-        </div>
-      )}
 
       {/* Status tabs */}
       <div className="agx-scroll" style={css('display:flex;gap:8px;overflow-x:auto;padding:4px 20px 6px;')}>
@@ -157,6 +152,7 @@ export function Orders() {
       </div>
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
+        {loading && filtered.length === 0 && <SkeletonRows rows={4} height={92} thumb={false} label="Loading orders…" />}
         {!loading && filtered.length === 0 && (
           <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>
             {q || period !== 'All time' || tab !== 'All' ? 'No orders match these filters.' : 'No orders yet.'}

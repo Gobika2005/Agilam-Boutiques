@@ -3,7 +3,7 @@ import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
-import { POLICIES, POLICIES_UPDATED, findPolicy, legalPages } from '@/data/policies';
+import { POLICIES_UPDATED, usePolicies, usePolicy, useLegalPages } from '@/data/policies';
 import { articleSchema, breadcrumbSchema, faqSchema, graph, organizationSchema } from '@/lib/schema';
 
 /**
@@ -17,7 +17,12 @@ export function Policy() {
   // is registered per known slug in App.tsx, so this always resolves.
   const { pathname } = useLocation();
   const slug = pathname.replace(/^\/+|\/+$/g, '');
-  const page = findPolicy(slug);
+  // All three read the same live settings row, so the quoted fees and windows
+  // match what checkout charges. Called unconditionally, above the "not found"
+  // early return, because they are hooks.
+  const page = usePolicy(slug);
+  const allPolicies = usePolicies();
+  const legalPages = useLegalPages();
 
   /**
    * Help is a genuine Q&A page, so it is marked up as one — an FAQ rich result
@@ -68,7 +73,7 @@ export function Policy() {
     );
   }
 
-  const others = POLICIES.filter((p) => p.slug !== page.slug);
+  const others = allPolicies.filter((p) => p.slug !== page.slug);
 
   return (
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
@@ -160,7 +165,7 @@ export function Policy() {
             <div style={css('margin-top:14px;padding:16px 18px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:20px;')}>
               <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Policies</div>
               <div style={css('display:flex;flex-direction:column;gap:9px;margin-top:12px;')}>
-                {legalPages().map((p) => (
+                {legalPages.map((p) => (
                   <a
                     key={p.slug}
                     href={`/${p.slug}`}

@@ -2,6 +2,8 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+// @ts-expect-error — plain .mjs build script, shared with the CLI entry point.
+import { collectIconNames, iconFontHref } from './scripts/icon-inventory.mjs';
 
 // The app prints its build version on the buyer profile screen; read it from
 // package.json so the two can never drift.
@@ -67,6 +69,9 @@ function devApi(env: Record<string, string>): Plugin {
       pass('RESEND_API_KEY', env.RESEND_API_KEY || env.VITE_RESEND_API_KEY);
       pass('EMAIL_FROM', env.EMAIL_FROM || env.VITE_EMAIL_FROM);
       pass('APP_URL', env.APP_URL || env.VITE_APP_URL);
+      // api/_accessEmail.js builds the console sign-in link for welcome mails
+      // from this; without it a locally sent invite points at /admin/login.
+      pass('VITE_ADMIN_PATH', env.VITE_ADMIN_PATH);
       // Lets /api/run-ad-lifecycle be exercised locally (otherwise it is an inert
       // no-op with no secret configured).
       pass('AD_CRON_SECRET', env.AD_CRON_SECRET);
@@ -139,10 +144,80 @@ function devApi(env: Record<string, string>): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+/**
+ * Rewrites the Material Symbols stylesheet URL in `index.html` to ask for only
+ * the icons this app actually draws.
+ *
+ * The unsubsetted font is a 457 kB woff2 — the single heaviest thing the page
+ * loads, on every cold visit, for about 265 glyphs. Naming them takes it to
+ * 32 kB. Both numbers are measured, not estimated: fetch the two URLs.
+ *
+ * The list is derived from the source on every build by
+ * `scripts/icon-inventory.mjs`, never maintained by hand, because the failure
+ * mode of an incomplete list is an icon that renders as its own name. Read that
+ * file before changing anything here.
+ */
+function iconSubset(): Plugin {
   return {
-    plugins: [react(), devApi(env)],
+    name: 'icon-subset',
+    // `pre`, so the URL is rewritten before any other plugin reads the HTML.
+    enforce: 'pre',
+    transformIndexHtml(html) {
+      const names = collectIconNames();
+      const href = iconFontHref(names);
+      // Matches the async `<link>` and the `<noscript>` fallback alike.
+      const full = /https:\/\/fonts\.googleapis\.com\/css2\?family=Material\+Symbols\+Outlined[^"']*/g;
+      const hits = html.match(full)?.length ?? 0;
+      if (!hits) {
+        // Silence here would ship the full 457 kB font and look like a success.
+        throw new Error(
+          'icon-subset: no Material Symbols stylesheet link found in index.html — ' +
+            'the URL changed shape and the subset is no longer being applied.',
+        );
+      }
+      console.log(`  ✓ icon subset — ${names.length} icons, ${hits} link(s) rewritten`);
+      return html.replace(full, href);
+    },
+  };
+}
+
+/**
+ * The admin console's URL segment is a deploy-time secret (`src/lib/adminPath.ts`).
+ *
+ * A missing var would fall back to `admin` and quietly publish the console at
+ * the one address everybody tries — a silent regression of the whole point. So
+ * a production build refuses to start without it. `vite dev` is exempt: local
+ * work should not need the secret.
+ */
+function requireAdminPath(env: Record<string, string>) {
+  const value = (env.VITE_ADMIN_PATH ?? '').trim().replace(/^\/+|\/+$/g, '');
+  if (!value) {
+    throw new Error(
+      'VITE_ADMIN_PATH is not set — the admin console would be published at /admin.\n' +
+        '\n' +
+        '  Vercel:  Project → Settings → Environment Variables → Add\n' +
+        '             Key    VITE_ADMIN_PATH\n' +
+        '             Value  the console segment, e.g. mangai-office\n' +
+        '             Tick   Production, Preview AND Development — a build fails\n' +
+        '                    in whichever environment is left unticked.\n' +
+        '           Then redeploy: the value is baked in at build time, so an\n' +
+        '           existing deployment does not pick it up on its own.\n' +
+        '  Local:   add the same line to .env (gitignored; see .env.example).\n',
+    );
+  }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(value)) {
+    throw new Error(`VITE_ADMIN_PATH must be one lowercase URL segment (letters, digits, hyphens) — got "${value}".`);
+  }
+  return value;
+}
+
+export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  if (command === 'build') {
+    console.log(`  ✓ admin console at /${requireAdminPath(env)}`);
+  }
+  return {
+    plugins: [react(), devApi(env), iconSubset()],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },

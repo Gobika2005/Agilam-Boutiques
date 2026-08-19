@@ -20,10 +20,18 @@ import {
  * (api/razorpayx-webhook.js); a transfer that fails to even submit is unwound
  * immediately (fail_auto_payout releases the orders for the next run).
  *
- * COD is never touched here — the seller holds that cash and owes the platform,
- * which is a manual net-off on the admin console.
+ * Cash on delivery was withdrawn from the platform (migration 0085), so every
+ * new order reaching this endpoint is prepaid. The `payment_method != 'COD'`
+ * filter below is kept as a guard over historical rows only: a legacy cash order
+ * is money the SELLER already holds, and auto-transferring its full value would
+ * pay for those goods twice.
  *
- * Trigger: a daily cron (see vercel.json). Protected by PAYOUT_CRON_SECRET —
+ * Trigger: NOT scheduled. The daily cron entry was removed from vercel.json in
+ * 8cddccd (2026-08-01) and payouts are settled by hand from /admin/payments by
+ * decision — this project is on Vercel's Hobby plan, whose single cron slot goes
+ * to the ads lifecycle sweep. The endpoint still works if invoked directly, so
+ * restoring the schedule is a one-line change to vercel.json if the plan changes.
+ * Protected by PAYOUT_CRON_SECRET —
  * accepted either as `x-cron-secret` or as Vercel Cron's `Authorization: Bearer
  * <CRON_SECRET>`. With nothing configured (no RazorpayX, or no secret) it is an
  * inert 200 so a misconfigured deploy never 500s a scheduler.
@@ -260,18 +268,43 @@ export default async function handler(req, res) {
     }
 
     // ── 2) Open + pay new eligible balances ─────────────────────────────────
+    //
+    // This query only picks which BOUTIQUES to try; `open_auto_payout` then
+    // recomputes the amount from the orders themselves and is the authority on
+    // what is eligible. Migration 0063 added two brakes there — a courier
+    // docket must exist, and a disputed delivery is held — so deliberately do
+    // NOT duplicate the shipment requirement here: orders delivered before the
+    // rollout are exempt inside the function, and a stricter prefilter would
+    // skip those boutiques entirely and strand money that is genuinely owed.
+    // `delivery_disputed` is kept as a cheap prefilter only.
     const { data: eligible, error: eligErr } = await supabase
       .from('orders')
       .select('boutique_id')
       .is('payout_id', null)
+      // Legacy guard — see the header note. No new order can be COD (0085), but
+      // an old one must never be transferred at full value.
       .neq('payment_method', 'COD')
       .eq('payment_status', 'paid')
       .eq('refunded', false)
+      .eq('delivery_disputed', false)
       .eq('status', 'delivered')
       .not('delivered_at', 'is', null)
       .lte('delivered_at', cutoff)
       .limit(5000);
-    if (eligErr) throw eligErr;
+    if (eligErr) {
+      // 42703 undefined_column / 42P01 undefined_table / PGRST200 no such
+      // relationship — all mean 0063 has not been applied. Fail CLOSED and say
+      // so: quietly paying out without the gate is the exact failure this
+      // migration exists to prevent, and a silent skip would hide it.
+      if (eligErr.code === '42703' || eligErr.code === '42P01') {
+        console.error('run-payouts: courier tracking schema missing — apply migration 0063.');
+        return res.status(200).json({
+          ok: true,
+          skipped: 'migration 0063 (courier tracking) must be applied before automatic payouts can run — payouts are held, not lost',
+        });
+      }
+      throw eligErr;
+    }
 
     const boutiqueIds = [...new Set((eligible ?? []).map((o) => o.boutique_id))];
 

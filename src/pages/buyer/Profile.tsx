@@ -269,9 +269,10 @@ export function Profile() {
           {signedIn ? 'Log out' : 'Clear my details'}
         </button>
 
-        <button onClick={() => navigate('/admin/login')} style={css('margin:12px 20px 0;width:calc(100% - 40px);height:42px;border:none;background:none;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>shield_person</span>Admin login · internal use
-        </button>
+        {/* No "Admin login" row here. The admin console is staff-only and
+            advertising its door to every buyer invites the guessing. Staff reach
+            it at /admin, which redirects to the login when there's no session —
+            see RequireRole. */}
 
         {/* Build stamp — the first thing support asks for. Injected from
             package.json at build time, so it can't drift from what's deployed. */}

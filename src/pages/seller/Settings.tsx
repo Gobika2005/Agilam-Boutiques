@@ -4,7 +4,12 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
+import { fetchParcelDefaults, saveParcelDefaults, type ParcelDefaults } from '@/data/shipments';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { DeliveryRateCard, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
+import { FulfilmentCard, fulfilmentToForm, fulfilmentToPatch, validateFulfilment, type FulfilmentForm } from '@/components/seller/FulfilmentCard';
+import { isMapsLink } from '@/lib/geolocate';
+import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WORKING_DAYS } from '@/data/types';
 
@@ -19,18 +24,18 @@ import { WORKING_DAYS } from '@/data/types';
  */
 
 type Form = {
-  instagram: string; mapUrl: string; phone: string; whatsapp: string; email: string;
+  instagram: string; mapUrl: string; lat: string; lng: string; phone: string; whatsapp: string; email: string;
   openTime: string; closeTime: string; workingDays: string[];
-  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
-  codEnabled: boolean; onlinePaymentEnabled: boolean;
+  deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
+  fulfilment: FulfilmentForm;
   notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
 };
 
 const EMPTY: Form = {
-  instagram: '', mapUrl: '', phone: '', whatsapp: '', email: '',
+  instagram: '', mapUrl: '', lat: '', lng: '', phone: '', whatsapp: '', email: '',
   openTime: '', closeTime: '', workingDays: [],
-  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
-  codEnabled: true, onlinePaymentEnabled: true,
+  deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
+  fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
   notifyOrders: true, notifyMessages: true, notifyPromotions: false,
 };
 
@@ -43,11 +48,19 @@ export function Settings() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
   const [saving, setSaving] = useState(false);
+  // Kept out of `Form` and loaded separately: these columns arrive with
+  // migration 0065, and null means "not applied yet", which hides the section
+  // rather than saving a value the database has nowhere to put.
+  const [parcel, setParcel] = useState<ParcelDefaults | null>(null);
+
+  const setParcelField = (key: keyof ParcelDefaults, raw: string) =>
+    setParcel((p) => (p ? { ...p, [key]: Number(raw.replace(/[^\d.]/g, '')) || 0 } : p));
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
+
 
   // Seed from the signed-in seller's own boutique row rather than sample copy.
   useEffect(() => {
@@ -55,6 +68,8 @@ export function Settings() {
     setForm({
       instagram: boutique.instagram ?? '',
       mapUrl: boutique.map_url ?? '',
+      lat: boutique.latitude != null ? String(boutique.latitude) : '',
+      lng: boutique.longitude != null ? String(boutique.longitude) : '',
       phone: boutique.phone ?? '',
       whatsapp: boutique.whatsapp ?? '',
       email: boutique.email ?? '',
@@ -63,24 +78,38 @@ export function Settings() {
       workingDays: boutique.working_days?.length ? boutique.working_days : [...WORKING_DAYS].slice(0, 6),
       deliveryAvailable: boutique.delivery_available ?? true,
       deliveryAreas: boutique.delivery_areas ?? '',
-      deliveryCharge: boutique.delivery_charge != null ? String(boutique.delivery_charge) : '0',
-      codEnabled: boutique.cod_enabled ?? true,
-      onlinePaymentEnabled: boutique.online_payment_enabled ?? true,
+      rates: zoneRatesToForm(boutique),
+      fulfilment: fulfilmentToForm(boutique),
+      freeDeliveryOver: boutique.free_delivery_over != null ? String(boutique.free_delivery_over) : '0',
       notifyOrders: boutique.notify_orders ?? true,
       notifyMessages: boutique.notify_messages ?? true,
       notifyPromotions: boutique.notify_promotions ?? false,
     });
   }, [boutique]);
 
+  useEffect(() => {
+    if (!boutique) return;
+    let live = true;
+    void fetchParcelDefaults(boutique.id).then((p) => { if (live) setParcel(p); });
+    return () => { live = false; };
+  }, [boutique]);
+
   const save = async () => {
     if (!boutique) return showToast('No boutique linked to this account yet');
 
     const next: Partial<Record<keyof Form, string>> = {};
+    // The map pin is required here for the same reason it is in the setup wizard
+    // — a courier, and a buyer driving over, need the point rather than the
+    // street. An existing shop that never set one is asked for it on its next
+    // save, which is the only moment we can ask without nagging.
+    if (!form.mapUrl.trim()) next.mapUrl = 'Set your exact shop location on the map';
+    else if (!isMapsLink(form.mapUrl)) next.mapUrl = 'That is not a Google Maps link — use the button, or Maps → Share → Copy link';
     if (form.phone.trim() && !PHONE_RE.test(form.phone.trim())) next.phone = 'Enter a 10-digit mobile number';
     if (form.whatsapp.trim() && !PHONE_RE.test(form.whatsapp.trim())) next.whatsapp = 'Enter a 10-digit WhatsApp number';
     if (form.workingDays.length === 0) next.workingDays = 'Pick at least one working day';
     if (form.deliveryAvailable && !form.deliveryAreas.trim()) next.deliveryAreas = 'List the areas you deliver to';
-    if (!form.codEnabled && !form.onlinePaymentEnabled) next.codEnabled = 'Enable at least one payment method';
+    const badFulfilment = validateFulfilment(form.fulfilment);
+    if (badFulfilment) next.fulfilment = badFulfilment;
     if (Object.keys(next).length) {
       setErrors(next);
       return showToast('Please fix the highlighted fields');
@@ -89,6 +118,8 @@ export function Settings() {
     const patch: BoutiquePatch = {
       instagram: form.instagram.trim().replace(/^@/, '') || null,
       map_url: form.mapUrl.trim() || null,
+      latitude: form.lat.trim() ? Number(form.lat) : null,
+      longitude: form.lng.trim() ? Number(form.lng) : null,
       phone: form.phone.trim() || null,
       whatsapp: form.whatsapp.trim() || form.phone.trim() || null,
       email: form.email.trim() || null,
@@ -97,9 +128,13 @@ export function Settings() {
       working_days: form.workingDays,
       delivery_available: form.deliveryAvailable,
       delivery_areas: form.deliveryAreas.trim(),
-      delivery_charge: Number(form.deliveryCharge || 0),
-      cod_enabled: form.codEnabled,
-      online_payment_enabled: form.onlinePaymentEnabled,
+      ...zoneRatesToPatch(form.rates),
+      ...fulfilmentToPatch(form.fulfilment),
+      free_delivery_over: Number(form.freeDeliveryOver || 0),
+      // Prepaid-only platform. `cod_enabled` is deliberately NOT written here —
+      // a trigger in migration 0085 pins it false on every insert and update, so
+      // the database owns it and no client can turn it back on.
+      online_payment_enabled: true,
       notify_orders: form.notifyOrders,
       notify_messages: form.notifyMessages,
       notify_promotions: form.notifyPromotions,
@@ -108,6 +143,15 @@ export function Settings() {
     setSaving(true);
     try {
       await updateBoutique(boutique.id, patch);
+      // Separate write, same button. A failure here must not roll back the rest
+      // of the settings, so it reports on its own rather than failing the save.
+      if (parcel) {
+        try {
+          await saveParcelDefaults(boutique.id, parcel);
+        } catch (e) {
+          showToast(e instanceof Error ? e.message : 'Parcel defaults could not be saved');
+        }
+      }
       reload();
       showToast('Settings saved');
     } catch (e) {
@@ -142,7 +186,24 @@ export function Settings() {
           </Row>
           <Field label="Email address" value={form.email} onChange={(v) => set('email', v)} placeholder="you@boutique.com" inputMode="email" />
           <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @. Opens your profile from the Instagram button on your shop page." />
-          <Field label="Google Maps link" value={form.mapUrl} onChange={(v) => set('mapUrl', v)} placeholder="https://maps.app.goo.gl/…" inputMode="url" hint="Open your shop in Google Maps, tap Share, and paste the link. Powers the Shop Location button on your buyer page." />
+          {/* Checked against the address on the boutique row, so a pin taken at
+              home instead of at the shop is called out. See ShopLocationPicker. */}
+          <ShopLocationPicker
+            mapUrl={form.mapUrl}
+            lat={form.lat}
+            lng={form.lng}
+            onChange={(next) => {
+              setForm((f) => ({ ...f, ...next }));
+              setErrors((e) => (e.mapUrl ? { ...e, mapUrl: undefined } : e));
+            }}
+            error={errors.mapUrl}
+            expected={{
+              pincode: boutique?.pincode ?? undefined,
+              city: boutique?.city ?? undefined,
+              district: boutique?.district ?? undefined,
+              state: boutique?.state ?? undefined,
+            }}
+          />
         </SectionCard>
 
         <SectionCard title="Store timing" subtitle="Shown to buyers, so they know when you are open.">
@@ -153,20 +214,77 @@ export function Settings() {
           <ChipPicker label="Working days" options={WORKING_DAYS} value={form.workingDays} onChange={(next) => set('workingDays', next)} multiple error={errors.workingDays} />
         </SectionCard>
 
-        <SectionCard title="Delivery">
+        {/* These are the buyer's actual charges, not notes to yourself — the
+            platform no longer sets a delivery fee of its own (migration 0076),
+            and they vary by distance (0077). */}
+        <SectionCard title="Delivery" subtitle="What buyers pay you to deliver. Your numbers, charged at checkout.">
           <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
           {form.deliveryAvailable && (
             <>
-              <TextArea label="Delivery areas" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
-              <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Enter 0 for free delivery." />
+              <DeliveryRateCard
+                value={form.rates}
+                onChange={(next) => set('rates', next)}
+                places={{ city: boutique?.city, district: boutique?.district, state: boutique?.state }}
+                freeDeliveryOver={form.freeDeliveryOver}
+                onFreeDeliveryOverChange={(v) => set('freeDeliveryOver', v)}
+              />
+              <TextArea
+                label="Delivery areas"
+                value={form.deliveryAreas}
+                onChange={(v) => set('deliveryAreas', v)}
+                placeholder="Coimbatore city, Tirupur, Erode"
+                error={errors.deliveryAreas}
+                hint="Shown on your shop page as a description. What buyers are actually charged — and whether they can order at all — comes from the bands above."
+              />
             </>
           )}
         </SectionCard>
 
+        <SectionCard title="Dispatch & returns" subtitle="What buyers are promised on every product you list.">
+          <FulfilmentCard value={form.fulfilment} onChange={(next) => set('fulfilment', next)} error={errors.fulfilment} />
+        </SectionCard>
+
+        {parcel && (
+          <SectionCard
+            title="Parcel defaults"
+            subtitle="Used when a courier is booked, for any product with no weight of its own."
+          >
+            <Field
+              label="Default weight (grams)"
+              value={String(parcel.default_weight_grams)}
+              onChange={(v) => setParcelField('default_weight_grams', v)}
+              inputMode="numeric"
+              placeholder="500"
+              hint="A typical packed piece from your shop. Set weights on individual products where they differ."
+            />
+            <Row>
+              <Field label="Box length (cm)" value={String(parcel.package_length_cm)} onChange={(v) => setParcelField('package_length_cm', v)} inputMode="numeric" placeholder="30" />
+              <Field label="Box breadth (cm)" value={String(parcel.package_breadth_cm)} onChange={(v) => setParcelField('package_breadth_cm', v)} inputMode="numeric" placeholder="24" />
+            </Row>
+            <Field
+              label="Box height (cm)"
+              value={String(parcel.package_height_cm)}
+              onChange={(v) => setParcelField('package_height_cm', v)}
+              inputMode="numeric"
+              placeholder="6"
+              hint="Couriers charge on whichever is greater — the real weight or the size of the box — so an oversized box costs you money."
+            />
+          </SectionCard>
+        )}
+
+        {/* No longer a setting — MangaiMart withdrew cash on delivery. Kept as a
+            visible statement rather than deleted outright, because a seller who
+            had it switched on will come looking for the toggle. */}
         <SectionCard title="Payments accepted">
-          <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
-          <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
-          {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.codEnabled}</span>}
+          <div style={css('display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
+            <div style={css('font-size:13px;line-height:1.55;color:var(--ag-ink-2);')}>
+              <div style={css('font-weight:800;color:var(--ag-ink);')}>Online payment only</div>
+              Every order is paid in full through Razorpay before it reaches you — card, UPI or netbanking.
+              Cash on delivery has been withdrawn across MangaiMart, so you no longer send stock that has not
+              been paid for, and there is no cash to count or hand back at the door.
+            </div>
+          </div>
         </SectionCard>
 
         <SectionCard title="Notifications" subtitle="What lands in your notifications inbox.">

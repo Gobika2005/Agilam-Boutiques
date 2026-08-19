@@ -84,7 +84,7 @@ function SizeSheet({
 
         <div style={css('display:flex;align-items:center;gap:12px;')}>
           <span style={css(`flex:none;width:56px;height:70px;border-radius:14px;overflow:hidden;position:relative;background:${TONES[tone % TONES.length]};`)}>
-            <ImageSlot src={image} placeholder={title} alt={title} className="agx-prod-fill" />
+            <ImageSlot src={image} placeholder={title} alt={title} className="agx-prod-fill" sizes="56px" />
           </span>
           <span style={css('flex:1;min-width:0;')}>
             <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:16.5px;color:var(--ag-ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
@@ -312,7 +312,10 @@ export function FeedPostCard({
               key={`${product.id}-${i}`}
               style={css(`position:relative;flex:0 0 100%;width:100%;aspect-ratio:4/5;scroll-snap-align:center;scroll-snap-stop:always;background:${TONES[product.tone % TONES.length]};`)}
             >
-              <ImageSlot src={src || undefined} placeholder={product.title} alt={`${product.title} — photo ${i + 1}`} className="agx-prod-fill" />
+              {/* The feed is one column capped at `.agx-feed`'s 620px, so this
+                  photo is full-bleed on a phone — not the two-across tile the
+                  ImageSlot default assumes. */}
+              <ImageSlot src={src || undefined} placeholder={product.title} alt={`${product.title} — photo ${i + 1}`} className="agx-prod-fill" sizes="(min-width: 620px) 620px, 100vw" detail />
             </div>
           ))}
         </div>

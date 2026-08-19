@@ -1,13 +1,37 @@
-import { COMPANY, COMPANY_ADDRESS_LINE, POLICY_TERMS as T } from './company';
+import { useSyncExternalStore } from 'react';
+import { COMPANY, COMPANY_ADDRESS_LINE, POLICY_TERMS } from './company';
+import { currentSettings, subscribeSettings, type PlatformSettings } from './settings';
 
 /**
  * Buyer-facing legal & informational pages.
  *
  * Every page is data, not markup: `src/pages/buyer/Policy.tsx` renders whichever
  * entry matches the `:slug` route param, so adding a page is a matter of adding
- * an entry here. Terms quoted in the copy (delivery window, return window, free
- * delivery threshold) come from `POLICY_TERMS` so the promises stay in step with
- * what `src/lib/pricing.ts` actually charges.
+ * an entry here.
+ *
+ * ── Where the numbers come from ─────────────────────────────────────────────
+ *
+ * The commercial terms quoted in the copy — delivery fee, free-delivery
+ * threshold, return window, commission — are read from the LIVE
+ * `platform_settings` row, the same source `src/lib/pricing.ts` prices a bag
+ * from. They used to be the compile-time `POLICY_TERMS` constants, and the two
+ * drifted: the Delivery Policy promised a ₹79 delivery fee while checkout
+ * charged ₹89, the Return Policy advertised a 7-day window against a configured
+ * window of zero, and the cash-order cap on the Terms page was double the one
+ * the bag actually enforced. Those are published contractual terms, so a buyer
+ * was being charged something other than what the site promised.
+ *
+ * Keeping them in step "by hand" is what failed. Now the promise and the charge
+ * are the same value by construction: change the fee in Platform Settings and
+ * the policy page says the new number on the next render. `POLICY_TERMS` is
+ * still the fallback (via DEFAULT_SETTINGS) for the moments before the row
+ * loads, and still owns the copy-only terms — refund timings, delivery
+ * estimates, the cancellation window — which are promises rather than
+ * calculations and have no settings column.
+ *
+ * Because the copy now depends on state, `POLICIES` is a function of the terms
+ * rather than a module constant. Components should use `usePolicies()` /
+ * `usePolicy(slug)` so they re-render when the row lands.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *  ⚠  These are drafted to standard Indian marketplace practice and to the
@@ -37,49 +61,100 @@ export type PolicyPage = {
 };
 
 /** Shown as "Last updated" on every page. Bump when the copy changes. */
-export const POLICIES_UPDATED = '22 July 2026';
-
-const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
+export const POLICIES_UPDATED = '11 August 2026';
 
 const CONTACT_SECTION: PolicySection = {
   heading: 'Contact us',
   blocks: [
-    `Questions about this policy? Write to ${COMPANY.supportEmail} or call ${COMPANY.phone} (${COMPANY.supportHours}).`,
+    `Questions about this policy? Write to ${COMPANY.supportEmail} or call ${COMPANY.phone}.`,
     `${COMPANY.legalName}, ${COMPANY_ADDRESS_LINE}.`,
   ],
 };
 
-export const POLICIES: PolicyPage[] = [
+/**
+ * The numbers the copy quotes: the admin-editable ones straight off the live
+ * settings row, plus the copy-only promises that have no settings column.
+ *
+ * Naming it `T` keeps every `${T.x}` interpolation below unchanged from when
+ * these came from `POLICY_TERMS` — the only thing that moved is where the
+ * commercial values are read from.
+ */
+type PolicyCopyTerms = {
+  commissionPct: number;
+  refundWorkingDays: string;
+  deliveryEstimate: string;
+  metroDeliveryEstimate: string;
+  cancellationWindowHours: number;
+};
+
+function copyTerms(s: PlatformSettings): PolicyCopyTerms {
+  return {
+    // Live, admin-editable — these are what the buyer is actually charged.
+    //
+    // Delivery and the return window are no longer among them: each boutique
+    // sets its own charge and threshold (migrations 0076/0077) and its own
+    // change-of-mind window (0078), so there is no single figure this copy could
+    // quote that would be true for every shop. Cash on delivery is not among
+    // them either — it was withdrawn platform-wide (0085).
+    // The sections below describe the rule instead and point at the number the
+    // product page and checkout actually show — which is the mistake that was
+    // made the other way round before, when these pages quoted a frozen ₹79
+    // while checkout charged ₹89.
+    //
+    // What stays platform-wide, and is still stated as an absolute here, is the
+    // 30-day cover for a faulty, wrong or misdescribed item. That is the
+    // marketplace's own promise and request_return() enforces it whatever a
+    // shop sets its goodwill window to.
+    commissionPct: s.commission_pct,
+    // Copy-only: service promises with no settings column behind them.
+    refundWorkingDays: POLICY_TERMS.refundWorkingDays,
+    deliveryEstimate: POLICY_TERMS.deliveryEstimate,
+    metroDeliveryEstimate: POLICY_TERMS.metroDeliveryEstimate,
+    cancellationWindowHours: POLICY_TERMS.cancellationWindowHours,
+  };
+}
+
+/**
+ * Build the full set of pages for a given set of terms.
+ *
+ * Exported for the rare non-React caller (and for tests); components should
+ * reach for `usePolicies()` so the copy re-renders when the settings row lands.
+ */
+export function buildPolicies(T: PolicyCopyTerms): PolicyPage[] {
+  return [
   /* ------------------------------------------------------------------ */
   {
     slug: 'delivery-policy',
     title: 'Delivery Policy',
     eyebrow: 'Getting your order to you',
     icon: 'local_shipping',
-    summary: `Most orders reach you in ${T.deliveryEstimate}. Free delivery above ${inr(T.freeDeliveryOver)}.`,
+    summary: `Most orders reach you in ${T.deliveryEstimate}. Each boutique sets its own delivery charge, shown before you pay.`,
     sections: [
       {
         heading: 'Where we deliver',
         blocks: [
-          `${COMPANY.brand} delivers across India. Orders are fulfilled by the individual boutique you bought from, and shipped from their store in Tamil Nadu.`,
+          `${COMPANY.brand} delivers across India. Orders are fulfilled by the individual boutique you bought from, and shipped from their own store.`,
           'We do not currently deliver outside India. If your pincode is not serviceable by our delivery partners, the boutique will contact you on the number you provided and refund the order in full.',
         ],
       },
       {
         heading: 'Delivery timelines',
         blocks: [
-          `- Metro cities: ${T.metroDeliveryEstimate} from dispatch.`,
-          `- Rest of India: ${T.deliveryEstimate} from dispatch.`,
-          '- Made-to-order, custom-stitched and altered pieces: the boutique will confirm the timeline with you on chat before work begins. These typically add 5–10 working days.',
-          'Timelines are estimates from the date the boutique dispatches your order, not from the date you place it. Boutiques usually pack an order within 1–2 working days of confirming it.',
+          `- Metro cities: ${T.metroDeliveryEstimate} in transit, once the parcel is dispatched.`,
+          `- Rest of India: ${T.deliveryEstimate} in transit, once the parcel is dispatched.`,
+          '- Before that, each boutique takes its own time to pack. That figure is theirs, not ours, and is shown on every product page — "Dispatched in 1–2 working days" for a shop with the piece on the shelf, longer for one that cuts to measure.',
+          '- Made-to-order, custom-stitched and altered pieces: the boutique will confirm the timeline with you on chat before work begins.',
+          'So the total is the boutique’s dispatch time plus the transit estimate above. Transit times are our delivery partners’ estimates and are counted from dispatch, not from the moment you place the order.',
         ],
       },
       {
         heading: 'Delivery charges',
         blocks: [
-          `- Orders of ${inr(T.freeDeliveryOver)} and above: free delivery.`,
-          `- Orders below ${inr(T.freeDeliveryOver)}: a flat ${inr(T.standardShipping)} delivery fee, shown on the payment screen before you pay.`,
-          'A cart containing items from several boutiques is split into one order per boutique. The delivery fee is charged once for the cart, not once per boutique.',
+          'Each boutique sets its own delivery charges, and prices them by distance: one rate within its own town, and separate rates for the rest of its district, the rest of its state and the rest of India. Many set the local rate to zero.',
+          'Enter your pincode on a product page — or your delivery address at checkout — and the exact charge for your bag is shown before you pay. That figure is what you are charged.',
+          'Some boutiques deliver free once your order from that shop reaches a value they choose. That applies to deliveries within the boutique’s own town and district, where its carriage cost is lowest.',
+          'A boutique may choose not to deliver beyond a certain distance. If one of the shops in your bag does not reach your address, we tell you at checkout rather than taking an order it cannot fulfil.',
+          'A cart containing items from several boutiques is split into one order per boutique, each packed and shipped by that shop. Each carries its own delivery charge, because each is a separate parcel.',
         ],
       },
       {
@@ -146,15 +221,23 @@ export const POLICIES: PolicyPage[] = [
     title: 'Return & Refund Policy',
     eyebrow: 'If something is not right',
     icon: 'autorenew',
-    summary: `${T.returnWindowDays}-day returns on eligible items. Refunds land in ${T.refundWorkingDays}.`,
+    summary: `Faults are always covered for 30 days. Change-of-mind returns are up to each boutique. Refunds land in ${T.refundWorkingDays}.`,
     sections: [
+      // Since migration 0078 the change-of-mind window is the BOUTIQUE's, so
+      // there is no single number this page can quote that is true of every
+      // shop — the same reason the delivery copy stopped quoting a fee. What is
+      // platform-wide, and stated as such, is the 30-day cover for a faulty,
+      // wrong or misdescribed item: that one is the marketplace's own promise
+      // and `request_return()` enforces it regardless of what a shop sets.
       {
-        heading: `The ${T.returnWindowDays}-day window`,
+        heading: 'When you can return an item',
         blocks: [
-          `You may request a return within ${T.returnWindowDays} days of delivery if the item is damaged, defective, materially different from what was listed, or the wrong item was sent.`,
+          '- Damaged, defective, the wrong item, or materially different from what was listed: always accepted, for 30 days from delivery, from every boutique on MangaiMart.',
+          '- Changed your mind, or the size does not suit: accepted where the boutique offers it. Each shop sets its own window, shown on the product page under Shipping Information, and on the order itself.',
+          'Some boutiques — particularly those stitching to measure — do not accept change-of-mind returns at all. That is stated on the product page before you buy, never discovered afterwards.',
           'Raise the request from My Orders, or message the boutique directly from the order page. Please include clear photographs of the item and the packaging — they let the boutique resolve the request without a delay.',
         ],
-      },
+          },
       {
         heading: 'Condition of returned items',
         blocks: [
@@ -387,7 +470,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Your account',
         blocks: [
-          'You may browse without an account. Chatting with a boutique and syncing your orders across devices require one.',
+          'You may browse, save items and fill a bag without an account. Placing an order requires one — as do chatting with a boutique and syncing your orders across devices.',
           'Keep your sign-in details to yourself — you are responsible for activity on your account. Tell us immediately if you believe it has been used without your permission.',
           'You agree to give accurate details, and to keep your delivery address and phone number up to date.',
         ],
@@ -401,12 +484,11 @@ export const POLICIES: PolicyPage[] = [
         ],
       },
       {
-        heading: 'Cash on delivery',
+        heading: 'How you pay',
         blocks: [
-          `Where the boutique offers it, you may pay in cash when your order is delivered. A handling fee of ${inr(T.codFee)} is added per delivery, and cash on delivery is available on orders up to ${inr(T.codMaxOrder)}. Both are shown before you confirm.`,
-          'Because a cart spanning several boutiques is delivered separately by each, the handling fee applies once per delivery, and each delivery is paid for on arrival.',
-          'Please keep the exact amount ready — our delivery partners may not carry change. If payment is refused at the door the order is returned to the boutique and may count against future cash-on-delivery eligibility.',
-          'A cash-on-delivery order can be cancelled free of charge from "My orders" at any time before it is dispatched. Nothing has been charged, so there is no refund to process.',
+          'Every order on MangaiMart is paid in full online before it is placed — by UPI, credit or debit card, or net banking, through our payment gateway. We do not offer cash on delivery.',
+          'Your card and bank details are entered on the gateway’s own secure screen and are never stored by us.',
+          'Because payment is taken up front, cancelling an order means a refund rather than simply calling it off: see the Cancellation and Refund policy for how and when that money comes back.',
         ],
       },
       {
@@ -464,12 +546,12 @@ export const POLICIES: PolicyPage[] = [
     title: 'About Us',
     eyebrow: 'Why MangaiMart exists',
     icon: 'favorite',
-    summary: 'A marketplace built so Tamil Nadu’s boutiques can be found — and talked to — online.',
+    summary: 'A marketplace built so India’s independent boutiques can be found — and talked to — online.',
     sections: [
       {
         heading: 'Our story',
         blocks: [
-          'Tamil Nadu’s best ethnic wear has always come from small boutiques — a street in RS Puram, a first floor in T. Nagar, a family loom in Kanchipuram. What they have never had is a way to be found by someone two districts away.',
+          'India’s best ethnic wear has always come from small boutiques — a street in RS Puram, a first floor in T. Nagar, a family loom in Kanchipuram, a block-printing studio in Jaipur. What they have never had is a way to be found by someone two districts away.',
           `${COMPANY.brand} was built for exactly that. We put verified local boutiques in one place, keep their photographs and their prices theirs, and let you talk to the owner before you buy — the way you would across the counter.`,
         ],
       },
@@ -503,7 +585,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Reaching us',
         blocks: [
-          `Email ${COMPANY.supportEmail} or call ${COMPANY.phone}. We answer ${COMPANY.supportHours}.`,
+          `Email ${COMPANY.supportEmail} or call ${COMPANY.phone}.`,
           'For anything about a specific order — where it is, a size change, a custom blouse — the fastest route is to message the boutique directly from the order page. They are the ones holding your parcel.',
         ],
       },
@@ -523,7 +605,7 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'How do I return something?',
         blocks: [
-          `Within ${T.returnWindowDays} days of delivery, open the order and message the boutique with photographs. See the Return & Refund Policy for what is eligible.`,
+          'Open the order and tap "Request a return", with photographs. A damaged, faulty or wrong item is accepted for 30 days by every boutique; for a change of mind, the window is the one that boutique published on the product page. See the Return & Refund Policy.',
         ],
       },
       {
@@ -535,10 +617,7 @@ export const POLICIES: PolicyPage[] = [
       CONTACT_SECTION,
     ],
   },
-];
-
-export function findPolicy(slug: string | undefined): PolicyPage | undefined {
-  return POLICIES.find((p) => p.slug === slug);
+  ];
 }
 
 /** The seven legal pages, in the order they are listed in the footer and profile. */
@@ -552,5 +631,47 @@ export const LEGAL_SLUGS = [
   'terms',
 ] as const;
 
-export const legalPages = (): PolicyPage[] =>
-  LEGAL_SLUGS.map((s) => findPolicy(s)).filter((p): p is PolicyPage => !!p);
+/**
+ * Every page slug, in route order. Static — `src/App.tsx` registers one route
+ * per slug at mount and must not depend on a settings row that has not loaded.
+ * The page CONTENT is what varies with the terms, never the set of pages.
+ */
+export const POLICY_SLUGS: string[] = buildPolicies(copyTerms(currentSettings())).map((p) => p.slug);
+
+// ── React bindings ──────────────────────────────────────────────────────────
+
+/**
+ * The policy pages under the terms in force right now, re-rendering when the
+ * live settings row lands or an admin changes a fee.
+ *
+ * The snapshot is memoised on the settings object identity: `useSyncExternalStore`
+ * demands a stable reference between publishes, and rebuilding the array on every
+ * call would loop forever.
+ */
+let cachedFor: PlatformSettings | null = null;
+let cachedPolicies: PolicyPage[] = [];
+
+function policiesSnapshot(): PolicyPage[] {
+  const s = currentSettings();
+  if (cachedFor !== s) {
+    cachedFor = s;
+    cachedPolicies = buildPolicies(copyTerms(s));
+  }
+  return cachedPolicies;
+}
+
+/** All policy pages, under the terms currently in force. */
+export function usePolicies(): PolicyPage[] {
+  return useSyncExternalStore(subscribeSettings, policiesSnapshot, policiesSnapshot);
+}
+
+/** One policy page by slug, or undefined. */
+export function usePolicy(slug: string | undefined): PolicyPage | undefined {
+  return usePolicies().find((p) => p.slug === slug);
+}
+
+/** The seven legal pages, in footer order, under the terms currently in force. */
+export function useLegalPages(): PolicyPage[] {
+  const all = usePolicies();
+  return LEGAL_SLUGS.map((s) => all.find((p) => p.slug === s)).filter((p): p is PolicyPage => !!p);
+}

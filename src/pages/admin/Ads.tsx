@@ -3,6 +3,9 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique, uploadProductImage } from '@/data/products';
+import { fetchApprovedBoutiques } from '@/data/boutiques';
+import { useAuth } from '@/auth/AuthContext';
+import { canSeePlatformMoney } from '@/lib/staffAccess';
 import {
   fetchAllCampaigns,
   fetchPlacements,
@@ -11,6 +14,7 @@ import {
   requestChanges,
   rejectAndRefund,
   adminEditCreative,
+  adminCreateCampaign,
   updatePlacement,
   effectiveAdStatus,
   type AdCampaignAdmin,
@@ -18,6 +22,8 @@ import {
   type CreativeInput,
 } from '@/data/ads';
 import type { AdStatus, AdPlacementCode, AdSubjectType } from '@/types/database';
+import { SearchInput } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 // Terminal states carry no creative to fix; everything else is admin-editable.
 const ADMIN_EDITABLE: AdStatus[] = ['pending_payment', 'pending_review', 'changes_requested', 'scheduled', 'live', 'paused'];
@@ -59,8 +65,13 @@ const FILTERS: { key: AdStatus | 'all'; label: string }[] = [
 
 export function Ads() {
   const { showToast } = useShop();
+  const { profile } = useAuth();
+  // Staff review ad creative; what a seller paid for the slot is platform
+  // revenue and stays with the owner (migration 0086).
+  const showMoney = canSeePlatformMoney(profile?.role);
   const [tab, setTab] = useState<'campaigns' | 'rates'>('campaigns');
   const [statusFilter, setStatusFilter] = useState<AdStatus | 'all'>('all');
+  const [search, setSearch] = useSeededSearch();
 
   // Fetch every campaign and filter client-side on the *effective* status, so a
   // live-but-expired ad falls under "Ended" (not "Live") the moment its window
@@ -71,8 +82,17 @@ export function Ads() {
   const rows = useMemo(() => {
     const withEff = (campaigns ?? []).map((c) => ({ c, status: effectiveAdStatus(c) }));
     const shown = statusFilter === 'all' ? withEff : withEff.filter((r) => r.status === statusFilter);
-    return shown.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
-  }, [campaigns, statusFilter]);
+    const q = search.trim().toLowerCase();
+    const matched = !q
+      ? shown
+      : shown.filter(
+          ({ c }) =>
+            (c.headline ?? '').toLowerCase().includes(q) ||
+            (c.boutique?.name ?? '').toLowerCase().includes(q) ||
+            c.placement_code.toLowerCase().includes(q),
+        );
+    return matched.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
+  }, [campaigns, statusFilter, search]);
 
   // Revenue = every campaign that has actually been paid and not refunded.
   const summary = useMemo(() => {
@@ -90,6 +110,8 @@ export function Ads() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preview, setPreview] = useState<AdCampaignAdmin | null>(null);
   const [editing, setEditing] = useState<AdCampaignAdmin | null>(null);
+  // The admin's own composer — publishes a campaign with no payment behind it.
+  const [composing, setComposing] = useState(false);
 
   const doApprove = async (c: AdCampaignAdmin) => {
     setBusyId(c.id);
@@ -155,23 +177,39 @@ export function Ads() {
     <div>
       {/* Summary */}
       <div className="agx-adm-g2" style={css('margin-bottom:16px;')}>
-        <SummaryTile label="Ad revenue" value={money(summary.revenue)} icon="payments" />
+        {/* What sellers have paid the platform for placements — revenue, and
+            so admin-only. Staff review the creative, they do not price it. */}
+        {showMoney && <SummaryTile label="Ad revenue" value={money(summary.revenue)} icon="payments" />}
         <SummaryTile label="Impressions" value={compact(summary.impressions)} icon="visibility" />
         <SummaryTile label="Clicks" value={compact(summary.clicks)} icon="ads_click" />
         <SummaryTile label="Awaiting review" value={String(summary.inReview)} icon="rate_review" highlight={summary.inReview > 0} />
       </div>
 
-      {/* Tabs */}
-      <div style={css('display:flex;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:4px;margin-bottom:16px;width:fit-content;')}>
-        {(['campaigns', 'rates'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={css(`border:none;cursor:pointer;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;background:${tab === t ? 'var(--ag-surface)' : 'transparent'};color:${tab === t ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>
-            {t === 'campaigns' ? 'Campaigns' : 'Rate card'}
+      {/* Tabs + the admin's own "publish an ad" entry point */}
+      <div style={css('display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px;')}>
+        <div style={css('display:flex;gap:8px;background:var(--ag-surface-2);border-radius:12px;padding:4px;width:fit-content;')}>
+          {(['campaigns', 'rates'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={css(`border:none;cursor:pointer;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;background:${tab === t ? 'var(--ag-surface)' : 'transparent'};color:${tab === t ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}>
+              {t === 'campaigns' ? 'Campaigns' : 'Rate card'}
+            </button>
+          ))}
+        </div>
+        {/* Publishing a house ad gives away inventory for free, so it stays with
+            the owner — `admin_create_ad_campaign` still checks is_admin() and
+            would refuse a staff caller anyway (0086). Hidden rather than left to
+            fail, so nobody fills in a form that cannot be submitted. */}
+        {showMoney && (
+          <button onClick={() => setComposing(true)} style={css('height:40px;padding:0 18px;border-radius:12px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 14px 30px -18px rgba(214,51,108,.9);')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Create ad
           </button>
-        ))}
+        )}
       </div>
 
       {tab === 'campaigns' && (
         <>
+          <div style={css('display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;')}>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search headline, boutique or placement…" />
+          </div>
           <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;')}>
             {FILTERS.map((f) => {
               const on = statusFilter === f.key;
@@ -185,7 +223,9 @@ export function Ads() {
 
           {loading && <div style={css('color:var(--ag-muted);font-size:13.5px;')}>Loading campaigns…</div>}
           {!loading && rows.length === 0 && (
-            <div style={css('color:var(--ag-muted);font-size:13.5px;')}>No campaigns to show.</div>
+            <div style={css('color:var(--ag-muted);font-size:13.5px;')}>
+              No campaigns to show.{statusFilter === 'all' ? ' Use “Create ad” to run one yourself — no payment involved.' : ''}
+            </div>
           )}
 
           <div style={css('display:flex;flex-direction:column;gap:12px;')}>
@@ -211,7 +251,13 @@ export function Ads() {
                     </div>
 
                     <div style={css('display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ag-label);')}>
-                      <span><b>{money(c.amount)}</b> · {c.days}d ({c.days * 24}h)</span>
+                      {/* A house ad has no price to show — saying "₹0" would read
+                          as a broken sale rather than a placement we chose to run. */}
+                      <span>
+                        {c.house_ad
+                          ? <b style={css('color:var(--ag-crimson);')}>House ad</b>
+                          : showMoney ? <b>{money(c.amount)}</b> : <b>Paid</b>} · {c.days}d ({c.days * 24}h)
+                      </span>
                       {c.end_at ? (
                         <span>ends {new Date(c.end_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                       ) : c.start_date ? (
@@ -249,7 +295,10 @@ export function Ads() {
                           Rework
                         </button>
                       )}
-                      {(status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
+                      {/* Reject refunds the seller's money through Razorpay, so
+                          it is the owner's call. Staff approve, pause and send
+                          back for rework; they do not move money. */}
+                      {showMoney && (status === 'pending_review' || status === 'changes_requested' || status === 'scheduled' || status === 'live' || status === 'paused') && (
                         <button disabled={busy} onClick={() => doReject(c)} style={css('height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;')}>
                           Reject & refund
                         </button>
@@ -315,6 +364,298 @@ export function Ads() {
           onSaved={() => { setEditing(null); reload(); }}
         />
       )}
+
+      {composing && (
+        <AdComposer
+          placements={placements ?? []}
+          onClose={() => setComposing(false)}
+          onCreated={() => { setComposing(false); setStatusFilter('all'); reload(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin composer — publish an ad with no payment behind it ("house ad").
+//
+// The seller wizard (src/pages/seller/Promote.tsx) is the same form with a
+// payment step: pick a placement, pick what it promotes, write the creative,
+// choose a duration. Here the duration is free and the campaign is published on
+// save, because the admin is both the buyer and the reviewer.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdComposer({ placements, onClose, onCreated }: { placements: AdPlacement[]; onClose: () => void; onCreated: () => void }) {
+  const { showToast } = useShop();
+  const { data: boutiques, loading: loadingBoutiques } = useAsync(() => fetchApprovedBoutiques(), []);
+
+  const [boutiqueId, setBoutiqueId] = useState('');
+  const [placementCode, setPlacementCode] = useState<AdPlacementCode | ''>('');
+  const [heroTarget, setHeroTarget] = useState<AdSubjectType>('product');
+  const [productId, setProductId] = useState<string | null>(null);
+  const [headline, setHeadline] = useState('');
+  const [subtext, setSubtext] = useState('');
+  const [tag, setTag] = useState('');
+  const [ctaLabel, setCtaLabel] = useState('');
+  const [image, setImage] = useState('');
+  const [days, setDays] = useState(7);
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [goLive, setGoLive] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // Only the boutique's own products may be promoted, so the picker waits for a
+  // boutique and reloads with it.
+  const { data: products } = useAsync(
+    () => (boutiqueId ? fetchProductsByBoutique(boutiqueId) : Promise.resolve([])),
+    [boutiqueId],
+  );
+
+  const boutique = (boutiques ?? []).find((b) => b.id === boutiqueId) ?? null;
+  const placement = placements.find((p) => p.code === placementCode) ?? null;
+  const isHero = placementCode === 'home_hero';
+  // What the ad opens: fixed for the two simple placements, a choice on the hero.
+  const subjectType: AdSubjectType =
+    placementCode === 'boutique_promo' ? 'boutique' : isHero ? heroTarget : 'product';
+  const needsProduct = placementCode === 'sponsored_card' || (isHero && heroTarget === 'product');
+  const selectedProduct = (products ?? []).find((p) => p.id === productId) ?? null;
+
+  const ctaPresets = CTA_PRESETS[subjectType];
+  const resolvedCta = ctaLabel && ctaPresets.includes(ctaLabel) ? ctaLabel : ctaPresets[0];
+
+  // Same fallback chain the buyer render uses: upload → product photo → logo.
+  const heroImageResolved =
+    image || (subjectType === 'boutique' ? boutique?.logo_url || '' : selectedProduct?.image_url || '');
+
+  const pickImage = async (file: File) => {
+    if (!boutiqueId) { showToast('Pick a boutique first — the image is filed under it'); return; }
+    setUploading(true);
+    try {
+      setImage(await uploadProductImage(boutiqueId, file));
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not upload the image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // A campaign-shaped object purely so the shared preview can render the
+  // in-progress creative exactly as a buyer would see it.
+  const previewCampaign = {
+    placement_code: (placementCode || 'sponsored_card') as AdPlacementCode,
+    subject_type: subjectType,
+    headline,
+    subtext,
+    tag,
+    cta_label: resolvedCta,
+    image_url: isHero ? heroImageResolved : '',
+    boutique: boutique ? { name: boutique.name, logo_url: boutique.logo_url } : null,
+    product: selectedProduct ? { title: selectedProduct.title, image_url: selectedProduct.image_url ?? null } : null,
+  } as AdCampaignAdmin;
+
+  const publish = async () => {
+    if (!boutiqueId) { showToast('Choose the boutique this ad is for'); return; }
+    if (!placementCode) { showToast('Choose where the ad runs'); return; }
+    if (needsProduct && !productId) { showToast('Choose the product to promote'); return; }
+    setBusy(true);
+    try {
+      await adminCreateCampaign({
+        boutique_id: boutiqueId,
+        placement_code: placementCode,
+        subject_type: subjectType,
+        product_id: subjectType === 'product' ? productId : null,
+        headline: headline.trim() || (isHero ? (subjectType === 'product' ? selectedProduct?.title ?? '' : boutique?.name ?? '') : ''),
+        subtext: subtext.trim(),
+        image_url: isHero ? heroImageResolved : '',
+        cta_label: isHero ? resolvedCta : '',
+        tag: isHero ? tag.trim() : '',
+        days,
+        start_date: startDate,
+        go_live: goLive,
+      });
+      showToast(goLive ? 'Ad published — it is live now' : `Ad scheduled for ${startDate}`);
+      onCreated();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not create the ad');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const label = css('font-size:12.5px;font-weight:700;color:var(--ag-label);display:block;margin-top:14px;');
+  const field = css('width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:12px;padding:0 14px;height:44px;font-size:14px;font-weight:600;color:var(--ag-ink);font-family:inherit;');
+
+  return (
+    <div onClick={onClose} style={css('position:fixed;inset:0;background:rgba(42,26,32,.5);display:flex;align-items:center;justify-content:center;z-index:70;padding:20px;')}>
+      <div onClick={(e) => e.stopPropagation()} style={css('width:520px;max-width:100%;max-height:92vh;overflow-y:auto;background:var(--ag-surface);border-radius:20px;padding:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
+        <div style={css('display:flex;justify-content:space-between;align-items:center;gap:10px;')}>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Create ad</div>
+          <button onClick={onClose} style={css('width:34px;height:34px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);cursor:pointer;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
+          </button>
+        </div>
+        <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;margin-bottom:6px;line-height:1.5;')}>
+          Runs as a house ad — no payment, no review queue, and it never counts as ad revenue. Everything else behaves like a bought campaign.
+        </div>
+
+        <label style={label}>
+          Boutique
+          <select value={boutiqueId} onChange={(e) => { setBoutiqueId(e.target.value); setProductId(null); setImage(''); }} style={css(field + 'cursor:pointer;')}>
+            <option value="">{loadingBoutiques ? 'Loading boutiques…' : 'Choose a boutique'}</option>
+            {(boutiques ?? []).map((b) => (
+              <option key={b.id} value={b.id}>{b.name}{b.city ? ` · ${b.city}` : ''}</option>
+            ))}
+          </select>
+        </label>
+
+        <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);margin-top:16px;')}>Where it runs</div>
+        <div style={css('display:flex;flex-direction:column;gap:9px;margin-top:8px;')}>
+          {placements.filter((p) => p.active || p.code === placementCode).map((p) => {
+            const on = p.code === placementCode;
+            return (
+              <button key={p.code} onClick={() => { setPlacementCode(p.code); setProductId(null); }} style={css(`text-align:left;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};border-radius:13px;padding:12px 14px;cursor:pointer;font-family:inherit;`)}>
+                <div style={css(`font-weight:800;font-size:13.5px;color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink)'};`)}>{p.name}</div>
+                <div style={css('font-size:12px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>{p.description}</div>
+                <div style={css('font-size:11.5px;color:var(--ag-muted-soft);margin-top:5px;font-weight:700;')}>Up to {p.max_active} at once</div>
+              </button>
+            );
+          })}
+          {placements.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;')}>No placements configured.</div>}
+        </div>
+
+        {placementCode && (
+          <>
+            <div style={css('margin-top:18px;')}>
+              <CreativePreview c={previewCampaign} />
+            </div>
+
+            {isHero && (
+              <div style={css('margin-top:16px;')}>
+                <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);')}>What it opens</div>
+                <div style={css('display:flex;gap:8px;margin-top:8px;')}>
+                  {(['product', 'boutique'] as AdSubjectType[]).map((t) => (
+                    <button key={t} onClick={() => setHeroTarget(t)} style={css(`flex:1;height:42px;border-radius:12px;border:1.5px solid ${heroTarget === t ? '#D6336C' : 'var(--ag-border)'};background:${heroTarget === t ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${heroTarget === t ? 'var(--ag-crimson)' : 'var(--ag-muted)'};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;`)}>
+                      {t === 'product' ? 'A product' : 'The boutique'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {needsProduct && (
+              <div style={css('margin-top:16px;')}>
+                <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);')}>Product</div>
+                <div style={css('display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px;')}>
+                  {(products ?? []).map((p) => {
+                    const active = p.id === productId;
+                    return (
+                      <button key={p.id} onClick={() => setProductId(p.id)} style={css(`position:relative;text-align:left;border:1.5px solid ${active ? '#D6336C' : 'var(--ag-border)'};background:var(--ag-surface);border-radius:12px;overflow:hidden;cursor:pointer;padding:0;font-family:inherit;`)}>
+                        <div style={css('aspect-ratio:1;background:var(--ag-surface-2);')}>
+                          {p.image_url && <img src={p.image_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
+                        </div>
+                        {active && (
+                          <span style={css('position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:#D6336C;display:flex;align-items:center;justify-content:center;')}>
+                            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#fff;")}>check</span>
+                          </span>
+                        )}
+                        <div style={css('padding:7px 8px;')}>
+                          <div style={css('font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{p.title}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {boutiqueId && (products ?? []).length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;')}>This boutique has no products.</div>}
+                  {!boutiqueId && <div style={css('color:var(--ag-muted);font-size:13px;')}>Choose a boutique to see its products.</div>}
+                </div>
+              </div>
+            )}
+
+            {isHero && (
+              <div>
+                <label style={label}>
+                  Tag <span style={css('font-weight:600;color:var(--ag-muted);')}>· small label above the title</span>
+                  <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={24} placeholder="Festive Edit" style={field} />
+                </label>
+                <label style={label}>
+                  Headline
+                  <input value={headline} onChange={(e) => setHeadline(e.target.value)} maxLength={40} placeholder={subjectType === 'boutique' ? boutique?.name ?? '' : selectedProduct?.title ?? ''} style={field} />
+                </label>
+                <label style={label}>
+                  Subtext
+                  <input value={subtext} onChange={(e) => setSubtext(e.target.value)} maxLength={70} placeholder="Handpicked bridal pieces" style={field} />
+                </label>
+                <label style={label}>
+                  Button label
+                  <select value={resolvedCta} onChange={(e) => setCtaLabel(e.target.value)} style={css(field + 'cursor:pointer;')}>
+                    {ctaPresets.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+
+                <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);margin-top:14px;')}>Banner image</div>
+                <input ref={fileInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickImage(f); e.target.value = ''; }} />
+                <div style={css('display:flex;gap:10px;margin-top:6px;')}>
+                  <button onClick={() => fileInput.current?.click()} disabled={uploading} style={css('flex:1;height:44px;border-radius:12px;border:1.5px dashed #D9A9BE;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>{uploading ? 'progress_activity' : 'add_photo_alternate'}</span>
+                    {uploading ? 'Uploading…' : image ? 'Change image' : 'Upload image'}
+                  </button>
+                  {image && (
+                    <button onClick={() => setImage('')} disabled={uploading} style={css('flex:none;height:44px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;')}>Reset</button>
+                  )}
+                </div>
+                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;')}>
+                  Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB. Falls back to the {subjectType === 'boutique' ? 'boutique logo' : 'product photo'} if left empty.
+                </div>
+              </div>
+            )}
+
+            {placementCode === 'boutique_promo' && (
+              <div style={css('margin-top:16px;background:var(--ag-surface-2);border-radius:12px;padding:14px;font-size:13px;color:var(--ag-label);line-height:1.5;')}>
+                A boutique promo uses the shop’s own name and logo — there’s no creative to write.
+              </div>
+            )}
+
+            {/* Schedule. Days are free here, but they still bound the run: an ad
+                with no end date is one nobody remembers to take down. */}
+            <div style={css('display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;')}>
+              <label style={css('flex:1;min-width:130px;font-size:12.5px;font-weight:700;color:var(--ag-label);')}>
+                Duration (days)
+                <input type="number" min={1} max={90} value={days} onChange={(e) => setDays(Math.min(90, Math.max(1, Number(e.target.value) || 1)))} style={field} />
+              </label>
+              <label style={css('flex:1;min-width:130px;font-size:12.5px;font-weight:700;color:var(--ag-label);')}>
+                Start date
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={field} />
+              </label>
+            </div>
+            <div style={css('display:flex;gap:8px;margin-top:8px;')}>
+              {[7, 14, 30].map((d) => (
+                <button key={d} onClick={() => setDays(d)} style={css(`flex:1;height:38px;border-radius:10px;border:1.5px solid ${days === d ? '#D6336C' : 'var(--ag-border)'};background:${days === d ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${days === d ? 'var(--ag-crimson)' : 'var(--ag-muted)'};font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;`)}>{d}d</button>
+              ))}
+            </div>
+            <label style={css('display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13px;font-weight:700;color:var(--ag-label);cursor:pointer;')}>
+              <input type="checkbox" checked={goLive} onChange={(e) => setGoLive(e.target.checked)} style={css('width:16px;height:16px;accent-color:#D6336C;')} />
+              Publish immediately
+            </label>
+            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:5px;line-height:1.5;')}>
+              {goLive
+                ? `Serves for ${days} × 24h from the moment you publish.`
+                : `Stays scheduled and starts on ${startDate}, then serves for ${days} × 24h.`}
+            </div>
+          </>
+        )}
+
+        <div style={css('display:flex;gap:10px;margin-top:20px;')}>
+          <button onClick={onClose} disabled={busy} style={css('flex:none;height:46px;padding:0 20px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;')}>Cancel</button>
+          <button onClick={publish} disabled={busy || uploading || !placementCode} style={css(`flex:1;height:46px;border-radius:12px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;opacity:${busy || uploading || !placementCode ? '.6' : '1'};`)}>
+            {busy ? 'Publishing…' : goLive ? 'Publish ad' : 'Schedule ad'}
+          </button>
+        </div>
+        {placement && (
+          <div style={css('text-align:center;font-size:11.5px;color:var(--ag-muted);margin-top:9px;')}>
+            {placement.name} · {placement.max_active} slot{placement.max_active === 1 ? '' : 's'} · normally {money(placement.daily_rate)}/day
+          </div>
+        )}
+      </div>
     </div>
   );
 }

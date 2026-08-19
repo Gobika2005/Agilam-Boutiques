@@ -77,3 +77,24 @@ export function writeSearchParams({ query, filters }: SearchState): string {
 export function sameSearchState(a: SearchState, b: SearchState): boolean {
   return writeSearchParams(a) === writeSearchParams(b);
 }
+
+/**
+ * The address of the results grid showing this state — `/shop?cat=Kurta+Sets`.
+ *
+ * **Anything that sends a buyer to the grid with a filter already on must
+ * navigate here, not to a bare `/shop`.** Setting `ShopContext.filters` and then
+ * navigating looks like it works and does not: `Results` adopts the URL on
+ * mount, and a bare `/shop` says "no filters", so it immediately overwrites
+ * whatever was just set. That is why tapping a collection circle on the home
+ * page opened the entire catalogue — the filter was set, then wiped a
+ * millisecond later by the page it was set for.
+ *
+ * Putting it in the URL fixes the race and is what the buyer wants anyway: the
+ * filtered grid becomes a page that can be reloaded, bookmarked and shared.
+ */
+export function shopPath(state: Partial<SearchState> = {}): string {
+  return `/shop${writeSearchParams({
+    query: state.query ?? '',
+    filters: state.filters ?? DEFAULT_FILTERS,
+  })}`;
+}

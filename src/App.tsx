@@ -1,7 +1,9 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { SpeedInsights } from '@vercel/speed-insights/react';
-import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
+import { RequireRole, FullscreenLoader, homeFor } from '@/auth/RequireRole';
+import { ADMIN_BASE, adminPath } from '@/lib/adminPath';
+import { useAuth } from '@/auth/AuthContext';
+import { RequireSignIn } from '@/auth/SignInGate';
 import { ScrollManager } from '@/components/layout/ScrollManager';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
@@ -11,43 +13,9 @@ import { LaunchNotice } from '@/components/layout/LaunchNotice';
 import { MaintenanceNotice } from '@/components/layout/MaintenanceNotice';
 import { EnvBadge } from '@/components/layout/EnvBadge';
 
-import { SignIn } from '@/pages/auth/SignIn';
-import { ResetPassword } from '@/pages/auth/ResetPassword';
-import { SignUp } from '@/pages/auth/SignUp';
-import { Otp } from '@/pages/auth/Otp';
-import { AuthCallback } from '@/pages/auth/AuthCallback';
-import { AdminLogin } from '@/pages/admin/AdminLogin';
-import { AdminResetPassword } from '@/pages/admin/AdminResetPassword';
-
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
 import { Home } from '@/pages/buyer/Home';
-import { Results } from '@/pages/buyer/Results';
-import { Boutiques } from '@/pages/buyer/Boutiques';
-import { BoutiqueProfile } from '@/pages/buyer/BoutiqueProfile';
-import { ProductDetail } from '@/pages/buyer/ProductDetail';
-import { Wishlist } from '@/pages/buyer/Wishlist';
-import { FilterSheet } from '@/pages/buyer/FilterSheet';
-import { SortSheet } from '@/pages/buyer/SortSheet';
-import { Cart } from '@/pages/buyer/Cart';
-import { Checkout } from '@/pages/buyer/Checkout';
-import { Payment } from '@/pages/buyer/Payment';
-import { OrderConfirmation } from '@/pages/buyer/OrderConfirmation';
-import { MyOrders } from '@/pages/buyer/MyOrders';
-import { TrackOrder } from '@/pages/buyer/TrackOrder';
-import { Coupons } from '@/pages/buyer/Coupons';
-import { Notifications as BuyerNotifications } from '@/pages/buyer/Notifications';
-import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
-import { Chat as BuyerChat } from '@/pages/buyer/Chat';
-import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
-import { Policy } from '@/pages/buyer/Policy';
-import { Inspire } from '@/pages/buyer/Inspire';
-import { Collections } from '@/pages/buyer/Collections';
-import { CategoryLanding } from '@/pages/buyer/CategoryLanding';
-import { NewArrivals } from '@/pages/buyer/NewArrivals';
-import { BestSellers } from '@/pages/buyer/BestSellers';
-import { TopBoutiques } from '@/pages/buyer/TopBoutiques';
-import { NotFound } from '@/pages/buyer/NotFound';
-import { POLICIES } from '@/data/policies';
+import { POLICY_SLUGS } from '@/data/policies';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -58,6 +26,103 @@ import { POLICIES } from '@/data/policies';
  */
 const lazyNamed = <M, K extends keyof M>(loader: () => Promise<M>, name: K) =>
   lazy(() => loader().then((m) => ({ default: m[name] as ComponentType })));
+
+/*
+ * ── The buyer storefront is split the same way ──────────────────────────────
+ *
+ * It was not, and that was the single biggest thing on the home page's critical
+ * path: every buyer screen — checkout, the chat client, the order tracker, the
+ * seven policy pages — was a static import, so all of it landed in one 552 kB
+ * entry chunk that a first-time visitor had to download, parse and execute
+ * before the homepage could paint. None of it is reachable from the homepage
+ * without a tap.
+ *
+ * `Home` and `BuyerLayout` stay static on purpose: they are what `/` renders,
+ * and making them lazy would only trade bundle size for an extra round trip on
+ * the one route that must be fastest. Everything else is fetched on navigation,
+ * with the two most likely next screens warmed on idle (`RoutePrefetch`).
+ */
+const Results = lazyNamed(() => import('@/pages/buyer/Results'), 'Results');
+const Boutiques = lazyNamed(() => import('@/pages/buyer/Boutiques'), 'Boutiques');
+const BoutiqueProfile = lazyNamed(() => import('@/pages/buyer/BoutiqueProfile'), 'BoutiqueProfile');
+const ProductDetail = lazyNamed(() => import('@/pages/buyer/ProductDetail'), 'ProductDetail');
+const Wishlist = lazyNamed(() => import('@/pages/buyer/Wishlist'), 'Wishlist');
+const Shortlists = lazyNamed(() => import('@/pages/buyer/Shortlists'), 'Shortlists');
+const ShortlistDetail = lazyNamed(() => import('@/pages/buyer/ShortlistDetail'), 'ShortlistDetail');
+const SharedBoard = lazyNamed(() => import('@/pages/buyer/SharedBoard'), 'SharedBoard');
+const Unsubscribe = lazyNamed(() => import('@/pages/buyer/Unsubscribe'), 'Unsubscribe');
+const FilterSheet = lazyNamed(() => import('@/pages/buyer/FilterSheet'), 'FilterSheet');
+const SortSheet = lazyNamed(() => import('@/pages/buyer/SortSheet'), 'SortSheet');
+const Cart = lazyNamed(() => import('@/pages/buyer/Cart'), 'Cart');
+const Checkout = lazyNamed(() => import('@/pages/buyer/Checkout'), 'Checkout');
+const Payment = lazyNamed(() => import('@/pages/buyer/Payment'), 'Payment');
+const OrderConfirmation = lazyNamed(() => import('@/pages/buyer/OrderConfirmation'), 'OrderConfirmation');
+const MyOrders = lazyNamed(() => import('@/pages/buyer/MyOrders'), 'MyOrders');
+const TrackOrder = lazyNamed(() => import('@/pages/buyer/TrackOrder'), 'TrackOrder');
+const Coupons = lazyNamed(() => import('@/pages/buyer/Coupons'), 'Coupons');
+const BuyerNotifications = lazyNamed(() => import('@/pages/buyer/Notifications'), 'Notifications');
+const BuyerMessages = lazyNamed(() => import('@/pages/buyer/Messages'), 'Messages');
+const BuyerChat = lazyNamed(() => import('@/pages/buyer/Chat'), 'Chat');
+const BuyerProfile = lazyNamed(() => import('@/pages/buyer/Profile'), 'Profile');
+const Policy = lazyNamed(() => import('@/pages/buyer/Policy'), 'Policy');
+const Inspire = lazyNamed(() => import('@/pages/buyer/Inspire'), 'Inspire');
+const Collections = lazyNamed(() => import('@/pages/buyer/Collections'), 'Collections');
+/* Spelled out rather than via `lazyNamed`, which erases props: this is the one
+   split page that takes any (`kind`). */
+const CategoryLanding = lazy(() =>
+  import('@/pages/buyer/CategoryLanding').then((m) => ({ default: m.CategoryLanding })),
+);
+const NewArrivals = lazyNamed(() => import('@/pages/buyer/NewArrivals'), 'NewArrivals');
+const BestSellers = lazyNamed(() => import('@/pages/buyer/BestSellers'), 'BestSellers');
+const TopBoutiques = lazyNamed(() => import('@/pages/buyer/TopBoutiques'), 'TopBoutiques');
+const NotFound = lazyNamed(() => import('@/pages/buyer/NotFound'), 'NotFound');
+
+/* The public seller site at /sell. A separate tree from both the storefront and
+   the seller console: it is read by people who do not have an account yet, so it
+   is indexable, unauthenticated, and split off so no buyer ever downloads it. */
+const SellShell = lazyNamed(() => import('@/pages/sell/SellShell'), 'SellShell');
+const SellHome = lazyNamed(() => import('@/pages/sell/SellHome'), 'SellHome');
+const SellHowItWorks = lazyNamed(() => import('@/pages/sell/SellHowItWorks'), 'SellHowItWorks');
+const SellPricing = lazyNamed(() => import('@/pages/sell/SellPricing'), 'SellPricing');
+const SellDelivery = lazyNamed(() => import('@/pages/sell/SellDelivery'), 'SellDelivery');
+const SellFaq = lazyNamed(() => import('@/pages/sell/SellFaq'), 'SellFaq');
+
+/* The login flows are their own destinations, never rendered inside another
+   screen, so they cost the storefront nothing until someone signs in. */
+const SignIn = lazyNamed(() => import('@/pages/auth/SignIn'), 'SignIn');
+const ResetPassword = lazyNamed(() => import('@/pages/auth/ResetPassword'), 'ResetPassword');
+const SignUp = lazyNamed(() => import('@/pages/auth/SignUp'), 'SignUp');
+const Otp = lazyNamed(() => import('@/pages/auth/Otp'), 'Otp');
+const AuthCallback = lazyNamed(() => import('@/pages/auth/AuthCallback'), 'AuthCallback');
+const AdminLogin = lazyNamed(() => import('@/pages/admin/AdminLogin'), 'AdminLogin');
+const AdminResetPassword = lazyNamed(() => import('@/pages/admin/AdminResetPassword'), 'AdminResetPassword');
+
+/**
+ * Warms the chunks for the two screens almost every session reaches next — the
+ * results grid and a product page — once the browser is idle and the current
+ * page has finished its own work. Splitting the storefront trades bundle size
+ * for a round trip on navigation; this pays that trip back before it is taken.
+ *
+ * Deliberately `requestIdleCallback` and not an effect on mount: on a slow
+ * connection the LCP image and the catalogue queries must not be made to
+ * compete with code for a screen nobody has asked for yet.
+ */
+function RoutePrefetch() {
+  useEffect(() => {
+    const warm = () => {
+      void import('@/pages/buyer/Results');
+      void import('@/pages/buyer/ProductDetail');
+    };
+    const ric = window.requestIdleCallback;
+    if (typeof ric === 'function') {
+      const handle = ric(warm, { timeout: 6000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const t = window.setTimeout(warm, 3000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return null;
+}
 
 const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'), 'SellerLayout');
 const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
@@ -94,18 +159,28 @@ const BoutiquesTable = lazyNamed(() => import('@/pages/admin/BoutiquesTable'), '
 const Users = lazyNamed(() => import('@/pages/admin/Users'), 'Users');
 const ProductsAdmin = lazyNamed(() => import('@/pages/admin/ProductsAdmin'), 'ProductsAdmin');
 const OrdersAdmin = lazyNamed(() => import('@/pages/admin/OrdersAdmin'), 'OrdersAdmin');
-const Reports = lazyNamed(() => import('@/pages/admin/Reports'), 'Reports');
 const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
 const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 const AdminCoupons = lazyNamed(() => import('@/pages/admin/Coupons'), 'Coupons');
 const AdminNotifications = lazyNamed(() => import('@/pages/admin/Notifications'), 'Notifications');
-const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
 const Refunds = lazyNamed(() => import('@/pages/admin/Refunds'), 'Refunds');
 const ReviewsAdmin = lazyNamed(() => import('@/pages/admin/ReviewsAdmin'), 'ReviewsAdmin');
 const Broadcast = lazyNamed(() => import('@/pages/admin/Broadcast'), 'Broadcast');
 const Audit = lazyNamed(() => import('@/pages/admin/Audit'), 'Audit');
 const Expenses = lazyNamed(() => import('@/pages/admin/Expenses'), 'Expenses');
+const WhatsAppLog = lazyNamed(() => import('@/pages/admin/WhatsAppLog'), 'WhatsAppLog');
+const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveries');
+const AdminSearch = lazyNamed(() => import('@/pages/admin/AdminSearch'), 'AdminSearch');
+const Feedback = lazyNamed(() => import('@/pages/admin/Feedback'), 'Feedback');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
+const StaffHome = lazyNamed(() => import('@/pages/admin/StaffHome'), 'StaffHome');
+const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
+
+/** The console root itself — sends each role to the landing page it can open. */
+function ConsoleHome() {
+  const { profile } = useAuth();
+  return <Navigate to={homeFor(profile?.role)} replace />;
+}
 
 export default function App() {
   return (
@@ -127,6 +202,16 @@ export default function App() {
       {/* Corner ribbon that marks non-production (TEST/staging) builds. Renders
           nothing in production. See ENVIRONMENTS.md. */}
       <EnvBadge />
+      {/* Warms the next-most-likely storefront chunks once the browser is idle. */}
+      <RoutePrefetch />
+      {/*
+        The outer boundary only ever catches the full-page routes below (the
+        login flows and the seller wizard) — every screen inside a console shell
+        resolves against the `Suspense` that `AppShell` puts around its
+        `<Outlet>`, so a route change swaps the page content without tearing
+        down the header and the dock around it.
+      */}
+      <Suspense fallback={<FullscreenLoader />}>
       <Routes>
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
@@ -149,8 +234,34 @@ export default function App() {
           }
         />
       ))}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+      {/*
+        ── The public seller site ──────────────────────────────────────────
+        `/sell` is the page a boutique owner reads BEFORE she has an account:
+        what it costs, how it works, when she is paid. It has to be crawlable,
+        so it sits at the root and outside every auth gate.
+
+        It is `/sell`, not `/seller` — deliberately. `/seller` is the signed-in
+        console and is a noindex prefix in both `src/lib/seo.ts` and
+        `middleware.js`; putting the marketing pages under it would have made
+        the one part of the app most worth ranking permanently invisible. Both
+        buttons on these pages point back into the existing flows —
+        `/seller/register` for the wizard, `/auth/signin/seller` to sign in.
+      */}
+      <Route path="/sell" element={<SellShell />}>
+        <Route index element={<SellHome />} />
+        <Route path="how-it-works" element={<SellHowItWorks />} />
+        <Route path="pricing" element={<SellPricing />} />
+        <Route path="delivery-and-payouts" element={<SellDelivery />} />
+        <Route path="faq" element={<SellFaq />} />
+        {/* An unknown /sell/* path is a 404, not an empty shell. */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+
+      {/* The console's address is a deploy-time secret (VITE_ADMIN_PATH); see
+          src/lib/adminPath.ts. `/admin` is deliberately NOT routed — it falls
+          through to the 404 like any other unknown URL. */}
+      <Route path={adminPath('login')} element={<AdminLogin />} />
+      <Route path={adminPath('reset-password')} element={<AdminResetPassword />} />
 
       {/*
         ── The public storefront ───────────────────────────────────────────
@@ -183,13 +294,24 @@ export default function App() {
 
         {/* The collection hub, and the landing pages it links into. These are
             the site's commercial keyword surface — one indexable page per
-            category, occasion and fabric the admin has approved. */}
+            category, occasion, fabric, colour and budget rung.
+            Colour and budget were the two tiles on the hub that still only set a
+            filter and pushed the buyer to the shared grid, so they had nothing
+            to share and nothing to rank ("red silk saree", "saree under 2000"
+            are both real queries). Same screen, same schema, one more kind. */}
         <Route path="collections" element={<Collections />} />
         <Route path="collections/:slug" element={<CategoryLanding kind="category" />} />
         <Route path="occasions/:slug" element={<CategoryLanding kind="occasion" />} />
         <Route path="fabrics/:slug" element={<CategoryLanding kind="fabric" />} />
+        <Route path="colours/:slug" element={<CategoryLanding kind="colour" />} />
+        <Route path="budget/:slug" element={<CategoryLanding kind="budget" />} />
 
         <Route path="boutiques" element={<Boutiques />} />
+        {/* The per-city directory — `/boutiques/coimbatore`. Same screen; the
+            route param is the city filter, so every city is a real URL that can
+            be shared, sitemapped and ranked for "boutiques in <city>". Note the
+            plural: `/boutique/:slug` below is a single shop. */}
+        <Route path="boutiques/:citySlug" element={<Boutiques />} />
         {/* Accepts the boutique's slug (migration 0003) or its id — legacy
             `/b/:slug` and `/boutique/:id` links both land here. */}
         <Route path="boutique/:slug" element={<BoutiqueProfile />} />
@@ -207,9 +329,22 @@ export default function App() {
 
         {/* Private to one buyer or a step in a transaction — all noindex. */}
         <Route path="wishlist" element={<Wishlist />} />
+        {/* "Ask my people" (migration 0077). Her own boards are private; the
+            share link is not private-by-auth but private-by-token, and it sits
+            inside this tree on purpose — a relative who opened it to judge four
+            sarees is a shopper standing in the shop, with the storefront's
+            header and nav around them and a real PDP behind every piece. Both
+            prefixes are noindex in middleware.js. */}
+        <Route path="shortlists" element={<Shortlists />} />
+        <Route path="shortlists/:id" element={<ShortlistDetail />} />
+        <Route path="shortlist/:token" element={<SharedBoard />} />
         <Route path="cart" element={<Cart />} />
-        <Route path="checkout" element={<Checkout />} />
-        <Route path="payment" element={<Payment />} />
+        {/* Checkout and payment need a real account behind the order — see
+            src/auth/SignInGate.tsx. The bag stays open to everyone; the two
+            screens that turn it into an order do not, and a signed-out buyer
+            deep-linking here is sent to sign in and returned afterwards. */}
+        <Route path="checkout" element={<RequireSignIn><Checkout /></RequireSignIn>} />
+        <Route path="payment" element={<RequireSignIn><Payment /></RequireSignIn>} />
         <Route path="order-confirmation" element={<OrderConfirmation />} />
         <Route path="orders" element={<MyOrders />} />
         {/* Order detail and tracking are one screen — the buyer's question is
@@ -222,12 +357,20 @@ export default function App() {
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
 
+        {/* Where the unsubscribe link in a marketing email lands (migration
+            0089). No account, no session — the token in the query IS the
+            credential, same as a shared shortlist, which is why it is noindex in
+            middleware.js. The public `unsubscribe` Edge Function normally acts on
+            the token first and redirects here; this page also handles the token
+            itself when someone pastes the link straight into a browser. */}
+        <Route path="unsubscribe" element={<Unsubscribe />} />
+
         {/* Policies, About and Help sit at the root — `/privacy-policy`, not
             `/privacy-policy`. Registered one route per known slug
             rather than as a `/:slug` catch-all, so an unknown path still
             reaches the 404 below instead of rendering an empty policy shell. */}
-        {POLICIES.map((p) => (
-          <Route key={p.slug} path={p.slug} element={<Policy />} />
+        {POLICY_SLUGS.map((slug) => (
+          <Route key={slug} path={slug} element={<Policy />} />
         ))}
 
         {/* A real 404. Every unknown URL used to soft-redirect to the splash,
@@ -275,7 +418,7 @@ export default function App() {
       </Route>
 
       <Route
-        path="/admin"
+        path={ADMIN_BASE}
         element={
           <RequireRole role="admin">
             <Suspense fallback={<FullscreenLoader />}>
@@ -284,8 +427,11 @@ export default function App() {
           </RequireRole>
         }
       >
-        <Route index element={<Navigate to="overview" replace />} />
+        {/* Two console roles, two landing pages — an employee cannot open
+            Overview, which is the revenue screen (migration 0086). */}
+        <Route index element={<ConsoleHome />} />
         <Route path="overview" element={<Overview />} />
+        <Route path="staff" element={<StaffHome />} />
         <Route path="approvals" element={<Approvals />} />
         {/* The catalogue vocabulary sellers pick from and buyers browse by. */}
         <Route path="catalogue" element={<Catalogue />} />
@@ -293,24 +439,40 @@ export default function App() {
         <Route path="users" element={<Users />} />
         <Route path="products" element={<ProductsAdmin />} />
         <Route path="orders" element={<OrdersAdmin />} />
-        <Route path="reports" element={<Reports />} />
+        {/* Courier tracking's admin side (0063): disputes that freeze a payout,
+            stalled parcels, and the courier list sellers pick from. */}
+        <Route path="deliveries" element={<Deliveries />} />
+        {/* Private post-delivery feedback about the platform itself (0071).
+            Public product reviews are moderated at /admin/reviews. */}
+        <Route path="feedback" element={<Feedback />} />
+        {/* Folded into Overview and Users as tabs to shorten a 20-item sidebar.
+            Kept as redirects rather than deleted: both were linked from the nav
+            for months, so bookmarks and old notification links exist. */}
+        <Route path="reports" element={<Navigate to={adminPath('overview')} replace />} />
         <Route path="payments" element={<Payments />} />
         {/* The outgoing side of the ledger — spends with their receipts (0056). */}
         <Route path="expenses" element={<Expenses />} />
+        <Route path="whatsapp" element={<WhatsAppLog />} />
         <Route path="ads" element={<Ads />} />
         <Route path="coupons" element={<AdminCoupons />} />
         <Route path="notifications" element={<AdminNotifications />} />
         {/* New admin operations surfaces (backend: migration 0048 + admin_activity_log). */}
+        {/* Was a redirect to /admin/users, back when this page had no nav tile.
+            It is now the staff customer directory — the same aggregate as the
+            Users page's buyer tab, with no account controls and no contact
+            details. Admins still reach customers from Users. */}
         <Route path="customers" element={<AdminCustomers />} />
         <Route path="refunds" element={<Refunds />} />
         <Route path="reviews" element={<ReviewsAdmin />} />
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="audit" element={<Audit />} />
         <Route path="settings" element={<AdminSettings />} />
+        {/* "See all results" from the header search box. */}
+        <Route path="search" element={<AdminSearch />} />
       </Route>
 
       </Routes>
-      <SpeedInsights />
+      </Suspense>
     </>
   );
 }

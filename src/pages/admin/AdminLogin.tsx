@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { FullscreenLoader, homeFor } from '@/auth/RequireRole';
+import { isConsoleRole } from '@/lib/staffAccess';
+import { adminPath } from '@/lib/adminPath';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
@@ -9,7 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
 
 export function AdminLogin() {
-  const { adminSignIn, signOut } = useAuth();
+  const { adminSignIn, signOut, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
@@ -28,20 +31,29 @@ export function AdminLogin() {
     setBusy(true);
     try {
       const role = await adminSignIn(email, password);
-      // Only admins may enter the console. A non-admin account (seller/buyer)
-      // that authenticates here is signed back out rather than routed elsewhere.
-      if (role !== 'admin') {
+      // Only console accounts may enter. A buyer or seller that authenticates
+      // here is signed back out rather than routed elsewhere. Staff are a
+      // console role (migration 0086) — they land on the work queue, not on
+      // Overview, which is the revenue screen and not theirs.
+      if (!isConsoleRole(role)) {
         await signOut();
         toast('This account does not have admin access.');
         return;
       }
-      navigate('/admin/overview', { replace: true });
+      navigate(homeFor(role), { replace: true });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
       setBusy(false);
     }
   }
+
+  // The console has no entry point in the UI — staff arrive by typing or
+  // bookmarking the URL, and /admin/login is the one they tend to keep. An admin
+  // who still holds a session should land in the console rather than be asked to
+  // sign in to the account they are already signed in to.
+  if (loading) return <FullscreenLoader />;
+  if (isConsoleRole(profile?.role)) return <Navigate to={homeFor(profile?.role)} replace />;
 
   if (mode === 'reset') {
     return (
@@ -54,7 +66,7 @@ export function AdminLogin() {
         <RequestResetFields
           email={email}
           setEmail={setEmail}
-          redirectTo={`${window.location.origin}/admin/reset-password`}
+          redirectTo={`${window.location.origin}${adminPath('reset-password')}`}
         />
       </AuthModal>
     );

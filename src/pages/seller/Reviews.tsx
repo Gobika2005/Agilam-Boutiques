@@ -5,6 +5,8 @@ import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchReviewsForBoutique, replyToReview, type BoutiqueReviewRow } from '@/data/reviews';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
+import { SeededTermChip } from '@/components/search/SeededTermChip';
 
 /**
  * Reviews inbox — every rating a buyer left on this boutique's pieces, with a
@@ -43,7 +45,10 @@ export function Reviews() {
   );
   const reviews = useMemo<BoutiqueReviewRow[]>(() => data ?? [], [data]);
 
-  const [filter, setFilter] = useState<Filter>('Needs reply');
+  const [seeded, setSeeded] = useSeededSearch();
+  // Landing from the global search means one specific review was picked, so the
+  // "Needs reply" default would hide it if it had already been answered.
+  const [filter, setFilter] = useState<Filter>(seeded ? 'All' : 'Needs reply');
   // The review currently being answered, and the draft in its box.
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -57,14 +62,26 @@ export function Reviews() {
   }, [reviews]);
 
   const shown = useMemo(() => {
-    if (filter === 'Replied') return reviews.filter((r) => r.seller_reply);
-    if (filter === 'All') return reviews;
-    // Needs reply — unanswered first, lowest rating first (the ones that most
-    // need a public response), then newest.
-    return reviews
-      .filter((r) => !r.seller_reply)
-      .sort((a, b) => a.rating - b.rating || +new Date(b.created_at) - +new Date(a.created_at));
-  }, [reviews, filter]);
+    const base =
+      filter === 'Replied'
+        ? reviews.filter((r) => r.seller_reply)
+        : filter === 'All'
+          ? reviews
+          // Needs reply — unanswered first, lowest rating first (the ones that
+          // most need a public response), then newest.
+          : reviews
+              .filter((r) => !r.seller_reply)
+              .sort((a, b) => a.rating - b.rating || +new Date(b.created_at) - +new Date(a.created_at));
+    // A term arriving in `?q=` came from the global search picking one review.
+    const q = seeded.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(
+      (r) =>
+        (r.body ?? '').toLowerCase().includes(q) ||
+        (r.author_name ?? '').toLowerCase().includes(q) ||
+        (r.product_title ?? '').toLowerCase().includes(q),
+    );
+  }, [reviews, filter, seeded]);
 
   const openReply = (r: BoutiqueReviewRow) => {
     setOpenId(r.id);
@@ -147,6 +164,8 @@ export function Reviews() {
             </div>
           </div>
         )}
+
+        <SeededTermChip term={seeded} onClear={() => setSeeded('')} />
 
         {shown.map((r) => {
           const name = r.author_name?.trim() || 'MangaiMart buyer';

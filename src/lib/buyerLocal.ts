@@ -18,6 +18,7 @@ import type { Cart, CartLine } from '@/state/ShopContext';
 const CART_KEY = 'agx:buyer-cart';
 const WISHLIST_KEY = 'agx:buyer-wishlist';
 const FOLLOWS_KEY = 'agx:buyer-follows';
+const PINCODE_KEY = 'agx:buyer-pincode';
 
 /**
  * Storage can throw rather than merely fail: Safari private mode and a full
@@ -90,6 +91,34 @@ export function readLocalFollows(): Record<string, boolean> {
 
 export function writeLocalFollows(follows: Record<string, boolean>): void {
   writeJSON(FOLLOWS_KEY, follows);
+}
+
+/**
+ * The pincode the buyer is shopping for, from the "Deliver to" box on a product
+ * page (migration 0077 — delivery is priced by distance, so the storefront has
+ * to know roughly where the parcel is going before checkout).
+ *
+ * Kept because re-typing it on every visit is the fastest way to make people
+ * stop using it, and a stale one costs nothing: the checkout address overrides
+ * it, and a pincode is not a secret worth clearing on logout — which is why it
+ * is deliberately NOT in `clearLocalCollections` below.
+ */
+export function readDeliveryPincode(): string {
+  try {
+    const v = localStorage.getItem(PINCODE_KEY) ?? '';
+    return /^[1-9]\d{5}$/.test(v) ? v : '';
+  } catch {
+    return '';
+  }
+}
+
+export function writeDeliveryPincode(pincode: string): void {
+  try {
+    if (pincode) localStorage.setItem(PINCODE_KEY, pincode);
+    else localStorage.removeItem(PINCODE_KEY);
+  } catch {
+    /* private mode — it just is not remembered next visit */
+  }
 }
 
 /** Wipe the local copies — called after a successful merge into the account and

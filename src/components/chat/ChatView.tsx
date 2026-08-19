@@ -58,6 +58,7 @@ export function ChatView({
   onProductClick,
   onOrderClick,
   quickReplies,
+  focusOnOpen,
 }: {
   name: string;
   /** The other participant's photo — the boutique's shop logo on the buyer
@@ -77,11 +78,21 @@ export function ChatView({
   /** Seller-only canned openers, shown as tappable chips while the draft is
    *  empty. Tapping one loads it into the composer to edit or send. */
   quickReplies?: string[];
+  /**
+   * Put the cursor in the composer when the conversation is brand new, so the
+   * keyboard comes up ready to type.
+   *
+   * Buyer-side only. A seller works through a queue and reads before replying,
+   * so a keyboard opening on every conversation they tap would fight them.
+   */
+  focusOnOpen?: boolean;
 }) {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const live = Boolean(conversationId && senderId);
   const [thread, setThread] = useState<Bubble[]>([]);
+  /** Whether the first read of this conversation has finished, either way. */
+  const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   // Whether the *other* participant is joined to this conversation right now,
@@ -98,6 +109,7 @@ export function ChatView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   // Flag the whole app as "in a chat" while this full-screen surface is mounted,
   // so the floating bottom nav dock can be hidden (it has no place over a chat,
@@ -111,36 +123,88 @@ export function ChatView({
   }, []);
 
   /**
-   * Keep the composer above the on-screen keyboard.
+   * Keep the whole chat above the on-screen keyboard.
    *
-   * The chat is a fixed, full-viewport surface, and the *layout* viewport does
-   * not shrink when a phone keyboard opens (iOS Safari never does it; Android
-   * only in some modes). So the field the buyer was typing into sat underneath
-   * the keyboard, and the last messages went with it. The visual viewport does
-   * report the change, so measure the covered strip from it and publish it as
-   * `--ag-kb` for `.agx-chat-root` to reserve.
+   * The chat is a fixed surface, so it is sized to the *layout* viewport — and
+   * no mobile browser reliably shrinks that when the keyboard opens. iOS Safari
+   * never does. Android Chrome shrinks the *visual* viewport instead and then
+   * pans it (`offsetTop`) to bring the focused field into view, which pushes
+   * the header off the top of the screen while the composer is still under the
+   * keyboard at the bottom.
    *
-   * Written to the body so the toast — a fixed sibling, not a child — can clear
-   * the keyboard too. Both are cleaned up when the chat unmounts.
+   * So don't reserve a strip — position the surface on the visual viewport
+   * itself: `--ag-vv-top` is how far the browser has panned, `--ag-kb-inset`
+   * how much of the bottom the keyboard covers. Together they park the header,
+   * thread and composer inside the visible slice in every mode — as insets
+   * rather than as a height, so the browser derives the size and there is no
+   * arithmetic here to be wrong.
+   *
+   * `--ag-kb` is still published on the body for the toast, which is a fixed
+   * sibling rather than a child: it stays in layout coordinates, so what it has
+   * to clear is only the part of the keyboard the pan has not already absorbed.
+   * `data-kb-open` lets the stylesheet stand the banner and the home-indicator
+   * inset down while the keyboard is up. All three are cleaned up on unmount.
    */
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     let last = '';
     const apply = () => {
-      // offsetTop matters on iOS: the visual viewport can be scrolled within
-      // the layout viewport, and only what is below it is actually hidden.
-      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // Ignore the few pixels a collapsing URL bar accounts for — only a real
-      // keyboard should move the layout.
-      const kb = covered > 120 ? `${Math.round(covered)}px` : '0px';
-      if (kb === last) return;
-      last = kb;
-      rootRef.current?.style.setProperty('--ag-kb', kb);
-      document.body.style.setProperty('--ag-kb', kb);
+      // Pinch-zoom shrinks the visual viewport too. Only an interactive widget
+      // should move the chat, so sit still while the page is zoomed.
+      const zoomed = vv.scale > 1.05;
+      // The keyboard's own height. Deliberately *not* minus offsetTop: how much
+      // the widget covers is independent of how far the browser has panned, and
+      // subtracting it used to hide the keyboard from this measurement entirely.
+      const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height));
+      // Only a widget this tall is a keyboard; anything less is the URL bar.
+      // This still decides `data-kb-open` and `--ag-kb`, but it no longer
+      // decides the insets below — that was the bug.
+      const open = kb > 120;
+      const top = zoomed ? 0 : Math.round(vv.offsetTop);
+
+      /*
+       * Everything below the visible slice — whatever is causing it.
+       *
+       * `position:fixed; bottom:0` resolves against the LAYOUT viewport, and
+       * Android Chrome's layout viewport is the large one: the height the page
+       * would have with the URL bar retracted. So while the URL bar is showing,
+       * `bottom:0` is genuinely below the bottom of the screen, and the composer
+       * sitting on that edge is out of sight until a scroll retracts the bar.
+       *
+       * This used to be gated on `open`, so it was 0 unless a keyboard was up —
+       * and a URL bar is only ~60-90px, well under the 120px that counts as a
+       * keyboard. That is why a conversation opened cold had no visible
+       * composer, while a brand-new one did: the auto-focus raised the keyboard,
+       * which pushed the measurement over the threshold and corrected the inset
+       * as a side effect.
+       *
+       * Subtracting `offsetTop` as well as the height is what makes it general:
+       * whatever the browser has already panned out of view at the top is not
+       * also hidden at the bottom. Keyboard, URL bar or both, this is simply
+       * "how far up from the layout viewport's bottom the visible area ends".
+       */
+      const bottom = zoomed
+        ? 0
+        : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+
+      const key = `${top}|${bottom}|${open}`;
+      if (key === last) return;
+      last = key;
+      const root = rootRef.current;
+      root?.style.setProperty('--ag-vv-top', `${top}px`);
+      root?.style.setProperty('--ag-kb-inset', `${bottom}px`);
+      document.body.style.setProperty('--ag-kb', `${open ? Math.max(0, kb - top) : 0}px`);
+      if (open) document.body.dataset.kbOpen = '1';
+      else delete document.body.dataset.kbOpen;
       // The thread just got shorter; without this the message you were reading
       // when you tapped the field scrolls out of sight behind the keyboard.
-      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      // Only while the keyboard is up: now that a URL bar toggle also lands
+      // here, scrolling on every change would yank the thread to the bottom
+      // while someone is reading back through it.
+      if (open) {
+        requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      }
     };
     apply();
     vv.addEventListener('resize', apply);
@@ -149,6 +213,7 @@ export function ChatView({
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
       document.body.style.removeProperty('--ag-kb');
+      delete document.body.dataset.kbOpen;
     };
   }, []);
 
@@ -156,11 +221,18 @@ export function ChatView({
     if (!conversationId || !senderId) return;
     let active = true;
     setThread([]);
+    setLoaded(false);
     fetchMessages(conversationId)
       .then((rows) => {
         if (active) setThread(rows.map((m) => ({ id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at })));
       })
-      .catch(() => {});
+      .catch(() => {})
+      // Settled either way: "we know what is in this thread" is what the
+      // open-with-the-keyboard decision below waits on, and a failed read still
+      // answers that question — it just answers "nothing".
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
     const unsub = subscribeToMessages(conversationId, (m) => {
       setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, sender: m.sender_id, text: m.body, time: fmtTime(m.created_at), createdAt: m.created_at }]));
     });
@@ -233,6 +305,72 @@ export function ChatView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [thread]);
 
+  /**
+   * Open a brand-new conversation ready to type.
+   *
+   * Someone opening a chat that has never been used came here to say something,
+   * so put the cursor in the field. Someone returning to a thread with replies
+   * in it came to READ, and a keyboard covering half the conversation would be
+   * in the way — so this fires only while there is nothing to read.
+   *
+   * "Nothing to read" is not `thread.length === 0`. Arriving from a product's
+   * Chat button posts an enquiry card automatically (see the buyer's Chat
+   * page), so the most focus-worthy case of all — she tapped Chat on a saree
+   * and wants to ask about it — already has a message in it. What matters is
+   * whether a person has typed anything, so the cards are discounted.
+   *
+   * Deliberately best-effort. Browsers only raise the on-screen keyboard for a
+   * focus that happens inside a user gesture: iOS Safari will move the caret
+   * and show no keyboard, and Android Chrome varies with how the page was
+   * reached. That is why this is a convenience layered on a composer that is
+   * already visible and usable on its own, and never the thing that makes it
+   * reachable.
+   */
+  const autoFocusedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusOnOpen || !live || !loaded || !conversationId) return;
+    if (autoFocusedFor.current === conversationId) return;
+
+    // A card is context the app posted, not something anybody said.
+    const conversationStarted = thread.some(
+      (b) => !parseProductCard(b.text) && !parseOrderCard(b.text),
+    );
+    if (conversationStarted) {
+      // Mark it anyway: this thread is not a candidate, and re-checking on
+      // every incoming message is pointless.
+      autoFocusedFor.current = conversationId;
+      return;
+    }
+
+    autoFocusedFor.current = conversationId;
+    // After paint, so the field exists and the scroll position has settled.
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [focusOnOpen, live, loaded, conversationId, thread]);
+
+  /**
+   * Publish the composer's real height as `--ag-composer-h`.
+   *
+   * It is anchored over the bottom of the column rather than stacked after it
+   * (see `.agx-chat-composer`), so the thread has to reserve its height or the
+   * newest message hides behind it. Measured rather than hard-coded because the
+   * bar is not a fixed size: the textarea grows with the draft up to ~120px, and
+   * the seller's quick-reply chips add a whole row on top while the draft is
+   * empty. A constant would be wrong in both directions.
+   */
+  useEffect(() => {
+    const el = composerRef.current;
+    const root = rootRef.current;
+    if (!el || !root) return;
+    const publish = () =>
+      root.style.setProperty('--ag-composer-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+    publish();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Grow the composer with the draft, up to a few lines, then let it scroll.
   useEffect(() => {
     const el = inputRef.current;
@@ -268,13 +406,29 @@ export function ChatView({
   const statusOn = live && peerOnline;
   const canSend = live && !!draft.trim() && !sending;
 
-  // `top` rather than `inset:0`: a page-level banner (maintenance mode) is a
-  // sticky element in the document flow and sits above this surface in the
-  // stacking order, so covering the whole viewport put the chat header
-  // underneath it. `--ag-banner-h` is 0px whenever no banner is showing.
+  // Anchored to the top AND the bottom of the viewport, with no height of its
+  // own. That is the whole point: the height is then the browser's arithmetic,
+  // not ours, so the bottom edge of this surface IS the bottom of the screen by
+  // definition and the composer sitting on it cannot be pushed past the edge.
+  // Every version of this bug came from a computed height being wrong by a
+  // banner, a URL bar or 22 unexplained pixels.
+  //
+  // The two insets are all that is left to say. `--ag-banner-h` reserves the
+  // maintenance banner at the top: it is a sticky element in the document flow
+  // and sits above this surface in the stacking order, so spanning the whole
+  // viewport would put the chat header underneath it. `--ag-kb-inset` holds the
+  // bottom clear of the on-screen keyboard, which `position:fixed` alone knows
+  // nothing about, and `--ag-vv-top` follows the browser's own panning. All
+  // three are 0 on a desktop browser, where this reduces to `inset:0`.
   return (
-    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:var(--ag-banner-h,0px);left:0;right:0;bottom:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
-      <div style={css('max-width:900px;width:100%;margin:0 auto;height:100%;display:flex;flex-direction:column;')}>
+    <div ref={rootRef} className="agx-chat-root" style={css('position:fixed;top:calc(var(--ag-vv-top,0px) + var(--ag-banner-h,0px));left:0;right:0;bottom:var(--ag-kb-inset,0px);z-index:40;background:radial-gradient(120% 60% at 50% 0%,var(--ag-surface-2) 0%,var(--ag-bg) 42%,var(--ag-surface-2) 100%);display:flex;flex-direction:column;')}>
+      {/* `flex:1;min-height:0` rather than `height:100%`: a percentage height
+          resolves against the parent's *height* property, which is the very
+          thing the cap above may be overriding, and a stale percentage basis is
+          how a column like this ends up taller than its own box. Filling the
+          flex line instead needs no basis at all, and `min-height:0` is what
+          lets the thread inside scroll rather than push the composer out. */}
+      <div style={css('position:relative;max-width:900px;width:100%;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;')}>
         {/* Premium glass header */}
         <div style={css('flex:none;background:var(--ag-frost);backdrop-filter:blur(16px) saturate(1.3);padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ag-border);box-shadow:0 10px 30px -26px var(--ag-shadow);')}>
           <button onClick={() => navigate(backTo)} aria-label="Back" style={css('width:40px;height:40px;flex:none;border-radius:13px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
@@ -297,7 +451,17 @@ export function ChatView({
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="agx-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:9px;')}>
+        {/* The composer is anchored over the bottom of this column rather than
+            stacked after it (see `.agx-chat-composer`), so the thread reserves
+            its measured height as padding — otherwise the newest message, the
+            one you actually want to read, sits behind the bar. The 76px
+            fallback is roughly one empty field, used only for the first frame
+            before the observer reports. */}
+        <div
+          ref={scrollRef}
+          className="agx-scroll"
+          style={css('flex:1;min-height:0;overflow-y:auto;padding:18px 16px calc(8px + var(--ag-composer-h,76px));display:flex;flex-direction:column;gap:9px;')}
+        >
           {pending && thread.length === 0 && (
             <div style={css('margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--ag-muted-soft);font-size:13px;font-weight:600;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:30px;color:var(--ag-border);")}>chat</span>Starting your chat…
@@ -390,11 +554,12 @@ export function ChatView({
         })}
       </div>
 
+
       {/* Composer — pinned to the bottom of the chat column, clearing both the
           nav dock and the iOS home indicator (see `.agx-chat-composer`). The
           field is a textarea so a long message wraps instead of scrolling
           sideways inside a one-line input; Enter sends, Shift+Enter breaks. */}
-      <div className="agx-chat-composer">
+      <div ref={composerRef} className="agx-chat-composer">
         {live && !draft.trim() && quickReplies && quickReplies.length > 0 && (
           <div className="agx-scroll" style={css('display:flex;gap:7px;overflow-x:auto;padding:0 2px 8px;')}>
             {quickReplies.map((qr) => (
@@ -408,16 +573,19 @@ export function ChatView({
             ))}
           </div>
         )}
-        <div style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-frost-strong);backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 22px 44px -22px var(--ag-shadow);')}>
-          <button
-            onClick={() => showToast('Photo sharing is coming soon')}
-            disabled={!live}
-            aria-label="Attach a photo"
-            className="agx-chat-attach"
-            style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:var(--ag-surface-2);cursor:${live ? 'pointer' : 'not-allowed'};opacity:${live ? 1 : 0.5};align-items:center;justify-content:center;`)}
-          >
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:21px;")}>add_photo_alternate</span>
-          </button>
+        {/* Opaque, and deliberately NOT `backdrop-filter`.
+            A blurred, semi-transparent field is what made this bar vanish: a
+            backdrop-filtered element inside a position:fixed, overflow:hidden
+            ancestor is a long-standing Chrome compositing failure — it paints
+            as nothing at all until a scroll forces a repaint, which is exactly
+            how this presented ("scroll down and back up and it appears").
+            There is also nothing left to blur: the bar behind it is opaque
+            because it sits over the scrolling thread. */}
+        <div className="agx-field" style={css('display:flex;gap:8px;align-items:flex-end;background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.12) inset,0 12px 24px -18px var(--ag-shadow);')}>
+          {/* No attach control. The composer is text, quick replies and the
+              product/order cards the app posts — photo sharing was removed by
+              decision, not by omission, so nothing here should reintroduce a
+              button that has nowhere to go. */}
           <textarea
             ref={inputRef}
             value={draft}

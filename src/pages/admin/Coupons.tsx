@@ -14,6 +14,7 @@ import {
   emptyCouponInput, couponInputFromRow, validateCouponInput, describeCoupon, type CouponFieldErrors,
 } from '@/lib/couponForm';
 import { isExpired } from '@/lib/pricing';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 /**
  * Coupons — the admin console's view of every discount code on the marketplace.
@@ -36,7 +37,7 @@ export function Coupons() {
   const { showToast } = useShop();
   const { boutiques } = useCatalog();
   const { data, loading, error, reload } = useAsync(() => fetchAllCoupons(), []);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useSeededSearch();
   const [scope, setScope] = useState<'all' | 'platform' | 'seller'>('all');
   const [editing, setEditing] = useState<Editing | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);

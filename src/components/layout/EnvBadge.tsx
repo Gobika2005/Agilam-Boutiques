@@ -10,6 +10,7 @@
  * default MODE of `production`) render nothing.
  */
 import { useLocation } from 'react-router-dom';
+import { isAdminPath } from '@/lib/adminPath';
 
 const env = ((import.meta.env.VITE_APP_ENV as string) || import.meta.env.MODE || 'production').toLowerCase();
 
@@ -30,7 +31,7 @@ export function EnvBadge() {
   // covered the last sidebar rows on /admin and the first two mobile tab
   // labels. Those surfaces have nothing in the bottom-right corner (the buyer's
   // floating cart bag does), so the ribbon moves across there instead.
-  const onOperatorSurface = pathname.startsWith('/admin') || pathname.startsWith('/seller');
+  const onOperatorSurface = isAdminPath(pathname) || pathname.startsWith('/seller');
 
   return (
     <div

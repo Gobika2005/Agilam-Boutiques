@@ -5,10 +5,12 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useCatalog } from '@/state/CatalogContext';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
-import { useShop } from '@/state/ShopContext';
-import { cancelCodOrder } from '@/data/orders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDate, formatOrderDateTime, patchLocalOrder, STATUS_STAGE, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDate, formatOrderDateTime, trackStage, type PlacedOrder } from '@/lib/orderHistory';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchShipmentsForOrders, type Shipment } from '@/data/shipments';
+import { useOrderFeedback } from '@/hooks/useOrderFeedback';
+import { OrderFeedbackSheet } from '@/components/buyer/OrderFeedbackSheet';
 
 /** Order-list tabs. "Active" is everything the buyer is still waiting on. */
 const TABS = [
@@ -25,12 +27,26 @@ export function MyOrders() {
   const navigate = useNavigate();
   const { productById } = useCatalog();
   const { orders: allOrders, refresh, refreshing, error } = useBuyerOrders();
-  const { guest, showToast } = useShop();
   const [tab, setTab] = useState<TabKey>('all');
-  const [cancelling, setCancelling] = useState<string | null>(null);
 
   const isActive = (o: PlacedOrder) => o.status === 'pending' || o.status === 'accepted' || o.status === 'shipped';
   const isClosed = (o: PlacedOrder) => o.status === 'rejected' || o.status === 'cancelled';
+
+  // The courier's latest scan, so a card reads "Out for Delivery" instead of
+  // sitting on "Shipped" — the list has to agree with the tracking screen, or
+  // the buyer is told two different things about the same parcel.
+  const shippedIds = useMemo(
+    () => allOrders.filter((o) => o.rowId && o.status === 'shipped').map((o) => o.rowId as string),
+    [allOrders],
+  );
+  const { data: shipments } = useAsync(
+    (): Promise<Record<string, Shipment>> => fetchShipmentsForOrders(shippedIds).catch(() => ({})),
+    [shippedIds.join(',')],
+  );
+  const stageOf = (o: PlacedOrder) => trackStage(o, o.rowId ? shipments?.[o.rowId]?.last_status : null);
+
+  const feedback = useOrderFeedback(allOrders);
+  const [rating, setRating] = useState<PlacedOrder | null>(null);
 
   const counts = useMemo(() => ({
     active: allOrders.filter(isActive).length,
@@ -46,23 +62,6 @@ export function MyOrders() {
     return allOrders;
   }, [allOrders, tab]);
 
-  const cancel = async (o: PlacedOrder) => {
-    if (!window.confirm(`Cancel order ${o.id}? The boutique will be told and nothing will be delivered.`)) return;
-    setCancelling(o.orderNumber);
-    try {
-      await cancelCodOrder(o.orderNumber, guest.phone);
-      // A guest's orders never come back from the server, so the local mirror
-      // has to be corrected here or the card would still read "Arriving…".
-      patchLocalOrder(o.orderNumber, { status: 'cancelled' });
-      showToast('Order cancelled');
-      await refresh();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not cancel this order', 'error');
-    } finally {
-      setCancelling(null);
-    }
-  };
-
   // Open a live chat with the order's boutique, tagged with the order as an
   // enquiry card. Mirrors the button on the order tracking screen.
   const chatWithBoutique = (o: PlacedOrder) => {
@@ -76,7 +75,7 @@ export function MyOrders() {
           tone: item?.tone ?? 0,
           qty: o.items.reduce((s, it) => s + it.qty, 0),
           amount: o.total,
-          status: isClosed(o) ? 'Cancelled' : TRACK_STAGES[STATUS_STAGE[o.status]].label,
+          status: isClosed(o) ? 'Cancelled' : TRACK_STAGES[stageOf(o)].label,
         },
       },
     });
@@ -172,11 +171,7 @@ export function MyOrders() {
               ? 'Cancelled'
               : o.status === 'rejected'
                 ? 'Declined'
-                : TRACK_STAGES[STATUS_STAGE[o.status]].label;
-            // Cash still owed on this order: shown so the buyer knows to have
-            // it ready, and hidden the moment the boutique records collection.
-            const owes = o.paymentMethod === 'COD' && (o.paymentStatus ?? 'pending') === 'pending' && !rejected;
-            const canCancel = isCancellable(o);
+                : TRACK_STAGES[stageOf(o)].label;
             return (
               <div
                 key={o.id}
@@ -213,17 +208,9 @@ export function MyOrders() {
                         : o.status === 'cancelled'
                           ? 'Cancelled by you'
                           : o.status === 'rejected'
-                            ? o.paymentMethod === 'COD'
-                              ? 'Declined by the boutique'
-                              : 'Declined — refund on its way'
+                            ? 'Declined — refund on its way'
                             : `Arriving ${deliveryEstimate(o.placedAt)}`}
                     </div>
-                    {owes && (
-                      <div style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:5px;color:#B0862B;')}>
-                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>payments</span>
-                        Pay {fmt(o.total)} in cash on delivery
-                      </div>
-                    )}
                     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:8px;')}>
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(o.total)}</span>
                       <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ag-muted);')}>
@@ -233,16 +220,16 @@ export function MyOrders() {
                   </div>
                 </div>
                 <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid var(--ag-border-soft);flex-wrap:wrap;')}>
-                  {/* Cancelling is only offered while it's genuinely free to do
-                      — an un-dispatched COD order costs nobody anything yet. */}
-                  {canCancel && (
+                  {/* Delivered and unanswered — the same shared state the
+                      order screen and the pop-up read, so rating once here
+                      silences all of them. */}
+                  {feedback.needsFeedback(o) && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); void cancel(o); }}
-                      disabled={cancelling === o.orderNumber}
-                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
+                      onClick={(e) => { e.stopPropagation(); setRating(o); }}
+                      style={css('flex:1;min-width:140px;height:42px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                     >
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
-                      {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>reviews</span>
+                      Rate this order
                     </button>
                   )}
                   <button
@@ -264,6 +251,18 @@ export function MyOrders() {
           })}
         </div>
       </div>
+
+      {rating && (
+        <OrderFeedbackSheet
+          order={rating}
+          alreadyReviewed={feedback.reviewedProductIds}
+          onClose={(submitted) => {
+            feedback.suppress(rating.rowId ?? '');
+            setRating(null);
+            if (submitted) feedback.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

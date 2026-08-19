@@ -139,6 +139,30 @@ select:-webkit-autofill {
 @keyframes agx-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 @keyframes agx-sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes agx-fade { from { opacity: 0; } to { opacity: 1; } }
+/* The hold shown by `AppShell`'s route Suspense while a code-split screen's
+   chunk arrives. It fades in after 220 ms rather than appearing at once: a
+   warm chunk resolves faster than that, and a spinner that flashes for one
+   frame on every tap reads as jank, not as progress. */
+@keyframes agx-route-spin { to { transform: rotate(360deg); } }
+@keyframes agx-route-in { from { opacity: 0; } to { opacity: 1; } }
+.agx-route-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2.5px solid var(--ag-border); border-top-color: var(--ag-crimson);
+  animation: agx-route-spin .8s linear infinite, agx-route-in .2s ease .22s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agx-route-spinner { animation: agx-route-in .2s ease .22s both; }
+}
+/* ---------- global search ----------
+   The in-field "still querying" ring. Sized in the component; only the spin
+   lives here, reusing the rotation above rather than declaring a third one. */
+.agx-search-spin { animation: agx-route-spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .agx-search-spin { animation: none; } }
+/* Hover has to match the keyboard highlight, and the highlight is a theme token
+   rather than a literal — the old buyer dropdown hardcoded #FCF3F7, which read
+   as a white bar against the dark theme. */
+.agx-search-row:hover { background: var(--ag-surface-2) !important; }
+
 .agx-app { width: 100%; max-width: 1440px; margin: 0 auto; }
 .agx-nav-scroll { overflow-x: auto; }
 /* ---------- catalogue grids ----------
@@ -209,6 +233,18 @@ select:-webkit-autofill {
 /* ---------- v2 elevation system ---------- */
 .agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
+/* Composite fields — a borderless <input> sitting inside a bordered shell with
+   an icon and/or a clear button (search bars, the +91 phone rows, the chat
+   composer). The rule above would ring the bare input, which lands *inside* the
+   shell's border as a second, differently-shaped box. Mark the shell
+   `.agx-field` instead and the ring goes round the whole control.
+   Only input/textarea focus moves the ring outward; a clear button inside the
+   shell still gets its own. `:has` is the guard, so where it is unsupported the
+   input keeps the default ring rather than losing focus feedback entirely. */
+@supports selector(:has(*)) {
+  .agx-field:has(:is(input, textarea):focus-visible) { outline:2.5px solid #C7275E; outline-offset:2px; }
+  .agx-field :is(input, textarea):focus-visible { outline:none; }
+}
 /* `#main-content` is the target of the skip link in AppShell. It carries
    tabIndex={-1} so the jump actually moves focus rather than only scrolling —
    without that, the next Tab would continue from the header again. */
@@ -256,6 +292,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
 .agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
 .agx-shimmer { background:linear-gradient(100deg,var(--ag-shimmer-1) 30%,var(--ag-shimmer-2) 50%,var(--ag-shimmer-1) 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
+@media (prefers-reduced-motion: reduce){
+  /* Keep the placeholder shape — it is what stops the layout jumping — but stop
+     the sweep, which is a large moving gradient repeating every 1.3s. */
+  .agx-shimmer { animation:none; background:var(--ag-shimmer-1); }
+}
+/* Announced to screen readers, invisible on screen. Used to give the skeletons a
+   spoken "Loading…" — a shimmering box says nothing without it. */
+.agx-visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
 /* responsive nav: the floating dock is the primary navigation at EVERY width.
    A horizontal top nav was briefly added for desktop and then removed by
    request — the floating dock is the app's navigation, phone and desktop
@@ -298,12 +342,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* PDP action buttons: inline on desktop, sticky bottom bar on mobile (≤899px) */
 .agx-pdp-sticky { display:none; }
 @media (max-width:899px){
-  /* Product page: a full-width action bar is pinned to the bottom edge and the
-     floating nav dock is lifted to sit just above it, so both stay visible and
-     clearly separated instead of overlapping. */
-  body:has(.agx-pdp-root) .agx-dock { bottom:84px !important; }
+  /* Product page: a full-width action bar is pinned to the bottom edge, and it
+     is the ONLY bottom furniture. The dock used to be lifted to bottom:84px so
+     it could sit above the bar — two stacked bars, ~160px of a phone screen
+     spent on chrome, with the app's five tabs and the page's own actions
+     competing for the same thumb. The bar now carries a Back button (see
+     ProductDetail), which is the only thing the dock was really being used for
+     here, and Back beats a tab because it returns to the grid the buyer was
+     browsing rather than a fixed destination. Same reasoning as the chat
+     surface below, which retired the dock for the same reason. */
+  body:has(.agx-pdp-root) .agx-dock { display:none !important; }
   .agx-pdp-actions { display:none !important; }
-  .agx-pdp-root { padding-bottom:184px !important; }
+  /* Reserve for the action bar alone (~78px) plus breathing room — was 184px
+     when the dock was stacked on top of it. */
+  .agx-pdp-root { padding-bottom:104px !important; }
   /* single-column: media has 0 right-padding for the desktop gutter, so add it
      back on mobile so the image is centred instead of flush to the right edge */
   .agx-pdp-media { padding-right: clamp(16px,4vw,44px) !important; }
@@ -316,6 +368,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     border-top:1px solid var(--ag-frost-border);
     box-shadow:0 -14px 36px -22px var(--ag-shadow);
   }
+  /* Three controls now share one row (Back, Chat, Add to Bag). The bag control
+     carries an inline `min-width:160px` that, added to the other two, overflowed
+     a 360px phone — so the wrapper relaxes it and the CTA simply takes whatever
+     is left. It stays the widest thing on the bar. */
+  .agx-pdp-bag > * { min-width:0 !important; }
+}
+/* Below ~400px "Chat" loses its label and becomes a square icon button, which
+   is what keeps Add to Bag from being squeezed to a stub on an SE-class phone.
+   Back is icon-only at every width — a bare arrow is unambiguous, and it is the
+   control people reach for without reading. */
+@media (max-width:399px){
+  .agx-pdp-chat { width:52px !important; gap:0 !important; }
+  .agx-pdp-chat-label { display:none; }
+  .agx-pdp-sticky { gap:9px; }
 }
 /* Chat: a focused full-screen conversation surface (buyer AND seller share it).
    It has its own back button, so the floating nav dock is redundant here and,
@@ -331,7 +397,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    page stacks its sticky action bar under the dock. */
 .agx-toast { bottom: 100px; }
 @media (max-width:640px){ .agx-toast { bottom: 90px; } }
-@media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 160px; } }
+/* The product page no longer stacks a dock on its action bar, so the toast only
+   has to clear the bar itself (~78px) — at 160px it floated in open space. */
+@media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 96px; } }
+/* The results grid drops its Filter/Sort bar to the bottom edge once the dock is
+   gone, so the toast has to clear that bar (~70px) instead of the dock. */
+@media (max-width:959px){ body:has(.agx-results-root) .agx-toast { bottom: 90px; } }
 @media (min-width:960px){ .agx-toast { bottom: 28px; } }
 body.agx-photo-open .agx-toast { bottom: 28px; }
 /* A chat has no dock, but it does have the composer pinned to the bottom edge —
@@ -348,10 +419,18 @@ body.agx-chatting .agx-toast {
    dock covers the composer, and the buyer's floating bag (z-index 45, above the
    chat's 40) parked itself on the quick replies and the field. Retire both for
    as long as a chat is on screen. */
+/* The chat is a full-screen surface, so nothing that floats over the storefront
+   belongs on top of it. The launch notice is included for a concrete reason as
+   well as a tidy one: it is `position:fixed; z-index:70` against the chat's 40,
+   so it floats above the conversation — and being buyer-only, like everything
+   in this list, it is invisible on the seller's identical chat screen, which is
+   what made this class of bug look like "the buyer chat is broken". */
 body:has(.agx-chat-root) .agx-dock,
 body.agx-chatting .agx-dock,
 body:has(.agx-chat-root) .agx-fab-bag,
-body.agx-chatting .agx-fab-bag { display: none !important; }
+body.agx-chatting .agx-fab-bag,
+body:has(.agx-chat-root) .agx-launch-notice,
+body.agx-chatting .agx-launch-notice { display: none !important; }
 
 /* Full-screen photo viewer. The dock and the PDP action bar are fixed siblings
    of the viewer, not children, so they kept painting over the photo — the
@@ -361,6 +440,62 @@ body.agx-chatting .agx-fab-bag { display: none !important; }
 body.agx-photo-open .agx-dock,
 body.agx-photo-open .agx-pdp-sticky { display: none !important; }
 body.agx-photo-open { overflow: hidden; }
+
+/* The results grid (/shop, /search) floats its own Filter + Sort bar below
+   960px, and that bar sat at bottom:96px purely to clear the dock — two rows of
+   floating furniture over the same grid, with the bag stacked at 162px on top of
+   them. The dock goes; the bar drops to the bottom edge and becomes the page's
+   only bottom control. Results carries its own Back button next to the
+   breadcrumb, so nothing is stranded.
+   Scoped to the widths where that bar is actually visible: from 960px up the
+   filters live in the sidebar and the dock is the only navigation.
+   The four "See all" discovery pages (Collections, New arrivals, Best sellers,
+   Top boutiques) deliberately KEEP their dock — they have no bottom furniture of
+   their own, so nothing was competing with it there. */
+@media (max-width:959px){
+  body:has(.agx-results-root) .agx-dock { display:none !important; }
+  .agx-mob-actionbar { bottom: calc(24px + env(safe-area-inset-bottom)) !important; }
+  /* Was 140px, reserved for the bar AND the dock above it. */
+  .agx-results-inner { padding-bottom: 104px !important; }
+}
+
+/* Cart: below 840px the order summary stops being a sticky sidebar (see
+   `.agx-cart-sticky` above) and falls to the very bottom of the page, taking the
+   checkout button with it — so the one action the screen exists for sat below
+   however many items the bag happened to hold, and the buyer had to scroll past
+   all of them to find it. It moves to a bar pinned to the bottom edge, and the
+   dock goes for exactly the reason it goes on the product page: two stacked bars
+   is most of a phone's thumb reach, and nobody opens their bag in order to
+   switch tabs. Continue shopping is still in the page, so nothing is stranded.
+
+   Only when there is something to check out — Cart.tsx puts `.agx-cart-root` on
+   the page only when the bag has items, so an empty bag keeps its dock. */
+.agx-cart-bar { display:none; }
+@media (max-width:839px){
+  body:has(.agx-cart-root) .agx-dock { display:none !important; }
+  /* The summary card's own button and sign-in note; the bar carries both now. */
+  .agx-cart-cta { display:none !important; }
+  /* Clears the bar (~76px, ~104px with the sign-in note) plus breathing room. */
+  .agx-cart-root { padding-bottom:150px !important; }
+  .agx-cart-bar {
+    display:block;
+    position:fixed; left:0; right:0; bottom:0; z-index:60;
+    padding:11px clamp(14px,4vw,20px) calc(12px + env(safe-area-inset-bottom));
+    background:var(--ag-frost-strong);
+    backdrop-filter:blur(20px) saturate(1.2);
+    border-top:1px solid var(--ag-frost-border);
+    box-shadow:0 -14px 36px -22px var(--ag-shadow);
+  }
+  /* The toast's default 100px clears the dock, not this bar — removing a line
+     or a coupon would have dropped the confirmation behind the CTA. */
+  body:has(.agx-cart-root) .agx-toast { bottom: calc(124px + env(safe-area-inset-bottom)) !important; }
+}
+/* On an SE-class phone the total and a full CTA can't share a row without the
+   button becoming a stub, so the total moves above it. */
+@media (max-width:379px){
+  .agx-cart-bar-row { flex-wrap:wrap; }
+  .agx-cart-bar-row > button { flex:1 0 100% !important; }
+}
 
 /* The floating dock is the navigation at EVERY width — phone and desktop alike.
    It used to be hidden from 960px up, on the assumption that a horizontal top
@@ -385,15 +520,29 @@ body.agx-photo-open { overflow: hidden; }
    the notice on top of the piece's own title and its carousel dots — the two
    things a buyer is looking at. The toast already steps up here; match it. */
 @media (max-width: 899px) { body:has(.agx-pdp-root) .agx-launch-notice { bottom: 174px !important; } }
-/* The chat is `position:fixed; inset:0`, so it is sized to the *layout* viewport
-   — which iOS Safari does not shrink when the on-screen keyboard opens. The
-   composer therefore stayed at the bottom of the page, underneath the keyboard,
-   and you typed into a field you could not see. `--ag-kb` is the keyboard's
-   height, measured from visualViewport by ChatView (0 when it is closed), and
-   reserving it here lifts the whole chat column clear of it.
-   `max()` rather than `+`: the home-indicator inset is under the keyboard while
-   it is open, so adding both would leave a gap. */
-.agx-chat-root { padding-bottom: max(var(--ag-kb, 0px), env(safe-area-inset-bottom, 0px)); }
+/* The chat is `position:fixed`, so it is sized to the *layout* viewport — which
+   no mobile browser shrinks when the on-screen keyboard opens. ChatView sizes
+   it to the visual viewport instead (`--ag-vv-top`/`--ag-kb-inset` on the
+   element, applied as insets so it has no height of its own);
+   what is left here is the bottom inset. The home indicator is *under* the
+   keyboard while it is open, so reserving it then would only leave a gap. */
+.agx-chat-root {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* The surface has no height of its own — it is anchored top and bottom (see
+     ChatView), so the browser derives it and there is no arithmetic left here
+     to get wrong. `overflow:hidden` only stops a long thread painting outside
+     the rounded surface. */
+  overflow: hidden;
+}
+body[data-kb-open] .agx-chat-root {
+  padding-bottom: 0;
+  /* The banner below is hidden while typing, so stop reserving its height. */
+  --ag-banner-h: 0px;
+}
+/* A keyboard leaves little enough of the screen as it is; spending 53px of it
+   on a notice the buyer has already read, at the moment they are mid-sentence,
+   is the wrong trade. It comes back as soon as the keyboard closes. */
+body[data-kb-open].agx-chatting .agx-maintenance-notice { display: none; }
 /* A page-level banner (maintenance mode) is `position:sticky`, so it occupies
    real height in the document — and the shell below it is already `min-height:
    100vh`. Together that made the page taller than the viewport underneath a
@@ -401,15 +550,59 @@ body.agx-photo-open { overflow: hidden; }
    the composer off the bottom of the screen with it. While a chat is open the
    banner is taken out of flow; it keeps its place at the top of the screen, and
    the chat reserves its measured height (`--ag-banner-h`) instead of sliding
-   under it. */
+   under it.
+
+   Both declarations live here rather than on the element. The banner used to
+   carry `position:sticky` in its inline style, which beats any stylesheet rule
+   without `!important` — so the override below never applied, the banner stayed
+   in flow throughout, and the composer went off the bottom of the screen on the
+   buyer's chat exactly as described above. Operators never see this banner,
+   which is why the seller console looked fine. Keep `position` out of the
+   component's inline style. */
+.agx-maintenance-notice { position: sticky; top: 0; }
 body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */
-.agx-chat-composer { flex: none; padding: 8px 12px 6px; }
-.agx-chat-attach { display: flex; }
+/* `flex:none` (0 0 auto) so the column can never shrink the composer away when
+   the thread is long; `position:relative` + a stacking order so it always paints
+   above the scrolling thread rather than behind a message that scrolled under
+   it. Both are belt-and-braces — the flex column already does the right thing —
+   but this is the one control on the screen that must never be missing. */
+/*
+ * Pinned to the bottom of the chat column, not stacked at the end of it.
+ *
+ * As a flex item it was landing 22px BELOW its own parent's bottom edge on a
+ * real Android phone — measured: root 0→843, header 65, thread 64→776, and the
+ * composer at 798→865 when contiguous layout puts it at 777→844. Nothing in the
+ * markup sits in that gap and no rule adds a margin, so the offset comes from
+ * somewhere the source does not show. Rather than keep hunting it, take the
+ * composer out of the flow: anchored to `bottom:0` of the column, its position
+ * is the column's bottom by definition and no amount of arithmetic above it can
+ * push it off.
+ *
+ * The thread then has to reserve the space instead, which is what
+ * `--ag-composer-h` is for — ChatView measures the real height (it grows with
+ * the draft and with the seller's quick-reply chips) and publishes it, so the
+ * last message clears the bar exactly rather than by a guessed constant.
+ */
+.agx-chat-composer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 8px 12px 6px;
+  /* Opaque, for two independent reasons. It sits OVER the scrolling thread now,
+     so a transparent bar would have messages sliding through it. And a
+     translucent bar here is what made the whole thing disappear until you
+     scrolled — see the note on the field inside it. `--ag-surface-2` is the
+     colour the root's radial gradient already resolves to at its bottom edge,
+     so the bar blends rather than banding. */
+  background: var(--ag-surface-2);
+  border-top: 1px solid var(--ag-border-soft);
+}
 @media (max-width:640px){ .agx-chat-composer { padding: 6px 8px 4px; } }
-@media (max-width:379px){ .agx-chat-attach { display: none !important; } }
 @keyframes agx-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(47,163,107,.55);} 70%{ box-shadow:0 0 0 5px rgba(47,163,107,0);} }
 .agx-online-dot { animation: agx-pulse 1.8s ease-in-out infinite; }
 /* Seller bill receipt: "Print / Save" hides nav/action chrome, keeping only the bill itself. */
@@ -430,12 +623,18 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
    dashboard grids collapse column counts as the viewport narrows. Kept as media
    classes (like agx-pgrid / agx-sd-stats) so the pages stay inline-styled. */
 .agx-admin-tabbar { display: none; }
+/* The header field on desktop, an icon that opens the search sheet on phones —
+   the same swap the storefront makes. Previously the field was simply hidden
+   below 900px, which left the mobile console with no search at all. */
+.agx-admin-search { width: 220px; flex: none; }
+.agx-console-search-icon { display: none !important; }
 @media (max-width: 900px) {
   .agx-admin-sidebar { display: none !important; }
   .agx-admin-main { padding-left: 16px !important; padding-right: 16px !important; padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
   .agx-admin-header { padding: 14px 16px !important; }
   .agx-admin-header-title { font-size: 21px !important; }
   .agx-admin-search { display: none !important; }
+  .agx-console-search-icon { display: flex !important; }
   .agx-admin-tabbar {
     display: flex;
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -523,6 +722,19 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
    vanishes on the dark header — lift it to near-white so it stays legible. */
 :root[data-theme="dark"] .agx-brand-mark { filter: brightness(0) invert(1) opacity(.92); }
 
+/* The same knock-out in the footer, unconditionally: the footer's crimson
+   gradient is dark in both themes, so the coloured art would read as a smudge
+   on it whichever theme the buyer is in.
+
+   The negative margins crop the art's own transparent border. The source is
+   790x316 with the lettering occupying x 47–747, y 78–248 — so nearly half the
+   canvas height is padding, which at this size is ~20px of dead space above the
+   mark and ~17px below. Left as-is it pushed the description down and left the
+   mark looking indented against the column below it. The numbers are that
+   padding scaled to the 204px box (204/790), and they hold as long as the
+   artwork does; re-measure if the file is re-exported. */
+.agx-brand-mark-footer { filter: brightness(0) invert(1) opacity(.95); margin: -20px 0 -17px -12px; }
+
 /* ---------- wishlist heart ----------
    The app loads Material *Symbols*, where fill is the variable `FILL` axis —
    not a separate `favorite_border` ligature (that belongs to the older Material
@@ -559,15 +771,18 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   z-index: 45;
 }
 @media (max-width: 640px) { .agx-fab-bag { bottom: calc(92px + env(safe-area-inset-bottom)); right: 14px; } }
-/* The product page already pins its own action bar to the bottom edge and lifts
-   the dock above it, so the bag has to clear both. */
-body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-bottom)); }
+/* The product page pins its own action bar to the bottom edge and, on phones,
+   now hides the dock entirely — so the bag has one bar to clear (~78px), not
+   two. It sat at 160px for as long as the dock was stacked on top of that bar.
+   From 900px up the sticky bar is gone and the dock is back, hence 112px. */
+body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(96px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(112px + env(safe-area-inset-bottom)); } }
-/* Results/collection screens float their own Filter + Sort bar at 96px on
-   phones. The bag used to land on top of the Sort button; it stacks above the
-   pair instead. Scoped to the widths where that bar is actually visible. */
+/* Results screens float their own Filter + Sort bar. It now sits at the bottom
+   edge (24px) rather than at 96px above the dock, so the bag stacks just above
+   the pair — it was at 162px when it had to clear the bar AND the dock.
+   Scoped to the widths where that bar is actually visible. */
 @media (max-width: 959px) {
-  body:has(.agx-mob-actionbar) .agx-fab-bag { bottom: calc(162px + env(safe-area-inset-bottom)); }
+  body:has(.agx-mob-actionbar) .agx-fab-bag { bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 
 /* The bag capsule: frosted ivory, so it reads as a receipt sitting over the
@@ -612,6 +827,19 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-
 /* The photo fills the box; overlays (heart, rating, badges) position themselves. */
 .agx-prod-fill { position: absolute; inset: 0; }
 .agx-prod-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Review body inside the boutique profile's horizontal review rail.
+   Four lines, clamped. The rail lays cards side by side, so an unclamped body
+   would make one long review three times the height of its neighbours and drag
+   the whole row down with it; the card carries a Read more when it overflows,
+   which expands that one card in place. */
+.agx-review-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 /* Product-card title.
    Two lines, clamped, and always reserving both — so a one-word title and a
    long one leave the price on the same baseline and every row of the grid
@@ -756,4 +984,185 @@ span[style*="Material Symbols Outlined"] {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+/* ── /sell is light, always ─────────────────────────────────────────────────
+   The rest of the app follows the device and the user's saved choice. The
+   seller site does not: it is a marketing surface, its one crimson-on-cream
+   look is the brand, and it is read by someone who has never seen MangaiMart
+   before and should see it the way it was designed.
+
+   Done by re-declaring the light palette on the shell's own element rather than
+   by hunting down every colour in the pages. Custom properties inherit, and a
+   declaration on a descendant beats one inherited from `:root[data-theme=dark]`
+   no matter what that ancestor rule's specificity is — so every `var(--ag-*)`
+   inside `/sell` resolves light while the storefront, the seller console and
+   the admin console keep their dark mode untouched.
+
+   Values are copied verbatim from the `:root` block at the top of this file and
+   cover exactly the set that `:root[data-theme="dark"]` overrides. If a token is
+   ever added to that dark block, add it here too, or it will be the one thing on
+   the page that goes dark. */
+.agx-sell-light {
+  /* Native form controls, scrollbars and the like follow this, not our vars. */
+  color-scheme: light;
+
+  --ag-bg: #FBF6F2;
+  --ag-surface: #FFFFFF;
+  --ag-surface-2: #FDEEF4;
+  --ag-surface-3: #F2E4EA;
+  --ag-border: #F0D8E2;
+  --ag-border-soft: #EFDCE4;
+  --ag-ink: #241019;
+  --ag-ink-2: #4B3840;
+  --ag-ink-3: #6B4A56;
+  --ag-muted: #775D66;
+  --ag-muted-soft: #836B74;
+  --ag-label: #6B5560;
+  --ag-crimson: #B02454;
+  --ag-deep: #8E1C44;
+  --ag-purple: #9B7FC7; --ag-purple-bg: #F3ECFA; --ag-purple-text: #6E4E93;
+  --ag-frost: rgba(251,246,242,.88);
+  --ag-frost-strong: rgba(255,255,255,.94);
+  --ag-frost-border: #EFDCE4;
+  --ag-shadow: rgba(107,20,54,.55);
+  --ag-cover-fade: rgba(251,246,242,.55);
+  --ag-shimmer-1: #F1E5EC;
+  --ag-shimmer-2: #F9F0F4;
+  --ag-unread: #FFF3F8;
+  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
+  --ag-star: #AD7D08;
+  --ag-warn-bg: #FBF0DA; --ag-warn-text: #8A6420;
+  --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;
+  --ag-info-bg: #E6F0FA; --ag-info-text: #3A6EA5;
+  --ag-gold: #C99A3F; --ag-gold-text: #8A6420; --ag-gold-bg: #FFF8E8; --ag-gold-border: #F0DCB4;
+  --ag-danger-text: #AD2439;
+}
+
+/* The wordmark knock-out is keyed to the dark THEME, not to the ground it sits
+   on — and inside /sell the header is cream in either theme, so a dark-mode
+   visitor got a white-on-cream logo, i.e. no logo. Selector is deliberately
+   longer than the rule it corrects (0,4,0 vs 0,3,0) so it wins on specificity
+   rather than on source order. The footer's own knock-out is left alone: that
+   ground is crimson in both themes and always needs it. */
+:root[data-theme="dark"] .agx-sell-light .agx-brand-mark { filter: none; }
+
+/* ═══ The public seller site (/sell) ════════════════════════════════════════
+   These screens are read rather than used, so they are laid out as a page:
+   one measure of text, a two-column split that collapses early, and a hero
+   collage of real listings. Grid definitions live here rather than inline
+   because they are the one thing on those pages that needs media queries. */
+
+/* Header: the inline nav above 940px, a scrollable rail below it. Swapped
+   rather than hidden behind a hamburger — five destinations is not a menu. */
+@media (max-width: 939px) {
+  .agx-sell-nav { display: none !important; }
+  .agx-sell-rail { display: flex !important; }
+}
+
+/* The hero: copy and portrait at about half each, and the portrait is dropped
+   entirely below 1024px. That is the reference's own breakpoint and it is the
+   right one — a portrait stacked above the headline on a phone pushes the offer
+   and the button below the fold, which is the only thing this page has to get
+   right. `HeroArt` also removes itself if the photo file is missing, and the
+   single-column rule below is what it falls back to. */
+.agx-sell-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; align-items: center; }
+@media (min-width: 1024px) { .agx-sell-hero { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: clamp(40px, 4.5vw, 72px); } }
+.agx-sell-hero-art { display: none; }
+/* Padding-right leaves room for the badge, which hangs off the arch's edge. */
+@media (min-width: 1024px) { .agx-sell-hero-art { display: block; padding: 14px 26px 14px 14px; } }
+/* The arch is 4:5, so an uncapped column on a 1600px screen makes it 700px tall
+   and pushes the button and the terms strip under the fold — which is the one
+   thing this screen has to get right. Capped, and pushed to the outside edge. */
+.agx-sell-hero-arch { max-width: 430px; margin-left: auto; }
+
+/* The floating trust card, overlapping the foot of the arch. Translucent over
+   the berry rather than a solid chip: a solid card here reads as a UI element
+   dropped on a photograph, which is exactly what the arch is there to avoid. */
+.agx-sell-hero-badge {
+  position: absolute; right: -18px; bottom: 44px; z-index: 1;
+  max-width: 236px; display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 0.75rem;
+  background: rgba(92, 19, 48, .82); border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 22px 44px -26px rgba(0, 0, 0, .7);
+}
+@supports (backdrop-filter: blur(10px)) {
+  .agx-sell-hero-badge { background: rgba(255, 255, 255, .13); backdrop-filter: blur(10px); }
+}
+
+/* The reach motif behind the portrait. Decorative, so it is pinned to the right
+   half and simply not painted at all on a phone, where the berry field is
+   mostly type and the arcs would only crowd it. */
+.agx-sell-hero-motif { display: none; }
+@media (min-width: 1024px) {
+  .agx-sell-hero-motif {
+    display: block; position: absolute; right: 30%; top: 6%;
+    width: min(46vw, 620px); height: auto; opacity: .85;
+  }
+}
+
+/* The terms strip along the foot of the hero: one column on a phone, two on a
+   tablet, four across a desktop, hairline-divided rather than gapped so it
+   reads as one statement of terms instead of four tiles. */
+.agx-sell-hero-stats {
+  margin-top: clamp(36px, 4.5vw, 60px);
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  border: 1px solid rgba(255, 255, 255, .2); border-radius: 1rem;
+  background: rgba(255, 255, 255, .07); overflow: hidden;
+}
+.agx-sell-hero-stat { display: flex; gap: 14px; align-items: flex-start; padding: clamp(16px, 1.8vw, 22px); }
+/* Single column: a rule above every item but the first. The media queries below
+   re-point the same hairline as the grid rewraps. */
+.agx-sell-hero-stat + .agx-sell-hero-stat { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15); }
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .agx-sell-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agx-sell-hero-stat:nth-child(2n) { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15); }
+  .agx-sell-hero-stat:nth-child(n+3) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15); }
+  .agx-sell-hero-stat:nth-child(4) { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15), inset 0 1px 0 rgba(255, 255, 255, .15); }
+}
+@media (min-width: 1024px) {
+  .agx-sell-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .agx-sell-hero-stat + .agx-sell-hero-stat { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15); }
+}
+
+/* Gaps are the reference's: 64px between columns on desktop, 96px where the two
+   halves are a body of text and a panel that must not crowd it. */
+.agx-sell-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 64px); }
+@media (min-width: 860px) { .agx-sell-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; } }
+
+/* The 5/7 split the reference uses for "where your fee goes" — a short argument
+   on the left, the long list on the right. */
+.agx-sell-lean { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 6vw, 96px); align-items: start; }
+@media (min-width: 900px) { .agx-sell-lean { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+
+.agx-sell-three { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+@media (min-width: 720px) { .agx-sell-three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.agx-sell-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+@media (min-width: 768px) { .agx-sell-four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.agx-sell-shops { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 620px) { .agx-sell-shops { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .agx-sell-shops { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.agx-sell-quotes { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 64px); }
+@media (min-width: 860px) { .agx-sell-quotes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Wide tables (the delivery zone bands, the ad rate card) scroll inside their
+   own box rather than pushing the page sideways on a phone. */
+.agx-sell-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.agx-sell-table { width: 100%; min-width: 520px; border-collapse: collapse; }
+.agx-sell-table th,
+.agx-sell-table td { text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--ag-border); font-size: 16px; line-height: 1.55; vertical-align: top; }
+/* label-sm. Was IBM Plex Mono — the seller site has no monospace any more; see
+   the note on SERIF in src/pages/sell/parts.tsx. */
+.agx-sell-table th { font-size: 12px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--ag-muted); background: var(--ag-surface-2); }
+.agx-sell-table tr:last-child td { border-bottom: 0; }
+.agx-sell-table td:last-child, .agx-sell-table th:last-child { text-align: right; }
+
+/* The FAQ's side index. Sticky only where there is a column beside the answers
+   to be sticky against — below 900px `.agx-sell-lean` is one column and a
+   sticky box would just pin itself over the text it is indexing. */
+@media (min-width: 900px) {
+  .agx-sell-faq-index { position: sticky; top: 88px; }
 }

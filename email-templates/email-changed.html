@@ -1,0 +1,122 @@
+<!--
+  MangaiMart — "Your email address was changed" security notification email
+  Paste this into: Supabase → Authentication → Emails → Email Change Notification → Body (Source)
+  Suggested Subject: Your MangaiMart email address was changed
+  Variables: {{ .OldEmail }}, {{ .Email }}
+  Colours mirror the app theme (src/index.css --ag-* tokens, light mode).
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background-color:#FBF6F2;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+
+      <!-- Card -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#FFFFFF;border-radius:20px;overflow:hidden;border:1px solid #F0D8E2;box-shadow:0 14px 40px -22px rgba(107,20,54,0.45);font-family:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+        <!-- Brand header (styled text wordmark) -->
+        <tr>
+          <td align="center" style="background:linear-gradient(135deg,#8E1C44 0%,#B02454 100%);background-color:#8E1C44;padding:36px 32px 30px;">
+            <div style="font-size:28px;font-weight:800;letter-spacing:-0.4px;color:#ffffff;">MangaiMart</div>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:40px 40px 8px;">
+            <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;font-weight:800;color:#241019;">Your email address was changed</h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#4B3840;">
+              The email address for your MangaiMart account was just changed. Sign-in links and order updates will now go to the new address.
+            </p>
+          </td>
+        </tr>
+
+        <!-- What changed -->
+        <tr>
+          <td style="padding:0 40px 8px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDEEF4;border:1px solid #F0D8E2;border-radius:14px;">
+              <tr>
+                <td style="padding:16px 20px;font-size:13px;line-height:1.7;color:#4B3840;">
+                  <span style="color:#8A7078;">Previous:</span> {{ .OldEmail }}<br>
+                  <span style="color:#8A7078;">New:</span> {{ .Email }}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Security warning -->
+        <tr>
+          <td style="padding:24px 40px 8px;">
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#4B3840;">
+              <strong style="color:#8E1C44;">Didn&rsquo;t make this change?</strong> Contact our support team immediately &mdash; someone else may have access to your account.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Bulletproof button -->
+        <tr>
+          <td align="center" style="padding:0 40px 8px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" bgcolor="#B02454" style="border-radius:12px;">
+                  <a href="mailto:support@mangaimart.com"
+                     style="display:inline-block;padding:15px 40px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;background-color:#B02454;">
+                    Contact support
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Fallback link -->
+        <tr>
+          <td style="padding:24px 40px 8px;">
+            <p style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#8A7078;">
+              Button not working? Email us directly:
+            </p>
+            <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;">
+              <a href="mailto:support@mangaimart.com" style="color:#B02454;text-decoration:underline;">support@mangaimart.com</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr>
+          <td style="padding:24px 40px 0;">
+            <div style="border-top:1px solid #F0D8E2;height:1px;line-height:1px;font-size:1px;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <!-- Reassurance -->
+        <tr>
+          <td style="padding:20px 40px 36px;">
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#8A7078;">
+              This is a security notification, so we send it every time your sign-in details change &mdash;
+              you can&rsquo;t turn it off. MangaiMart will never ask you for your password or a verification code by email.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="background-color:#FDEEF4;padding:28px 40px;">
+            <div style="font-size:13px;font-weight:800;color:#241019;">MangaiMart</div>
+            <div style="margin-top:6px;font-size:12px;line-height:1.6;color:#8A7078;">
+              No. 12, Second Floor, Race Course Road, RS Puram,<br>
+              Coimbatore, Tamil Nadu 641018, India
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:#8A7078;">
+              Need help? <a href="mailto:support@mangaimart.com" style="color:#B02454;text-decoration:none;">support@mangaimart.com</a>
+            </div>
+            <div style="margin-top:16px;font-size:11px;color:#B79AA6;">
+              &copy; 2026 MangaiMart Private Limited. All rights reserved.
+            </div>
+          </td>
+        </tr>
+
+      </table>
+      <!-- /Card -->
+
+    </td>
+  </tr>
+</table>

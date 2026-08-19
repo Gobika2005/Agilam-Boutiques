@@ -5,6 +5,8 @@ import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { sortSizes } from '@/lib/sizes';
+import { matchesFilters } from '@/lib/shopFilter';
+import { hasTerm, termKey } from '@/lib/vocabulary';
 import { fmt, productSizes } from '@/data/demo';
 
 /**
@@ -27,16 +29,9 @@ export function FilterSheet() {
   // grid the buyer was about to see.
   const { products: PRODUCTS } = useCatalog();
 
-  const q = query.trim().toLowerCase();
-  const results = PRODUCTS.filter(
-    (p) =>
-      p.price <= filters.maxPrice &&
-      (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
-      (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
-      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
-      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))) &&
-      (q === '' || [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique].some((f) => f?.toLowerCase().includes(q))),
-  );
+  // The exact predicate the grid runs — the button promises a number and the
+  // grid has to deliver it, so they share one function (@/lib/shopFilter).
+  const results = PRODUCTS.filter((p) => matchesFilters(p, filters, query));
 
   const close = () => navigate('/shop');
   useDismissOnEscape(close);
@@ -53,16 +48,19 @@ export function FilterSheet() {
   const inCatalogue = <T,>(options: T[], has: (o: T) => boolean, selected: (o: T) => boolean) =>
     options.filter((o) => has(o) || selected(o));
 
-  const catsPresent = new Set(PRODUCTS.map((p) => p.cat));
-  const occasionsPresent = new Set(PRODUCTS.map((p) => p.occasion));
-  const colorsPresent = new Set(PRODUCTS.map((p) => p.color));
-  const sizesPresent = new Set(PRODUCTS.flatMap((p) => productSizes(p)));
+  // Keyed by `termKey`, not by the raw string: the options are the admin's
+  // spellings and these are the sellers', so an exact-keyed set hid the Kurta
+  // Set chip from a sheet whose catalogue was full of "kurta set".
+  const catsPresent = new Set(PRODUCTS.map((p) => termKey(p.cat)));
+  const occasionsPresent = new Set(PRODUCTS.map((p) => termKey(p.occasion)));
+  const colorsPresent = new Set(PRODUCTS.map((p) => termKey(p.color)));
+  const sizesPresent = new Set(PRODUCTS.flatMap((p) => productSizes(p).map(termKey)));
 
   // Canonical ladder (XS · S · M · L · XL · XXL … · Free Size). The vocabulary
   // returns whatever order the rows were approved in, which put XS and XXL after
   // 6XL on the sheet.
   const sizeOptions = sortSizes(
-    inCatalogue(names('size'), (s) => sizesPresent.has(s), (s) => filters.sizes.includes(s)),
+    inCatalogue(names('size'), (s) => sizesPresent.has(termKey(s)), (s) => hasTerm(filters.sizes, s)),
   );
 
   return (
@@ -83,8 +81,8 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:12px;')}>Category</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {inCatalogue(names('category'), (c) => catsPresent.has(c), (c) => filters.cats.includes(c)).map((c) => {
-            const on = filters.cats.includes(c);
+          {inCatalogue(names('category'), (c) => catsPresent.has(termKey(c)), (c) => hasTerm(filters.cats, c)).map((c) => {
+            const on = hasTerm(filters.cats, c);
             return (
               <button key={c} onClick={() => toggleFilter('cats', c)} style={css(`border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{c}</button>
             );
@@ -94,7 +92,7 @@ export function FilterSheet() {
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Size</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
           {sizeOptions.map((s) => {
-            const on = filters.sizes.includes(s);
+            const on = hasTerm(filters.sizes, s);
             return (
               <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:46px;height:44px;padding:0 14px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:12px;font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
             );
@@ -103,9 +101,9 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Colour</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;')}>
-          {inCatalogue(rows('color'), (c) => colorsPresent.has(c.name), (c) => filters.colors.includes(c.name)).map((c) => (
+          {inCatalogue(rows('color'), (c) => colorsPresent.has(termKey(c.name)), (c) => hasTerm(filters.colors, c.name)).map((c) => (
             <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-              <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
+              <span style={css(`width:40px;height:40px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${hasTerm(filters.colors, c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
               <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
             </button>
           ))}
@@ -113,8 +111,8 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Occasion</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {inCatalogue(names('occasion'), (o) => occasionsPresent.has(o), (o) => filters.occasions.includes(o)).map((o) => {
-            const on = filters.occasions.includes(o);
+          {inCatalogue(names('occasion'), (o) => occasionsPresent.has(termKey(o)), (o) => hasTerm(filters.occasions, o)).map((o) => {
+            const on = hasTerm(filters.occasions, o);
             return (
               <button key={o} onClick={() => toggleFilter('occasions', o)} style={css(`border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{o}</button>
             );

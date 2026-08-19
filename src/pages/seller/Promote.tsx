@@ -122,7 +122,11 @@ export function Promote() {
                   <div style={css('min-width:0;')}>
                     <div style={css('font-weight:800;font-size:14.5px;')}>{rate?.name ?? c.placement_code}</div>
                     <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>
-                      {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
+                      {/* A house ad (migration 0070) was placed by MangaiMart and
+                          costs the seller nothing. Its `amount` is 0, and the
+                          rate-card fallback below would otherwise quote them a
+                          price for an ad they were given. */}
+                      {c.days} day{c.days === 1 ? '' : 's'} ({c.days * 24}h) · {c.house_ad ? 'Placed by MangaiMart · free' : money(c.amount || (rate ? rate.daily_rate * c.days : 0))}
                       {status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : status === 'expired' && c.end_at ? ` · ended ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
                   </div>
@@ -471,8 +475,11 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                     <button onClick={() => setHeroImage('')} disabled={uploading} style={css('flex:none;height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;')}>Reset</button>
                   )}
                 </div>
-                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;')}>
+                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
                   Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB.
+                  {' '}The banner is wider than it is tall on a laptop, so keep faces and the
+                  garment in the <b>upper middle</b> — the bottom of the photo is what gets
+                  cropped.
                   {!heroBoutique && ' Leave it and we’ll use the product’s own photo.'}
                 </div>
               </div>
@@ -602,7 +609,10 @@ function AdPreview({
     );
   }
 
-  // Home hero — full-bleed banner. Links to a product or the boutique.
+  // Home hero — the wide banner card at the top of the homepage. Links to a
+  // product or the boutique. The curve and the pill CTA are scaled-down copies
+  // of the real thing in buyer/Home.tsx: this is what the seller is buying, so
+  // it should not be a differently-shaped approximation.
   if (placementCode === 'home_hero') {
     if (subjectType === 'product' && !product) {
       return (
@@ -615,17 +625,23 @@ function AdPreview({
     const t = headline.trim() || (subjectType === 'product' ? product?.title ?? '' : boutique.name);
     return (
       <div style={css(frame)}>
-        <div style={css('width:100%;max-width:340px;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
-          {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
-          <div style={css('position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,6,16,.72),rgba(30,6,16,.15));')} />
+        <div style={css('width:100%;max-width:340px;border-radius:20px;overflow:hidden;position:relative;aspect-ratio:16/10;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 22px 44px -30px var(--ag-shadow);')}>
+          {/* Same upward crop bias as the live hero (see buyer/Home.tsx), so a
+              tall upload is previewed the way a buyer will actually see it. */}
+          {heroImage && <img src={heroImage} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 25%;')} />}
+          <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
             {tag.trim() && (
               <div style={css('align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{tag.trim()}</div>
             )}
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
-            <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:5px;')}>
-              {ctaLabel}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>arrow_forward</span>
+            {/* Literal colours, matching buyer/Home.tsx: the inside of the hero
+                is a dark scrim over a photo in both themes, so the theme
+                tokens would put a near-black pill on it in dark mode. */}
+            <span style={css('align-self:flex-start;margin-top:12px;background:#FFFFFF;color:#A81F4E;border-radius:999px;padding:6px 7px 6px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px;')}>
+              {ctaLabel}
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;width:20px;height:20px;border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;")}>arrow_forward</span>
             </span>
           </div>
         </div>

@@ -1,4 +1,7 @@
-export type Role = 'buyer' | 'seller' | 'admin';
+/** `staff` is an employee: the admin console minus money, config and user
+ *  management. See migration 0086 — the console nav is filtered by
+ *  `STAFF_ROUTES` in `src/lib/staffAccess.ts`, but the real boundary is RLS. */
+export type Role = 'buyer' | 'seller' | 'admin' | 'staff';
 /**
  * Where a boutique sits in the seller lifecycle (migration 0021).
  *
@@ -42,6 +45,27 @@ export type AdSubjectType = 'product' | 'boutique';
 export interface Database {
   public: {
     Tables: {
+      /**
+       * Pincode → district / state / localities (migration 0077).
+       *
+       * Public reference data, filled in lazily as buyers and sellers use
+       * pincodes. It exists so the browser and the server resolve a delivery
+       * zone from the SAME row — two independent lookups of one pincode can
+       * disagree, and the disagreement would reject a legitimate checkout.
+       * Written only through `upsert_pincode()`.
+       */
+      pincodes: {
+        Row: {
+          pincode: string;
+          district: string;
+          state: string;
+          places: string[];
+          fetched_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -56,6 +80,20 @@ export interface Database {
           deleted_at: string | null;
           updated_at: string | null;
           created_at: string;
+          /**
+           * Marketing consent (migration 0089). True = no announcements, new
+           * arrivals or festival greetings. It never gates transactional mail —
+           * orders, payouts, access changes and service updates go out either
+           * way, which is why the sender keys off the TEMPLATE, not the flag.
+           */
+          marketing_opt_out: boolean;
+          marketing_opt_out_at: string | null;
+          /**
+           * Bearer credential for the one-click unsubscribe link (0089). Only the
+           * two SECURITY DEFINER RPCs should ever read it; never select it into a
+           * list the browser renders.
+           */
+          unsubscribe_token: string;
         };
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string };
         Update: Partial<Database['public']['Tables']['profiles']['Row']>;
@@ -93,6 +131,10 @@ export interface Database {
           state: string;
           pincode: string;
           map_url: string | null;
+          /** The shop's map pin (migration 0076). Null when the seller gave only
+           *  a shortened Maps share link, which carries no coordinates. */
+          latitude: number | null;
+          longitude: number | null;
           category: string;
           years_in_business: number | null;
           open_time: string;
@@ -100,8 +142,32 @@ export interface Database {
           working_days: string[];
           delivery_available: boolean;
           delivery_areas: string;
+          /** What this shop charges the buyer to deliver, and the terms around
+           *  it (migration 0076) — the platform charges nothing of its own.
+           *  `free_delivery_over` 0 = never waived; `cod_max_order` 0 = no cap. */
           delivery_charge: number;
+          /**
+           * Delivery priced by distance (migration 0077). `delivery_charge` is
+           * the shop's own town; these three are the rest of its district, the
+           * rest of its state and the rest of India. NULL means the shop does
+           * not deliver that far, which is not the same as delivering free —
+           * see src/lib/deliveryZone.ts.
+           */
+          delivery_charge_district: number | null;
+          delivery_charge_state: number | null;
+          delivery_charge_national: number | null;
+          /**
+           * What this shop promises about fulfilment (migration 0078): working
+           * days to dispatch, and its own goodwill return window (0 = none).
+           * Both were platform constants printed as facts about the shop.
+           */
+          dispatch_days_min: number;
+          dispatch_days_max: number;
+          return_window_days: number;
+          free_delivery_over: number;
           cod_enabled: boolean;
+          cod_fee: number;
+          cod_max_order: number;
           online_payment_enabled: boolean;
           onboarding_step: number;
           onboarding_complete: boolean;
@@ -110,6 +176,22 @@ export interface Database {
           notify_orders: boolean;
           notify_messages: boolean;
           notify_promotions: boolean;
+          /** Parcel defaults (migration 0065) — the fallback weight for a
+           *  product with none of its own, and the box this shop packs in.
+           *  Granted in 0065; read via fetchParcelDefaults, NOT BOUTIQUE_COLUMNS. */
+          default_weight_grams: number;
+          package_length_cm: number;
+          package_breadth_cm: number;
+          package_height_cm: number;
+          /** Shiprocket (migration 0067). The pickup-location nickname registered
+           *  under the platform account; NULL means this shop cannot book. */
+          shiprocket_pickup_location: string | null;
+          shiprocket_enabled: boolean;
+          /** Migration 0068. Set when the pickup address was created through
+           *  the Shiprocket API; NULL with a location set means an admin pasted
+           *  it in by hand. `_error` holds the last refusal, verbatim. */
+          shiprocket_pickup_registered_at: string | null;
+          shiprocket_pickup_error: string | null;
           /**
            * Withheld from anon/authenticated by 0021's column-level SELECT
            * grants: writable by the owner, but only readable through the
@@ -145,8 +227,16 @@ export interface Database {
           reviews_count: number;
           status: ProductStatus;
           deleted_at: string | null;
+          /** Hidden because its boutique was rejected, not by the seller
+           *  (migration 0038) — re-approval clears it and the listing returns. */
+          auto_hidden: boolean;
+          /** SEO slug, `title-slug-idprefix` (migration 0057). */
+          slug: string | null;
           description: string;
           mrp: number | null;
+          /** Packed weight of one unit in grams (migration 0065). NULL falls
+           *  back to boutiques.default_weight_grams when a parcel is booked. */
+          weight_grams: number | null;
           sizes: string[];
           wash_care: string;
           images: string[];
@@ -308,6 +398,27 @@ export interface Database {
           guest_city: string | null;
           guest_address: string | null;
           guest_pincode: string | null;
+          // ── Courier tracking (migration 0063) ────────────────────────────
+          /** Filled by the seller's optional "Mark packed" step. */
+          packed_at: string | null;
+          /** Only a courier scan can honestly set this, and no webhook exists
+           *  yet — so the buyer's "Out for delivery" stage stays blank rather
+           *  than being invented from a timer. */
+          out_for_delivery_at: string | null;
+          /** The buyer reported the order never arrived. Excludes it from both
+           *  the automatic and manual payout sweeps until an admin resolves it;
+           *  a seller cannot clear it (0063's guard trigger reverts them). */
+          delivery_disputed: boolean;
+          delivery_disputed_at: string | null;
+          delivery_dispute_note: string | null;
+          delivery_resolved_at: string | null;
+          /** "Don't ask me to review this one" (migration 0071). One flag, read
+           *  by all four prompt surfaces so answering silences every one. */
+          review_dismissed_at: string | null;
+          /** Which payout settled this order (migration 0025). Null = still
+           *  outstanding, which is what makes double-paying impossible: the
+           *  balance is simply the settleable orders with no stamp. */
+          payout_id: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -367,9 +478,57 @@ export interface Database {
         Relationships: [];
       };
       notifications: {
-        Row: { id: string; profile_id: string; type: string; title: string; body: string; read: boolean; created_at: string };
+        Row: {
+          id: string;
+          profile_id: string;
+          type: string;
+          title: string;
+          body: string;
+          read: boolean;
+          /** In-app path this row opens, when it is not about an order
+           *  (migration 0077). Preferred over `order_id` by the inbox. */
+          link: string | null;
+          created_at: string;
+        };
         Insert: Partial<Database['public']['Tables']['notifications']['Row']> & { profile_id: string; title: string };
         Update: Partial<Database['public']['Tables']['notifications']['Row']>;
+        Relationships: [];
+      };
+      /**
+       * One row per admin email blast (migration 0089) — the inbox counterpart
+       * of a `notifications` fan-out.
+       *
+       * Read-only from the app: every write comes from the `broadcast-email`
+       * Edge Function under the service role, so Insert/Update are `never`. An
+       * email cannot be recalled, which is exactly why the record of it must not
+       * be editable by the console that sent it.
+       */
+      email_broadcasts: {
+        Row: {
+          id: string;
+          created_at: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          audience: 'all' | 'buyer' | 'seller' | 'selected';
+          template: 'announcement' | 'arrivals' | 'festival' | 'feature' | 'service';
+          subject: string;
+          preheader: string | null;
+          heading: string | null;
+          body: string;
+          cta_label: string | null;
+          cta_url: string | null;
+          product_ids: string[];
+          recipient_ids: string[];
+          recipients: number;
+          sent: number;
+          failed: number;
+          skipped_opt_out: number;
+          also_notified: boolean;
+          status: 'sending' | 'sent' | 'partial' | 'failed';
+          error: string | null;
+        };
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       subscriptions: {
@@ -435,6 +594,9 @@ export interface Database {
           reviewed_by: string | null;
           reviewed_at: string | null;
           reject_reason: string | null;
+          /** Published by an admin with no payment (migration 0070). `amount`
+           *  stays 0 and it is left out of ad revenue. */
+          house_ad: boolean;
           impressions: number;
           clicks: number;
           created_at: string;
@@ -453,14 +615,39 @@ export interface Database {
         Row: {
           id: number;
           commission_pct: number;
+          /**
+           * DEAD since migration 0076 — nothing reads these four. Delivery and
+           * cash-on-delivery are each boutique's own now (`boutiques`
+           * .delivery_charge / free_delivery_over / cod_fee / cod_max_order),
+           * priced per boutique by src/lib/pricing.ts and api/_pricing.js. The
+           * columns are left in place rather than dropped; editing them changes
+           * nothing. Do not wire them back up.
+           */
           cod_fee: number;
           cod_max_order: number;
           free_delivery_over: number;
           standard_shipping: number;
           return_window_days: number;
           payout_hold_days: number;
+          /** Hours after delivery within which a payout is promised
+           *  (migration 0078). A published commitment and an overdue clock, not
+           *  a settlement lock. */
+          payout_sla_hours: number;
           maintenance_mode: boolean;
           support_email: string;
+          /** Which Razorpay merchant account collects money (migration 0064).
+           *  Names an env-var slot, never a key. */
+          razorpay_account: 'primary' | 'backup';
+          /** Master COD switch (migration 0066). False makes api/place-order.js
+           *  refuse every cash order regardless of the per-boutique flag. */
+          cod_enabled: boolean;
+          /** Master Shiprocket switch (migration 0067). Off by default — an
+           *  admin turns it on once credentials are set. */
+          shiprocket_enabled: boolean;
+          /** Master WhatsApp switch (migration 0090). Off by default. False
+           *  makes wa_claim_batch return nothing, so the triggers keep queueing
+           *  and the wa-drain Edge Function sends none of it. */
+          whatsapp_enabled: boolean;
           updated_at: string;
           updated_by: string | null;
         };
@@ -470,6 +657,34 @@ export interface Database {
       };
       /** Platform spend, admin-only, with receipts in the private
        *  `expense-proofs` bucket (migration 0056). */
+      // Private post-delivery feedback about the platform itself (0071).
+      // Deliberately separate from `reviews`: those are public and feed
+      // `boutiques.rating`; this is confidential and affects no boutique.
+      platform_feedback: {
+        Row: {
+          id: string;
+          buyer_id: string;
+          /** Which order prompted it. Null once an order is deleted, or if
+           *  feedback is ever collected outside an order. */
+          order_id: string | null;
+          rating: number;
+          body: string;
+          created_at: string;
+          /** The buyer ticked "you may quote this publicly" (0084). Theirs to
+           *  set; withdrawing it unpublishes via trigger. */
+          publish_consent: boolean;
+          /** An admin approved it for the Home page (0084). Admin-only — a
+           *  trigger silently reverts this column for anyone else. */
+          published: boolean;
+          published_at: string | null;
+          /** Display name snapshotted at consent time, so renaming an account
+           *  later cannot re-attribute a published quote (0084). */
+          author_name: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['platform_feedback']['Row']> & { buyer_id: string; rating: number };
+        Update: Partial<Database['public']['Tables']['platform_feedback']['Row']>;
+        Relationships: [];
+      };
       expenses: {
         Row: {
           id: string;
@@ -492,6 +707,154 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['expenses']['Row']>;
         Relationships: [];
       };
+      // ── Courier tracking (migration 0063) ────────────────────────────────
+      // The list sellers pick from when shipping. Admin-managed, same pattern
+      // as the catalogue vocabulary.
+      couriers: {
+        Row: {
+          id: string;
+          name: string;
+          /** '{awb}' is substituted at render time. Null is normal: most Indian
+           *  courier tracking pages are form-POST and take no AWB in the URL. */
+          tracking_url_template: string | null;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['couriers']['Row']> & { name: string };
+        Update: Partial<Database['public']['Tables']['couriers']['Row']>;
+        Relationships: [];
+      };
+      // One parcel per order. Its existence is what gates the seller's payout —
+      // an AWB does not prove delivery, but it proves a parcel left the shop.
+      shipments: {
+        Row: {
+          id: string;
+          order_id: string;
+          boutique_id: string;
+          courier_id: string | null;
+          /** Denormalised so renaming or hiding a courier never rewrites the
+           *  history of parcels already sent; also holds the free-text name
+           *  when the seller picked "Other". */
+          courier_name: string;
+          awb: string;
+          tracking_url: string | null;
+          shipped_at: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          // ── Aggregator booking (migration 0067) ───────────────────────────
+          /** 'manual' = the seller typed the docket. 'shiprocket' = we booked
+           *  it, so a courier scan drives the timeline instead of the seller. */
+          provider: 'manual' | 'shiprocket';
+          sr_order_id: string | null;
+          sr_shipment_id: string | null;
+          sr_courier_name: string | null;
+          label_url: string | null;
+          manifest_url: string | null;
+          /** What the aggregator charged US for this parcel. */
+          freight_charge: number | null;
+          declared_weight_kg: number | null;
+          /** Latest normalised scan, denormalised off shipment_events so an
+           *  order list needs no join per row. */
+          last_status: string | null;
+          last_status_at: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['shipments']['Row']> & {
+          order_id: string; boutique_id: string; courier_name: string; awb: string;
+        };
+        Update: Partial<Database['public']['Tables']['shipments']['Row']>;
+        Relationships: [];
+      };
+      /** Courier scans, append-only (migration 0067). Written only by the
+       *  webhook Edge Function through the service role; readable by the buyer,
+       *  the seller and an admin. */
+      shipment_events: {
+        Row: {
+          id: string;
+          shipment_id: string;
+          order_id: string;
+          awb: string | null;
+          /** The courier's own wording, kept verbatim for support. */
+          raw_status: string;
+          stage: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+          location: string | null;
+          occurred_at: string | null;
+          payload: unknown;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['shipment_events']['Row']>;
+        Update: Partial<Database['public']['Tables']['shipment_events']['Row']>;
+        Relationships: [];
+      };
+
+      // ── "Ask my people" shortlist boards (migration 0077) ───────────────
+      // Only SELECT is ever reachable from the browser: 0077 gives these tables
+      // no insert or update policy at all, and every write goes through one of
+      // the SECURITY DEFINER functions below. `Insert`/`Update` are typed as
+      // `never` to say so at compile time rather than at the 403.
+      shortlist_boards: {
+        Row: {
+          id: string;
+          buyer_id: string;
+          title: string;
+          note: string;
+          /** The share credential. Never leaves the owner's own read. */
+          token: string;
+          status: 'open' | 'closed';
+          decided_product_id: string | null;
+          created_at: string;
+          expires_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_items: {
+        Row: {
+          id: string;
+          board_id: string;
+          product_id: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_votes: {
+        Row: {
+          id: string;
+          board_id: string;
+          item_id: string;
+          /** A uuid from the voter's localStorage. Not authentication. */
+          voter_key: string;
+          voter_name: string;
+          verdict: 'love' | 'no';
+          note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shortlist_comments: {
+        Row: {
+          id: string;
+          board_id: string;
+          voter_key: string;
+          voter_name: string;
+          /** Set only when the signed-in owner posts — earns the "you" badge. */
+          profile_id: string | null;
+          body: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -499,10 +862,101 @@ export interface Database {
         Args: { bid: string; do_follow: boolean };
         Returns: number;
       };
+      /**
+       * Record what India Post said about a pincode (migration 0077). The
+       * `pincodes` table takes no direct writes, so the browser fills the shared
+       * directory through here — and cannot rewrite an existing entry to move
+       * its own address into a cheaper delivery zone.
+       */
+      upsert_pincode: {
+        Args: { p_pincode: string; p_district: string; p_state: string; p_places: string[] };
+        Returns: void;
+      };
       /** Admin fans a single notification out to a whole audience (migration 0048). */
       broadcast_notification: {
         Args: { p_audience: string; p_title: string; p_body: string };
         Returns: number;
+      };
+      /**
+       * One-click unsubscribe from marketing email (migration 0089).
+       *
+       * Callable by `anon` on purpose — the reader is in a mail client with no
+       * session. The token IS the credential, so it returns only a masked address
+       * rather than confirming which real one it matched.
+       */
+      unsubscribe_by_token: {
+        Args: { p_token: string };
+        Returns: { ok: boolean; masked_email: string | null }[];
+      };
+      /** The undo, for "unsubscribed by mistake" (migration 0089). */
+      resubscribe_by_token: {
+        Args: { p_token: string };
+        Returns: { ok: boolean; masked_email: string | null }[];
+      };
+      /**
+       * WhatsApp outbox read-out for the admin console (migration 0090).
+       *
+       * `whatsapp_outbox` has RLS on with no policies, so it is unreadable by
+       * anything but the service role — these two SECURITY DEFINER functions are
+       * the console's only window onto it, both gated on `is_admin()` inside.
+       * Granted `to authenticated`, never PUBLIC.
+       */
+      wa_outbox_stats: {
+        Args: Record<string, never>;
+        Returns: { bucket: string; total: number; newest: string | null }[];
+      };
+      /** Recent give-ups, with the recipient masked — enough to recognise a
+       *  number you know, not enough to harvest one you do not. */
+      wa_outbox_failures: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string; template: string; audience: string; recipient_masked: string;
+          attempts: number; last_error: string | null; created_at: string;
+        }[];
+      };
+      /**
+       * Threaded WhatsApp message log for the admin console (migration 0091).
+       *
+       * `wa_threads` returns numbers ALREADY masked plus a hash key; the real
+       * number is never in that payload. `wa_reveal_msisdn` is the only path by
+       * which a full customer number reaches the browser — one at a time, and
+       * the console writes an audit entry each time. Returning full numbers and
+       * hiding them in CSS would be the appearance of masking, not masking.
+       * All three are admin-gated internally and granted `to authenticated`.
+       */
+      wa_threads: {
+        Args: { p_limit?: number };
+        Returns: {
+          thread_key: string; masked: string; profile_name: string | null;
+          last_at: string; last_body: string; last_dir: string;
+          in_count: number; out_count: number; opted_out: boolean;
+        }[];
+      };
+      wa_thread_messages: {
+        Args: { p_key: string; p_limit?: number };
+        Returns: {
+          at: string; dir: string; body: string | null; msg_type: string | null;
+          status: string | null; delivery: string | null; err: string | null;
+        }[];
+      };
+      wa_reveal_msisdn: {
+        Args: { p_key: string };
+        Returns: string | null;
+      };
+      /**
+       * Queue one WhatsApp template message (migration 0090). Normalises the
+       * phone, drops opted-out recipients, sanitises every parameter and
+       * de-duplicates on the key — so a caller cannot get any of that wrong.
+       * Called by the DB triggers and by api/place-order.js; never from the
+       * browser, which has no business sending on our number.
+       */
+      wa_enqueue: {
+        Args: {
+          p_recipient: string; p_template: string; p_params: string[];
+          p_dedupe_key: string; p_audience?: string;
+          p_order_id?: string | null; p_boutique_id?: string | null; p_profile_id?: string | null;
+        };
+        Returns: string | null;
       };
       toggle_product_like: {
         Args: { pid: string; do_like: boolean };
@@ -573,6 +1027,25 @@ export interface Database {
         };
         Returns: Database['public']['Tables']['ad_campaigns']['Row'];
       };
+      /** Admin publishes an ad itself — no payment, no review (migration 0070). */
+      admin_create_ad_campaign: {
+        Args: {
+          p_boutique_id: string;
+          p_placement_code: AdPlacementCode;
+          p_subject_type: AdSubjectType;
+          p_product_id: string | null;
+          p_headline: string;
+          p_subtext: string;
+          p_image_url: string;
+          p_tag: string;
+          p_cta_label: string;
+          p_days: number;
+          /** ISO yyyy-mm-dd; null means today. */
+          p_start: string | null;
+          p_go_live: boolean;
+        };
+        Returns: Database['public']['Tables']['ad_campaigns']['Row'];
+      };
       /** Seller edits a paid ad's creative → back to review (migration 0033). */
       seller_edit_ad_creative: {
         Args: {
@@ -630,6 +1103,63 @@ export interface Database {
        * DEFINER; recomputes the amount from the boutique's unsettled orders,
        * stamps them, and returns the inserted `payouts` row.
        */
+      /**
+       * The buyer's "it never arrived" report (migration 0063).
+       *
+       * An RPC rather than an UPDATE because `orders` has no buyer update
+       * policy and must not get one — a broad grant would let a buyer edit
+       * status or total. This verifies ownership and writes only the dispute
+       * columns.
+       */
+      report_delivery_issue: {
+        Args: { p_order_id: string; p_note?: string | null };
+        Returns: void;
+      };
+      /**
+       * "Stop asking me to review this order" (migration 0071). An RPC for the
+       * same reason as above — `orders` has no buyer update policy, and giving
+       * it one to set a single flag would also expose status and total.
+       */
+      dismiss_order_review: {
+        Args: { p_order_id: string };
+        Returns: void;
+      };
+      /**
+       * The Home page's "what shoppers say about MangaiMart" quotes (migration
+       * 0084). SECURITY DEFINER rather than a public select policy on
+       * `platform_feedback`: a policy grants the whole row, which would hand an
+       * anonymous visitor `buyer_id` and `order_id`. Returns only consented,
+       * admin-approved rows that actually have words in them.
+       */
+      public_platform_reviews: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          rating: number;
+          body: string;
+          author_name: string;
+          city: string | null;
+          /** Derived: the feedback is tied to a real delivered order. */
+          verified: boolean;
+          created_at: string;
+        }[];
+      };
+      /**
+       * Raise a return on a delivered order (migration 0074). SECURITY DEFINER:
+       * it re-derives the boutique from the order, checks the caller owns it,
+       * and applies the return window server-side — a fault reason bypasses the
+       * window, a goodwill reason does not. Returns the new request's id, or
+       * raises with a message written to be shown to the buyer verbatim.
+       */
+      request_return: {
+        Args: { p_order_id: string; p_reason: string; p_note?: string; p_photos?: string[] };
+        Returns: string;
+      };
+      /** Seller/admin answer to a return request (migration 0074). */
+      resolve_return_request: {
+        Args: { p_request_id: string; p_status: string; p_note?: string | null };
+        Returns: void;
+      };
       settle_boutique_payout: {
         Args: { p_boutique_id: string; p_note?: string | null };
         Returns: {
@@ -651,6 +1181,86 @@ export interface Database {
           utr: string | null;
           failure_reason: string | null;
         };
+      };
+
+      // ── "Ask my people" (migration 0077) ────────────────────────────────
+      // The first three are the ONLY things an anonymous visitor can call, and
+      // each takes the board's token as its first argument: RLS cannot see a
+      // URL, so the token is what stands in for a credential. The rest are
+      // owner-only and re-check `auth.uid()` inside the function.
+
+      /** Create a board and return `{ id, token }` so the share sheet can open
+       *  on the same tap. */
+      create_shortlist_board: {
+        Args: { p_title: string; p_note?: string; p_product_ids?: string[] };
+        Returns: { id: string; token: string };
+      };
+      update_shortlist_board: {
+        Args: {
+          p_board_id: string;
+          p_title?: string | null;
+          p_note?: string | null;
+          p_status?: 'open' | 'closed' | null;
+        };
+        Returns: void;
+      };
+      /** Returns how many were actually added — hidden or duplicate pieces are
+       *  skipped rather than raising. */
+      add_shortlist_items: {
+        Args: { p_board_id: string; p_product_ids: string[] };
+        Returns: number;
+      };
+      remove_shortlist_item: {
+        Args: { p_item_id: string };
+        Returns: void;
+      };
+      /** Record the winner and close voting, so everyone who helped sees it. */
+      decide_shortlist: {
+        Args: { p_board_id: string; p_product_id: string };
+        Returns: void;
+      };
+      /** The anonymous read. Returns the board, its pieces, the votes and the
+       *  comment thread in one round trip — and never the owner's id, email or
+       *  phone, only a first name. */
+      get_shared_board: {
+        Args: { p_token: string };
+        Returns: unknown;
+      };
+      cast_board_vote: {
+        Args: {
+          p_token: string;
+          p_item_id: string;
+          p_voter_key: string;
+          p_voter_name: string;
+          p_verdict: 'love' | 'no';
+          p_note?: string;
+        };
+        Returns: void;
+      };
+      post_board_comment: {
+        Args: { p_token: string; p_voter_key: string; p_voter_name: string; p_body: string };
+        Returns: string;
+      };
+      /*
+       * Staff console (migration 0086). Staff hold no RLS policy on `orders` or
+       * `profiles` — a policy cannot withhold one column, and `guest_phone` is
+       * the buyer's mobile number — so these are their only way in. Each is
+       * SECURITY DEFINER with `is_staff()` as the access check, and each masks
+       * contact details on the way out.
+       */
+      staff_orders_feed: {
+        Args: Record<string, never>;
+        /** The `SELECT` shape from `src/data/orders.ts`, phone masked. */
+        Returns: unknown;
+      };
+      staff_customer_rows: {
+        Args: Record<string, never>;
+        /** `CUSTOMER_SELECT`, with `guest_phone` hashed to keep it a grouping key. */
+        Returns: unknown;
+      };
+      staff_set_order_status: {
+        Args: { p_id: string; p_status: string };
+        Returns: unknown;
       };
     };
     Enums: Record<string, never>;

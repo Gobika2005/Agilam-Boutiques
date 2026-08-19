@@ -4,7 +4,9 @@ import { useShop } from '@/state/ShopContext';
 import { TONES } from '@/data/demo';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchAllBoutiquesAdmin, setBoutiqueStatus, fetchBoutiquePrivate, type AdminBoutiqueRow } from '@/data/boutiques';
+import { registerShiprocketPickup } from '@/data/shipments';
 import { BOUTIQUE_STATUS_LABEL, type BoutiquePrivate, type BoutiqueStatus } from '@/data/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Seller verification queue.
@@ -51,6 +53,28 @@ export function Approvals() {
       showToast(`${b.name} — ${BOUTIQUE_STATUS_LABEL[status].toLowerCase()}`);
       setSelected(null);
       reload();
+
+      /*
+       * Approval is the moment a shop becomes real, so it is also the moment to
+       * give it a collection point at Shiprocket (migration 0068) — rather than
+       * leaving an admin to retype the address into their panel later.
+       *
+       * Deliberately AFTER the approval has been reported and never allowed to
+       * throw: a courier account being unreachable must not make an approval
+       * look like it failed. The shop is approved either way, and the
+       * registration is retryable from Deliveries → Shiprocket.
+       */
+      if (status === 'approved') {
+        void registerShiprocketPickup(b.id)
+          .then((r) => {
+            if (!r.alreadyRegistered) showToast(`Pickup address registered — ${r.nickname}`);
+          })
+          .catch((e) => {
+            // Not silent: the admin needs to know it did not happen, but the
+            // reason belongs in the console where it persists.
+            showToast(`Pickup address not registered: ${e instanceof Error ? e.message : 'failed'}`);
+          });
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Update failed');
     }
@@ -81,7 +105,16 @@ export function Approvals() {
           <span>BOUTIQUE</span><span>CITY</span><span>OWNER</span><span>SUBMITTED</span><span style={css('text-align:right;')}>ACTION</span>
         </div>
 
-        {loading && <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>Loading…</div>}
+        {loading && (
+          <div role="status" aria-busy="true">
+            <span className="agx-visually-hidden">Loading boutiques…</span>
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} style={css(`${GRID}padding:16px 20px;border-top:1px solid var(--ag-border-soft);align-items:center;`)}>
+                {Array.from({ length: 5 }, (_, j) => <Skeleton key={j} w={`${58 + ((i * 11 + j * 17) % 30)}%`} />)}
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && list.length === 0 && (
           <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>
             No boutiques in “{BOUTIQUE_STATUS_LABEL[tab]}”.
@@ -155,10 +188,14 @@ function ReviewDrawer({
     },
     {
       title: 'Contact',
+      // From `priv`, not the row: migration 0073 moved these three off the
+      // public column grant (they were readable in bulk with the anon key) and
+      // behind `boutique_private()`, which is the same call this panel already
+      // makes for the GST and payout details below.
       rows: [
-        ['Mobile', dash(boutique.phone)],
-        ['WhatsApp', dash(boutique.whatsapp)],
-        ['Email', dash(boutique.email)],
+        ['Mobile', dash(priv?.phone)],
+        ['WhatsApp', dash(priv?.whatsapp)],
+        ['Email', dash(priv?.email)],
         ['Instagram', boutique.instagram ? `@${boutique.instagram}` : '—'],
       ],
     },
@@ -178,7 +215,7 @@ function ReviewDrawer({
         ['Timing', boutique.open_time && boutique.close_time ? `${boutique.open_time} – ${boutique.close_time}` : '—'],
         ['Working days', boutique.working_days?.length ? boutique.working_days.join(', ') : '—'],
         ['Delivery', boutique.delivery_available ? `${dash(boutique.delivery_areas)} · ₹${boutique.delivery_charge ?? 0}` : 'Store pickup only'],
-        ['Payments', [boutique.cod_enabled && 'Cash on delivery', boutique.online_payment_enabled && 'Online'].filter(Boolean).join(', ') || '—'],
+        ['Payments', 'Online only'],
       ],
     },
     {

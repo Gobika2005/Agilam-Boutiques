@@ -31,6 +31,7 @@ export function AddProduct() {
         tone: Math.floor(Math.random() * 8),
         description: form.description.trim(),
         mrp: form.mrp.trim() ? Number(form.mrp) : null,
+        weight_grams: form.weightGrams.trim() ? Number(form.weightGrams) : null,
         sizes: form.sizes,
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,

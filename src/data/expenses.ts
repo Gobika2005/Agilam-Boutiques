@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { csvDocument } from '@/lib/csv';
 import { removePrivateFile } from '@/lib/privateUpload';
 
 /**
@@ -274,15 +275,23 @@ export function monthLabel(key: string): string {
 
 /** CSV of the rows currently on screen, for the accountant who wants a file. */
 export function expensesToCsv(rows: ExpenseRow[]): string {
+  // `title`, `vendor`, `reference` and `notes` are free text an admin typed, and
+  // csvCell neutralises a leading `=`/`+`/`-`/`@` so the export can't carry a
+  // formula into whoever opens it (src/lib/csv.ts).
   const head = ['Date', 'Category', 'What for', 'Paid to', 'Amount (INR)', 'Method', 'Reference', 'Proofs', 'Filed by', 'Notes'];
-  const cell = (v: string | number) => {
-    const s = String(v ?? '');
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const lines = rows.map((r) =>
-    [r.spent_on, categoryMeta(r.category).label, r.title, r.vendor, r.amount.toFixed(2), paymentLabel(r.payment_method), r.reference, r.proofs.length, r.created_by_name, r.notes]
-      .map(cell)
-      .join(','),
+  return csvDocument(
+    head,
+    rows.map((r) => [
+      r.spent_on,
+      categoryMeta(r.category).label,
+      r.title,
+      r.vendor,
+      r.amount.toFixed(2),
+      paymentLabel(r.payment_method),
+      r.reference,
+      r.proofs.length,
+      r.created_by_name,
+      r.notes,
+    ]),
   );
-  return [head.join(','), ...lines].join('\n');
 }

@@ -13,22 +13,38 @@ const INPUT_ERR = INPUT.replace('var(--ag-border)', 'var(--ag-border)').replace(
 const TEXTAREA = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;resize:vertical;min-height:88px;';
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
 const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
+const WARN = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-warn-text);';
 const HINT = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);';
 
 export function Field({
-  label, value, onChange, placeholder, error, hint, type = 'text', inputMode, maxLength, disabled,
+  label, value, onChange, placeholder, error, warning, hint, type = 'text', inputMode, maxLength, disabled, suggestions,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   error?: string;
+  /**
+   * A value that is accepted but probably wrong. Unlike `error` it never blocks
+   * saving — it is shown under the input in amber, and only when there is no
+   * error to show instead.
+   */
+  warning?: string;
   hint?: string;
   type?: string;
   inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'url';
   maxLength?: number;
   disabled?: boolean;
+  /**
+   * Offered spellings, shown as the browser's native autocomplete list. The
+   * field stays free text — a shop in a town that isn't listed must still be
+   * able to sign up — but picking from the list is one tap, which is what keeps
+   * "Cbe" and "Coimbatore" from both ending up in the city column.
+   */
+  suggestions?: readonly string[];
 }) {
+  // Stable per label so two fields on one screen can't share a list.
+  const listId = suggestions?.length ? `agx-dl-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
   return (
     <label style={css(LABEL)}>
       {label}
@@ -40,9 +56,17 @@ export function Field({
         inputMode={inputMode}
         maxLength={maxLength}
         disabled={disabled}
+        list={listId}
         style={css(`${error ? INPUT_ERR : INPUT}${disabled ? 'opacity:.6;' : ''}`)}
       />
-      {error ? <span style={css(ERR)}>{error}</span> : hint ? <span style={css(HINT)}>{hint}</span> : null}
+      {listId && (
+        <datalist id={listId}>
+          {suggestions?.map((s) => <option key={s} value={s} />)}
+        </datalist>
+      )}
+      {error ? <span style={css(ERR)}>{error}</span>
+        : warning ? <span style={css(WARN)}>{warning}</span>
+        : hint ? <span style={css(HINT)}>{hint}</span> : null}
     </label>
   );
 }

@@ -12,7 +12,11 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'playwright-browsers', '**/*.tsbuildinfo'] },
+  // `supabase/functions` is Deno, not Node or the browser: `jsr:`/`npm:` import
+  // specifiers and a `Deno` global that this config has no business resolving.
+  // It is covered by neither tsconfig project either — deliberately, so `tsc -b`
+  // does not try to type-check a different runtime. Lint it with `deno lint`.
+  { ignores: ['dist', 'node_modules', 'playwright-browsers', '**/*.tsbuildinfo', 'supabase/functions'] },
 
   // Application source (and the Vite/Tailwind/PostCSS config files).
   {

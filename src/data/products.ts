@@ -65,6 +65,9 @@ export async function createProduct(input: {
   tone?: number;
   description?: string;
   mrp?: number | null;
+  /** Packed weight of one unit in grams (migration 0065). Null falls back to
+   *  the boutique default when a parcel is booked. */
+  weight_grams?: number | null;
   sizes?: string[];
   wash_care?: string;
   image_url?: string;
@@ -93,6 +96,7 @@ export async function updateProduct(
     fabric: string;
     description: string;
     mrp: number | null;
+    weight_grams: number | null;
     sizes: string[];
     wash_care: string;
     image_url: string;
@@ -115,9 +119,14 @@ export async function deleteProduct(id: string) {
 }
 
 /** Uploads a product photo to the public `product-images` bucket, scoped under
- *  the boutique's id so photos stay grouped per shop. */
-export async function uploadProductImage(boutiqueId: string, file: File): Promise<string> {
-  return uploadImage('product-images', boutiqueId, file, '0017');
+ *  the boutique's id so photos stay grouped per shop.
+ *
+ *  `title` is the piece's own title where the caller knows it, so the stored
+ *  file is `mangaimart-kanchipuram-silk-saree-<id>.jpg` rather than a bare
+ *  UUID. It is optional because the ad composers upload a banner before any
+ *  product exists to name it after. */
+export async function uploadProductImage(boutiqueId: string, file: File, title?: string): Promise<string> {
+  return uploadImage('product-images', boutiqueId, file, '0017', title);
 }
 
 /**

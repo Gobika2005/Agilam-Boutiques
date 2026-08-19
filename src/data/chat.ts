@@ -12,29 +12,34 @@ export async function getBuyerId(): Promise<string | null> {
 }
 
 /**
- * Give the anonymous buyer a durable identity so their side of the chat is a
- * real, RLS-satisfying participant. Buyers never sign up (they browse the public
- * surface), so the first time one actually opens a conversation we create an
- * anonymous Supabase auth user + matching buyer profile, seeded with the name +
- * phone they gave at the details gate. The session persists in localStorage, so
- * a returning buyer keeps the same threads. Requires "Anonymous sign-ins" to be
- * enabled in the Supabase project's Auth settings.
+ * Make sure the signed-in buyer has a profile row, so their side of the chat is
+ * a real, RLS-satisfying participant.
+ *
+ * This used to mint an ANONYMOUS Supabase auth user for a buyer who had never
+ * signed up, back when browsing and chatting were both open to strangers. Two
+ * things have since made that branch dead code:
+ *
+ *   • the Supabase project has "Anonymous sign-ins" disabled — the call now
+ *     fails outright with `422 anonymous_provider_disabled`; and
+ *   • `Chat.tsx` holds on `signedIn` before it ever calls this, so a signed-out
+ *     buyer never reaches it in the first place.
+ *
+ * It has been removed rather than left in: a fallback that can only throw is
+ * worse than no fallback, because it reads as a working escape hatch. A caller
+ * that reaches here without a session now gets a clear error instead of a
+ * confusing auth failure.
  */
 export async function ensureBuyerIdentity(): Promise<string> {
-  let uid = await getBuyerId();
-  if (!uid) {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) throw error;
-    uid = data.user?.id ?? null;
-    if (!uid) throw new Error('Could not start a chat session');
-  }
+  const uid = await getBuyerId();
+  if (!uid) throw new Error('Please sign in to message this boutique.');
   const guest = readGuest();
   const name = guest.name.trim() || 'Customer';
   const phone = guest.phone.trim() || null;
   // Ensure a profile row exists so conversations.buyer_id / messages.sender_id
   // resolve, and the seller sees a real name/number instead of a bare id.
-  // upsert/ignoreDuplicates: AuthContext's onAuthStateChange also creates the
-  // profile when the anonymous session lands, so tolerate the race. This must
+  // upsert/ignoreDuplicates: AuthContext's onAuthStateChange and migration
+  // 0030's handle_new_user trigger both create this row too, so tolerate the
+  // race rather than assuming we are first. This must
   // succeed before we create the conversation — otherwise the conversation's
   // buyer_id foreign key has nothing to point at and the whole chat fails to
   // start ("Could not start chat"). A swallowed error here was invisible.
@@ -93,6 +98,13 @@ export function messagePreview(body: string): string {
   if (product) return `🛍️ ${product.title}`;
   const order = parseOrderCard(body);
   if (order) return `🧾 ${order.orderId} · ${order.title}`;
+  // A body that only *looks* like a card — a marker with unparseable JSON
+  // behind it — must still never surface raw. Without these two lines the inbox
+  // would show `@@ORDER@@{not json` verbatim, which is the exact failure
+  // `message_preview()` guards against in SQL (migration 0055). The wording
+  // matches that function's, so the list and the notification agree.
+  if (body.startsWith(PRODUCT_MARKER)) return 'Shared a product';
+  if (body.startsWith(ORDER_MARKER)) return 'Shared an order';
   return body;
 }
 

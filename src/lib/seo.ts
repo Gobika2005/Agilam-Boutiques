@@ -1,3 +1,5 @@
+import { ADMIN_BASE } from '@/lib/adminPath';
+
 /**
  * The one place that knows what MangaiMart's URLs are.
  *
@@ -118,9 +120,28 @@ export const routes = {
   category: (name: string) => `/collections/${slugify(name)}`,
   occasion: (name: string) => `/occasions/${slugify(name)}`,
   fabric: (name: string) => `/fabrics/${slugify(name)}`,
+  colour: (name: string) => `/colours/${slugify(name)}`,
+  /**
+   * A budget rung — `/budget/under-3000`.
+   *
+   * The number, not a slugified label: `slugify('Under ₹3,000')` gives
+   * `under-3-000`, which is both ugly and fragile the moment the label's
+   * punctuation changes. The URL is built from the rung itself, so the label can
+   * be rewritten without breaking a link anyone has shared.
+   */
+  budget: (maxPrice: number | string) => `/budget/under-${Number(maxPrice)}`,
   product: (p: { id: string; title: string; slug?: string | null }) => `/products/${productSlug(p)}`,
   boutique: (b: { slug?: string; id: string }) => `/boutique/${b.slug || b.id}`,
   boutiques: () => '/boutiques',
+  /**
+   * The per-city boutique directory — `/boutiques/coimbatore`.
+   *
+   * "Boutiques in Coimbatore" is a query with real local intent, and the city
+   * filter used to live only in React state: one national URL, nothing for a
+   * crawler to reach and nothing to rank. Each city with an approved shop is now
+   * its own page, and selecting a city navigates rather than setting state.
+   */
+  city: (name: string) => `/boutiques/${slugify(name)}`,
   newArrivals: () => '/new-arrivals',
   bestSellers: () => '/best-sellers',
   topBoutiques: () => '/top-boutiques',
@@ -162,6 +183,9 @@ export function canonicalUrl(path: string): string {
  * linked from an indexed page can still be indexed despite a Disallow.
  */
 export const NOINDEX_PREFIXES = [
+  // The console's real address, plus `/admin` — which no longer routes, but
+  // must stay unindexable in case anything ever links it.
+  ADMIN_BASE,
   '/admin',
   '/seller',
   '/auth',

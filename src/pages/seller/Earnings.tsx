@@ -7,6 +7,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { fetchBoutiquePrivate } from '@/data/boutiques';
+import { PayoutHistory } from '@/components/seller/PayoutHistory';
 import type { OrderWithDetails } from '@/data/types';
 
 /**
@@ -17,14 +18,18 @@ import type { OrderWithDetails } from '@/data/types';
  *
  *   • Prepaid online orders are collected by MangaiMart, so commission comes off
  *     the top and the remainder is settled to the seller's payout account.
- *   • Cash on delivery is collected by the SELLER at the door. MangaiMart never
- *     touches that money, so its commission on those orders becomes a debt the
- *     seller carries, netted off their next online payout rather than invoiced.
+ *   • Cash on delivery was collected by the SELLER at the door. MangaiMart never
+ *     touched that money, so its commission on those orders is a debt the seller
+ *     carries, netted off their next payout rather than invoiced. This stream is
+ *     CLOSED — cash on delivery was withdrawn platform-wide (migration 0085) —
+ *     but the arithmetic stays here because a shop that traded before then still
+ *     has those orders in its history, and dropping it would silently restate
+ *     their lifetime earnings. It contributes nothing on a prepaid-only shop.
  *   • Offline / walk-in bills (the POS flow) are the seller's own trade — no
  *     payout is due and no commission is charged.
  *
  * Rejected and cancelled orders are excluded throughout: they are not money
- * anyone earned. So is any COD order whose cash has not been collected yet —
+ * anyone earned. So is any legacy cash order whose money was never collected —
  * a promise of payment is not revenue.
  */
 
@@ -64,7 +69,7 @@ const maskAccount = (n: string | null) => (n && n.length > 4 ? `•••• ${n
 export function Earnings() {
   // The platform commission is admin-editable, so the seller's take-home is
   // derived from the live rate rather than a compile-time constant.
-  const { commission_pct: commissionPct } = useSettings();
+  const { commission_pct: commissionPct, payout_sla_hours: slaHours } = useSettings();
   const COMMISSION = commissionPct / 100;
   const navigate = useNavigate();
   const { boutique } = useMyBoutique();
@@ -134,8 +139,9 @@ export function Earnings() {
   // reimburses them for, minus what they owe on that cash.
   const netEarnings = prepaidNet + codCash + codPlatformCredit - codCommissionOwed;
 
-  // Settled once the buyer has the goods; anything still in flight is money
-  // MangaiMart is holding, which is what the seller wants to see as "pending".
+  // Delivery is the line. Everything still in flight is money MangaiMart is
+  // holding by design (migration 0078); everything delivered has been released
+  // to the seller or is inside the payout promise.
   const settledGross = prepaid.filter((o) => o.status === 'delivered').reduce((s, o) => s + Number(o.total), 0);
   const pendingPayout = Math.round((prepaidGross - settledGross) * (1 - COMMISSION));
   // The COD debt comes out of the payout MangaiMart is about to make, which is why
@@ -150,10 +156,14 @@ export function Earnings() {
   const bars = lastSevenDays(live);
   const peak = Math.max(...bars.map((b) => b.total), 1);
 
+  // "Pending payout" and "Settled to you" both overstated what had happened:
+  // the first is money we are HOLDING because the parcel has not arrived, and
+  // the second is money released by delivery, which is not the same as a
+  // transfer that has cleared. Both are named for the rule that governs them.
   const TILES = [
     { label: 'Orders this month', value: String(thisMonth.length), color: 'var(--ag-ink)' },
-    { label: 'Pending payout', value: fmt(pendingPayout), color: 'var(--ag-gold-text)' },
-    { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
+    { label: 'Held until delivered', value: fmt(pendingPayout), color: 'var(--ag-gold-text)' },
+    { label: 'Released after delivery', value: fmt(Math.max(0, settledPayout)), color: 'var(--ag-good)' },
     { label: `Commission (${commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: 'var(--ag-muted)' },
   ];
 
@@ -177,7 +187,17 @@ export function Earnings() {
             Your earnings · {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,5vw,44px);line-height:1;margin-top:6px;")}>
-            {loading ? '—' : fmt(netEarnings)}
+            {loading ? (
+              // The shimmer tokens are tuned for the page background and would
+              // read as a pale smudge on the crimson hero, so this instance
+              // re-points them at translucent white.
+              <span
+                className="agx-shimmer"
+                aria-label="Loading your earnings"
+                role="status"
+                style={css('display:inline-block;width:min(62%,210px);height:38px;border-radius:12px;--ag-shimmer-1:rgba(255,255,255,.18);--ag-shimmer-2:rgba(255,255,255,.38);')}
+              />
+            ) : fmt(netEarnings)}
           </div>
           <div style={css('font-size:12.5px;opacity:.82;margin-top:6px;')}>
             {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {commissionPct}% MangaiMart commission
@@ -200,13 +220,15 @@ export function Earnings() {
         ))}
       </div>
 
-      {/* Cash on delivery — the seller holds the money, so MangaiMart's cut on it
-          is a debt rather than a deduction. Stated plainly, with the figure. */}
+      {/* Cash on delivery (withdrawn, migration 0085) — the seller held the
+          money, so MangaiMart's cut on it is a debt rather than a deduction.
+          Only renders for a shop that traded before the withdrawal and still has
+          an unsettled balance; on every other shop both figures are zero. */}
       {(codCommissionOwed > 0 || codOutstanding > 0) && (
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery · withdrawn</div>
           </div>
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
@@ -269,6 +291,9 @@ export function Earnings() {
           </div>
         )}
       </div>
+
+      {/* Payout statements --------------------------------------------------- */}
+      <PayoutHistory boutiqueId={boutique?.id} slaHours={slaHours} />
 
       {/* Payout destination -------------------------------------------------- */}
       <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Payout account</div>

@@ -1,4 +1,5 @@
 import { serviceClient } from './_supabase.js';
+import { sendAccessEmail } from './_accessEmail.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -53,6 +54,64 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'A userId is required' });
     }
 
+    // Admin-typed, shown to the affected user verbatim in the email and stored
+    // nowhere else here (the console writes its own audit entry). Capped so a
+    // pasted essay can't bloat the message.
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+
+    // Every branch below needs the person's email to notify them, and the hard
+    // delete needs it read BEFORE the row disappears — after the delete there is
+    // nothing left to look up. One read up front serves all of them.
+    const { data: target } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name, role, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // ── Block / unblock ──────────────────────────────────────────────────────
+    // Moved here from a direct browser→Postgres UPDATE so the suspension can be
+    // announced: being blocked with no notice means the person just finds their
+    // login broken. Blocking an active admin is refused for the same reason the
+    // console hides the button — it would lock them out of the console.
+    if (action === 'block' || action === 'unblock') {
+      if (!target) return res.status(404).json({ error: 'User not found' });
+
+      const nextStatus = action === 'block' ? 'blocked' : 'active';
+      if (action === 'block' && userId === auth.adminId) {
+        return res.status(400).json({ error: 'You cannot block your own account' });
+      }
+      if (action === 'block' && target.role === 'admin' && target.status === 'active') {
+        return res.status(400).json({ error: 'Admin accounts cannot be blocked. Change their role first.' });
+      }
+
+      const { error: statusError } = await supabaseAdmin
+        .from('profiles')
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+
+      if (statusError) {
+        console.error('[STATUS_ERROR]', statusError);
+        return res.status(500).json({ error: `Failed to ${action} the user` });
+      }
+
+      // Status is already committed — the mail is a notice about it, never a
+      // precondition for it.
+      const mailed = await sendAccessEmail(action === 'block' ? 'blocked' : 'unblocked', {
+        to: target.email,
+        fullName: target.full_name,
+        role: target.role,
+        reason,
+      });
+
+      return res.status(200).json({
+        mode: nextStatus,
+        emailSent: mailed.ok,
+        message: mailed.ok
+          ? `User ${action === 'block' ? 'blocked' : 'unblocked'} and notified by email.`
+          : `User ${action === 'block' ? 'blocked' : 'unblocked'}, but the notification email could not be sent.`,
+      });
+    }
+
     // ── Restore an archived user ─────────────────────────────────────────────
     // The soft-delete path below sets deleted_at + status='blocked' AND bans the
     // auth login. Restoring must undo all three, or the user reappears as active
@@ -73,7 +132,20 @@ export default async function handler(req, res) {
       await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' }).catch((e) => {
         console.warn('[RESTORE_UNBAN]', e?.message ?? e);
       });
-      return res.status(200).json({ mode: 'restored', message: 'User restored and their login re-enabled.' });
+
+      const restoreMail = await sendAccessEmail('restored', {
+        to: target?.email,
+        fullName: target?.full_name,
+        role: target?.role,
+      });
+
+      return res.status(200).json({
+        mode: 'restored',
+        emailSent: restoreMail.ok,
+        message: restoreMail.ok
+          ? 'User restored, their login re-enabled, and they have been notified by email.'
+          : 'User restored and their login re-enabled. The notification email could not be sent.',
+      });
     }
 
     if (userId === auth.adminId) {
@@ -82,11 +154,6 @@ export default async function handler(req, res) {
 
     // Never delete an admin account — that risks locking the business out of the
     // console. To remove one, change their role first, then delete.
-    const { data: target } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
     if (target?.role === 'admin') {
       return res.status(400).json({ error: 'Admin accounts cannot be deleted. Change their role first, then delete.' });
     }
@@ -100,9 +167,21 @@ export default async function handler(req, res) {
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (!deleteError) {
+      // `target` was read before the delete on purpose — the profile row (and
+      // the address to write to) no longer exists at this point, so this mail is
+      // the only record of the closure the person will ever have.
+      const closureMail = await sendAccessEmail('deleted', {
+        to: target?.email,
+        fullName: target?.full_name,
+        role: target?.role,
+        reason,
+      });
       return res.status(200).json({
         mode: 'deleted',
-        message: 'User permanently deleted from the database.',
+        emailSent: closureMail.ok,
+        message: closureMail.ok
+          ? 'User permanently deleted from the database, and notified by email.'
+          : 'User permanently deleted from the database. The notification email could not be sent.',
       });
     }
 
@@ -123,9 +202,19 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to delete the user' });
     }
 
+    const archiveMail = await sendAccessEmail('archived', {
+      to: target?.email,
+      fullName: target?.full_name,
+      role: target?.role,
+      reason,
+    });
+
     return res.status(200).json({
       mode: 'archived',
-      message: 'This user has orders or chat history, so their records were kept. The account has been archived and its login disabled.',
+      emailSent: archiveMail.ok,
+      message:
+        'This user has orders or chat history, so their records were kept. The account has been archived and its login disabled.' +
+        (archiveMail.ok ? ' They have been notified by email.' : ' The notification email could not be sent.'),
     });
   } catch (error) {
     console.error('[API_ERROR]', error);

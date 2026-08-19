@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS } from '@/data/demo';
-import { computeTotals, codBlockedReason, findCoupon } from '@/lib/pricing';
-import { loadSettings, useSettings } from '@/data/settings';
+import { computeTotals, findCoupon, undeliverableReason, type ShopTermsMap } from '@/lib/pricing';
+import type { BuyerPlace } from '@/lib/deliveryZone';
+import { resolvePincode } from '@/data/pincodes';
+import { loadSettings } from '@/data/settings';
 import { fetchActiveCoupons, type CouponRow } from '@/data/coupons';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
@@ -20,6 +22,8 @@ import {
   writeLocalWishlist,
   readLocalFollows,
   writeLocalFollows,
+  readDeliveryPincode,
+  writeDeliveryPincode,
   clearLocalCollections,
 } from '@/lib/buyerLocal';
 import { clearLocalFeedInteractions } from '@/lib/feedLocal';
@@ -114,6 +118,26 @@ type ShopValue = {
   /** Goods value in the bag per boutique — a seller coupon measures against its
    *  own boutique's slice, so the coupon screen needs this to preview savings. */
   boutiqueSubtotals: Record<string, number>;
+  /** Each boutique's own delivery / COD terms, keyed by id (migration 0076).
+   *  Exposed because a free-delivery coupon is worth whatever the bag's
+   *  delivery actually costs, which is now a per-shop question. */
+  shopTerms: ShopTermsMap;
+
+  /**
+   * The pincode the storefront is pricing delivery for (migration 0077).
+   *
+   * Set from the "Deliver to" box on a product page and remembered across
+   * visits; the checkout address wins over it once entered. Until one is known
+   * every shop quotes its furthest zone, so this is what turns "delivery ₹150"
+   * into "delivery ₹30" for a buyer down the road.
+   */
+  deliveryPincode: string;
+  setDeliveryPincode: (pincode: string) => void;
+  /** That pincode resolved to a district and state, or null while unknown. */
+  buyerPlace: BuyerPlace | null;
+  /** Why this bag cannot be sent to that address, or null. Set when a boutique
+   *  in the bag does not deliver that far. */
+  undeliverable: string | null;
 
   /**
    * The cart as the server-priced order payload — product ids + quantities +
@@ -140,11 +164,6 @@ type ShopValue = {
    */
   placeOrder: (payment: PaymentInfo) => Promise<string>;
   /**
-   * Creates the same order(s) with no payment behind them, to be settled in cash
-   * at the door. Throws if the bag isn't COD-eligible.
-   */
-  placeCodOrder: () => Promise<string>;
-  /**
    * Completes an order whose payment was captured but never settled (see
    * `@/lib/pendingPayment`). Replays the stored payment — it never re-charges.
    */
@@ -167,17 +186,8 @@ type ShopValue = {
   subtotal: number;
   discount: number;
   shipFee: number;
-  /** COD handling fee across the bag; 0 unless paying cash. */
-  codFee: number;
   total: number;
   coupon: CouponRow | undefined;
-
-  /** True when the buyer has chosen cash on delivery. */
-  payingCash: boolean;
-  /** Why cash isn't offered on this bag, or null when it is available. */
-  codUnavailableReason: string | null;
-  /** How many separate deliveries (and cash collections) this bag becomes. */
-  codDeliveries: number;
 };
 
 const ShopContext = createContext<ShopValue | null>(null);
@@ -475,68 +485,103 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [cart, productById, boutiques]);
 
   /**
-   * The boutiques this bag will split into — one order, and one cash
-   * collection, per boutique. Also tells us whether every one of them accepts
-   * cash, since a single opt-out disqualifies the whole bag.
+   * Each boutique's own delivery terms (migration 0076).
+   *
+   * Built for the whole catalogue rather than just the bag: it is a plain map
+   * over rows already in memory, and keying it off the cart would rebuild it on
+   * every add. The server derives the identical map in `loadShopTerms`
+   * (api/_pricing.js) and prices the payment from it, so a boutique missing
+   * here must fall back to exactly what the server falls back to — charging
+   * nothing — or checkout would reject its own quote as underpaid.
    */
-  const cartBoutiques = useMemo(() => {
-    const ids = new Set<string>();
-    let allAcceptCod = true;
-    for (const id of Object.keys(cart)) {
-      const p = productById(id);
-      if (!p) continue;
-      // Resolve by boutique id (unique); fall back to the display name only for
-      // legacy records that predate boutiqueId. Two shops can share a name, so
-      // the id path is what keeps COD splitting attached to the right boutique.
-      const b = p.boutiqueId
-        ? boutiques.find((x) => x.id === p.boutiqueId)
-        : boutiques.find((x) => x.name === p.boutique);
-      if (!b) continue;
-      ids.add(b.id);
-      if (b.codEnabled === false) allAcceptCod = false;
+  const shopTerms = useMemo(() => {
+    const map: ShopTermsMap = {};
+    for (const b of boutiques) {
+      const local = b.deliveryCharge ?? 0;
+      // `undefined` means the zone columns were not selected (0077 not applied),
+      // and the shop charges its one rate everywhere as it always did. `null`
+      // means the seller chose not to deliver that far. The server draws the
+      // same distinction, which is what keeps the two totals equal.
+      const zone = (v: number | null | undefined) => (v === undefined ? local : v);
+      map[b.id] = {
+        rates: {
+          local,
+          district: zone(b.deliveryChargeDistrict),
+          state: zone(b.deliveryChargeState),
+          national: zone(b.deliveryChargeNational),
+        },
+        freeDeliveryOver: b.freeDeliveryOver ?? 0,
+        place: { pincode: b.pincode, city: b.city, district: b.district, state: b.state },
+        name: b.name,
+      };
     }
-    return { deliveries: ids.size, allAcceptCod };
-  }, [cart, productById, boutiques]);
+    return map;
+  }, [boutiques]);
 
-  const payingCash = payMethod === 'cod';
+  /**
+   * Where the bag is being delivered, resolved to a district and state.
+   *
+   * Delivery is priced by distance (migration 0077), so the totals cannot be
+   * final until this is known. It comes from the buyer's checkout pincode, or —
+   * before they reach checkout — from the "Deliver to" box on the product page,
+   * which is why that box exists: without it the cart would quote a national
+   * rate and then drop at the payment screen.
+   *
+   * Null while unknown, and pricing reads that as "charge the furthest zone".
+   * The resolved row is the same one the server reads (`pincodes`, filled by
+   * `resolvePincode` below), so both sides land on the same zone.
+   */
+  const [deliveryPincode, setDeliveryPincodeState] = useState<string>(() => readDeliveryPincode());
+  const [buyerPlace, setBuyerPlace] = useState<BuyerPlace | null>(null);
 
-  // Commission, delivery and COD terms are admin-editable (Platform Settings).
-  // Fetch the row once at boot; until it lands `useSettings()` hands back the
-  // compile-time defaults, and every total below re-derives when it arrives.
+  const setDeliveryPincode = useCallback((pin: string) => {
+    const code = pin.replace(/\D/g, '').slice(0, 6);
+    setDeliveryPincodeState(code);
+    writeDeliveryPincode(code);
+  }, []);
+
+  // The checkout address is authoritative once it has a valid pincode: it is the
+  // address the parcel actually goes to, so it overrides whatever was typed into
+  // the product page's box earlier.
+  const effectivePincode = /^[1-9]\d{5}$/.test(guest.pincode ?? '') ? guest.pincode : deliveryPincode;
+
+  useEffect(() => {
+    let live = true;
+    if (!/^[1-9]\d{5}$/.test(effectivePincode ?? '')) { setBuyerPlace(null); return; }
+    void resolvePincode(effectivePincode).then((area) => {
+      if (!live) return;
+      setBuyerPlace(area && area.district && area.state
+        ? { pincode: area.pincode, district: area.district, state: area.state, places: area.places }
+        : null);
+    });
+    return () => { live = false; };
+  }, [effectivePincode]);
+
+  // The commission and returns window are still admin-editable (Platform
+  // Settings); delivery is the seller's, above. Fetch the row once at boot —
+  // the policy copy reads it, and nothing here can render a fee from it.
   useEffect(() => { void loadSettings(); }, []);
-  const terms = useSettings();
 
   // The applied code resolved to the coupon row that actually qualifies on this
-  // bag (per-boutique aware), or undefined. Shared by the totals and the COD gate
-  // so both price the identical discount.
+  // bag (per-boutique aware), or undefined.
   const coupon = useMemo(
     () => findCoupon(coupons, appliedCoupon, subtotal, boutiqueSubtotals),
     [coupons, appliedCoupon, subtotal, boutiqueSubtotals],
   );
 
-  /** Why cash isn't offered on this bag, or null when it is. */
-  const codUnavailableReason = useMemo(
-    () => codBlockedReason(subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms),
-    [subtotal, boutiqueSubtotals, coupon, cartBoutiques.allAcceptCod, terms],
+  /** A shop in the bag that will not deliver to this address, put into words. */
+  const undeliverable = useMemo(
+    () => undeliverableReason(boutiqueSubtotals, shopTerms, buyerPlace),
+    [boutiqueSubtotals, shopTerms, buyerPlace],
   );
-
-  // Adding one more item can push a bag past the COD cap. Silently leaving
-  // "Cash on Delivery" selected would then show a total including the handling
-  // fee for a method the buyer can no longer use, so fall back to online.
-  useEffect(() => {
-    if (payMethod === 'cod' && codUnavailableReason) setPayMethod(PAY_METHODS[0].key);
-  }, [payMethod, codUnavailableReason]);
 
   // Mirrors the design: a flat coupon only counts once its minimum is met.
   // Coupon eligibility, discount, delivery and total all come from the shared
   // rules in `@/lib/pricing`, so the coupon screen previews exactly what
   // checkout will charge (and both stay aligned with api/_pricing.js).
-  //
-  // The COD handling fee is one per delivery, so it only enters the total once
-  // the buyer has actually chosen to pay cash.
-  const { discount, shipFee, codFee, total } = useMemo(
-    () => computeTotals(subtotal, boutiqueSubtotals, coupon, payingCash ? cartBoutiques.deliveries : 0, terms),
-    [subtotal, boutiqueSubtotals, coupon, payingCash, cartBoutiques.deliveries, terms],
+  const { discount, shipFee, total } = useMemo(
+    () => computeTotals(subtotal, boutiqueSubtotals, coupon, shopTerms, buyerPlace),
+    [subtotal, boutiqueSubtotals, coupon, shopTerms, buyerPlace],
   );
 
   const orderItems = useMemo(
@@ -569,25 +614,32 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const settleOrder = useCallback(async (
     items: PendingOrderItem[],
     couponCode: string | null,
-    payment: PaymentInfo | null,
-    /** 'COD' writes an unpaid order; omitted means a verified prepaid one. */
-    paymentMethod?: 'COD',
+    payment: PaymentInfo,
   ): Promise<string> => {
-    // A signed-in buyer sends their token so the order is tied to their account
-    // (readable cross-device via RLS); guests omit it and stay phone-keyed.
+    // Every order is tied to its buyer's account (readable cross-device via
+    // RLS), so the access token is required, not optional — the server refuses
+    // the request without it. getSession() refreshes a token that expired while
+    // the buyer was shopping.
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (!token || sessionData.session?.user?.is_anonymous) {
+      // Reached only if the session lapsed mid-checkout; the route guard keeps
+      // signed-out buyers off these screens in the first place. The payment is
+      // already parked, so signing back in and tapping "Complete my order"
+      // settles it — nothing is lost and nothing is charged twice.
+      throw new Error('Please sign in again to finish your order — your payment is safe.');
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
 
     // The server re-derives the discount/shipping from this code and binds the
-    // paid amount to it — the browser's discount value is never trusted. On the
-    // COD path there is no amount to bind, so the server re-checks the cap and
-    // each boutique's cod_enabled flag instead.
+    // paid amount to it — the browser's discount value is never trusted.
     const res = await fetch('/api/place-order', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ items, guest, payment, couponCode, paymentMethod }),
+      body: JSON.stringify({ items, guest, payment, couponCode }),
     });
     const data = (await res.json().catch(() => ({}))) as {
       orders?: {
@@ -595,7 +647,6 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         boutique_id: string;
         total?: number;
         platform_discount?: number;
-        cod_fee?: number;
         shipping_fee?: number;
       }[];
       error?: string;
@@ -613,8 +664,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }
 
     // Mirror the just-paid cart into the buyer's local order history, grouped by
-    // boutique the same way the server split it. Guest orders can't be read back
-    // from Supabase (RLS), so this is what powers "My orders" and tracking.
+    // boutique the same way the server split it. The account copy is the real
+    // record; this local one shows the order instantly, before the DB read.
     const boutiqueIdByName = new Map(boutiques.map((b) => [b.name, b.id]));
     const itemsByBoutique = new Map<string, PlacedOrderItem[]>();
     for (const line of items) {
@@ -630,14 +681,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       itemsByBoutique.set(bid, arr);
     }
     const placedAt = new Date().toISOString();
-    const isCodOrder = paymentMethod === 'COD';
     const placed: PlacedOrder[] = data.orders.map((o) => {
       const orderLines = itemsByBoutique.get(o.boutique_id) ?? [];
-      const fee = Number(o.cod_fee ?? 0);
       const shipping = Number(o.shipping_fee ?? 0);
       // A platform coupon is funded by us, so the server keeps it out of the
       // order's goods total and records it beside — it still has to come off
-      // what we tell the buyer to pay (and, on COD, hand over at the door).
+      // what we tell the buyer they paid.
       const platformDiscount = Number(o.platform_discount ?? 0);
       return {
         id: '#' + o.order_number,
@@ -647,15 +696,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         boutiqueId: o.boutique_id,
         status: 'pending',
         // Prefer the server's total: it's the authoritative goods figure, plus
-        // the delivery and cash-handling this particular order carries.
+        // the delivery this particular order carries.
         total: Math.max(
           0,
-          (o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0)) + shipping + fee - platformDiscount,
+          (o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0)) + shipping - platformDiscount,
         ),
         items: orderLines,
-        paymentMethod: isCodOrder ? 'COD' : 'Razorpay',
-        paymentStatus: isCodOrder ? 'pending' : 'paid',
-        codFee: fee,
+        paymentMethod: 'Razorpay',
+        paymentStatus: 'paid',
         shippingFee: shipping,
         platformDiscount,
       };
@@ -672,7 +720,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     clearCart();
     setAppliedCoupon(null);
     setLastOrderId(oid);
-    showToast(isCodOrder ? 'Order placed — pay cash on delivery' : 'Order placed successfully');
+    showToast('Order placed successfully');
     return oid;
   }, [guest, boutiques, productById, showToast, clearCart]);
 
@@ -696,26 +744,6 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [cart, appliedCoupon, total, settleOrder]);
 
   /**
-   * Places an unpaid cash-on-delivery order.
-   *
-   * Nothing is parked in `pendingPayment` here: there is no captured money to
-   * strand, so a failure means the order simply was not placed and the buyer can
-   * retry safely. The server independently re-checks the cap and every
-   * boutique's cod_enabled flag, so this refusal is a courtesy, not the gate.
-   */
-  const placeCodOrder = useCallback(async (): Promise<string> => {
-    if (codUnavailableReason) throw new Error(codUnavailableReason);
-    const items = Object.entries(cart).map(([product_id, line]) => ({
-      product_id,
-      qty: line.qty,
-      size: line.size,
-    }));
-    if (items.length === 0) throw new Error('Your bag is empty');
-
-    return settleOrder(items, appliedCoupon, null, 'COD');
-  }, [cart, appliedCoupon, codUnavailableReason, settleOrder]);
-
-  /**
    * Finishes a payment that was captured but never became an order. Replays the
    * stored cart and payment id; the server's replay guard guarantees this can't
    * double-charge or double-create.
@@ -732,17 +760,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     cart, cartCount, addToCart, buyNow, cartQty, setCartSize, removeCart, clearCart,
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,
-    appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals,
+    appliedCoupon, applyCoupon, removeCoupon, coupons, boutiqueSubtotals, shopTerms,
+    deliveryPincode, setDeliveryPincode, buyerPlace, undeliverable,
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,
-    lastOrderId, placeOrder, placeCodOrder, retryPendingPayment,
+    lastOrderId, placeOrder, retryPendingPayment,
     toast, showToast,
     sellModal,
     openSellModal: useCallback(() => setSellModal(true), []),
     closeSellModal: useCallback(() => setSellModal(false), []),
-    subtotal, discount, shipFee, codFee, total, coupon,
-    payingCash, codUnavailableReason, codDeliveries: cartBoutiques.deliveries,
+    subtotal, discount, shipFee, total, coupon,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

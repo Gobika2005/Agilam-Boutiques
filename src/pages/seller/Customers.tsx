@@ -6,6 +6,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 type CustomerGroup = {
   key: string;
@@ -31,7 +32,8 @@ export function Customers() {
   const { boutique } = useMyBoutique();
   const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
   const [open, setOpen] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  // Seeded from `?q=` so a customer picked in the global search lands filtered.
+  const [search, setSearch] = useSeededSearch();
 
   const groups = useMemo<CustomerGroup[]>(() => {
     const map = new Map<string, CustomerGroup>();
@@ -68,7 +70,7 @@ export function Customers() {
 
       {groups.length > 0 && (
         <div style={css('padding:0 20px 10px;')}>
-          <div style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
+          <div className="agx-field" style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:14px;padding:0 14px;height:46px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:20px;")}>search</span>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customer name" style={css('flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ag-ink);')} />
           </div>

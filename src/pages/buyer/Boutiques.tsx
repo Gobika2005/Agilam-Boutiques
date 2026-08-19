@@ -1,8 +1,9 @@
 import { Fragment, useMemo, useState, type MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
-import { routes } from '@/lib/seo';
+import { routes, slugify } from '@/lib/seo';
+import { cityKey, distinctCities } from '@/lib/cities';
 import { boutiqueListSchema, breadcrumbSchema, graph, organizationSchema } from '@/lib/schema';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
@@ -21,6 +22,13 @@ function formatCount(n: number): string {
 
 type SortKey = 'rating' | 'reviews' | 'products' | 'name';
 
+/**
+ * How many cities the panel shows before it expects the buyer to search. Enough
+ * that a small marketplace still reads as a browsable list, few enough that a
+ * large one doesn't bury the rest of the filters under a wall of locations.
+ */
+const CITY_CHIP_LIMIT = 8;
+
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'rating', label: 'Top rated' },
   { key: 'reviews', label: 'Most reviewed' },
@@ -35,20 +43,79 @@ export function Boutiques() {
   const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
   const { boutiques: BOUTIQUES, error: catalogError, reload } = useCatalog();
 
+  /*
+   * The city filter is the URL, not component state.
+   *
+   * This screen serves both `/boutiques` and `/boutiques/:citySlug`. Making the
+   * route the single source of truth is what gives every city a page that can be
+   * linked, shared, sitemapped and ranked for "boutiques in <city>" — as state
+   * it was one national URL with a chip nobody outside the session could reach.
+   */
+  const { citySlug } = useParams<{ citySlug?: string }>();
+  const navigate = useNavigate();
+
+  /**
+   * The cities that actually have shops, one entry per city.
+   *
+   * Folded through `distinctCities` rather than a raw `new Set`: the column is
+   * free text a seller typed, so "Cbe", "coimbatore" and "Coimbatore " used to
+   * arrive as three separate chips holding a third of the boutiques each — and
+   * three separate `/boutiques/<slug>` pages. The count rides along so the
+   * search list can say how many shops each city holds.
+   */
+  const cities = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const b of BOUTIQUES) {
+      const k = cityKey(b.city);
+      if (k) counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return distinctCities(BOUTIQUES.map((b) => b.city)).map((name) => ({
+      name,
+      count: counts.get(cityKey(name)) ?? 0,
+    }));
+  }, [BOUTIQUES]);
+
+  const city = useMemo(
+    () => (citySlug ? cities.find((c) => slugify(c.name) === citySlug)?.name ?? null : null),
+    [cities, citySlug],
+  );
+
+  /** Selecting a city navigates; `null` returns to the national directory. */
+  const selectCity = (next: string | null) =>
+    navigate(next ? routes.city(next) : routes.boutiques());
+
+  // The catalogue arrives asynchronously, so on a cold load of a city URL the
+  // city is briefly unresolved. Passing `null` leaves the head exactly as the
+  // edge middleware wrote it rather than flashing the national copy over it.
+  const cityPending = !!citySlug && !city && BOUTIQUES.length === 0;
+
   usePageMeta({
-    title: 'Boutiques in Tamil Nadu — Verified Ethnic Wear Shops',
-    description:
-      'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across Tamil Nadu, each checked before it can list.',
-    canonical: routes.boutiques(),
+    title: cityPending
+      ? null
+      : city
+        ? `Boutiques in ${city} — Verified Ethnic Wear Shops`
+        : 'Boutiques in India — Verified Ethnic Wear Shops',
+    description: cityPending
+      ? null
+      : city
+        ? `Verified boutiques in ${city} listing sarees, kurta sets and ethnic wear on MangaiMart. Chat directly with the shop and get delivery across India.`
+        : 'Browse every verified boutique on MangaiMart by city, rating and speciality. Independent shops across India, each checked before it can list.',
+    canonical: city ? routes.city(city) : routes.boutiques(),
     schema: graph(
       organizationSchema(),
       boutiqueListSchema({
-        name: 'Boutiques on MangaiMart',
-        description: 'Verified independent ethnic-wear boutiques across Tamil Nadu.',
-        path: routes.boutiques(),
-        boutiques: BOUTIQUES,
+        name: city ? `Boutiques in ${city}` : 'Boutiques on MangaiMart',
+        description: city
+          ? `Verified independent ethnic-wear boutiques in ${city}.`
+          : 'Verified independent ethnic-wear boutiques across India.',
+        path: city ? routes.city(city) : routes.boutiques(),
+        boutiques: city ? BOUTIQUES.filter((b) => cityKey(b.city) === cityKey(city)) : BOUTIQUES,
       }),
-      breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Boutiques', path: routes.boutiques() }]),
+      breadcrumbSchema([
+        { name: 'Home', path: '/' },
+        { name: 'Boutiques', path: routes.boutiques() },
+        ...(city ? [{ name: city, path: routes.city(city) }] : []),
+      ]),
     ),
   });
   const { ads } = useLiveAds();
@@ -65,16 +132,11 @@ export function Boutiques() {
   const [query, setQuery] = useState('');
 
   // Browse mode + filter state
+  const [cityQuery, setCityQuery] = useState('');
   const [followingOnly, setFollowingOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<SortKey>('rating');
-  const [city, setCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-
-  const cities = useMemo(
-    () => Array.from(new Set(BOUTIQUES.map((b) => b.city))).sort(),
-    [BOUTIQUES],
-  );
 
   const followingCount = useMemo(
     () => BOUTIQUES.filter((b) => following[b.id]).length,
@@ -84,12 +146,29 @@ export function Boutiques() {
   const activeFilters =
     (city ? 1 : 0) + (verifiedOnly ? 1 : 0) + (sort !== 'rating' ? 1 : 0);
 
+  /**
+   * The cities offered under the search box: everything matching what has been
+   * typed, or the busiest few when nothing has. The selected city is always kept
+   * in the list — otherwise choosing one would make the chip that un-chooses it
+   * disappear.
+   */
+  const cityMatches = useMemo(() => {
+    const q = cityQuery.trim().toLowerCase();
+    if (q) return cities.filter((c) => c.name.toLowerCase().includes(q));
+    const top = [...cities].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, CITY_CHIP_LIMIT);
+    if (city && !top.some((c) => c.name === city)) {
+      const selected = cities.find((c) => c.name === city);
+      if (selected) return [selected, ...top.slice(0, CITY_CHIP_LIMIT - 1)];
+    }
+    return top;
+  }, [cities, cityQuery, city]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = BOUTIQUES.filter((b) => {
       if (followingOnly && !following[b.id]) return false;
       if (q && !b.name.toLowerCase().includes(q) && !b.city.toLowerCase().includes(q)) return false;
-      if (city && b.city !== city) return false;
+      if (city && cityKey(b.city) !== cityKey(city)) return false;
       if (verifiedOnly && !b.verified) return false;
       return true;
     });
@@ -127,8 +206,12 @@ export function Boutiques() {
 
   function clearFilters() {
     setSort('rating');
-    setCity(null);
     setVerifiedOnly(false);
+    setCityQuery('');
+    // The city lives in the URL now, so clearing it is a navigation back to the
+    // national directory — and only when there is one to clear, or "Clear all"
+    // on `/boutiques` would push a duplicate history entry.
+    if (citySlug) selectCity(null);
   }
 
   return (
@@ -140,7 +223,7 @@ export function Boutiques() {
       </div>
 
       {/* Search bar with a filter action on the right, per the design */}
-      <div style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
+      <div className="agx-field" style={css('display:flex;align-items:center;gap:10px;background:var(--ag-surface);border:1px solid var(--ag-border-soft);border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:21px;")}>search</span>
         <input
           value={query}
@@ -219,27 +302,74 @@ export function Boutiques() {
             })}
           </div>
 
-          {/* City */}
+          {/*
+            City — searched, not listed.
+
+            Every city with a shop used to be a chip. That is fine at a dozen
+            cities and unusable at a hundred: the panel became a wall of
+            locations the buyer had to read through to find their own, and the
+            one they wanted was as likely to be at the bottom as the top. Typing
+            two letters is faster than scanning, and the list below is the same
+            control either way — it just starts pre-filtered once there is
+            something in the box.
+          */}
           <div style={css('font-size:10px;color:var(--ag-muted-soft);letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:16px 0 8px;')}>City</div>
-          <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
-            <button
-              onClick={() => setCity(null)}
-              style={css(`border:1px solid ${!city ? 'transparent' : 'var(--ag-border-soft)'};background:${!city ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${!city ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
-            >
-              All cities
-            </button>
-            {cities.map((c) => {
-              const on = city === c;
+          <div className="agx-field" style={css('display:flex;align-items:center;gap:9px;background:var(--ag-surface-2);border:1px solid var(--ag-border-soft);border-radius:13px;padding:0 8px 0 12px;height:44px;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);font-size:19px;")}>location_on</span>
+            <input
+              value={cityQuery}
+              onChange={(e) => setCityQuery(e.target.value)}
+              placeholder={city ? city : 'Search your city…'}
+              aria-label="Search boutiques by city"
+              style={css('border:none;background:none;flex:1;font-size:13.5px;font-weight:600;color:var(--ag-ink);min-width:0;')}
+            />
+            {(cityQuery || city) && (
+              <button
+                onClick={() => { setCityQuery(''); if (city) selectCity(null); }}
+                aria-label={city ? 'Clear the selected city' : 'Clear the city search'}
+                style={css('width:32px;height:32px;flex:none;border-radius:10px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:18px;")}>close</span>
+              </button>
+            )}
+          </div>
+
+          <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;')}>
+            {/* "All cities" is only worth a chip while nobody is searching —
+                mid-search it is noise between the buyer and their match. */}
+            {!cityQuery.trim() && (
+              <button
+                onClick={() => selectCity(null)}
+                style={css(`border:1px solid ${!city ? 'transparent' : 'var(--ag-border-soft)'};background:${!city ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${!city ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+              >
+                All cities
+              </button>
+            )}
+            {cityMatches.map((c) => {
+              const on = city === c.name;
               return (
                 <button
-                  key={c}
-                  onClick={() => setCity(on ? null : c)}
-                  style={css(`border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
+                  key={c.name}
+                  onClick={() => { selectCity(on ? null : c.name); setCityQuery(''); }}
+                  style={css(`display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;`)}
                 >
-                  {c}
+                  {c.name}
+                  <span style={css(`font-size:11px;font-weight:800;opacity:${on ? 0.85 : 0.6};`)}>{c.count}</span>
                 </button>
               );
             })}
+            {cityQuery.trim() && cityMatches.length === 0 && (
+              <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;padding:4px 2px;')}>
+                No boutiques in a city matching “{cityQuery.trim()}” yet.
+              </div>
+            )}
+            {/* The tail of a long, unsearched list, so the panel never grows
+                past a few rows on a marketplace with a hundred cities. */}
+            {!cityQuery.trim() && cities.length > CITY_CHIP_LIMIT && (
+              <div style={css('font-size:12px;color:var(--ag-muted-soft);font-weight:700;padding:8px 2px;')}>
+                +{cities.length - CITY_CHIP_LIMIT} more — search above
+              </div>
+            )}
           </div>
 
           {/* Toggles */}

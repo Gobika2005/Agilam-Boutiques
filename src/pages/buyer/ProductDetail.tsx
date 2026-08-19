@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { Skeleton, SkeletonGroup, SkeletonText } from '@/components/ui/Skeleton';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { ProductReviews } from '@/components/buyer/ProductReviews';
@@ -14,11 +15,13 @@ import { recordProductView, recordProductShare } from '@/data/products';
 import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
+import { useGoBack } from '@/hooks/useGoBack';
 import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
-import { useSettings } from '@/data/settings';
 import { POLICY_TERMS } from '@/data/company';
+import { DeliveryCheck } from '@/components/buyer/DeliveryCheck';
+import { dispatchLabel, returnsDetail, returnsLabel, shopFulfilment } from '@/lib/fulfilment';
 import { badgesFor, DEFAULT_COLOR_DISCLAIMER } from '@/lib/productBadges';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -62,6 +65,9 @@ const BODY_SIZE_CHART: { size: string; measurements: Record<string, string> }[] 
 
 export function ProductDetail() {
   const navigate = useNavigate();
+  // Declared up here with the other hooks: the loading and not-found branches
+  // below return early, and a hook after them would change call order.
+  const goBack = useGoBack('/');
   /**
    * The route is `/products/:slug`, where slug is `title-slug-idprefix`. The id
    * prefix is read straight back out, so a product page resolves without a
@@ -71,9 +77,9 @@ export function ProductDetail() {
    */
   const { slug } = useParams();
   const idKey = productIdFromSlug(slug);
-  // Delivery copy must quote the fee checkout actually charges, so it reads the
-  // live admin settings rather than a compile-time constant.
-  const terms = useSettings();
+  // Delivery copy must quote the fee checkout actually charges — which since
+  // migration 0076 is this boutique's own, read off `boutique` below rather than
+  // from a platform setting.
   const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast, coupons } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   // Null until the buyer picks one, so the shown size can fall back to what the
@@ -202,7 +208,7 @@ export function ProductDetail() {
     title: ap ? `${ap.title} — ${ap.boutique}` : null,
     description: ap
       ? clampDescription(
-          `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}${ap.color ? ` · ${ap.color}` : ''}. ${ap.stock === 0 ? 'Currently sold out.' : 'In stock'}${ap.stock > 0 ? ', 7-day returns, cash on delivery available.' : ''}`,
+          `${ap.title} from ${ap.boutique}, ${ap.city}. ${fmt(ap.price)}${ap.fabric ? ` · ${ap.fabric}` : ''}${ap.color ? ` · ${ap.color}` : ''}. ${ap.stock === 0 ? 'Currently sold out.' : 'In stock'}${ap.stock > 0 ? ', 7-day returns, secure online payment.' : ''}`,
         )
       : null,
     image: ap?.image ?? null,
@@ -228,6 +234,41 @@ export function ProductDetail() {
       : null,
   });
 
+  // While the catalogue is still arriving we don't yet know whether this id
+  // exists, so "not found" would be a lie. Lay out the page it is about to
+  // become instead — same grid, so nothing shifts when the real photo lands.
+  if (!ap && loading) {
+    return (
+      <div className="agx-blend-root agx-pdp-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-bg);')}>
+        <SkeletonGroup label="Loading this piece…" style="max-width:1300px;margin:0 auto;">
+          <div style={css('padding:14px clamp(16px,4vw,44px) 0;')}>
+            <Skeleton w={210} h={11} />
+          </div>
+          <div className="agx-pdp">
+            <div className="agx-pdp-media" style={css('padding:clamp(16px,2.5vw,28px) 0 clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
+              <Skeleton w="100%" h="auto" radius={24} style="aspect-ratio:4/5;max-height:78vh;" />
+              <div style={css('display:flex;gap:10px;margin-top:14px;')}>
+                {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} w={62} h={78} radius={14} />)}
+              </div>
+            </div>
+            <div style={css('padding:clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
+              <Skeleton w={130} h={11} />
+              <Skeleton w="88%" h={30} radius={10} style="margin-top:16px;" />
+              <Skeleton w="55%" h={30} radius={10} style="margin-top:10px;" />
+              <Skeleton w={150} h={24} radius={10} style="margin-top:22px;" />
+              <div style={css('display:flex;gap:10px;margin-top:26px;')}>
+                {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} w={54} h={44} radius={13} />)}
+              </div>
+              <Skeleton w="100%" h={54} radius={16} style="margin-top:26px;" />
+              <Skeleton w="100%" h={54} radius={16} style="margin-top:12px;" />
+              <div style={css('margin-top:30px;')}><SkeletonText lines={3} /></div>
+            </div>
+          </div>
+        </SkeletonGroup>
+      </div>
+    );
+  }
+
   if (!ap) {
     // A bare "Product not found." line was the only thing on screen here, with
     // no way onward. Match the empty state the policy and order screens use: say
@@ -235,24 +276,16 @@ export function ProductDetail() {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;')}>
         <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>
-            {loading ? 'hourglass_top' : 'search_off'}
-          </span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>search_off</span>
         </div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>
-          {loading ? 'Loading this piece…' : 'This piece isn’t available'}
-        </h1>
-        {!loading && (
-          <>
-            <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
-              It may have sold out or been taken down by the boutique. There is plenty more to see.
-            </p>
-            <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
-              <button onClick={() => navigate('/shop')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
-              <button onClick={() => navigate('/')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
-            </div>
-          </>
-        )}
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>This piece isn’t available</h1>
+        <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
+          It may have sold out or been taken down by the boutique. There is plenty more to see.
+        </p>
+        <div style={css('display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px;')}>
+          <button onClick={() => navigate('/shop')} style={css('height:50px;padding:0 26px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Browse collections</button>
+          <button onClick={() => navigate('/')} style={css('height:50px;padding:0 26px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:14.5px;cursor:pointer;')}>Back to home</button>
+        </div>
       </div>
     );
   }
@@ -265,6 +298,40 @@ export function ProductDetail() {
   // opening a chat with it made conversation creation fail ("Could not start
   // chat"). The real boutique_id the product carries can't miss.
   const boutiqueId = ap.boutiqueId || boutique?.id || '';
+  /*
+   * The shop's canonical address, for the link below the price.
+   *
+   * `boutique` is matched by name and can be missing from the loaded list, in
+   * which case the id the product carries still gives a working URL — the edge
+   * redirects it to the slug. Empty only when there is no id either, and then
+   * there is nothing to link to.
+   */
+  const boutiqueLink = boutique ? routes.boutique(boutique) : boutiqueId ? `/boutique/${boutiqueId}` : '';
+  /**
+   * This shop's delivery rates, in the shape `@/lib/pricing` and the "Deliver
+   * to" box both work in. `undefined` on a zone means the row predates
+   * migration 0077 and the shop charges one rate everywhere, as it used to;
+   * `null` means it does not deliver that far.
+   */
+  const shopRates = (() => {
+    const local = boutique?.deliveryCharge ?? 0;
+    const zone = (v: number | null | undefined) => (v === undefined ? local : v);
+    return {
+      local,
+      district: zone(boutique?.deliveryChargeDistrict),
+      state: zone(boutique?.deliveryChargeState),
+      national: zone(boutique?.deliveryChargeNational),
+    };
+  })();
+  /** This shop's dispatch time and return window, normalised (migration 0078). */
+  const fulfilment = shopFulfilment(boutique);
+  const shopPlace = {
+    pincode: boutique?.pincode,
+    city: boutique?.city,
+    district: boutique?.district,
+    state: boutique?.state,
+  };
+
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -333,6 +400,20 @@ export function ProductDetail() {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/boutique/${boutiqueId}`);
   };
+  /** The shop row's contents, shared by its link and its no-destination form. */
+  const shopRow = (
+    <>
+      <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
+      <div style={css('flex:1;')}>
+        <div style={css('display:flex;align-items:center;gap:5px;')}>
+          <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
+        </div>
+        <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+      </div>
+      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
+    </>
+  );
   const openChat = () => {
     if (!boutiqueId) return showToast('This boutique is unavailable right now', 'error');
     navigate(`/chat/${boutiqueId}`, {
@@ -371,13 +452,6 @@ export function ProductDetail() {
     if (bagQty > 0) setCartSize(ap.id, s);
   };
 
-  // `idx > 0` means this entry has somewhere to go back to inside the app; a
-  // cold deep link (a shared WhatsApp URL, a bookmark) starts at 0 and would
-  // otherwise navigate out of the site entirely.
-  const goBack = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/');
-  };
 
   const onAddToBag = () => {
     if (soldOut) {
@@ -523,7 +597,15 @@ export function ProductDetail() {
                   style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in;')}
                 >
                   {/* The first slide is the product page's LCP element, so it
-                      is eager and high-priority; the rest stay lazy. */}
+                      is eager and high-priority; the rest stay lazy.
+
+                      `sizes` matters more here than anywhere else in the app.
+                      This frame is the full width of the viewport on a phone
+                      and ~620px of the two-column layout from 900px up; left to
+                      ImageSlot's grid-tile default it claimed half that, so the
+                      browser fetched a 480w file and stretched it — which is
+                      why the photo read as soft until the zoom viewer (which
+                      loads the original) opened over it. */}
                   <ImageSlot
                     src={src}
                     placeholder={ap.title}
@@ -531,6 +613,8 @@ export function ProductDetail() {
                       ? `${ap.title} — ${ap.cat}${ap.fabric ? ` in ${ap.fabric}` : ''} from ${ap.boutique}, ${ap.city}`
                       : `${ap.title} — photo ${i + 1} of ${gallery.length}`}
                     priority={i === 0}
+                    sizes="(min-width: 900px) 620px, 100vw"
+                    detail
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>
@@ -646,17 +730,33 @@ export function ProductDetail() {
             ))}
           </div>
 
-          <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;cursor:pointer;')}>
-            <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
-            <div style={css('flex:1;')}>
-              <div style={css('display:flex;align-items:center;gap:5px;')}>
-                <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
-              </div>
-              <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+          {/* The one link on the site that says a shop's name and points at that
+              shop's page — repeated across every piece it lists.
+
+              It was a `<div onClick={navigate}>`, so it was not a link at all:
+              nothing crawling the catalogue could get from a product to the shop
+              that sells it, and the shop's own name — the exact words someone
+              types into Google to find it — was anchor text on nothing. It also
+              navigated to `/boutique/<uuid>`, which the edge answers with a 301
+              to the slug, so every visit paid for a redirect.
+
+              `boutiqueLink` prefers the slug and falls back to the id; where
+              neither resolves the row stays a button, because a link with no
+              destination is worse than the toast. */}
+          {boutiqueLink ? (
+            <CardLink
+              to={boutiqueLink}
+              label={`Visit ${ap.boutique}`}
+              className="agx-lift"
+              style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;')}
+            >
+              {shopRow}
+            </CardLink>
+          ) : (
+            <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;cursor:pointer;')}>
+              {shopRow}
             </div>
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
-          </div>
+          )}
 
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>
@@ -705,6 +805,17 @@ export function ProductDetail() {
             </button>
             {renderBagControl(56)}
           </div>
+
+          {/* Delivery is priced by distance (migration 0077), so the exact
+              charge is a question only the buyer's pincode can answer. Directly
+              under the buy actions, where "what will this actually cost me"
+              gets asked — not buried in the shipping accordion further down. */}
+          <DeliveryCheck
+            rates={shopRates}
+            place={shopPlace}
+            freeDeliveryOver={boutique?.freeDeliveryOver ?? 0}
+            boutiqueName={boutique?.name}
+          />
 
           {/* FEATURE BADGES — the seller's own picks (migration 0054), never a
               claim the app invented. A product listed before the seller form
@@ -776,56 +887,64 @@ export function ProductDetail() {
               <div style={css('color:var(--ag-ink-2);font-size:14.5px;line-height:1.65;white-space:pre-line;')}>{ap.washCare}</div>
             ))}
 
+            {/* Every card here is the SELLER's own answer about this parcel.
+                The two summary tiles this panel used to lead with — a delivery
+                figure and a "Verified boutique" badge — were not: the charge is
+                priced by distance and already answered by <DeliveryCheck> above
+                the fold, and verification is a fact about the shop, not about
+                shipping, and is already shown on the boutique row. What is left
+                is what the seller filled in. */}
             {renderPanel('delivery', 'local_shipping', 'Shipping Information', '', (
-              <>
-                <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>local_shipping</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>
-                      {/* The platform's delivery rule, which is what the buyer
-                          is charged. This used to print the seller's private
-                          `delivery_charge` — a figure the checkout total never
-                          used, so the two contradicted each other. Nor does it
-                          branch on the seller's `delivery_available` any more:
-                          MangaiMart ships every order itself, so "Store pickup
-                          only" was telling buyers they could not have a piece
-                          delivered that the checkout then charged them ₹79 to
-                          deliver. See the note on `deliveryLine` in Checkout. */}
-                      {`${fmt(terms.standard_shipping)} delivery · free over ${fmt(terms.free_delivery_over)}`}
-                    </div>
-                  </div>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>verified_user</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{boutique?.verified ? 'Verified boutique' : 'Independent boutique'}</div>
-                  </div>
-                  <div style={css('text-align:center;padding:14px 8px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:var(--ag-crimson);")}>autorenew</span>
-                    <div style={css('font-size:11.5px;font-weight:700;color:var(--ag-ink-2);margin-top:6px;line-height:1.3;')}>{POLICY_TERMS.returnWindowDays}-day easy returns</div>
+              <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;')}>
+                {/* DISPATCH — when the parcel actually leaves, in the seller's
+                    own answer (migration 0078). A single platform "3–7 working
+                    days" covered a shop with stock on the shelf and one that
+                    cuts to measure; only the transit half of that was ever the
+                    platform's to promise, so it stays as the muted second line
+                    rather than being read as the arrival date. */}
+                <div style={css('padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>schedule</span>
+                  <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>{dispatchLabel(fulfilment)}</div>
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>
+                    {`Then ${POLICY_TERMS.deliveryEstimate} in transit.`}
                   </div>
                 </div>
+
+                {/* RETURNS — THIS BOUTIQUE's window (migration 0078). It used to
+                    print `POLICY_TERMS.returnWindowDays` — a compile-time 7 —
+                    and was the last surface in the app reading that constant
+                    instead of the configured value. With returns set to 0, as
+                    production had them, the page promised a 7-day window that
+                    `request_return()` refused on sight. The shop's own number is
+                    now what is shown and what the server enforces. */}
+                <div style={css('padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>autorenew</span>
+                  <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>{returnsLabel(fulfilment)}</div>
+                  <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>{returnsDetail(fulfilment)}</div>
+                </div>
+
                 {/* The seller's own coverage area, in their words — not every
                     boutique delivers everywhere, and this is the only place
                     that says so before checkout. */}
                 {boutique?.deliveryAvailable !== false && boutique?.deliveryAreas && (
-                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>near_me</span>
-                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;')}>
-                      <span style={css('font-weight:700;')}>Delivers to:</span> {boutique.deliveryAreas}
-                    </div>
+                  <div style={css('grid-column:1/-1;padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>near_me</span>
+                    <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>Delivers to</div>
+                    <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;')}>{boutique.deliveryAreas}</div>
                   </div>
                 )}
+
                 {/* Anything true of this piece alone — made to order, ships
                     rolled, longer dispatch. Sits under the shop-wide rules
                     rather than replacing them, so the two can't contradict. */}
                 {ap.shippingInfo?.trim() && (
-                  <div style={css('display:flex;gap:8px;margin-top:10px;padding:11px 13px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:12px;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
-                    <div style={css('font-size:12px;color:var(--ag-ink-2);line-height:1.5;white-space:pre-line;')}>
-                      <span style={css('font-weight:700;')}>About this piece:</span> {ap.shippingInfo}
-                    </div>
+                  <div style={css('grid-column:1/-1;padding:13px 14px;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:14px;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>info</span>
+                    <div style={css('font-size:13px;font-weight:800;color:var(--ag-ink);margin-top:6px;line-height:1.35;')}>About this piece</div>
+                    <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:3px;line-height:1.45;white-space:pre-line;')}>{ap.shippingInfo}</div>
                   </div>
                 )}
-              </>
+              </div>
             ))}
 
             {/* Always shown, seller's wording or the platform's — a buyer judging
@@ -881,12 +1000,33 @@ export function ProductDetail() {
         </div>
       </div>
 
-      {/* STICKY MOBILE ACTION BAR */}
+      {/* STICKY MOBILE ACTION BAR
+          Also the page's navigation: on phones this bar REPLACES the five-tab
+          dock (see `body:has(.agx-pdp-root) .agx-dock` in index.css). Stacking a
+          floating dock on top of a full-width action bar spent ~160px of a phone
+          screen on chrome and put two competing bottom bars in the same thumb
+          zone. The dock's job here was only ever "get me out of this product",
+          which is what Back does — and it does it better, because it returns to
+          the grid the buyer was actually browsing instead of a fixed tab. */}
       <div className="agx-pdp-sticky">
-        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
+        <button
+          onClick={goBack}
+          aria-label="Go back"
+          title="Back"
+          className="agx-pdp-backbtn"
+          style={css('flex:none;width:52px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+        >
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:22px;")}>arrow_back</span>
         </button>
-        {renderBagControl(52)}
+        <button onClick={openChat} className="agx-pdp-chat" style={css('flex:none;width:116px;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
+          <span className="agx-pdp-chat-label">Chat</span>
+        </button>
+        {/* Wrapper so the CSS can relax the bag control's 160px floor on narrow
+            phones without the inline style winning. */}
+        <div className="agx-pdp-bag" style={css('flex:1;min-width:0;display:flex;')}>
+          {renderBagControl(52)}
+        </div>
       </div>
 
       {/* FULL-SCREEN PHOTO VIEWER */}
@@ -953,6 +1093,7 @@ export function ProductDetail() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

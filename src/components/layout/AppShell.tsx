@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Suspense, useState, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { isTabActive } from '@/lib/navMatch';
@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { SellModal } from '@/components/SellModal';
 import { GlobalSearch } from '@/components/buyer/GlobalSearch';
 import { initialsFrom, resolveDisplayName } from '@/lib/displayName';
+import { RouteErrorBoundary } from './RouteErrorBoundary';
 
 /**
  * Premium header profile button — shows the user's initials in a gradient
@@ -30,6 +31,22 @@ function ProfileAvatar({ initials, onClick, className }: { initials: string; onC
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>person</span>
       )}
     </button>
+  );
+}
+
+/**
+ * What a console shows while the chunk for the screen you just tapped is still
+ * downloading. Quiet on purpose — a spinner for a request that usually resolves
+ * in under 100 ms reads as a stall, whereas a held space reads as "loading".
+ * The height matches a typical first screenful so the floating dock and the
+ * page footer stay where they were.
+ */
+function RouteFallback() {
+  return (
+    <div role="status" aria-live="polite" style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;')}>
+      <span className="agx-route-spinner" aria-hidden="true" />
+      <span style={css('position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);')}>Loading…</span>
+    </div>
   );
 }
 
@@ -162,10 +179,21 @@ export function AppShell({
               className="agx-brand-mark-btn"
               style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:84px;flex:none;')}
             >
+              {/*
+                WebP, and 480px wide rather than the source art's 790.
+                This sits in the header of every screen in all three consoles,
+                above the fold, sharing a connection with the LCP image — and it
+                was a 93 kB PNG drawn into a 240x84 box. The re-export is 22 kB.
+
+                `width`/`height` are attributes as well as styles so the box is
+                reserved from the HTML, before the stylesheet resolves.
+              */}
               <img
                 className="agx-brand-mark"
-                src="/mangaimart-wordmark.png"
+                src="/mangaimart-wordmark.webp"
                 alt="MangaiMart"
+                width={240}
+                height={84}
                 style={css('width:240px;height:84px;object-fit:contain;object-position:left center;')}
               />
             </button>
@@ -206,7 +234,30 @@ export function AppShell({
 
         <main id="main-content" tabIndex={-1} className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
           {banner}
-          <Outlet />
+          {/*
+            Every page in all three consoles is code-split, so the shell needs a
+            boundary of its own — without one the nearest `Suspense` is the app
+            root, and arriving at a screen whose chunk is still in flight would
+            blank the header, the search field and the dock along with it. The
+            fallback reserves a screenful so the dock does not jump up to meet a
+            momentarily empty <main>.
+          */}
+          {/*
+            The shell survives a page that throws. Both the buyer storefront and
+            the seller console render through here, so this one boundary covers
+            both — previously only the admin console had one, and an uncaught
+            render error on a buyer route took down the whole tree, header, dock
+            and all, on the surface that takes money.
+
+            Keyed on the pathname because React never resets a boundary on its
+            own: without the key, one crash would pin the error card over every
+            route the buyer navigated to afterwards.
+          */}
+          <RouteErrorBoundary key={pathname} surface="Page">
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
         </main>
 
         {/* A real navigation landmark: screen readers can jump straight to the

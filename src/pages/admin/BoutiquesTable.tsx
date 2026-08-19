@@ -6,6 +6,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchAllBoutiquesAdmin, setBoutiqueStatus, type AdminBoutiqueRow } from '@/data/boutiques';
 import { BOUTIQUE_STATUS_LABEL, type BoutiqueStatus } from '@/data/types';
 import { SearchInput, Select, T } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const GRID = 'display:grid;grid-template-columns:1.8fr 1fr .8fr .8fr 1fr .8fr;';
 /** Every cell truncates rather than spilling into the next column. Long
@@ -27,7 +28,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 export function BoutiquesTable() {
   const { showToast } = useShop();
   const { data: rows, loading, reload } = useAsync(() => fetchAllBoutiquesAdmin(), []);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useSeededSearch();
   const [status, setStatus] = useState<StatusFilter>('all');
 
   const all = rows ?? [];

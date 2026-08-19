@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { css } from '@/lib/css';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Shared admin UI kit — the premium, consistent primitives every admin page is
@@ -95,7 +96,7 @@ export function StatCard({
 
 export function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div style={css(`display:flex;align-items:center;gap:8px;background:var(--ag-surface);border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
+    <div className="agx-field" style={css(`display:flex;align-items:center;gap:8px;background:var(--ag-surface);border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
       <Icon name="search" size={19} color="var(--ag-muted-soft)" />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? 'Search…'} style={css('border:none;background:none;flex:1;font-size:13.5px;min-width:0;font-family:inherit;color:var(--ag-ink);')} />
       {value && <button type="button" aria-label="Clear search" onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:var(--ag-muted-soft);display:flex;')}><Icon name="close" size={18} /></button>}
@@ -157,6 +158,48 @@ export function EmptyState({ icon, title, sub }: { icon: string; title: string; 
   );
 }
 
+/**
+ * Tabs across the top of an admin screen.
+ *
+ * Extracted when a third page needed them. The admin sidebar had grown to 20
+ * entries, several of which were one table apiece; folding those in as tabs
+ * keeps the function while shortening the nav, and this is the one copy of the
+ * pill styling they all share.
+ *
+ * `count` renders a badge and is hidden at zero — a "0" badge is noise, and the
+ * badge is there to pull attention to work waiting.
+ */
+export function TabBar<K extends string>({
+  tabs, value, onChange,
+}: {
+  tabs: readonly { key: K; label: string; count?: number }[];
+  value: K;
+  onChange: (key: K) => void;
+}) {
+  return (
+    <div style={css('display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;')}>
+      {tabs.map((t) => {
+        const on = t.key === value;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            style={css(`height:38px;padding:0 15px;border-radius:11px;border:1.5px solid ${on ? T.accent2 : T.field};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? T.accent : T.muted};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;`)}
+          >
+            {t.label}
+            {t.count != null && t.count > 0 && (
+              <span style={css(`min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:${T.accent2};color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;`)}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export interface Column<T> {
   key: string;
   header: string;
@@ -197,14 +240,20 @@ export function DataTable<T>({
             {columns.map((c) => <span key={c.key} style={css(`text-align:${c.align ?? 'left'};`)}>{c.header}</span>)}
           </div>
 
-          {loading &&
-            Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
-                {(selectable ? [null, ...columns] : columns).map((_c, j) => (
-                  <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,var(--ag-shimmer-1),var(--ag-shimmer-2),var(--ag-shimmer-1));width:70%;')} />
-                ))}
-              </div>
-            ))}
+          {loading && (
+            <div role="status" aria-busy="true">
+              <span className="agx-visually-hidden">Loading…</span>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
+                  {(selectable ? [null, ...columns] : columns).map((_c, j) => (
+                    // Widths vary per row so the block reads as text, not as a
+                    // bar chart of identical stripes.
+                    <Skeleton key={j} w={`${58 + ((i * 11 + j * 17) % 32)}%`} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
 
           {!loading && rows.length === 0 && (empty ?? <EmptyState icon="inbox" title="Nothing here yet" />)}
 
@@ -278,8 +327,13 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
   );
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel, busy }: {
-  open: boolean; title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean;
+/**
+ * `children` is an optional slot under the message — used for the reason the
+ * admin types when blocking or deleting someone, which is quoted back to that
+ * person in their notification email.
+ */
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel, busy, children }: {
+  open: boolean; title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean; children?: ReactNode;
 }) {
   if (!open) return null;
   return (
@@ -287,6 +341,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
       <div onClick={(e) => e.stopPropagation()} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{title}</div>
         <div style={css(`color:${T.muted};font-size:13.5px;margin-top:8px;line-height:1.5;`)}>{message}</div>
+        {children}
         <div style={css('display:flex;gap:10px;margin-top:22px;')}>
           <button onClick={onCancel} disabled={busy} style={css(`flex:1;height:48px;border-radius:14px;border:1.5px solid ${T.field};background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:14px;cursor:pointer;`)}>Cancel</button>
           <button onClick={onConfirm} disabled={busy} style={css(`flex:1;height:48px;border-radius:14px;border:none;color:#fff;font-weight:800;font-size:14px;cursor:pointer;background:${danger ? 'linear-gradient(135deg,#E4636F,var(--ag-bad-text))' : 'linear-gradient(135deg,#D6336C,#B02454)'};`)}>{busy ? 'Working…' : confirmLabel}</button>

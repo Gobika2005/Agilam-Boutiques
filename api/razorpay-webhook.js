@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
+import { verifyWebhookSignature, webhookConfigured } from './_razorpay.js';
 
 /**
  * Vercel serverless function: Razorpay webhook backstop.
@@ -24,13 +24,18 @@ import { serviceClient } from './_supabase.js';
  * `payment.captured` and `order.paid` events, using RAZORPAY_WEBHOOK_SECRET as
  * the secret. Without the secret configured the endpoint is an inert 200 no-op.
  *
+ * With a backup merchant account configured, add the SAME webhook in that
+ * account's dashboard too and set RAZORPAY_WEBHOOK_SECRET_B (or reuse one secret
+ * string for both). Deliveries are authenticated against every account's secret,
+ * so this endpoint keeps reconciling whichever account is currently collecting —
+ * including payments still landing from the account just switched away from.
+ *
  * IMPORTANT: signature verification needs the unparsed body, so body parsing is
  * disabled for this route.
  */
 
 export const config = { api: { bodyParser: false } };
 
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -49,8 +54,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // No secret configured → inert. Return 200 so Razorpay doesn't retry-storm.
-  if (!webhookSecret) return res.status(200).json({ ok: true, skipped: 'webhook not configured' });
+  // No secret configured on any account → inert. Return 200 so Razorpay doesn't
+  // retry-storm.
+  if (!webhookConfigured()) return res.status(200).json({ ok: true, skipped: 'webhook not configured' });
 
   let raw;
   try {
@@ -59,11 +65,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Could not read webhook body' });
   }
 
+  // Authenticated against every configured account's webhook secret; the match
+  // also tells us which merchant account the delivery came from.
   const signature = req.headers?.['x-razorpay-signature'];
-  const expected = crypto.createHmac('sha256', webhookSecret).update(raw).digest('hex');
-  const a = Buffer.from(expected);
-  const b = Buffer.from(String(signature || ''));
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+  const account = verifyWebhookSignature(raw, signature);
+  if (!account) {
     return res.status(400).json({ error: 'Invalid webhook signature' });
   }
 
@@ -137,7 +143,9 @@ export default async function handler(req, res) {
       console.error('razorpay-webhook: could not record event', logErr.message ?? logErr);
     }
 
-    console.warn('razorpay-webhook: captured payment with no order (needs review):', paymentId);
+    // Name the account: an operator chasing this payment has to open the right
+    // Razorpay dashboard to find it.
+    console.warn(`razorpay-webhook: captured payment with no order on the '${account.key}' account (needs review):`, paymentId);
     return res.status(200).json({ ok: true, reconciled: false, needsReview: true });
   } catch (err) {
     // Never 5xx a webhook we've already authenticated — that just triggers

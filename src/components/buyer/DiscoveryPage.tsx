@@ -5,7 +5,9 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
 import { CardLink } from '@/components/buyer/CardLink';
 import { CatalogError } from '@/components/buyer/CatalogError';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { useCatalog } from '@/state/CatalogContext';
+import { useGoBack } from '@/hooks/useGoBack';
 import { routes } from '@/lib/seo';
 import { TONES, fmt, type Product } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
@@ -39,14 +41,30 @@ export function DiscoveryHeader({
   count?: number;
   countLabel?: string;
 }) {
+  const goBack = useGoBack('/');
+
   return (
     <div style={css('padding:2px 0 0;')}>
-      {/* Breadcrumb — these pages are usually entered from a Home rail, and the
-          buyer needs a way back that is not the browser button. */}
-      <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>
-        <Link to="/" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
-        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
-        <span style={css('color:var(--ag-muted);')}>{title}</span>
+      {/* Back + breadcrumb. These pages are entered FROM somewhere — a Home
+          rail, a search — so the buyer needs a way back that is not the browser
+          button. Back returns to wherever they came from; the breadcrumb stays
+          because Back alone doesn't say where you are. The tab dock stays put on
+          these pages: they float no bottom furniture of their own, so nothing
+          was competing with it. */}
+      <div style={css('display:flex;align-items:center;gap:10px;')}>
+        <button
+          onClick={goBack}
+          aria-label="Go back"
+          title="Back"
+          style={css('flex:none;width:38px;height:38px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+        >
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_back</span>
+        </button>
+        <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;min-width:0;')}>
+          <Link to="/" style={css('color:var(--ag-crimson);text-decoration:none;')}>Home</Link>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
+          <span style={css('color:var(--ag-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{title}</span>
+        </div>
       </div>
 
       <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin-top:14px;')}>{eyebrow}</div>
@@ -270,15 +288,17 @@ export function EmptyState({ icon, title, body, action }: { icon: string; title:
 /** Skeleton tiles while the catalogue is still loading. */
 export function CardSkeletons({ count = 10 }: { count?: number }) {
   return (
-    <div className="agx-rgrid">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i}>
-          <div className="agx-prod-media" style={css('background:linear-gradient(90deg,var(--ag-shimmer-1) 25%,var(--ag-shimmer-2) 37%,var(--ag-shimmer-1) 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
-          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:12px;width:80%;')} />
-          <div style={css('height:12px;border-radius:6px;background:var(--ag-surface-2);margin-top:8px;width:45%;')} />
-        </div>
-      ))}
-    </div>
+    <SkeletonGroup label="Loading styles…">
+      <div className="agx-rgrid">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i}>
+            <div className="agx-prod-media agx-shimmer" />
+            <Skeleton w="80%" style="margin-top:12px;" />
+            <Skeleton w="45%" style="margin-top:8px;" />
+          </div>
+        ))}
+      </div>
+    </SkeletonGroup>
   );
 }
 

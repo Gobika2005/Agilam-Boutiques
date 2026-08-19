@@ -3,16 +3,123 @@
 > vite --host 127.0.0.1
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1399[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m856[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
-[2m12:06:27 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ui/ImageSlot.tsx, /src/index.css[22m
-[2m12:06:27 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ui/ImageSlot.tsx, /src/index.css[22m
-[2m12:06:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Home.tsx, /src/index.css[22m
-[2m12:07:01 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/buyer/DiscoveryPage.tsx, /src/index.css[22m
-[2m12:07:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
-[2m12:07:38 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
-[2m12:08:05 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/Boutiques.tsx, /src/index.css[22m
-[2m12:09:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/NewArrivals.tsx, /src/index.css[22m
-[2m12:09:50 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/buyer/BestSellers.tsx, /src/index.css[22m
-[2m12:30:28 am[22m [36m[1m[vite][22m[39m changed tsconfig file detected: D:\Agilam\Agilam boutique\tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+  ✓ icon subset — 285 icons, 2 link(s) rewritten
+  ✓ icon subset — 285 icons, 2 link(s) rewritten
+  ✓ icon subset — 285 icons, 2 link(s) rewritten
+[2m5:01:51 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:02:02 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:02:13 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:02:47 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:02:59 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:03:12 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:03:21 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:03:46 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:03:59 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:04:09 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:04:15 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:04:23 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:04:34 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m5:04:52 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sell/SellShell.tsx, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx[22m
+[2m5:05:01 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sell/SellShell.tsx, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx[22m
+[2m5:05:20 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sell/SellShell.tsx, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx[22m
+[2m5:05:35 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:05:44 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:05:50 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:04 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:15 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:21 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:32 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:36 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:43 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m5:06:51 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m5:06:56 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m5:07:01 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m5:07:09 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m5:07:17 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellDelivery.tsx, /src/index.css[22m
+[2m5:07:23 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellDelivery.tsx, /src/index.css[22m
+[2m5:07:29 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellFaq.tsx, /src/index.css[22m
+[2m5:07:50 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx[22m
+[2m5:08:58 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+  ✓ icon subset — 286 icons, 2 link(s) rewritten
+  ✓ icon subset — 286 icons, 2 link(s) rewritten
+[2m5:14:11 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m5:14:20 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+[2m5:14:29 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+[2m5:14:34 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+[2m5:14:35 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+  ✓ icon subset — 286 icons, 2 link(s) rewritten
+  ✓ icon subset — 286 icons, 2 link(s) rewritten
+  ✓ icon subset — 286 icons, 2 link(s) rewritten
+[2m11:44:53 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m11:45:00 pm[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m11:46:05 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
+[2m11:46:15 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
+[2m11:46:29 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
+[2m11:46:38 pm[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/database.ts[22m
+[2m12:22:42 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m12:22:42 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m12:23:06 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:23:28 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:24:11 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:24:39 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:25:00 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:25:09 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:25:15 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:25:21 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:25:49 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:26:27 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:26:32 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:26:45 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:26:59 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:27:10 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:27:24 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:27:32 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:27:44 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sell/SellShell.tsx, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx[22m
+[2m12:27:55 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:28:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:28:10 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:28:22 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m12:28:39 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m12:29:39 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:29:44 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:30:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellDelivery.tsx, /src/index.css[22m
+[2m12:30:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellFaq.tsx, /src/index.css[22m
+[2m12:30:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m12:30:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m12:30:02 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+[2m12:30:14 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m12:30:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellDelivery.tsx, /src/index.css[22m
+[2m12:30:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellPricing.tsx, /src/index.css[22m
+[2m12:30:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHowItWorks.tsx, /src/index.css[22m
+[2m12:30:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:30:26 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellDelivery.tsx, /src/index.css[22m
+[2m12:30:39 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:31:03 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellShell.tsx, /src/index.css[22m
+[2m12:31:56 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellFaq.tsx, /src/index.css[22m
+[2m12:32:39 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m12:34:21 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:34:21 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/SellHome.tsx, /src/index.css[22m
+[2m12:34:28 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:34:35 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:34:44 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sell/parts.tsx, /src/index.css[22m
+[2m12:59:04 am[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.tsx, /src/state/ShopContext.tsx, /src/components/layout/MaintenanceNotice.tsx, /src/pages/sell/SellHome.tsx, /src/pages/sell/SellHowItWorks.tsx, /src/pages/sell/SellPricing.tsx, /src/pages/sell/SellDelivery.tsx, /src/pages/sell/SellFaq.tsx, /src/pages/buyer/Home.tsx, /src/pages/buyer/Results.tsx, /src/pages/buyer/ProductDetail.tsx, /src/pages/buyer/Boutiques.tsx, /src/components/buyer/SiteFooter.tsx, /src/pages/seller/SellerOnboarding.tsx, /src/components/seller/FulfilmentCard.tsx, /src/pages/sell/SellShell.tsx, /src/pages/buyer/Profile.tsx[22m
+[2m12:59:11 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m12:59:18 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m12:59:20 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m12:59:30 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/Loading.tsx[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/change-email.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/confirm-signup.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/email-changed.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/identity-linked.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/identity-unlinked.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/invite-user.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/magic-link.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/mfa-factor-enrolled.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/mfa-factor-unenrolled.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/otp-code.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/password-changed.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/phone-changed.html[22m
+[2m12:59:44 am[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2memail-templates/reset-password.html[22m

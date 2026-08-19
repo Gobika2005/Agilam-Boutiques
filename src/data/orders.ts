@@ -1,12 +1,44 @@
 import { supabase } from '@/lib/supabase';
+import { likeValue, isUuid } from '@/lib/search/query';
+import { isStaffSession } from './consoleRole';
 import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
-const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, accepted_at, shipped_at, delivered_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, platform_discount, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color, product:products(image_url, tone))`;
+const BASE_SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, accepted_at, shipped_at, delivered_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, platform_discount, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color, product:products(image_url, tone))`;
+
+/**
+ * Courier-tracking columns from migration 0063. Split out for the same reason
+ * as the sales counters in `src/data/boutiques.ts`: naming a column that does
+ * not exist yet fails the WHOLE query, and this SELECT feeds every order screen
+ * in all three consoles. An un-migrated deploy must lose the tracking detail,
+ * not the orders.
+ */
+const TRACKING_COLUMNS = 'packed_at, out_for_delivery_at, delivery_disputed, delivery_disputed_at';
+
+const SELECT = `${BASE_SELECT}, ${TRACKING_COLUMNS}`;
+
+let trackingAvailable = true;
+
+async function selectOrders<T>(
+  run: (columns: string) => PromiseLike<{ data: T; error: { message?: string; code?: string } | null }>,
+): Promise<T> {
+  if (trackingAvailable) {
+    const { data, error } = await run(SELECT);
+    if (!error) return data;
+    // 42703 = undefined_column, 42501 = insufficient_privilege (not granted).
+    if (error.code !== '42703' && error.code !== '42501') throw error;
+    trackingAvailable = false;
+    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
+  }
+  const { data, error } = await run(BASE_SELECT);
+  if (error) throw error;
+  return data;
+}
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('buyer_id', buyerId).order('created_at', { ascending: false }),
+  );
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
@@ -33,72 +65,156 @@ export function subscribeToBuyerOrders(buyerId: string, onChange: () => void) {
 }
 
 export async function fetchOrdersForBoutique(boutiqueId: string): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('boutique_id', boutiqueId).order('created_at', { ascending: false });
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('boutique_id', boutiqueId).order('created_at', { ascending: false }),
+  );
+  return (data ?? []) as unknown as OrderWithDetails[];
+}
+
+/**
+ * Every order, for the console.
+ *
+ * Staff take a different road to the same place. Migration 0086 gives them no
+ * RLS policy on `orders` at all — a direct select returns nothing — because a
+ * policy cannot withhold a single column and `orders.guest_phone` is the buyer's
+ * mobile number. `staff_orders_feed()` is a SECURITY DEFINER function that
+ * returns the identical shape with the phone masked, so the screens below this
+ * never learn which role fetched their rows.
+ */
+async function staffOrdersFeed(): Promise<OrderWithDetails[]> {
+  const { data, error } = await supabase.rpc('staff_orders_feed');
   if (error) throw error;
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
 export async function fetchAllOrdersAdmin(): Promise<OrderWithDetails[]> {
-  const { data, error } = await supabase.from('orders').select(SELECT).order('created_at', { ascending: false });
-  if (error) throw error;
+  if (isStaffSession()) return staffOrdersFeed();
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).order('created_at', { ascending: false }),
+  );
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
 export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
-  const { data, error } = await supabase.from('orders').select(SELECT).eq('id', id).maybeSingle();
-  if (error) throw error;
+  const data = await selectOrders((cols) =>
+    supabase.from('orders').select(cols).eq('id', id).maybeSingle(),
+  );
   return data as unknown as OrderWithDetails | null;
 }
 
+/** The extra facts a printable receipt needs, beyond what the order screen holds. */
+export interface ReceiptExtras {
+  paymentId: string | null;
+  paidAt: string | null;
+  buyer: { name: string | null; phone: string | null; address: string | null; city: string | null; pincode: string | null };
+  shop: {
+    name: string;
+    logoUrl: string | null;
+    addressLine: string | null;
+    city: string | null;
+    district: string | null;
+    state: string | null;
+    pincode: string | null;
+  } | null;
+}
+
+/**
+ * Everything the buyer's downloadable receipt needs that `PlacedOrder` doesn't
+ * carry: the payment reference, when it was paid, the address the order was
+ * actually placed with, and the boutique's own postal details and logo.
+ *
+ * Fetched on demand — when the buyer taps "Download receipt" — rather than
+ * folded into the orders query that runs on every visit to the orders list.
+ * These fields are needed on one screen by one action, and `fetchOrdersForBuyer`
+ * already returns every order a buyer has ever placed.
+ *
+ * Two queries, not a join: `boutiques` has column-level grants (migration 0021),
+ * so it is selected by name from its own statement where the granted list is
+ * obvious. Both are ordinary RLS reads — the order by `buyer_id`, the boutique
+ * from the public storefront columns — so this needs no new policy.
+ *
+ * Returns null if the order isn't readable, which is the honest answer for a
+ * guest's locally-mirrored order: it has no row the server will hand back.
+ */
+export async function fetchReceiptExtras(orderRowId: string): Promise<ReceiptExtras | null> {
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('payment_id, paid_at, created_at, boutique_id, guest_name, guest_phone, guest_address, guest_city, guest_pincode')
+    .eq('id', orderRowId)
+    .maybeSingle();
+  if (error || !order) return null;
+
+  const { data: shop } = await supabase
+    .from('boutiques')
+    .select('name, logo_url, address_line, city, district, state, pincode')
+    .eq('id', order.boutique_id)
+    .maybeSingle();
+
+  return {
+    paymentId: order.payment_id ?? null,
+    paidAt: order.paid_at ?? order.created_at ?? null,
+    buyer: {
+      name: order.guest_name ?? null,
+      phone: order.guest_phone ?? null,
+      address: order.guest_address ?? null,
+      city: order.guest_city ?? null,
+      pincode: order.guest_pincode ?? null,
+    },
+    shop: shop
+      ? {
+          name: shop.name,
+          logoUrl: shop.logo_url ?? null,
+          addressLine: shop.address_line ?? null,
+          city: shop.city ?? null,
+          district: shop.district ?? null,
+          state: shop.state ?? null,
+          pincode: shop.pincode ?? null,
+        }
+      : null,
+  };
+}
+
 export async function updateOrderStatus(id: string, status: OrderStatus) {
+  // Staff act through an RPC rather than an UPDATE policy, because a policy is
+  // column-blind — `using (is_staff())` would also let an employee rewrite
+  // `total` or clear `refunded` from the browser console. The RPC additionally
+  // refuses 'rejected' and refuses to touch an order that is already delivered
+  // or rejected, both of which are refund/payout territory (0086).
+  if (isStaffSession()) {
+    const { error } = await supabase.rpc('staff_set_order_status', { p_id: id, p_status: status });
+    if (error) throw error;
+    return;
+  }
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
 }
 
 /**
- * Record that the seller took the cash for a COD order.
+ * Stamp "Packed" (migration 0063).
  *
- * This is the moment a COD order stops being a promise and becomes revenue, so
- * it is a deliberate seller action rather than something inferred from the
- * delivery status — an order can be handed over and the payment still disputed.
- * Migration 0022's trigger refuses this on a prepaid order, where settlement is
- * the gateway's business.
+ * Not a lifecycle status — packing sits between 'accepted' and 'shipped'
+ * without changing either. It exists because the buyer's timeline has always
+ * drawn a "Packed" step with nothing behind it; this is what finally gives that
+ * step a real time instead of a blank.
  */
-export async function markCashCollected(id: string) {
+export async function markOrderPacked(id: string) {
   const { error } = await supabase
     .from('orders')
-    .update({ payment_status: 'paid', paid_at: new Date().toISOString() })
+    .update({ packed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
 }
 
-/** Messages the cancel RPC raises, mapped to something a buyer can act on. */
-const CANCEL_ERRORS: Record<string, string> = {
-  ORDER_NOT_FOUND: 'We could not find that order against this phone number.',
-  NOT_CANCELLABLE_PREPAID: 'Prepaid orders cannot be cancelled here — please message the boutique.',
-  NOT_CANCELLABLE_DISPATCHED: 'This order has already been dispatched. Please refuse it at the door or message the boutique.',
-  NOT_CANCELLABLE_PAID: 'This order has already been paid for.',
-};
-
-/**
- * Buyer-side cancellation of an un-dispatched COD order.
+/*
+ * `markCashCollected()` and `cancelCodOrder()` used to sit here — the seller
+ * confirming cash at the door, and the buyer calling off an un-dispatched cash
+ * order. Cash on delivery was withdrawn platform-wide (migration 0085), so
+ * neither has anything to act on: every order is paid in full before it exists.
  *
- * Goes through the `cancel_cod_order` SECURITY DEFINER function because a guest
- * has no account for RLS to authorise against — the order number plus the phone
- * captured at checkout is the proof of ownership. The function also releases the
- * reserved stock, so cancelling never silently eats inventory.
+ * The `cancel_cod_order` function stays in the database. Dropping it is a
+ * schema change we deliberately did not make, and it is harmless — it refuses
+ * any prepaid order by design, which is now every order.
  */
-export async function cancelCodOrder(orderNumber: string, phone: string, reason?: string) {
-  const { error } = await supabase.rpc('cancel_cod_order', {
-    p_order_number: orderNumber.replace(/^#/, ''),
-    p_phone: phone.replace(/\D/g, ''),
-    p_reason: reason ?? null,
-  });
-  if (error) {
-    const code = Object.keys(CANCEL_ERRORS).find((k) => error.message.includes(k));
-    throw new Error(code ? CANCEL_ERRORS[code] : 'Could not cancel this order. Please try again.');
-  }
-}
 
 /** Flag/unflag an order as refunded (independent of the fulfilment status). */
 export async function setOrderRefunded(id: string, refunded: boolean) {
@@ -116,20 +232,80 @@ export interface OrdersQuery {
   status?: 'all' | 'pending' | 'shipped' | 'delivered' | 'rejected' | 'refunded';
 }
 
-export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
-  let query = supabase.from('orders').select(SELECT, { count: 'exact' });
+/**
+ * The staff half of `fetchOrdersAdminPaged`.
+ *
+ * PostgREST does the filtering, sorting and counting for an admin. Staff read
+ * through an RPC, which returns the whole feed in one array, so the same three
+ * jobs happen here instead. That is a real trade-off — it fetches every order
+ * to show a page of twenty — and it is fine at the platform's current volume
+ * but is the first thing to revisit when order count grows: the fix is to give
+ * `staff_orders_feed()` limit/offset/search arguments, not to hand staff a
+ * policy on the table.
+ *
+ * Search matches the same three fields as the admin path, except phone — staff
+ * never receive an unmasked number, so there is nothing to match against.
+ */
+async function staffOrdersPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
+  const all = await staffOrdersFeed();
 
-  if (q.status === 'refunded') query = query.eq('refunded', true);
-  else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
-  if (q.search?.trim()) {
-    const s = `%${q.search.trim()}%`;
-    query = query.or(`order_number.ilike.${s},guest_name.ilike.${s},guest_phone.ilike.${s}`);
-  }
+  const term = q.search?.trim().toLowerCase();
+  const filtered = all.filter((o) => {
+    if (q.status === 'refunded') { if (!o.refunded) return false; }
+    else if (q.status && q.status !== 'all') { if (o.status !== q.status) return false; }
+    if (!term) return true;
+    return (
+      o.order_number?.toLowerCase().includes(term) ||
+      (o.guest_name ?? '').toLowerCase().includes(term) ||
+      o.id === term
+    );
+  });
 
   const from = q.page * q.pageSize;
-  query = query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
+  return { rows: filtered.slice(from, from + q.pageSize), total: filtered.length };
+}
 
-  const { data, error, count } = await query;
+export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
+  if (isStaffSession()) return staffOrdersPaged(q);
+
+  // `count` rides along with the rows, so this uses its own runner rather than
+  // `selectOrders` — but it needs the identical un-migrated fallback, or the
+  // admin Orders table goes blank before 0063 is applied.
+  const run = (cols: string) => {
+    let query = supabase.from('orders').select(cols, { count: 'exact' });
+
+    if (q.status === 'refunded') query = query.eq('refunded', true);
+    else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
+    const term = q.search?.trim();
+    if (term) {
+      // `likeValue` rather than a bare `%${term}%`: this string is spliced into
+      // PostgREST's `or=(…)` grammar, which is parsed before any value is looked
+      // at, so a customer named "Anitha (Salem)" or a search for "red, silk"
+      // used to corrupt the whole filter list and return the wrong rows without
+      // erroring. Newly reachable now that the global search and the
+      // notification inbox both deep-link here with arbitrary terms.
+      const v = likeValue(term);
+      const filters = [`order_number.ilike.${v}`, `guest_name.ilike.${v}`, `guest_phone.ilike.${v}`];
+      // An order notification in the admin console has only the order's id to
+      // point at — there is no per-order admin route, so it links to this list
+      // filtered by id. Guarded on the shape because `id.eq.<not-a-uuid>` is a
+      // hard 22P02 that would fail the entire query.
+      if (isUuid(term)) filters.push(`id.eq.${term}`);
+      query = query.or(filters.join(','));
+    }
+
+    const from = q.page * q.pageSize;
+    return query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
+  };
+
+  if (trackingAvailable) {
+    const { data, error, count } = await run(SELECT);
+    if (!error) return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
+    if (error.code !== '42703' && error.code !== '42501') throw error;
+    trackingAvailable = false;
+    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
+  }
+  const { data, error, count } = await run(BASE_SELECT);
   if (error) throw error;
   return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
 }
@@ -192,6 +368,14 @@ export async function fetchCustomersForBoutique(boutiqueId: string): Promise<Cus
 }
 
 export async function fetchCustomersAdmin(): Promise<CustomerStat[]> {
+  // Staff get the same rows with `guest_phone` replaced by a hash of itself, so
+  // anonymous orders still group into one customer without the number leaving
+  // the database. `aggregateCustomers` only ever uses it as a grouping key.
+  if (isStaffSession()) {
+    const { data, error } = await supabase.rpc('staff_customer_rows');
+    if (error) throw error;
+    return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);
+  }
   const { data, error } = await supabase.from('orders').select(CUSTOMER_SELECT);
   if (error) throw error;
   return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);

@@ -6,11 +6,11 @@ import { useCatalog } from '@/state/CatalogContext';
 import { usePageMeta } from '@/lib/pageMeta';
 import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
-import { POLICY_TERMS } from '@/data/company';
+import { deliveryEtaLabel, shopFulfilment } from '@/lib/fulfilment';
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
+  const { cart, subtotal, discount, shipFee, total, guest, setGuest, showToast, undeliverable, buyerPlace } = useShop();
   const { productById, boutiques } = useCatalog();
   const [touched, setTouched] = useState(false);
   usePageMeta({ title: 'Checkout', description: 'Confirm your delivery details and place your MangaiMart order.' });
@@ -40,11 +40,13 @@ export function Checkout() {
   /**
    * What this boutique's despatch will cost the buyer.
    *
-   * Delivery is a platform charge — flat, once per cart, free over the threshold
-   * (see the delivery policy and `@/lib/pricing`). This block used to print the
-   * seller's own `delivery_charge` instead, so a buyer read "lilium · ₹150
-   * delivery" immediately above a summary that said FREE and a total that had
-   * added nothing. It now states the fee the summary is actually charging.
+   * Delivery is each boutique's own charge, waived once that boutique's goods
+   * reach whatever threshold it set (migration 0076, `@/lib/pricing`). This
+   * block prints `shipFee` — the bag's total delivery across every boutique in
+   * it — which is by construction the number the summary below charges. It used
+   * to print the seller's raw `delivery_charge` while the summary charged a
+   * platform fee, so a buyer read "lilium · ₹150 delivery" immediately above a
+   * line that said FREE. Both numbers now come from the same calculation.
    *
    * It also no longer reports `boutiques.delivery_available` as "Store pickup
    * only". That flag records whether the *seller* runs their own delivery; it
@@ -56,7 +58,8 @@ export function Checkout() {
    * whether to trust us with money. The flag still shows to sellers and admins,
    * where it means something.
    */
-  const deliveryLine = () => (shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`);
+  const deliveryLine = () =>
+    !buyerPlace ? 'Delivery priced from your pincode' : shipFee === 0 ? 'Free delivery' : `${fmt(shipFee)} delivery`;
 
   const errors = {
     name: !nameOk(guest.name),
@@ -71,6 +74,13 @@ export function Checkout() {
     if (invalid) {
       setTouched(true);
       showToast('Please fill in your delivery details', 'error');
+      return;
+    }
+    // A boutique in the bag does not reach this pincode. Stopping here rather
+    // than at the payment screen means the buyer is told before they have
+    // chosen how to pay, and the server refuses the same order anyway.
+    if (undeliverable) {
+      showToast(undeliverable, 'error');
       return;
     }
     navigate('/payment');
@@ -96,10 +106,17 @@ export function Checkout() {
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
               Mobile number
-              <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${errorRing(errors.phone)};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
+              <div className="agx-field" style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${errorRing(errors.phone)};background:var(--ag-bg);border-radius:14px;padding:0 15px;height:52px;`)}>
                 <span style={css('font-weight:800;color:var(--ag-muted);font-size:15px;')}>+91</span>
                 <input value={guest.phone} onChange={(e) => setGuest({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} inputMode="numeric" placeholder="10-digit number" style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:var(--ag-ink);min-width:0;')} />
               </div>
+              {/* Consent for the WhatsApp order updates (migration 0090). There is
+                  no tick-box: consent here is implied by placing the order, which
+                  only holds up if the buyer was actually told — at the moment they
+                  hand over the number, in plain words, with the way out named. */}
+              <span style={css('display:block;margin-top:7px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.5;')}>
+                We&rsquo;ll send order updates to this number on WhatsApp. Reply STOP any time to opt out.
+              </span>
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:var(--ag-label);')}>
               Flat / House no. &amp; area
@@ -117,6 +134,18 @@ export function Checkout() {
             </div>
             <div>
               <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Delivery{cartBoutiques.length > 1 ? ` · ${cartBoutiques.length} boutiques` : ''}</div>
+
+              {/* A shop in the bag does not reach this pincode. Stated where the
+                  address was just typed, because changing one of those two is
+                  the only way forward — and said before the buyer picks a
+                  payment method, not after. */}
+              {undeliverable && (
+                <div style={css('display:flex;gap:11px;align-items:flex-start;margin-top:9px;padding:13px 15px;border-radius:15px;border:1.5px solid var(--ag-danger-text);background:var(--ag-surface-2);')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);font-size:20px;")}>wrong_location</span>
+                  <span style={css('flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ag-danger-text);line-height:1.55;')}>{undeliverable}</span>
+                </div>
+              )}
+
               <div style={css('display:flex;flex-direction:column;gap:8px;margin-top:9px;')}>
                 {cartBoutiques.map((b) => (
                   <div key={b.id} style={css('display:flex;align-items:center;gap:12px;border:1.5px solid #D6336C;background:var(--ag-surface-2);border-radius:15px;padding:13px 15px;')}>
@@ -126,8 +155,11 @@ export function Checkout() {
                         {b.name}{cartBoutiques.length > 1 ? '' : ' · ' + deliveryLine()}
                       </div>
                       <div style={css('color:var(--ag-muted);font-size:12px;margin-top:3px;')}>
-                        {cartBoutiques.length > 1 && 'Delivery included in the one fee below · '}
-                        {POLICY_TERMS.deliveryEstimate} from dispatch{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
+                        {/* Each shop's own dispatch time (migration 0078), not
+                            one platform estimate for the whole marketplace —
+                            this is the screen where a buyer decides whether the
+                            piece will arrive in time. */}
+                        {deliveryEtaLabel(shopFulfilment(b))}{b.deliveryAreas ? ` · Delivers to ${b.deliveryAreas}` : ''}
                       </div>
                     </div>
                   </div>
@@ -143,7 +175,18 @@ export function Checkout() {
               {discount > 0 && (
                 <div style={css('display:flex;justify-content:space-between;color:var(--ag-good);')}><span>Discount</span><span style={css('font-weight:800;')}>– {fmt(discount)}</span></div>
               )}
-              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Delivery</span><span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span></div>
+              <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}>
+                <span>Delivery{buyerPlace ? '' : ' (estimate)'}</span>
+                <span style={css('font-weight:800;color:var(--ag-good);')}>{shipFee === 0 ? 'FREE' : fmt(shipFee)}</span>
+              </div>
+              {/* Delivery is priced by distance, so until the pincode above is
+                  filled in this row is each shop's furthest rate — it can only
+                  fall once we know where the parcel is going, never rise. */}
+              {!buyerPlace && (
+                <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;line-height:1.5;')}>
+                  Enter your pincode above for the exact delivery charge.
+                </div>
+              )}
             </div>
             <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>

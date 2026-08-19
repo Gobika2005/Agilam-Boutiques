@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { readSearchParams, sameSearchState, writeSearchParams } from '@/lib/searchParams';
 import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
+import { useGoBack } from '@/hooks/useGoBack';
 import { routes } from '@/lib/seo';
 import { breadcrumbSchema, collectionSchema, graph, organizationSchema } from '@/lib/schema';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -13,18 +14,17 @@ import { CardLink } from '@/components/buyer/CardLink';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
-import { SORTS, TONES, fmt, productSizes } from '@/data/demo';
+import { SORTS, TONES, fmt } from '@/data/demo';
 import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
+import { matchesFilters } from '@/lib/shopFilter';
+import { hasTerm } from '@/lib/vocabulary';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
-/** Fields a header search term is matched against. */
-const searchable = (p: { title: string; cat: string; occasion: string; fabric: string; color: string; boutique: string }) =>
-  [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique];
-
 export function Results() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/');
   const { pathname, search } = useLocation();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS, error: catalogError, reload } = useCatalog();
@@ -70,19 +70,9 @@ export function Results() {
   // approved today is filterable today and a seller's typo never becomes a chip.
   const { names, rows, hexOf } = useTaxonomy();
 
-  const q = query.trim().toLowerCase();
-
-  let results = PRODUCTS.filter(
-    (p) =>
-      p.price <= filters.maxPrice &&
-      (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
-      (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
-      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
-      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))) &&
-      // The header search narrows the same grid rather than opening a separate
-      // screen, so a term and a filter compose instead of fighting.
-      (q === '' || searchable(p).some((f) => f?.toLowerCase().includes(q))),
-  );
+  // Shared with the filter sheet's "Show N results" button, so the number it
+  // promises and the grid it opens can never disagree — see @/lib/shopFilter.
+  let results = PRODUCTS.filter((p) => matchesFilters(p, filters, query));
   if (filters.sort === 'Price: Low to High') results = [...results].sort((a, b) => a.price - b.price);
   else if (filters.sort === 'Price: High to Low') results = [...results].sort((a, b) => b.price - a.price);
   else if (filters.sort === 'Popularity') results = [...results].sort((a, b) => b.reviews - a.reviews);
@@ -125,10 +115,10 @@ export function Results() {
   const isSearchSurface = pathname.startsWith('/search') || !isBaseCollection;
   usePageMeta({
     title: isBaseCollection
-      ? 'Shop All — Ethnic Wear from Verified Tamil Nadu Boutiques'
+      ? 'Shop All — Ethnic Wear from Verified Indian Boutiques'
       : `${collectionTitle} — MangaiMart`,
     description: isBaseCollection
-      ? 'Every piece listed by verified Tamil Nadu boutiques on MangaiMart. Filter by category, occasion, colour, size and budget.'
+      ? 'Every piece listed by verified independent boutiques on MangaiMart. Filter by category, occasion, colour, size and budget.'
       : `${results.length} ${results.length === 1 ? 'piece' : 'pieces'} matching ${collectionTitle} on MangaiMart.`,
     canonical: '/shop',
     noindex: isSearchSurface,
@@ -137,7 +127,7 @@ export function Results() {
           organizationSchema(),
           collectionSchema({
             name: 'Shop all',
-            description: 'Every piece listed by verified Tamil Nadu boutiques on MangaiMart.',
+            description: 'Every piece listed by verified independent boutiques on MangaiMart.',
             path: '/shop',
             items: results,
           }),
@@ -175,22 +165,36 @@ export function Results() {
     <div className="agx-results-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:var(--ag-surface);')}>
       <div className="agx-results-inner" style={css('max-width:1480px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 140px;')}>
         <div style={css('flex:none;')}>
-          {/* Breadcrumb: Home / Collections / <what you're looking at>. The last
-              crumb is dropped on the unfiltered grid, where "Collections" is
-              already the page you're on. */}
-          <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);flex-wrap:wrap;')}>
-            <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} style={css('color:var(--ag-muted);')}>Home</a>
-            <span>/</span>
-            {isBaseCollection ? (
-              <span style={css('color:var(--ag-ink);font-weight:700;')}>Collections</span>
-            ) : (
-              <>
-                <a href="/shop" onClick={(e) => { e.preventDefault(); resetCollection(); }} style={css('color:var(--ag-muted);')}>Collections</a>
-                <span>/</span>
-                <span style={css('color:var(--ag-ink);font-weight:700;')}>{collectionTitle}</span>
-              </>
-            )}
-          </nav>
+          {/* Back + breadcrumb: Home / Collections / <what you're looking at>.
+              The last crumb is dropped on the unfiltered grid, where
+              "Collections" is already the page you're on.
+              Back matters more here than on other grids: below 960px this page
+              hides the tab dock (its Filter/Sort bar owns the bottom edge
+              instead), so this is the way out. It returns to whatever the buyer
+              searched from rather than to a fixed tab. */}
+          <div style={css('display:flex;align-items:center;gap:10px;')}>
+            <button
+              onClick={goBack}
+              aria-label="Go back"
+              title="Back"
+              style={css('flex:none;width:38px;height:38px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            >
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_back</span>
+            </button>
+            <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ag-muted);flex-wrap:wrap;min-width:0;')}>
+              <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} style={css('color:var(--ag-muted);')}>Home</a>
+              <span>/</span>
+              {isBaseCollection ? (
+                <span style={css('color:var(--ag-ink);font-weight:700;')}>Collections</span>
+              ) : (
+                <>
+                  <a href="/shop" onClick={(e) => { e.preventDefault(); resetCollection(); }} style={css('color:var(--ag-muted);')}>Collections</a>
+                  <span>/</span>
+                  <span style={css('color:var(--ag-ink);font-weight:700;')}>{collectionTitle}</span>
+                </>
+              )}
+            </nav>
+          </div>
 
           <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:12px;')}>
             <div>
@@ -251,7 +255,7 @@ export function Results() {
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Category</div>
                 <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
                   {names('category').map((c) => {
-                    const on = filters.cats.includes(c);
+                    const on = hasTerm(filters.cats, c);
                     return (
                       <label key={c} onClick={() => toggleFilter('cats', c)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--ag-ink-2);cursor:pointer;')}>
                         <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : 'var(--ag-surface)'};display:flex;align-items:center;justify-content:center;`)}>
@@ -267,7 +271,7 @@ export function Results() {
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Size</div>
                 <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;')}>
                   {names('size').map((s) => {
-                    const on = filters.sizes.includes(s);
+                    const on = hasTerm(filters.sizes, s);
                     return (
                       <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:44px;height:40px;padding:0 12px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
                     );
@@ -280,7 +284,7 @@ export function Results() {
                 <div style={css('display:flex;flex-wrap:wrap;gap:14px;margin-top:15px;')}>
                   {rows('color').map((c) => (
                     <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
+                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${hexOf(c.name)};box-shadow:0 0 0 ${hasTerm(filters.colors, c.name) ? '3px #D6336C' : '1px var(--ag-border)'};`)} />
                       <span style={css('font-size:11px;font-weight:700;color:var(--ag-label);')}>{c.name}</span>
                     </button>
                   ))}
@@ -291,7 +295,7 @@ export function Results() {
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Occasion</div>
                 <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
                   {names('occasion').map((o) => {
-                    const on = filters.occasions.includes(o);
+                    const on = hasTerm(filters.occasions, o);
                     return (
                       <label key={o} onClick={() => toggleFilter('occasions', o)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--ag-ink-2);cursor:pointer;')}>
                         <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : 'var(--ag-surface)'};display:flex;align-items:center;justify-content:center;`)}>

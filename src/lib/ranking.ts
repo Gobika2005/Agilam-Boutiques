@@ -205,6 +205,122 @@ export function newArrivals(products: Product[]): Product[] {
 export const isNewArrival = (p: Product): boolean =>
   !!p.createdAt && daysSince(p.createdAt) <= NEW_ARRIVAL_DAYS;
 
+// ── The Inspire feed ────────────────────────────────────────────────────────
+
+/**
+ * The minimum a piece has to carry to be ranked into the feed. Deliberately the
+ * raw database row rather than the `Product` shape: the feed reads `products`
+ * directly (see src/data/feed.ts) and never goes through the catalogue adapter.
+ *
+ * The three counters are optional because they arrive with migrations
+ * 0020/0023/0031 — on a deployment missing one, the term is simply 0 for
+ * everybody and the ranking degrades into "recent, with a shuffle".
+ */
+export type FeedCandidate = {
+  id: string;
+  boutique_id: string;
+  created_at: string;
+  likes_count?: number | null;
+  views_count?: number | null;
+  sold_count?: number | null;
+};
+
+/** Weights for `rankFeed`, named so the tuning is legible in one place. */
+const FEED_WEIGHTS = { freshness: 0.32, likes: 0.22, views: 0.15, orders: 0.16, jitter: 0.15 };
+
+/**
+ * A stable pseudo-random 0…1 for one piece under one seed.
+ *
+ * Stable is the whole point: the shuffle has to survive the buyer scrolling.
+ * `Math.random()` per render would re-deal the feed on every re-render, and a
+ * card would move out from under a thumb mid-tap. Hashing (seed, id) instead
+ * means the same visit always scores the same piece the same way, while a new
+ * visit — a new seed — deals a different feed. FNV-1a, which is plenty for
+ * shuffling a shop window.
+ */
+function jitterFor(id: string, seed: number): number {
+  let h = (seed ^ 0x811c9dc5) >>> 0;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
+  return h / 0x100000000;
+}
+
+/**
+ * The Inspire feed's order.
+ *
+ *     score = 0.32·freshness + 0.22·likes + 0.15·views + 0.16·orders + 0.15·jitter
+ *
+ *   freshness — halves roughly every 90 days. The feed is a shop window, and a
+ *               piece listed this week is the reason to open it.
+ *   likes     — the feed's own signal: the heart on the card.
+ *   views     — what buyers opened, which moves long before anything sells.
+ *   orders    — what they actually bought. Weighted above views on purpose.
+ *   jitter    — a stable per-visit random term, heavy enough to visibly reorder
+ *               pieces of similar standing and light enough that a genuinely
+ *               popular piece still leads. It is what stops the feed being the
+ *               same six cards in the same order every day, and what gives a
+ *               boutique that listed nothing this week a way onto the screen.
+ *
+ * All three counters are log-normalised against the best in the batch, so one
+ * runaway piece lifts itself without flattening everything below it (the same
+ * rule the rest of this file follows).
+ *
+ * The ranking is applied per fetched batch rather than to the whole catalogue —
+ * the client only ever holds a window of it. In practice the first batch is the
+ * entire catalogue at today's size; as it grows, the effect is that a much older
+ * piece cannot leapfrog into the first screen on likes alone, which is the
+ * behaviour a feed wants anyway.
+ */
+export function rankFeed<T extends FeedCandidate>(
+  items: T[],
+  seed: number,
+  /** Boutique that ended the previous batch, so the spread survives paging. */
+  after?: string,
+): T[] {
+  const maxLikes = Math.max(0, ...items.map((p) => p.likes_count ?? 0));
+  const maxViews = Math.max(0, ...items.map((p) => p.views_count ?? 0));
+  const maxSold = Math.max(0, ...items.map((p) => p.sold_count ?? 0));
+
+  const scored = items
+    .map((p) => ({
+      item: p,
+      score:
+        FEED_WEIGHTS.freshness * freshnessUnit(daysSince(p.created_at)) +
+        FEED_WEIGHTS.likes * normLog(p.likes_count ?? 0, maxLikes) +
+        FEED_WEIGHTS.views * normLog(p.views_count ?? 0, maxViews) +
+        FEED_WEIGHTS.orders * normLog(p.sold_count ?? 0, maxSold) +
+        FEED_WEIGHTS.jitter * jitterFor(p.id, seed),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .map((r) => r.item);
+
+  return spreadByBoutique(scored, after);
+}
+
+/**
+ * Pull the same shop's pieces apart.
+ *
+ * Score order alone gives runs of one boutique — a shop that listed six pieces
+ * on Tuesday holds six adjacent slots, and the feed reads as though the
+ * marketplace has one shop in it. This walks the scored list and takes the
+ * best-scoring piece whose boutique is not the one just emitted, falling back to
+ * the plain next piece once only one shop has anything left (better a run at the
+ * bottom than dropping pieces to avoid one).
+ *
+ * Order within a boutique is never changed — only how far apart its pieces sit.
+ */
+function spreadByBoutique<T extends { boutique_id: string }>(sorted: T[], after?: string): T[] {
+  const pool = [...sorted];
+  const out: T[] = [];
+  let last = after;
+  while (pool.length) {
+    const i = pool.findIndex((p) => p.boutique_id !== last);
+    const [next] = pool.splice(i === -1 ? 0 : i, 1);
+    out.push(next);
+    last = next.boutique_id;
+  }
+  return out;
+}
+
 // ── Best-selling boutiques ──────────────────────────────────────────────────
 
 export type ScoredBoutique = {

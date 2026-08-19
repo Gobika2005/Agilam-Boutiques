@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
 import { enforceRateLimit } from './_rateLimit.js';
+import { configuredAccounts, verifyPaymentSignature } from './_razorpay.js';
 
 /**
  * Vercel serverless function: verify a Razorpay payment signature.
@@ -7,9 +7,12 @@ import { enforceRateLimit } from './_rateLimit.js';
  * Razorpay signs `order_id|payment_id` with HMAC-SHA256 keyed by the secret.
  * We recompute it here and only report success on an exact, constant-time
  * match — the secret key stays server-side.
+ *
+ * The check runs against EVERY configured merchant account, not just the one
+ * the admin switch currently selects: a buyer whose order was opened seconds
+ * before an emergency account switch still holds a genuine signature from the
+ * old account, and rejecting it would leave them charged with no order.
  */
-
-const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,7 +22,7 @@ export default async function handler(req, res) {
 
   if (!(await enforceRateLimit(req, res, { key: 'verify-payment', limit: 30, windowMs: 60_000 }))) return;
 
-  if (!keySecret) {
+  if (configuredAccounts().length === 0) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });
   }
 
@@ -29,17 +32,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ verified: false, error: 'Missing payment verification fields' });
   }
 
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest('hex');
+  // Constant-time comparison per account; returns the account that signed it.
+  const account = verifyPaymentSignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature });
 
-  // Constant-time comparison; guard against length mismatch which would throw.
-  const a = Buffer.from(expected);
-  const b = Buffer.from(String(razorpay_signature));
-  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
-
-  if (!valid) {
+  if (!account) {
     return res.status(400).json({ verified: false, error: 'Signature verification failed' });
   }
 

@@ -28,6 +28,9 @@ export interface ProductWithBoutique {
   last_viewed_at?: string | null;
   description?: string | null;
   mrp?: number | null;
+  /** Packed weight in grams (migration 0065). Optional so a project that hasn't
+   *  run it still reads products; NULL means "use the boutique default". */
+  weight_grams?: number | null;
   sizes?: string[] | null;
   wash_care?: string | null;
   images?: string[] | null;
@@ -85,7 +88,16 @@ export interface BoutiqueRow {
   tone: number;
   cover_url: string | null;
   logo_url: string | null;
-  phone: string | null;
+  /**
+   * Contact details — present ONLY on a boutique the caller owns (or an admin
+   * read). Migration 0073 revoked these three columns from anon/authenticated
+   * because they made every seller's mobile number and email bulk-readable with
+   * the public anon key; `fetchMyBoutique` merges them back in from
+   * `boutique_private()`. Optional rather than nullable on purpose: on a
+   * buyer-facing read they are genuinely ABSENT, not null, and the type should
+   * say so rather than let a component render `undefined`.
+   */
+  phone?: string | null;
   instagram: string | null;
   established_year: number | null;
   verified: boolean;
@@ -103,14 +115,21 @@ export interface BoutiqueRow {
   // Step 1 — boutique information
   owner_name: string;
   // Step 2 — contact
-  whatsapp: string | null;
-  email: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
   // Step 3 — shop address
   address_line: string;
   district: string;
   state: string;
   pincode: string;
   map_url: string | null;
+  /**
+   * The shop's map pin (migration 0076). Optional on the type because the
+   * columns are only selected when the migration has been applied — a link with
+   * no coordinates (a shortened maps.app.goo.gl share) leaves these null.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   // Step 4 — business
   category: string;
   years_in_business: number | null;
@@ -120,8 +139,40 @@ export interface BoutiqueRow {
   working_days: string[];
   delivery_available: boolean;
   delivery_areas: string;
+  /**
+   * What this boutique charges to deliver, and the terms around it. These are
+   * the seller's numbers, not the platform's: since migration 0076 the buyer is
+   * charged `delivery_charge` per boutique in the bag, waived once that
+   * boutique's goods reach `free_delivery_over` where that is set.
+   *
+   * The ones added in 0076 are optional on the type because the query drops
+   * them on a deployment where the migration has not been applied yet.
+   */
   delivery_charge: number;
-  cod_enabled: boolean;
+  /**
+   * Delivery priced by distance (migration 0077) — the rest of the shop's
+   * district, its state, and the rest of India. `null` means the shop does not
+   * deliver that far; `undefined` means the columns were not selected, and the
+   * local rate stands in.
+   */
+  delivery_charge_district?: number | null;
+  delivery_charge_state?: number | null;
+  delivery_charge_national?: number | null;
+  free_delivery_over?: number;
+  /**
+   * How long this shop takes to pack an order, and how long buyers have to send
+   * it back (migration 0078). Both were platform constants the buyer read as
+   * facts about the shop. `return_window_days` is the GOODWILL window only —
+   * fault claims are always accepted for 30 days. Optional on the type because
+   * the query drops them where 0078 has not been applied.
+   */
+  dispatch_days_min?: number;
+  dispatch_days_max?: number;
+  return_window_days?: number;
+  /* `cod_enabled`, `cod_fee` and `cod_max_order` still exist as columns but are
+   * no longer selected or written as a seller choice: cash on delivery was
+   * withdrawn platform-wide (migration 0085), which forces the flag off for
+   * every shop. See src/pages/seller/Settings.tsx. */
   online_payment_enabled: boolean;
   // Step 7 — submission
   onboarding_step: number;
@@ -146,6 +197,14 @@ export interface BoutiquePrivate {
   /** Penny-drop state of the payout account (migration 0027). */
   payout_verification_status?: 'unverified' | 'pending' | 'verified' | 'failed' | null;
   payout_verification_note?: string | null;
+  /**
+   * Shop contact details (migration 0073). These used to be on the public
+   * column grant, which made every seller's mobile number and email
+   * bulk-readable with the anon key; they are owner-or-admin only now.
+   */
+  email?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface OrderWithDetails {
@@ -169,10 +228,12 @@ export interface OrderWithDetails {
   refunded?: boolean;
   channel?: 'online' | 'offline';
   payment_method?: string | null;
-  /** Settlement state — 'pending' on a COD order until the cash is collected. */
+  /** Settlement state. Always 'paid' on a new order — every one is prepaid
+   *  (migration 0085); 'pending' only survives on a legacy cash order. */
   payment_status?: PaymentStatus;
   paid_at?: string | null;
-  /** COD handling fee on this delivery; 0 on prepaid orders. */
+  /** Cash-handling fee. Always 0 except on a pre-0085 cash order, where it is
+   *  part of what the buyer paid and so part of what its invoice must show. */
   cod_fee?: number;
   /** Delivery fee on this order (cart-level, so it lands on the first order). */
   shipping_fee?: number;
@@ -181,6 +242,15 @@ export interface OrderWithDetails {
   platform_discount?: number;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
+  /** Migration 0063. Optional because the SELECT falls back to a column list
+   *  without them when the migration has not been applied yet. */
+  packed_at?: string | null;
+  /** Only ever set by a courier webhook, which does not exist yet — so the
+   *  buyer's "Out for delivery" stage stays dim rather than being faked. */
+  out_for_delivery_at?: string | null;
+  /** The buyer said it never arrived. Blocks the payout sweep until resolved. */
+  delivery_disputed?: boolean;
+  delivery_disputed_at?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: {

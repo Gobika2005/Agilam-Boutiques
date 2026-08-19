@@ -14,6 +14,7 @@ import {
   ShowMore,
 } from '@/components/buyer/DiscoveryPage';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
+import { shopPath } from '@/lib/searchParams';
 import { useCatalog } from '@/state/CatalogContext';
 import { scoreProducts, salesProof, RATING_CONFIDENCE_PRODUCT } from '@/lib/ranking';
 
@@ -131,7 +132,7 @@ export function BestSellers() {
           In stock only
         </button>
         <button
-          onClick={() => { setQuery(''); setFilters({ ...DEFAULT_FILTERS, sort: 'Popularity' }); navigate('/shop'); }}
+          onClick={() => { const f = { ...DEFAULT_FILTERS, sort: 'Popularity' }; setQuery(''); setFilters(f); navigate(shopPath({ filters: f })); }}
           style={css('display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}
         >
           Filter by price, colour, size

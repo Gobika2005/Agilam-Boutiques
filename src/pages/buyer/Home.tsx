@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -12,14 +12,37 @@ import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 import { buildCollections } from '@/lib/collections';
+import { shopPath } from '@/lib/searchParams';
+import { sameTerm } from '@/lib/vocabulary';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { useLiveAds } from '@/hooks/useLiveAds';
 import { SponsoredStrip } from '@/components/buyer/SponsoredStrip';
 import { trackAdClick, trackAdImpression } from '@/data/ads';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchTopReviews } from '@/data/reviews';
+import { fetchPublicPlatformReviews } from '@/data/feedback';
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
+
+/**
+ * The hero's shape, in one place because three things have to agree on it: the
+ * live carousel, the placeholder that holds its space while the ads load, and
+ * the copy's side padding (which has to clear the curve).
+ *
+ * The same generous radius on all four corners — it scales with the viewport so
+ * the curve stays proportional rather than shrinking to a hairline on a wide
+ * screen.
+ *
+ * The height is the number that matters on a phone. A floor of 300px against a
+ * ~355px-wide card gave a nearly square slab that ate the fold; 236px keeps it
+ * a banner — wider than it is tall at every width — which is why the type below
+ * scales down with it rather than sitting at desktop size in a shorter box.
+ */
+const HERO_H = 'clamp(236px,42vw,470px)';
+const HERO_R = 'clamp(26px,3.2vw,44px)';
+/** The copy's inset from the card edge. Enough to clear the curve, no more —
+ *  the corners are rounded, but the edge beside the text is straight, so a
+ *  gutter sized to the radius only pushed the headline into the middle. */
+const HERO_PAD = 'clamp(18px,3vw,40px)';
 
 export function Home() {
   /**
@@ -29,9 +52,9 @@ export function Home() {
    * is the URL Google treats as the site's root entity.
    */
   usePageMeta({
-    title: 'Boutique Ethnic Wear from Tamil Nadu — Sarees, Kurta Sets & More',
+    title: 'Boutique Ethnic Wear Online — Sarees, Kurta Sets & More',
     description:
-      'Shop verified Tamil Nadu boutiques in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India.',
+      'Shop verified independent boutiques across India in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India.',
     canonical: '/',
     schema: graph(organizationSchema(), websiteSchema()),
   });
@@ -39,7 +62,7 @@ export function Home() {
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
   const { ads, heroPending } = useLiveAds();
-  const { data: topReviews } = useAsync(() => fetchTopReviews(3), []);
+  const { data: topReviews } = useAsync(() => fetchPublicPlatformReviews(3), []);
   const REVIEWS = topReviews ?? [];
 
   // The hero carousel is now purely paid placements: only live `home_hero`
@@ -113,23 +136,99 @@ export function Home() {
     timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % Math.max(1, countRef.current)), 4200);
   };
 
+  /* ── Swipe ────────────────────────────────────────────────────────────────
+     The hero looks like a carousel, so on a phone it gets swiped — and until
+     now a swipe did nothing but open whichever ad happened to be showing,
+     because the whole slide is a click target. Pointer events cover finger and
+     mouse-drag alike; `touch-action:pan-y` on the track lets the page keep
+     scrolling vertically while horizontal movement comes to us.
+
+     A drag past the threshold moves one slide and restarts the rotation (same
+     as tapping a dot). It also arms `swiped`, which the CTA checks — otherwise
+     the click the browser fires at the end of every drag would open the ad the
+     buyer was swiping away from. */
+  const SWIPE_MIN_PX = 44;
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const swiped = useRef(false);
+
+  const stepHero = (dir: 1 | -1) => {
+    const n = Math.max(1, countRef.current);
+    goHero((heroIndex + dir + n) % n);
+  };
+
+  const onHeroPointerDown = (e: ReactPointerEvent) => {
+    // Ignore secondary buttons and multi-touch (a pinch-zoom is not a swipe).
+    if (e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    swiped.current = false;
+  };
+
+  const onHeroPointerUp = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.id !== e.pointerId || SLIDES.length < 2) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    // Horizontal intent only: a diagonal flick while scrolling the page must
+    // not steal a slide.
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return;
+    swiped.current = true;
+    stepHero(dx < 0 ? 1 : -1);
+  };
+
   const heroCta = (h: { adId: string; target: 'product' | 'boutique'; productId: string | null; boutiqueId: string }) => {
+    if (swiped.current) { swiped.current = false; return; }
     void trackAdClick(h.adId);
     if (h.target === 'boutique') navigate(`/boutique/${h.boutiqueId}`);
     else if (h.productId) navigate(`/products/${h.productId}`);
     else navigate(`/boutique/${h.boutiqueId}`);
   };
 
-  // A collection circle lands on results already filtered. Which field it maps
-  // to is read off the catalogue rather than hardcoded, so a tile like "Bridal"
-  // (an occasion, not a category) still resolves — and anything the catalogue
-  // doesn't know, like "More", just opens the full grid.
+  /**
+   * A collection circle opens the results grid, already filtered to it — the
+   * same screen "View all" opens, with one filter on.
+   *
+   * Which field it maps to is read off the catalogue rather than hardcoded, so a
+   * tile like "Bridal" (an occasion, not a category) still resolves.
+   *
+   * The matching is `sameTerm`, not `===`, and that is the whole point. The
+   * circles are built by `buildCollections`, which counts a tile's pieces
+   * case-insensitively — so "Kurta Set" from the admin's vocabulary appears the
+   * moment a seller lists a "kurta set". This function compared exactly, found
+   * nothing, and fell through to a branch that cleared the filters and opened
+   * the grid: tapping one collection showed the buyer *every* collection. There
+   * is no such branch now. A tile only exists when it has pieces behind it, and
+   * if the catalogue somehow disagrees the grid filters to the category anyway
+   * and says it is empty — which is at least true.
+   *
+   * The collection landing pages (`/collections/kurta-sets`) are still live and
+   * still linked from the Collections hub, the sitemap and the edge's own
+   * prerender of this rail — they are the site's search surface. This rail just
+   * isn't the way buyers reach them.
+   */
   const openCategory = (name: string) => {
+    const isOccasion =
+      !PRODUCTS.some((p) => sameTerm(p.cat, name)) && PRODUCTS.some((p) => sameTerm(p.occasion, name));
+    const next = { ...DEFAULT_FILTERS, ...(isOccasion ? { occasions: [name] } : { cats: [name] }) };
     setQuery('');
-    if (PRODUCTS.some((p) => p.cat === name)) setFilters({ ...DEFAULT_FILTERS, cats: [name] });
-    else if (PRODUCTS.some((p) => p.occasion === name)) setFilters({ ...DEFAULT_FILTERS, occasions: [name] });
-    else setFilters(DEFAULT_FILTERS);
-    navigate('/shop');
+    setFilters(next);
+    // The filter goes in the URL, not just in context — see `shopPath`. Setting
+    // the state as well is what stops a frame of unfiltered grid before the
+    // page reads the address.
+    navigate(shopPath({ filters: next }));
+  };
+
+  /**
+   * The whole catalogue, with nothing left over from wherever the buyer has
+   * been. Filters are global session state, so without the reset "View all"
+   * would open the grid still narrowed to the collection they tapped a minute
+   * ago — and it would be the one control on the page that doesn't do what it
+   * says.
+   */
+  const openShopUnfiltered = () => {
+    setQuery('');
+    setFilters(DEFAULT_FILTERS);
+    navigate(shopPath());
   };
   const openProduct = (id: string) => navigate(`/products/${id}`);
   const openBoutique = (id: string) => navigate(`/boutique/${id}`);
@@ -150,34 +249,69 @@ export function Home() {
         Visually hidden because the design leads with imagery, not a headline.
       */}
       <h1 className="agx-sr-only">
-        MangaiMart — boutique ethnic wear from across Tamil Nadu
+        MangaiMart — boutique ethnic wear from across India
       </h1>
       {/* The hero's space, held open while we find out whether an ad is live.
-          Same box, same gradient, no creative and no impression — see
-          `heroPending` in useLiveAds for why the ad itself is never restored
-          from storage. */}
+          Same box, same shape, same gradient, no creative and no impression —
+          see `heroPending` in useLiveAds for why the ad itself is never
+          restored from storage. Every number here mirrors the live hero below;
+          they have to move together or the page shifts when the ad lands. */}
       {heroPending && SLIDES.length === 0 && (
-        <div aria-hidden="true" style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
-          <div style={css('height:clamp(340px,42vw,560px);background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')} />
-        </div>
+        <div aria-hidden="true" style={css(`height:${HERO_H};border-radius:${HERO_R};background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);`)} />
       )}
 
-      {/* Hero carousel — paid home_hero ads only; hidden when none are live. */}
+      {/* Hero carousel — paid home_hero ads only; hidden when none are live.
+
+          It is a contained card rather than a full-bleed band: the page's rose
+          ground shows down both sides and all four corners carry a deep curve,
+          which is what makes it read as a boutique placement instead of a web
+          banner. */}
       {SLIDES.length > 0 && (
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);')}>
-        <div className="agx-zoom" style={css('position:relative;height:clamp(340px,42vw,560px);overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);')}>
+        <div
+          className="agx-zoom"
+          onPointerDown={onHeroPointerDown}
+          onPointerUp={onHeroPointerUp}
+          onPointerCancel={() => { drag.current = null; }}
+          // A mouse drag across a photo would otherwise start a native image
+          // drag, which cancels the pointer stream before we see the release.
+          onDragStart={(e) => e.preventDefault()}
+          style={css(`position:relative;height:${HERO_H};border-radius:${HERO_R};overflow:hidden;background:linear-gradient(120deg,#8E1C44,#B02454 55%,#D6336C);box-shadow:0 26px 54px -32px var(--ag-shadow),inset 0 0 0 1px rgba(226,190,120,.3);touch-action:pan-y;user-select:none;-webkit-user-select:none;`)}
+        >
           <div style={css(`display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);transform:translateX(-${heroIndex * 100}%);`)}>
             {SLIDES.map((h, i) => (
               // Off-screen slides are hidden from assistive tech: without this the
               // carousel would announce every slide at once, and the page would
               // report one <h1> per slide instead of the one heading it has.
+              //
+              // The whole slide is the click target, not just the pill. A
+              // full-bleed photograph with a headline over it reads as one
+              // banner, so tapping the picture — which is what most people tap —
+              // did nothing, and the buyer had to find the small pill to reach
+              // the boutique that paid for the slot. Only the on-screen slide
+              // takes the click, or a stray tap could open the ad either side.
+              //
+              // No `role`/`tabIndex` here on purpose: the pill inside is already
+              // a real, focusable, named button to the same destination, and
+              // wrapping it in a second control would announce the placement
+              // twice and put an unnamed stop in the tab order.
               <div
                 key={h.slotId}
                 aria-hidden={i !== heroIndex}
-                style={css('flex:0 0 100%;position:relative;height:100%;')}
+                onClick={i === heroIndex ? () => heroCta(h) : undefined}
+                style={css(`flex:0 0 100%;position:relative;height:100%;${i === heroIndex ? 'cursor:pointer;' : ''}`)}
               >
                 <div style={css('position:absolute;inset:0;')}>
-                  {/* The visible hero slide is the homepage's LCP element. */}
+                  {/* The visible hero slide is the homepage's LCP element.
+
+                      `objectPosition` is what stops the crop eating heads on a
+                      laptop. Sellers are asked for a 16:10 banner, but the slot
+                      is close to 3:1 once the window is wide, so `cover` scales
+                      the photo well past the box and a centred crop takes ~19%
+                      off the top — which is exactly where the model's face is.
+                      Biasing to 25% keeps the top of the frame and spends the
+                      crop on the floor instead. It has no effect on a phone,
+                      where the card is narrow enough that the photo is cropped
+                      horizontally rather than vertically. */}
                   <ImageSlot
                     src={h.image}
                     placeholder="Drop a collection photo"
@@ -186,18 +320,24 @@ export function Home() {
                     width={1600}
                     height={900}
                     sizes="100vw"
+                    objectPosition="center 25%"
                     style={css('position:absolute;inset:0;')}
                   />
                 </div>
-                <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(45,8,24,.86) 0%,rgba(110,22,56,.5) 46%,rgba(110,22,56,.05) 100%);pointer-events:none;')} />
+                {/* Two scrims, not one: a soft wash across the copy side keeps
+                    the text legible on a pale creative, and a low vignette
+                    keeps the dots off a bright hem. Both stop well short of the
+                    trailing edge so the photograph is still the thing you see. */}
+                <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);pointer-events:none;')} />
+                <div style={css('position:absolute;inset:0;background:linear-gradient(0deg,rgba(38,6,20,.34) 0%,rgba(38,6,20,0) 26%);pointer-events:none;')} />
                 <div style={css('position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;')}>
-                  <div style={css('max-width:1440px;width:100%;margin:0 auto;padding:0 clamp(20px,4vw,56px);color:#fff;')}>
+                  <div style={css(`width:100%;padding:0 ${HERO_PAD};color:#fff;`)}>
                     <div style={css('max-width:560px;')}>
                       {/* The seller's editable eyebrow tag. */}
                       {h.eyebrow && (
-                        <div style={css('display:inline-flex;align-items:center;gap:7px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:6px 13px;border-radius:999px;backdrop-filter:blur(4px);')}>
-                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>auto_awesome</span>
-                          <span className="agx-eyebrow" style={css('font-size:10px;')}>{h.eyebrow}</span>
+                        <div style={css('display:inline-flex;align-items:center;gap:6px;background:rgba(201,154,63,.2);border:1px solid rgba(226,190,120,.5);color:#F4D9A6;padding:clamp(4px,.5vw,6px) clamp(10px,1.2vw,13px);border-radius:999px;backdrop-filter:blur(4px);')}>
+                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:clamp(13px,1.2vw,15px);")}>auto_awesome</span>
+                          <span className="agx-eyebrow" style={css('font-size:clamp(8.5px,.85vw,10px);')}>{h.eyebrow}</span>
                         </div>
                       )}
                       {/*
@@ -208,12 +348,29 @@ export function Home() {
                         an <h2> at most: the page still has exactly one <h1>,
                         which says what MangaiMart is.
                       */}
-                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(38px,6vw,76px);line-height:.98;margin:16px 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,4.6vw,60px);line-height:1.04;margin:clamp(9px,1.2vw,14px) 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </h2>
-                      <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      <button onClick={() => heroCta(h)} style={css('pointer-events:auto;margin-top:24px;background:var(--ag-surface);color:var(--ag-crimson);border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
-                        {h.cta}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
+                      <div style={css('font-size:clamp(12.5px,1.25vw,16px);line-height:1.4;opacity:.92;margin-top:clamp(7px,1vw,12px);font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
+                      {/*
+                        A full pill, not a rounded rectangle: it echoes the
+                        curve of the card it sits in.
+
+                        Deliberately literal colours, against the usual rule.
+                        Everything inside the hero sits on a photograph under a
+                        dark scrim in BOTH themes, so the theme tokens are the
+                        wrong ground here: `--ag-surface` is white on light and
+                        near-black on dark, which turned this button into dark
+                        text on a dark pill over a dark photo. The hero's
+                        interior is always "on dark" — it is the one surface in
+                        the app that does not flip.
+                      */}
+                      {/* stopPropagation: the slide behind it now handles the
+                          same click, and without this one tap would track two
+                          clicks and navigate twice. */}
+                      <button onClick={(e) => { e.stopPropagation(); heroCta(h); }} style={css('pointer-events:auto;margin-top:clamp(14px,2vw,22px);background:#FFFFFF;color:#A81F4E;border:none;border-radius:999px;padding:clamp(7px,.9vw,10px) clamp(8px,1vw,12px) clamp(7px,.9vw,10px) clamp(18px,2vw,26px);font-weight:800;font-size:clamp(13px,1.2vw,14.5px);cursor:pointer;display:inline-flex;align-items:center;gap:clamp(8px,1vw,12px);box-shadow:0 18px 38px -16px rgba(0,0,0,.65);')}>
+                        {h.cta}
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:clamp(15px,1.4vw,17px);width:clamp(26px,2.6vw,30px);height:clamp(26px,2.6vw,30px);border-radius:999px;background:#FDE7EF;display:inline-flex;align-items:center;justify-content:center;flex:none;")}>arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -221,19 +378,29 @@ export function Home() {
               </div>
             ))}
           </div>
+          {/* One live ad is the common case, and a carousel of one is just a
+              stray dash in the corner — the dots only appear once there is
+              somewhere to go. */}
+          {SLIDES.length > 1 && (
           <div style={css('position:absolute;left:0;right:0;bottom:22px;z-index:3;')}>
-            <div style={css('max-width:1440px;margin:0 auto;padding:0 clamp(20px,4vw,56px);display:flex;gap:6px;')}>
+            <div style={css(`padding:0 ${HERO_PAD};display:flex;gap:6px;`)}>
               {SLIDES.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => goHero(i)}
+                  // The dot has no text and no icon, so without these it reaches
+                  // a screen reader as an unnamed "button" — Lighthouse's
+                  // `button-name` failure on the home page.
+                  type="button"
+                  aria-label={`Show slide ${i + 1} of ${SLIDES.length}`}
+                  aria-current={i === heroIndex}
                   style={css(`width:${i === heroIndex ? '18px' : '5px'};height:6px;border-radius:3px;border:none;padding:0;cursor:pointer;background:${i === heroIndex ? '#F4D9A6' : 'rgba(255,255,255,.55)'};transition:width .3s ease;`)}
                 />
               ))}
             </div>
           </div>
+          )}
         </div>
-      </div>
       )}
 
       {/* Sponsored — paid product placements, clearly labelled. Hidden when none. */}
@@ -247,13 +414,19 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
-        <a href="/collections" onClick={(e) => { e.preventDefault(); navigate('/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        {/* "View all" is the whole catalogue, unfiltered — the opposite of a
+            circle, which is one collection. It used to open the Collections
+            hub, which meant neither control on this row actually showed the
+            buyer the shop. The hub is still one tap away: it is what the "More"
+            circle at the end of the rail opens. */}
+        <a href="/shop" onClick={(e) => { e.preventDefault(); openShopUnfiltered(); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CIRCLES.map((c) => (
           <button
             key={c.name}
             onClick={() => openCategory(c.name)}
+            aria-label={`${c.name} — ${c.count} ${c.count === 1 ? 'piece' : 'pieces'}`}
             className="agx-circle"
             style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
           >
@@ -262,7 +435,13 @@ export function Home() {
             <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
               <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:var(--ag-bg);')}>
                 <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
-                  <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
+                  {/* Decorative: the category name is rendered as real text
+                      directly below, so `ImageSlot`'s default of reusing
+                      `placeholder` as the alt made a screen reader announce it
+                      twice (Lighthouse `image-redundant-alt`). The placeholder
+                      is still needed — it is the visible fallback when a
+                      category has no photo. */}
+                  <ImageSlot src={c.image} placeholder={c.name} alt="" sizes="116px" style={css('position:absolute;inset:0;')} />
                   <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
                   <span aria-hidden="true" style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
                 </span>
@@ -272,10 +451,17 @@ export function Home() {
           </button>
         ))}
 
-        {/* The design's "More" circle, now with somewhere real to go: the rail
-            shows six, the page shows every collection there is. */}
+        {/* The design's "More" circle, and now the way to the Collections hub:
+            the rail shows six categories, that page shows every category,
+            occasion, fabric, colour and budget there is.
+
+            "More" alone is a poor accessible name for the one link to it — and
+            since "View all" now goes to the grid instead, this is the only one
+            on the page. The label stays as drawn; the aria-label says where it
+            actually goes. */}
         <button
           onClick={() => navigate('/collections')}
+          aria-label="Shop by collection — every category, occasion, fabric, colour and budget"
           className="agx-circle"
           style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
         >
@@ -302,7 +488,7 @@ export function Home() {
         {NEW_ARRIVALS.map((p) => (
           <div key={p.id} onClick={() => openProduct(p.id)} className="agx-lift" style={css('flex:none;width:230px;cursor:pointer;')}>
             <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
-              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" sizes="230px" />
               <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:var(--ag-crimson);padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
                 <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>New</span>
@@ -372,14 +558,21 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
           <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
-        <a href="/top-boutiques" onClick={(e) => { e.preventDefault(); navigate('/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
+        {/* "View all" is the full directory, not a longer version of this rail.
+            It used to open /top-boutiques — the same eight shops in the same
+            order, just taller — so a buyer who wanted to see who else is on the
+            marketplace was given the identical answer twice. /boutiques is the
+            page with search, city, sort and every approved shop.
+            /top-boutiques is still live and still linked from the edge's hub
+            nav and the sitemap. */}
+        <a href="/boutiques" onClick={(e) => { e.preventDefault(); navigate('/boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {TOP_BOUTIQUES.map((b) => (
           <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {/* Cover — image only, no name overlay */}
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
-              <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
+              <ImageSlot src={b.image} placeholder={`${b.name} — cover`} sizes="300px" style={css('position:absolute;inset:0;')} />
             </div>
             {/* Identity — logo + name shown separately below the cover */}
             <div style={css('padding:14px 16px 16px;')}>
@@ -406,27 +599,37 @@ export function Home() {
         ))}
       </div>
 
-      {/* CUSTOMER REVIEWS (full-bleed)
-          Real reviews pulled from the `reviews` table (highest-rated, with
-          written feedback), not invented testimonials — so the section quietly
-          disappears rather than lying when the catalogue has none yet. Each
-          card is a proper pull-quote: the mark, the words, then the person —
-          equal height whatever the quote length. */}
+      {/* WHAT SHOPPERS SAY ABOUT MANGAIMART (full-bleed)
+          Reviews of the PLATFORM, not of a garment. This used to read from
+          `reviews`, which is the product table — so a section headed "about
+          MangaiMart" was quoting someone on a saree's fabric and printing the
+          shop's name underneath it.
+
+          The source is now `platform_feedback` (0071), where buyers rate us
+          after delivery, filtered to the ones who ticked "you may quote me" and
+          that an admin then approved (0084). Nothing given in confidence
+          appears here.
+
+          Still real or absent: the section quietly disappears rather than
+          inventing testimonials when nothing has been approved yet. Each card
+          is a proper pull-quote — the mark, the words, then the person — equal
+          height whatever the quote length. */}
       {REVIEWS.length > 0 && (
       <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,var(--ag-bg) 0%,var(--ag-surface-2) 100%);margin-top:44px;border-top:1px solid var(--ag-surface-3);')}>
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
-            <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across Tamil Nadu</div>
+            <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across India</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
               What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>MangaiMart</span>
             </div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;line-height:1.6;')}>
-              Real reviews from buyers who found their piece through a local boutique.
+              In their own words, after their order arrived — shared with their permission.
             </div>
           </div>
 
           <div className="agx-testimonials" style={css('margin-top:clamp(24px,3vw,38px);')}>
             {REVIEWS.map((r) => {
+              // The RPC already defaults a blank name; this is the belt.
               const name = r.author_name?.trim() || 'MangaiMart buyer';
               const tone = TONES[Math.abs(name.charCodeAt(0)) % TONES.length];
               return (
@@ -464,14 +667,15 @@ export function Home() {
                     </span>
                     <span style={css('min-width:0;')}>
                       <span style={css('display:block;font-size:14.5px;font-weight:800;color:var(--ag-ink);')}>{name}</span>
-                      {(r.product_title || r.boutique_name) && (
-                        <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
-                          {r.product_title}{r.product_title && r.boutique_name ? ' · ' : ''}{r.boutique_name}
-                        </span>
-                      )}
+                      {/* The buyer's city, never a product or a shop — this
+                          section is about MangaiMart, and naming a boutique
+                          here reads as an endorsement they did not give. */}
+                      <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                        {r.city ? `Shopper · ${r.city}` : 'MangaiMart shopper'}
+                      </span>
                     </span>
-                    {r.verified_purchase && (
-                      <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Verified purchase">
+                    {r.verified && (
+                      <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:999px;padding:5px 10px;')} title="Left after a delivered order">
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
                       </span>
                     )}

@@ -28,7 +28,7 @@ const WAYS_OUT: { to: string; icon: string; label: string; note: string }[] = [
 export function NotFound() {
   usePageMeta({
     title: 'Page not found',
-    description: 'This page doesn’t exist on MangaiMart. Browse verified Tamil Nadu boutiques, sarees, kurta sets and more.',
+    description: 'This page doesn’t exist on MangaiMart. Browse verified independent boutiques, sarees, kurta sets and more.',
     noindex: true,
   });
 

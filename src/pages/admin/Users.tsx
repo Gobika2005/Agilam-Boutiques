@@ -14,9 +14,11 @@ import {
   Field,
   EmptyState,
   Icon,
+  TabBar,
   T,
   type Column,
 } from '@/components/admin/kit';
+import { Customers } from '@/pages/admin/Customers';
 import { logAdminAction } from '@/data/activityLog';
 import {
   fetchUsers,
@@ -38,24 +40,54 @@ import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
 import type { Role } from '@/types/database';
+import { SkeletonRows } from '@/components/ui/Skeleton';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const PAGE_SIZE = 12;
 const ROLE_PILL: Record<Role, { bg: string; fg: string }> = {
   buyer: { bg: 'var(--ag-info-bg)', fg: 'var(--ag-info-text)' },
   seller: { bg: 'var(--ag-purple-bg)', fg: '#9B7FC7' },
   admin: { bg: 'var(--ag-surface-2)', fg: '#D6336C' },
+  staff: { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' },
 };
 
+/**
+ * Users — the account directory, plus Customer 360° as a tab.
+ *
+ * The two were separate sidebar entries and were both a searchable list of
+ * people; this one is every account, the other ranks buyers by what they have
+ * spent. Merged rather than deleted, so the spend view survives while the nav
+ * gets shorter. `/admin/customers` still resolves — App.tsx redirects it here.
+ */
+const USER_TABS = [
+  { key: 'accounts' as const, label: 'Accounts' },
+  { key: 'customers' as const, label: 'Customer 360°' },
+];
+
 export function Users() {
+  const [tab, setTab] = useState<'accounts' | 'customers'>('accounts');
+  return (
+    <div>
+      <TabBar tabs={USER_TABS} value={tab} onChange={setTab} />
+      {tab === 'accounts' ? <UserDirectory /> : <Customers />}
+    </div>
+  );
+}
+
+function UserDirectory() {
   const { showToast } = useShop();
   const { profile } = useAuth();
   const [page, setPage] = useState(0);
-  const [rawSearch, setRawSearch] = useState('');
+  const [rawSearch, setRawSearch] = useSeededSearch();
   const search = useDebounced(rawSearch, 300);
   const [role, setRole] = useState<'all' | Role>('all');
   const [status, setStatus] = useState<'all' | 'active' | 'blocked' | 'deleted'>('all');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ user: AdminUserRow } | null>(null);
+  const [blockUser, setBlockUser] = useState<AdminUserRow | null>(null);
+  // Typed by the admin, quoted verbatim to the user in the block/close email.
+  // One field serves both dialogs — only ever one of them is open.
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createData, setCreateData] = useState<CreateUserInput>({
@@ -88,9 +120,11 @@ export function Users() {
     }
     setBusy(true);
     try {
-      await updateUser(editUser.id, editData);
+      const result = await updateUser(editUser.id, editData);
       await log('user.update', editUser.id, { name: editData.fullName, role: editData.role });
-      showToast(`${editData.fullName} updated`);
+      // The server's message says whether the role moved and whether the user
+      // was emailed about it — more useful than a flat "updated".
+      showToast(editUser.role === editData.role ? `${editData.fullName} updated` : result.message);
       setEditUser(null);
       reload();
     } catch (error) {
@@ -129,15 +163,37 @@ export function Users() {
       meta,
     });
 
-  const toggleBlock = async (user: AdminUserRow) => {
-    const next = user.status === 'blocked' ? 'active' : 'blocked';
+  /**
+   * Unblocking needs no explanation, so it acts immediately. Blocking opens a
+   * dialog instead — the user now receives an email about it, and "your account
+   * has been suspended" with no reason attached is the message that generates a
+   * support ticket.
+   */
+  const doUnblock = async (user: AdminUserRow) => {
     try {
-      await setUserStatus(user.id, next);
-      await log(next === 'blocked' ? 'user.block' : 'user.unblock', user.id, { name: user.full_name });
-      showToast(`${user.full_name} ${next === 'blocked' ? 'blocked' : 'unblocked'}`);
+      const result = await setUserStatus(user.id, 'active');
+      await log('user.unblock', user.id, { name: user.full_name });
+      showToast(result.message);
       reload();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Update failed');
+    }
+  };
+
+  const doBlock = async () => {
+    if (!blockUser) return;
+    setBusy(true);
+    try {
+      const result = await setUserStatus(blockUser.id, 'blocked', reason);
+      await log('user.block', blockUser.id, { name: blockUser.full_name, reason: reason.trim() || null });
+      showToast(result.message);
+      setBlockUser(null);
+      setReason('');
+      reload();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Update failed');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -145,13 +201,15 @@ export function Users() {
     if (!confirm) return;
     setBusy(true);
     try {
-      const result = await deleteUserEverywhere(confirm.user.id);
+      const result = await deleteUserEverywhere(confirm.user.id, reason);
       await log(result.mode === 'archived' ? 'user.archive' : 'user.delete', confirm.user.id, {
         name: confirm.user.full_name,
         mode: result.mode,
+        reason: reason.trim() || null,
       });
       showToast(result.message);
       setConfirm(null);
+      setReason('');
       showFreshest();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Delete failed');
@@ -162,9 +220,9 @@ export function Users() {
 
   const doRestore = async (user: AdminUserRow) => {
     try {
-      await restoreUser(user.id);
+      const result = await restoreUser(user.id);
       await log('user.restore', user.id, { name: user.full_name });
-      showToast(`${user.full_name} restored`);
+      showToast(result.message);
       reload();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Restore failed');
@@ -283,12 +341,27 @@ export function Users() {
                   icon={user.status === 'blocked' ? 'lock_open' : 'block'}
                   tone={user.status === 'blocked' ? 'success' : 'warn'}
                   title={user.status === 'blocked' ? 'Unblock' : 'Block'}
-                  onClick={() => toggleBlock(user)}
+                  onClick={() => {
+                    if (user.status === 'blocked') {
+                      doUnblock(user);
+                    } else {
+                      setReason('');
+                      setBlockUser(user);
+                    }
+                  }}
                 />
               )}
               {/* Admins can't be deleted (change their role first); can't delete self. */}
               {user.id !== profile?.id && user.role !== 'admin' && (
-                <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirm({ user })} />
+                <IconButton
+                  icon="delete"
+                  tone="danger"
+                  title="Delete"
+                  onClick={() => {
+                    setReason('');
+                    setConfirm({ user });
+                  }}
+                />
               )}
             </>
           )}
@@ -314,6 +387,7 @@ export function Users() {
             { value: 'all', label: 'All roles' },
             { value: 'buyer', label: 'Buyers' },
             { value: 'seller', label: 'Sellers' },
+            { value: 'staff', label: 'Staff' },
             { value: 'admin', label: 'Admins' },
           ]}
         />
@@ -359,6 +433,22 @@ export function Users() {
       <UserDrawer id={detailId} onClose={() => setDetailId(null)} row={rows.find((row) => row.id === detailId) ?? null} />
 
       <ConfirmDialog
+        open={!!blockUser}
+        title="Block this account?"
+        message={`${blockUser?.full_name} will not be able to sign in. They are emailed about it${blockUser?.email ? ` at ${blockUser.email}` : ''}, and any reason you give below is quoted to them word for word.`}
+        confirmLabel="Block"
+        danger
+        busy={busy}
+        onConfirm={doBlock}
+        onCancel={() => {
+          setBlockUser(null);
+          setReason('');
+        }}
+      >
+        <ReasonField value={reason} onChange={setReason} placeholder="e.g. Repeated chargebacks on delivered orders" />
+      </ConfirmDialog>
+
+      <ConfirmDialog
         open={!!confirm}
         title="Delete user permanently?"
         message={`${confirm?.user.full_name} will be permanently deleted from the database, including their login. If they have orders or chat history, those records are kept and the account is archived instead. This can't be undone.`}
@@ -366,8 +456,13 @@ export function Users() {
         danger
         busy={busy}
         onConfirm={doDelete}
-        onCancel={() => setConfirm(null)}
-      />
+        onCancel={() => {
+          setConfirm(null);
+          setReason('');
+        }}
+      >
+        <ReasonField value={reason} onChange={setReason} placeholder="e.g. Closed at the account holder's request" />
+      </ConfirmDialog>
 
       {credentials && (
         <div
@@ -477,6 +572,7 @@ export function Users() {
             >
               <option value="buyer">Buyer</option>
               <option value="seller">Seller</option>
+              <option value="staff">Staff &mdash; console, no money or settings</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -535,6 +631,7 @@ export function Users() {
             <select value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value as Role })} style={css(EDIT_FIELD + 'cursor:pointer;')}>
               <option value="buyer">Buyer</option>
               <option value="seller">Seller</option>
+              <option value="staff">Staff &mdash; console, no money or settings</option>
               <option value="admin">Admin</option>
             </select>
           </FormField>
@@ -551,6 +648,30 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
     <div>
       <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>{label}</label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * The reason an admin types when blocking or closing an account.
+ *
+ * Optional by design — the email reads perfectly well without one — but what is
+ * typed here is sent to that person verbatim, so the label says so plainly. It
+ * also lands in the admin audit log next to the action.
+ */
+function ReasonField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div style={css('margin-top:16px;text-align:left;')}>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--ag-label);')}>
+        Reason <span style={css('font-weight:600;color:var(--ag-muted);')}>(optional — the user will see this)</span>
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, 500))}
+        placeholder={placeholder}
+        rows={3}
+        style={css(EDIT_FIELD + 'resize:vertical;line-height:1.5;')}
+      />
     </div>
   );
 }
@@ -587,7 +708,7 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
       </div>
 
       <div style={css('font-weight:800;font-size:13px;margin-bottom:8px;')}>Order history</div>
-      {loading && <div style={css(`color:${T.muted};font-size:13px;`)}>Loading...</div>}
+      {loading && <SkeletonRows rows={3} height={54} thumb={false} label="Loading order history…" />}
       {!loading && (data?.orders.length ?? 0) === 0 && <EmptyState icon="receipt_long" title="No orders" />}
       <div style={css('display:flex;flex-direction:column;gap:8px;')}>
         {(data?.orders ?? []).map((order) => (

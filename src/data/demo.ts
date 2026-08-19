@@ -90,13 +90,6 @@ export type Boutique = {
   image: string;
   /** Shop logo (`boutiques.logo_url`). Optional — surfaces fall back to a monogram. */
   logo?: string;
-  /**
-   * Whether this boutique takes cash on delivery (its store setting). Checkout
-   * offers COD only when every boutique in the bag accepts it; the server
-   * re-checks the same flag, so this is for the buyer's benefit, not security.
-   * Undefined on older rows, which are treated as accepting.
-   */
-  codEnabled?: boolean;
   /** When the boutique row was created — the denominator of its sales rate. */
   createdAt?: string;
   /** Units and fulfilled orders across the shop (migration 0023). */
@@ -110,7 +103,37 @@ export type Boutique = {
    */
   deliveryAvailable?: boolean;
   deliveryAreas?: string;
+  /**
+   * What this boutique charges the buyer to deliver, and the terms around it
+   * (migrations 0076 and 0077). `deliveryCharge` used to be a private logistics
+   * note the checkout ignored; it is now the actual charge for a delivery
+   * inside the shop's own town, waived once this boutique's goods in the bag
+   * reach `freeDeliveryOver` (0 = never).
+   *
+   * The three zone rates price distance: elsewhere in the shop's district, its
+   * state, and the rest of India. `null` on any of them means the shop does not
+   * deliver that far — see `src/lib/deliveryZone.ts`. Undefined (rather than
+   * null) means the row predates 0077, and is read as "same rate everywhere".
+   */
   deliveryCharge?: number;
+  deliveryChargeDistrict?: number | null;
+  deliveryChargeState?: number | null;
+  deliveryChargeNational?: number | null;
+  freeDeliveryOver?: number;
+  /**
+   * What this shop promises about fulfilment (migration 0078). `dispatchMin/Max`
+   * are working days to pack, before transit; `returnWindowDays` is its own
+   * change-of-mind window, 0 meaning none. Undefined where 0078 has not been
+   * applied, and the platform copy stands in.
+   */
+  dispatchMin?: number;
+  dispatchMax?: number;
+  returnWindowDays?: number;
+  /** The shop's own address, which the buyer's is measured against to pick a
+   *  delivery zone. `city` is above; these three complete it. */
+  district?: string;
+  state?: string;
+  pincode?: string;
 };
 
 export const CATEGORIES = [
@@ -161,12 +184,25 @@ export type Thread = {
   avatar?: string;
 };
 
+/**
+ * The buyer's tracking timeline.
+ *
+ * Every step here is now backed by something real. "Packed" comes from the
+ * seller's own action (migration 0063); "In Transit" and "Out for Delivery"
+ * come from courier scans (0067) and can only be set by the courier, never by
+ * the seller — which is the point. Anything we cannot evidence stays dim rather
+ * than being invented from a timer.
+ *
+ * INDEX-SENSITIVE: `STATUS_STAGE` and `trackStage()` in src/lib/orderHistory.ts
+ * map onto these positions. Inserting a step means updating both.
+ */
 export const TRACK_STAGES = [
   { label: 'Order Placed', icon: 'receipt_long', sub: 'We’ve received your order' },
   { label: 'Confirmed', icon: 'task_alt', sub: 'Boutique confirmed your order' },
   { label: 'Packed', icon: 'inventory_2', sub: 'Your item is packed & ready' },
-  { label: 'Shipped', icon: 'local_shipping', sub: 'Handed to the delivery partner' },
-  { label: 'Out for Delivery', icon: 'moped', sub: 'On the way to your address' },
+  { label: 'Shipped', icon: 'local_shipping', sub: 'Handed to the courier' },
+  { label: 'In Transit', icon: 'conveyor_belt', sub: 'On its way to your city' },
+  { label: 'Out for Delivery', icon: 'moped', sub: 'Arriving today' },
   { label: 'Delivered', icon: 'home', sub: 'Order delivered — enjoy!' },
 ];
 
@@ -175,17 +211,16 @@ export const TRACK_STAGES = [
 // server in api/_pricing.js. The old hardcoded COUPONS list was removed with that
 // migration.
 
-// Prepaid only — every order settles through the gateway before it is placed.
 /**
- * `online` methods all open the same Razorpay modal — the buyer picks the exact
- * instrument there — so they differ only in copy. `cod` is the one method that
- * skips the gateway entirely and writes an unpaid order.
+ * Prepaid only — every order settles through the gateway before it is placed.
+ * Cash on delivery was withdrawn from the platform (migration 0085), so these
+ * are all `online`: they open the same Razorpay modal and the buyer picks the
+ * exact instrument there, which is why they differ only in copy.
  */
 export const PAY_METHODS = [
   { key: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm & more', icon: 'qr_code_2', kind: 'online' as const },
   { key: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: 'credit_card', kind: 'online' as const },
   { key: 'netbanking', label: 'Net Banking', sub: 'All major banks supported', icon: 'account_balance', kind: 'online' as const },
-  { key: 'cod', label: 'Cash on Delivery', sub: 'Pay the delivery partner in cash', icon: 'payments', kind: 'cod' as const },
 ];
 
 /**

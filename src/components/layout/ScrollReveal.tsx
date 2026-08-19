@@ -91,9 +91,45 @@ export function ScrollReveal() {
       return node;
     };
 
+    /**
+     * One `getBoundingClientRect()` per element per scan.
+     *
+     * Every read here forces the browser to flush layout, and the walk below
+     * used to measure the same element three or four times over — once in
+     * `eligible`, twice more while sorting a level by height, then again in
+     * `scan`. On a screen with a few dozen sections that is a few dozen
+     * synchronous layouts inside whatever interaction happened to schedule the
+     * scan, which is exactly what an INP measurement is counting. The cache is
+     * per-scan and thrown away after, so it can never go stale.
+     */
+    let rects = new WeakMap<HTMLElement, DOMRect>();
+    const rectOf = (el: HTMLElement) => {
+      let r = rects.get(el);
+      if (!r) {
+        r = el.getBoundingClientRect();
+        rects.set(el, r);
+      }
+      return r;
+    };
+
+    /**
+     * Is this node inside a `position:fixed` surface?
+     *
+     * Walks up rather than testing the node itself: the chat is a fixed
+     * full-screen surface whose children are ordinary flow and absolute
+     * elements, and those children are not part of the page's scroll no matter
+     * where their rects happen to land.
+     */
+    const insideFixedSurface = (el: HTMLElement) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (getComputedStyle(p).position === 'fixed') return true;
+      }
+      return false;
+    };
+
     /** Tall enough to be worth animating, and not already on screen. */
     const eligible = (el: HTMLElement) => {
-      const r = el.getBoundingClientRect();
+      const r = rectOf(el);
       return r.height >= MIN_HEIGHT && r.top >= window.innerHeight * 0.9;
     };
 
@@ -114,14 +150,16 @@ export function ScrollReveal() {
         const kids = Array.from(level.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
         if (kids.length > 60) return kids;
         if (kids.some(eligible)) return kids;
-        level = kids
-          .slice()
-          .sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0] ?? null;
+        level = kids.reduce<HTMLElement | null>(
+          (tallest, k) => (!tallest || rectOf(k).height > rectOf(tallest).height ? k : tallest),
+          null,
+        );
       }
       return [];
     };
 
     const scan = () => {
+      rects = new WeakMap();
       for (const node of targets()) {
         if (!(node instanceof HTMLElement) || seen.has(node)) continue;
 
@@ -132,10 +170,33 @@ export function ScrollReveal() {
           continue;
         }
 
+        /*
+         * Rule 2, the half that was missing: nor anything INSIDE a fixed
+         * surface.
+         *
+         * The check above only looks at the node and its descendants, so a
+         * `position:absolute` child of a full-screen fixed surface passed
+         * straight through. That is exactly what the chat's message composer
+         * is, and it sat a few pixels below `innerHeight * 0.9` — so it was
+         * classed as a section "below the fold", given `.agx-sr`, and left at
+         * `opacity:0; translateY(22px)` waiting for a scroll that never comes,
+         * because a fixed surface does not move with the page. The buyer saw a
+         * chat with no message bar, and scrolling the thread was the one thing
+         * that made it appear.
+         *
+         * Nothing inside a fixed surface is ever "scrolled into view" in the
+         * page sense, so none of it is a candidate. Permanent, like the check
+         * above: an ancestor's `position` will not change under us.
+         */
+        if (insideFixedSurface(node)) {
+          seen.add(node);
+          continue;
+        }
+
         // NOT marked `seen`: a section measured while its data is still loading
         // is 0px tall, and marking it here excluded every asynchronously-filled
         // rail on Home from ever animating. Leave it for a later scan.
-        const rect = node.getBoundingClientRect();
+        const rect = rectOf(node);
         if (rect.height < MIN_HEIGHT) continue;
 
         // Above the fold right now — the page's own entrance animations already
@@ -149,10 +210,31 @@ export function ScrollReveal() {
       }
     };
 
+    /**
+     * At most one scan per frame.
+     *
+     * The observer below is `subtree: true` over the whole page, so it fires on
+     * every React commit — and a single interaction (opening a sheet, typing in
+     * search, expanding an accordion, a rail's data landing) is many commits.
+     * Wired straight to `scan`, each one dragged a full measuring pass into the
+     * same task as the interaction, and the reveal's own class changes fed more
+     * commits back in. Coalescing to a frame makes the cost of a hundred
+     * mutations the same as the cost of one, and moves it out of the event
+     * handler the browser is timing for INP.
+     */
+    let queued = 0;
+    const queueScan = () => {
+      if (queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        scan();
+      });
+    };
+
     // Content arrives asynchronously (catalogue, orders, analytics), so re-scan
     // as the page fills rather than only once on mount.
     scan();
-    const mo = new MutationObserver(scan);
+    const mo = new MutationObserver(queueScan);
     const main = document.querySelector('main.agx-app-main');
     // `subtree` because the sections live inside the page's own wrapper, so a
     // rail that finishes loading is not a mutation of `main` itself.
@@ -163,6 +245,7 @@ export function ScrollReveal() {
     return () => {
       io.disconnect();
       mo.disconnect();
+      if (queued) cancelAnimationFrame(queued);
       window.clearTimeout(settle);
       window.clearTimeout(settle2);
       cleanupTimers.forEach(window.clearTimeout);

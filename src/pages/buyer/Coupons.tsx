@@ -38,7 +38,7 @@ export function Coupons() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: { from?: string } | null };
   const {
-    appliedCoupon, applyCoupon, removeCoupon, coupon, coupons, boutiqueSubtotals,
+    appliedCoupon, applyCoupon, removeCoupon, coupon, coupons, boutiqueSubtotals, shopTerms, buyerPlace,
     subtotal, discount, shipFee, total, showToast,
   } = useShop();
   const { boutiques } = useCatalog();
@@ -60,7 +60,9 @@ export function Coupons() {
     // An expired coupon can never be redeemed, so it can't be "eligible" however
     // full the bag is — that keeps the button and savings badge honest.
     const eligible = !expired && isEligible(c, subtotal, boutiqueSubtotals);
-    const savings = expired ? 0 : couponSavings(c, subtotal, boutiqueSubtotals);
+    // `shopTerms` matters for a free-delivery coupon: what it saves is whatever
+    // the boutiques in the bag actually charge to deliver.
+    const savings = expired ? 0 : couponSavings(c, subtotal, boutiqueSubtotals, shopTerms, buyerPlace);
     return {
       ...c,
       base,
@@ -92,7 +94,7 @@ export function Coupons() {
       return;
     }
     applyCoupon(c.code);
-    const savings = couponSavings(c, subtotal, boutiqueSubtotals);
+    const savings = couponSavings(c, subtotal, boutiqueSubtotals, shopTerms, buyerPlace);
     showToast(savings > 0 ? `${c.code} applied · you save ${fmt(savings)}` : `${c.code} applied`);
     navigate(from);
   };
@@ -142,7 +144,7 @@ export function Coupons() {
           </div>
         )}
 
-        <div style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
+        <div className="agx-field" style={css('display:flex;align-items:center;margin-top:14px;background:var(--ag-surface);border:1.5px dashed var(--ag-border);border-radius:15px;padding:5px 5px 5px 16px;box-shadow:0 14px 32px -30px rgba(107,20,54,.5);')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>confirmation_number</span>
           <input
             value={code}

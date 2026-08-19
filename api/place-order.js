@@ -1,16 +1,23 @@
 import crypto from 'node:crypto';
-import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
-import { computeCartPricing, loadCoupon, redeemCoupon } from './_pricing.js';
-import { loadTerms } from './_settings.js';
+import { computeCartPricing, loadBuyerPlace, loadCoupon, loadShopTerms, redeemCoupon, undeliverableShop } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
+import { clientFor, verifyPaymentSignature } from './_razorpay.js';
+import { sendEmail, layout, rowsTable, inr, esc, appUrl, isValidEmail } from './_email.js';
+import { receiptBody, receiptText } from './_receipt.js';
 
 /**
- * Vercel serverless function: create the real order(s) for a guest checkout.
+ * Vercel serverless function: create the real order(s) for a checkout.
  *
- * Buyers browse without an account, so orders are written here with the Supabase
- * service role (bypasses RLS) instead of from the anonymous browser client. The
- * server is the source of truth for prices and boutique ownership: the client
+ * Buyers browse without an account, but they cannot order without one: this
+ * endpoint requires the buyer's Supabase access token and refuses the request
+ * without it (see the sign-in gate in the handler). The `guest_*` columns are
+ * still where the delivery details live — the name kept its original meaning of
+ * "typed at checkout" rather than "no account behind it".
+ *
+ * Orders are written with the Supabase service role (bypasses RLS) rather than
+ * from the browser client, so one request can create rows for several sellers.
+ * The server is the source of truth for prices and boutique ownership: the client
  * only sends product ids + quantities, and we look up the authoritative title,
  * price and boutique from the products table. A cart can span several
  * boutiques, so it is split into one order per boutique — that is what makes
@@ -18,30 +25,20 @@ import { enforceRateLimit } from './_rateLimit.js';
  *
  * For online payments we re-verify the Razorpay signature here (the same HMAC
  * as verify-payment.js) so an order can't be forged without a genuine payment.
+ * The signature is checked against every configured merchant account, and the
+ * account whose secret matched is the one this request then fetches, captures
+ * and refunds against — so a payment taken just before an emergency account
+ * switch still settles on the account that actually holds the money.
  *
- * Cash on Delivery is the one path that writes an order with no payment behind
- * it, so it is guarded on its own terms instead: every boutique in the cart
- * must have COD switched on, the cart must be under COD_MAX_ORDER, and a real
- * name/phone/address must be present — without those, an unpaid order is just a
- * way to burn a seller's stock. Everything else (server pricing, stock
- * reservation, the per-boutique split) is shared with the prepaid path.
+ * Every order is prepaid. Cash on delivery was removed from the platform
+ * (migration 0085) and this endpoint is the gate that enforces it: there is no
+ * longer any path that writes an order without a verified Razorpay payment
+ * behind it, and a request still asking for `paymentMethod: 'COD'` is refused
+ * outright rather than quietly downgraded to something else.
  */
 
-const keyId = process.env.RAZORPAY_KEY_ID;
-const keySecret = process.env.RAZORPAY_KEY_SECRET;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
-  if (!keySecret || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return false;
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest('hex');
-  const a = Buffer.from(expected);
-  const b = Buffer.from(String(razorpay_signature));
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
 
 function orderNumber() {
   // Time component keeps numbers roughly sortable; 4 hex chars of CSPRNG entropy
@@ -51,15 +48,6 @@ function orderNumber() {
   const rand = crypto.randomBytes(2).toString('hex').toUpperCase();
   return `AGL-${ts}${rand}`;
 }
-
-/**
- * How many un-collected COD orders one phone number may have in flight.
- *
- * A cash order costs the buyer nothing up front but locks up a seller's stock,
- * so this is the brake on someone placing a dozen and never answering the door.
- * Generous enough that a real household ordering for a wedding is unaffected.
- */
-const MAX_OPEN_COD_ORDERS = 3;
 
 // Auto-refund a captured payment we've decided not to fulfil (wrong amount, or
 // stock sold out between pay and placement). A failed refund must never crash
@@ -101,19 +89,11 @@ async function notifySellers(supabase, created, guestFields) {
       const first = order.lines[0];
       const rest = order.lines.length > 1 ? ` +${order.lines.length - 1} more` : '';
       const buyer = guestFields.guest_name || 'A customer';
-      const isCodOrder = guestFields.payment_method === 'COD';
-      // The seller's next action differs completely between the two: a prepaid
-      // order just ships, a COD order means counting cash at the door. Say which.
-      const money = isCodOrder
-        ? `Collect ₹${Math.round(
-            order.total + (order.shipping_fee ?? 0) + (order.cod_fee ?? 0) - (order.platform_discount ?? 0),
-          )} in cash on delivery.`
-        : 'Paid online.';
       rows.push({
         profile_id: ownerId,
         type: 'Orders',
-        title: `${isCodOrder ? 'New COD order' : 'New order'} ${order.order_number} · ₹${Math.round(order.total)}`,
-        body: `${buyer} ordered ${units} item${units === 1 ? '' : 's'} — ${first?.title ?? 'Item'}${rest}. ${money}`,
+        title: `New order ${order.order_number} · ₹${Math.round(order.total)}`,
+        body: `${buyer} ordered ${units} item${units === 1 ? '' : 's'} — ${first?.title ?? 'Item'}${rest}. Paid online.`,
         order_id: order.id,
       });
     }
@@ -123,6 +103,219 @@ async function notifySellers(supabase, created, guestFields) {
     if (insErr) throw insErr;
   } catch (err) {
     console.error('place-order: seller notification failed (order still placed):', err?.message ?? err);
+  }
+}
+
+/**
+ * Queue the WhatsApp confirmation for the buyer and the new-order alert for each
+ * seller (migration 0090).
+ *
+ * WHY THESE TWO ARE NOT TRIGGERS
+ * Every other WhatsApp message in the system is queued by a Postgres trigger, so
+ * that a status change fires wherever it comes from. Placement is the exception:
+ * the confirmation wants the basket summary and the seller alert wants the unit
+ * count, and both are already in hand here. A trigger would have to re-read
+ * order_items to rebuild what this function is holding — and would fire once per
+ * boutique order with no way to tell a two-shop checkout from two checkouts.
+ *
+ * `wa_enqueue` does the rest: it normalises the phone, drops anyone on the
+ * opt-out list, sanitises every parameter, and de-duplicates on the key. Nothing
+ * is sent from here — the wa-drain Edge Function does that on its next tick, and
+ * only if the admin kill switch is on.
+ *
+ * Best-effort, like everything past the order write: the buyer has already paid,
+ * so a queueing failure is logged and never surfaced.
+ */
+async function queueWhatsApp(supabase, created, guestFields, buyerId) {
+  try {
+    const boutiqueIds = [...new Set(created.map((o) => o.boutique_id))];
+    // The service-role client reads `whatsapp` and `phone` straight through the
+    // column grants 0021/0073 put on boutiques — the same reason emailOrderPlaced
+    // below can read `email`. Columns are named, never select('*').
+    const { data: boutiques, error } = await supabase
+      .from('boutiques')
+      .select('id, name, owner_id, whatsapp, phone')
+      .in('id', boutiqueIds);
+    if (error) throw error;
+
+    const byId = new Map((boutiques ?? []).map((b) => [b.id, b]));
+    const buyerFirstName = String(guestFields.guest_name || '').trim().split(/\s+/)[0] || 'there';
+
+    for (const order of created) {
+      const shop = byId.get(order.boutique_id);
+      const units = order.lines.reduce((sum, l) => sum + l.qty, 0);
+      const first = order.lines[0]?.title ?? 'your order';
+      const rest = order.lines.length > 1 ? ` +${order.lines.length - 1} more` : '';
+      // What the buyer was actually charged for this boutique's order, matching
+      // the receipt: goods and delivery, less the platform-funded discount.
+      // No COD fee term — every order is prepaid since 0085, so it is always 0.
+      const billed = Math.round(
+        Number(order.total || 0) +
+          Number(order.shipping_fee || 0) -
+          Number(order.platform_discount || 0),
+      );
+
+      // One message per boutique order, not one per checkout — a bag spanning
+      // two shops becomes two orders that ship and track separately, so a single
+      // combined message would misdescribe what the buyer has.
+      const { error: buyerErr } = await supabase.rpc('wa_enqueue', {
+        p_recipient: guestFields.guest_phone,
+        p_template: 'order_confirmed',
+        p_params: [
+          buyerFirstName,
+          order.order_number,
+          `${units} item${units === 1 ? '' : 's'} — ${first}${rest}`,
+          `₹${billed.toLocaleString('en-IN')}`,
+          shop?.name ?? 'the boutique',
+        ],
+        p_dedupe_key: `order:${order.id}:confirmed`,
+        p_audience: 'buyer',
+        p_order_id: order.id,
+        p_boutique_id: order.boutique_id,
+        p_profile_id: buyerId ?? null,
+      });
+      if (buyerErr) throw buyerErr;
+
+      if (!shop) continue;
+      const { error: sellerErr } = await supabase.rpc('wa_enqueue', {
+        p_recipient: shop.whatsapp || shop.phone,
+        p_template: 'seller_new_order',
+        p_params: [
+          shop.name ?? 'Seller',
+          order.order_number,
+          String(units),
+          // The seller's side of the same order: goods value, before our
+          // commission. Every order is prepaid (0085), so there is nothing to
+          // collect on delivery.
+          `₹${Math.round(Number(order.total || 0)).toLocaleString('en-IN')}`,
+        ],
+        p_dedupe_key: `order:${order.id}:new`,
+        p_audience: 'seller',
+        p_order_id: order.id,
+        p_boutique_id: order.boutique_id,
+        p_profile_id: shop.owner_id ?? null,
+      });
+      if (sellerErr) throw sellerErr;
+    }
+  } catch (err) {
+    console.error('place-order: WhatsApp queue failed (order still placed):', err?.message ?? err);
+  }
+}
+
+/**
+ * Email the buyer their confirmation, and each seller their new order.
+ *
+ * Until this existed the platform sent no transactional email whatsoever: a
+ * buyer who had just paid received nothing outside the app, and a seller only
+ * found out about an order if they happened to open the console. In-app
+ * notifications (notifySellers above, plus 0018's status triggers) are real but
+ * they are not a channel you can rely on reaching someone.
+ *
+ * Entirely best-effort, like everything else past the order write. Every send is
+ * awaited so failures land in the logs with a reason, but nothing here can fail
+ * the request — `sendEmail` never throws and the whole body is wrapped anyway.
+ *
+ * One email per boutique order rather than one per checkout: a bag spanning two
+ * shops becomes two orders that ship, track and can be cancelled separately, so
+ * one combined receipt would misrepresent what the buyer actually has.
+ */
+async function emailOrderPlaced(supabase, created, guestFields, buyerEmail) {
+  try {
+    // Seller addresses come from the service-role client, which bypasses the
+    // column grants migration 0073 put on `boutiques.email` — the whole reason
+    // those columns are safe to withhold from the browser.
+    const boutiqueIds = [...new Set(created.map((o) => o.boutique_id))];
+    const { data: boutiques } = await supabase
+      .from('boutiques')
+      // Named columns, never `select('*')` — `boutiques` has had column-level
+      // grants since the onboarding work. The address and logo are here for the
+      // buyer's receipt: it bills FROM the shop, so it has to say who the shop
+      // is and show their mark.
+      .select('id, name, email, logo_url, address_line, city, district, state, pincode')
+      .in('id', boutiqueIds);
+    const shopById = new Map((boutiques ?? []).map((b) => [b.id, b]));
+
+    const buyerName = guestFields.guest_name || 'there';
+    const payLine = 'Paid online';
+
+    for (const order of created) {
+      const shop = shopById.get(order.boutique_id);
+      // What the buyer was actually charged, for THIS order.
+      const payable = order.total + (order.shipping_fee ?? 0) - (order.platform_discount ?? 0);
+
+      const itemsHtml = order.lines
+        .map(
+          (l) =>
+            `<tr><td style="padding:8px 0;border-bottom:1px solid #EFDCE4;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#241019;">` +
+            `${esc(l.title)}${l.size ? ` <span style="color:#775D66;">· ${esc(l.size)}</span>` : ''}` +
+            `<span style="color:#775D66;"> × ${Number(l.qty) || 1}</span></td>` +
+            `<td align="right" style="padding:8px 0;border-bottom:1px solid #EFDCE4;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#241019;font-weight:700;">${esc(inr(Number(l.price) * (Number(l.qty) || 1)))}</td></tr>`,
+        )
+        .join('');
+      const itemsTable = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemsHtml}</table>`;
+
+      const summary = rowsTable([
+        ['Items', inr(order.total + (order.platform_discount ?? 0))],
+        ...(order.platform_discount ? [['Discount', '−' + inr(order.platform_discount)]] : []),
+        ['Delivery', order.shipping_fee ? inr(order.shipping_fee) : 'Free'],
+        ['Paid', inr(payable)],
+      ]);
+
+      // ── Buyer ──────────────────────────────────────────────────────────────
+      // This IS the receipt. Razorpay's own post-payment receipt feature only
+      // covers Payment Links and Payment Pages, and checkout here settles a
+      // Razorpay *order* (api/create-order.js), so nothing the dashboard is
+      // configured to send can ever fire for a MangaiMart purchase. The one
+      // that reaches the buyer is this one — see api/_receipt.js.
+      if (isValidEmail(buyerEmail)) {
+        const receiptOrder = { ...order, payment_id: guestFields.payment_id, paid_at: guestFields.paid_at };
+        const receiptBuyer = {
+          name: guestFields.guest_name,
+          email: buyerEmail,
+          phone: guestFields.guest_phone,
+          address: guestFields.guest_address,
+          city: guestFields.guest_city,
+          pincode: guestFields.guest_pincode,
+        };
+        const r = await sendEmail({
+          to: buyerEmail,
+          subject: `Payment receipt · ${order.order_number} · ${inr(payable)}`,
+          html: layout({
+            heading: 'Payment Receipt',
+            intro: `Thanks, ${buyerName} — ${shop?.name ?? 'the boutique'} has your payment of ${inr(payable)} and is getting order ${order.order_number} ready. We'll tell you the moment it ships.`,
+            bodyHtml: receiptBody({ order: receiptOrder, shop, buyer: receiptBuyer }),
+            ctaLabel: 'Track this order',
+            ctaHref: `${appUrl}/orders/${order.id}`,
+            footerNote: 'Keep this receipt — it is your proof of payment for this order.',
+          }),
+          text: receiptText({ order: receiptOrder, shop, buyer: receiptBuyer, appUrl }),
+        });
+        if (!r.ok) console.error('place-order: buyer receipt email failed:', order.order_number, r.error);
+      }
+
+      // ── Seller ─────────────────────────────────────────────────────────────
+      if (isValidEmail(shop?.email)) {
+        const units = order.lines.reduce((sum, l) => sum + (Number(l.qty) || 1), 0);
+        const r = await sendEmail({
+          to: shop.email,
+          subject: `New order ${order.order_number} · ${inr(payable)}`,
+          html: layout({
+            heading: `You have a new order — ${order.order_number}`,
+            intro: `${guestFields.guest_name || 'A customer'} ordered ${units} item${units === 1 ? '' : 's'}. Already paid online.`,
+            bodyHtml: `${itemsTable}<div style="height:14px"></div>${summary}`,
+            ctaLabel: 'Open in your console',
+            ctaHref: `${appUrl}/seller/orders/${order.id}`,
+            footerNote: 'Accept the order in your console to let the buyer know it is being prepared.',
+          }),
+          text:
+            `New order ${order.order_number} — ${units} item${units === 1 ? '' : 's'}, ${inr(payable)} (${payLine}).\n` +
+            `Open it: ${appUrl}/seller/orders/${order.id}\n`,
+        });
+        if (!r.ok) console.error('place-order: seller email failed:', order.order_number, r.error);
+      }
+    }
+  } catch (err) {
+    console.error('place-order: order emails failed (order still placed):', err?.message ?? err);
   }
 }
 
@@ -149,46 +342,58 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Cart is empty' });
   }
 
-  // COD is opt-in per request and never inferred from a missing payment: a
-  // prepaid checkout that loses its payment object must still fail closed
-  // rather than quietly becoming an unpaid order.
-  const isCod = paymentMethod === 'COD';
+  // Cash on delivery was withdrawn platform-wide (migration 0085). An old cached
+  // bundle, a replayed request or a hand-rolled client can still ask for it, so
+  // it is refused here explicitly rather than falling through to the prepaid
+  // path — which would otherwise reject it as "payment required" and leave the
+  // buyer with a misleading reason.
+  if (paymentMethod === 'COD') {
+    return res.status(400).json({
+      error: 'Cash on delivery is no longer available on MangaiMart. Please pay online to place this order.',
+      code: 'COD_WITHDRAWN',
+    });
+  }
 
-  if (!isCod) {
-    if (!payment) {
-      return res.status(400).json({ error: 'Payment is required to place an order' });
-    }
-    if (!verifySignature(payment)) {
-      return res.status(400).json({ error: 'Payment could not be verified' });
-    }
-  } else {
-    // Nobody delivers cash to a blank address. These are the seller's only
-    // means of completing the order, so they are required rather than optional.
-    const name = String(guest?.name ?? '').trim();
-    const phone = String(guest?.phone ?? '').replace(/\D/g, '');
-    const address = String(guest?.address ?? '').trim();
-    const pincode = String(guest?.pincode ?? '').replace(/\D/g, '');
-    if (name.length < 2 || !/^[6-9]\d{9}$/.test(phone) || address.length < 10 || !/^[1-9]\d{5}$/.test(pincode)) {
-      return res.status(400).json({
-        error: 'Cash on delivery needs your name, a valid 10-digit mobile number, a full delivery address and a 6-digit pincode.',
-      });
-    }
+  // A reachable mobile number is now mandatory on every order (migration 0090).
+  // Until COD was withdrawn this rule existed only on the cash path, where a
+  // courier had to be able to ring the door; it went with 0085 and nothing
+  // replaced it, so a scripted request could place a prepaid order with no way
+  // to contact the buyer at all. WhatsApp order updates make that a real gap
+  // rather than a tidy one — a queued message with no recipient is a buyer who
+  // hears nothing. The checkout form has always validated this same rule
+  // client-side, so in practice only a tampered or hand-rolled request is
+  // turned away here.
+  const guestPhone = String(guest?.phone ?? '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(guestPhone)) {
+    return res.status(400).json({
+      error: 'A 10-digit mobile number is required so we can send you order updates.',
+      code: 'PHONE_REQUIRED',
+    });
+  }
+
+  // Which merchant account signed this payment — and therefore which one holds
+  // the money.
+  if (!payment) {
+    return res.status(400).json({ error: 'Payment is required to place an order' });
+  }
+  const paymentAccount = verifyPaymentSignature(payment);
+  if (!paymentAccount) {
+    return res.status(400).json({ error: 'Payment could not be verified' });
   }
 
   // One Razorpay client, reused for order lookup (amount binding) and any
-  // auto-refund. Null when the keys aren't configured.
-  const razorpay = keyId && keySecret ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : null;
+  // auto-refund — bound to the account the signature identified, NOT to whatever
+  // the admin switch points at now. If the switch moved between checkout opening
+  // and this request, the money is still sitting in the old account and every
+  // call below has to be made there.
+  const razorpay = clientFor(paymentAccount);
 
   // Replay guard: a genuine online payment maps to exactly one order-set. Without
   // this, replaying the same verified {order_id, payment_id, signature} to this
   // endpoint would mint unlimited orders from a single payment. The multi-boutique
   // split still shares one payment_id across the rows created in THIS request —
   // we only reject a payment_id that already exists from a PRIOR request.
-  //
-  // COD has no payment id to replay. Its equivalent abuse — spamming unpaid
-  // orders — is bounded by the rate limiter above and by the open-COD-order
-  // check further down, not here.
-  if (!isCod) {
+  {
     const { data: dup, error: dupErr } = await supabase
       .from('orders')
       .select('id')
@@ -204,21 +409,50 @@ export default async function handler(req, res) {
     }
   }
 
-  // A signed-in buyer (Google / email) sends their access token; tie the order
-  // to their account so they can read it back cross-device via RLS. Guests
-  // (no token / invalid) fall through to null, staying phone-keyed.
+  // ── Sign-in required ───────────────────────────────────────────────────
+  // Every order is owned by an account. The buyer's access token is what proves
+  // that, and it is mandatory: guest checkout is closed. This is the server half
+  // of the gate the UI enforces in src/auth/SignInGate.tsx — the browser can
+  // skip its own guard, this it cannot.
+  //
+  // An *anonymous* Supabase user does not count. Opening a chat signs the
+  // browser in anonymously (src/data/chat.ts), so a bare token is not evidence
+  // of an account; `is_anonymous` is what separates the two.
+  //
+  // Ordering matters: this sits AFTER the replay check so a re-sent settlement
+  // for an order that already exists still answers 409 ("already used") instead
+  // of a sign-in error, and the retry path in ShopContext stops rather than
+  // looping. It is otherwise as early as possible.
   let buyerId = null;
-  // Optional-chained on purpose: a runtime without `headers` must degrade to a
-  // guest checkout, never throw here — this runs after the buyer has paid.
-  const authHeader = req.headers?.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (token) {
-    try {
-      const { data } = await supabase.auth.getUser(token);
-      buyerId = data?.user?.id ?? null;
-    } catch {
-      /* invalid token — treat as a guest checkout */
+  // The address for the order-confirmation email. Every order has a real
+  // account behind it (migration 0069), so this is normally present.
+  let buyerEmail = null;
+  {
+    // Optional-chained on purpose: a runtime without `headers` must not throw.
+    const authHeader = req.headers?.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    let user = null;
+    if (token) {
+      try {
+        const { data } = await supabase.auth.getUser(token);
+        user = data?.user ?? null;
+      } catch {
+        /* expired or malformed token — handled as signed out below */
+      }
     }
+    if (!user || user.is_anonymous) {
+      // We reach here only if the session expired between opening checkout and
+      // settling, so the money may already be captured. Say so: the browser has
+      // parked the payment and the "Complete my order" retry will settle it once
+      // they are signed in again — being told to sign in with no word about the
+      // charge is how a buyer pays twice.
+      return res.status(401).json({
+        error: 'Please sign in again to finish your order — your payment is safe and you will not be charged twice.',
+        code: 'SIGN_IN_REQUIRED',
+      });
+    }
+    buyerId = user.id;
+    buyerEmail = user.email ?? null;
   }
 
   try {
@@ -279,65 +513,27 @@ export default async function handler(req, res) {
     // only its own boutique's slice, a platform coupon the whole cart.
     const groupTotals = Object.fromEntries([...groups.values()].map((g) => [g.boutique_id, g.total]));
     const coupon = await loadCoupon(supabase, couponCode);
-    // Admin-editable commercial terms. Read once per request so every total
-    // below (COD cap, fees, the paise the payment is checked against) is priced
-    // from one consistent snapshot even if an admin saves mid-checkout.
-    const terms = await loadTerms(supabase);
+    // Each boutique's own delivery terms (migration 0076). Read once per request
+    // so every total below — the fees stored on each order, the paise the payment
+    // is checked against — is priced from one consistent snapshot even if a
+    // seller saves their settings mid-checkout.
+    const shops = await loadShopTerms(supabase, [...groups.keys()]);
+    // Where the parcel is going decides which of each shop's zone rates applies
+    // (migration 0077). Read from the SAME `pincodes` directory the browser
+    // quoted from, so the two derive the same zone and the amount binding below
+    // does not reject a correctly-priced payment.
+    const buyerPlace = await loadBuyerPlace(supabase, guest?.pincode);
 
-    // ── Cash on Delivery ───────────────────────────────────────────────────
-    // No payment to bind an amount against, so the checks are about whether
-    // this unpaid order should be allowed to consume a seller's stock at all.
-    if (isCod) {
-      const codTotals = computeCartPricing(groupTotals, coupon, groups.size, terms);
-
-      if (codTotals.total > terms.cod_max_order) {
-        return res.status(400).json({
-          error: `Cash on delivery is available on orders up to ₹${terms.cod_max_order.toLocaleString('en-IN')}. Please pay online for this order.`,
-        });
-      }
-
-      // A seller who switched COD off in their store settings must never have a
-      // cash order forced on them. Re-read the flag here rather than trusting
-      // whatever the browser thought it saw.
-      const { data: shops, error: shopErr } = await supabase
-        .from('boutiques')
-        .select('id, name, cod_enabled, status')
-        .in('id', [...groups.keys()]);
-      if (shopErr) {
-        console.error('place-order: boutique lookup failed:', shopErr?.message ?? shopErr, shopErr?.code ?? '');
-        return res.status(503).json({
-          error: 'We can’t reach our boutiques right now, so your order wasn’t placed. Please try again in a few minutes.',
-          code: 'BOUTIQUE_LOOKUP_UNAVAILABLE',
-        });
-      }
-
-      const refusing = (shops ?? []).find((b) => !b.cod_enabled);
-      if (refusing) {
-        return res.status(400).json({ error: `${refusing.name} does not accept cash on delivery. Please pay online.` });
-      }
-      const unapproved = (shops ?? []).find((b) => b.status !== 'approved');
-      if (unapproved || (shops ?? []).length !== groups.size) {
-        return res.status(400).json({ error: 'One of the boutiques in your bag is not currently accepting orders.' });
-      }
-
-      // Cheap abuse brake: a phone number with several unpaid COD orders still
-      // open has not proved it pays for the last one, and each new order locks
-      // up more stock. Signed-in buyers are held to the same limit.
-      const phone = String(guest?.phone ?? '').replace(/\D/g, '');
-      const { count: openCod, error: openErr } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('payment_method', 'COD')
-        .eq('payment_status', 'pending')
-        .in('status', ['pending', 'accepted', 'shipped'])
-        .eq('guest_phone', phone);
-      if (openErr) {
-        console.error('place-order: COD open-order check failed:', openErr?.message ?? openErr);
-      } else if ((openCod ?? 0) >= MAX_OPEN_COD_ORDERS) {
-        return res.status(429).json({
-          error: 'You already have several cash-on-delivery orders in progress. Please take delivery of those first, or pay online.',
-        });
-      }
+    // A shop that does not deliver this far must not be sold a parcel it cannot
+    // send. Checked before the payment binding so a prepaid buyer is refused
+    // with their money untouched, and re-checked here rather than trusted from
+    // the browser because it is the seller's promise, not the buyer's claim.
+    const cannotDeliver = undeliverableShop(groupTotals, shops, buyerPlace);
+    if (cannotDeliver) {
+      return res.status(400).json({
+        error: `${cannotDeliver} does not deliver to that address. Remove those items, or use a different delivery address.`,
+        code: 'UNDELIVERABLE',
+      });
     }
 
     // ── Payment amount binding (critical) ──────────────────────────────────
@@ -355,11 +551,11 @@ export default async function handler(req, res) {
     // no order. So: bind the payment to our order id, assert the amount, and
     // capture it ourselves if it is still merely authorised.
     let refundAmountPaise = 0;
-    if (!isCod) {
+    {
       if (!razorpay) {
         return res.status(500).json({ error: 'Payment verification is not configured' });
       }
-      const expectedPaise = computeCartPricing(groupTotals, coupon, 0, terms).totalPaise;
+      const expectedPaise = computeCartPricing(groupTotals, coupon, shops, buyerPlace).totalPaise;
 
       let rzPayment;
       try {
@@ -420,10 +616,9 @@ export default async function handler(req, res) {
 
     // ── Inventory reservation (H-03) ───────────────────────────────────────
     // Atomically decrement stock for every line before writing the order.
-    // All-or-nothing: if any item is short, nothing is decremented. On the
-    // prepaid path the buyer has already paid by this point, so if stock sold
-    // out in the meantime we refund rather than oversell; on COD there is
-    // nothing to refund and the buyer simply gets told.
+    // All-or-nothing: if any item is short, nothing is decremented. The buyer
+    // has already paid by this point, so if stock sold out in the meantime we
+    // refund rather than oversell.
     const reserveItems = [];
     for (const g of groups.values()) {
       for (const l of g.lines) reserveItems.push({ product_id: l.product_id, qty: l.qty });
@@ -433,38 +628,37 @@ export default async function handler(req, res) {
     if (reserveErr) {
       const soldOut = String(reserveErr.message || '').includes('INSUFFICIENT_STOCK');
       if (!soldOut) console.error('place-order: stock reservation failed:', reserveErr?.message ?? reserveErr);
-      if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+      await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
       return res.status(soldOut ? 409 : 500).json({
         error: soldOut
-          ? isCod
-            ? 'Sorry, some items just sold out. Your order was not placed.'
-            : 'Sorry, some items just sold out. Your payment has been refunded.'
+          ? 'Sorry, some items just sold out. Your payment has been refunded.'
           : 'Could not place the order. Please try again.',
       });
     }
 
     const guestFields = {
       guest_name: guest?.name ?? null,
-      guest_phone: guest?.phone ?? null,
+      // Normalised above, and validated — never the raw string, so what the
+      // WhatsApp triggers read is a number they can always resolve.
+      guest_phone: guestPhone,
       guest_city: guest?.city ?? null,
       guest_address: guest?.address ?? null,
       guest_pincode: guest?.pincode ? String(guest.pincode).replace(/\D/g, '').slice(0, 6) : null,
-      payment_id: isCod ? null : payment.razorpay_payment_id,
-      payment_method: isCod ? 'COD' : 'Razorpay',
-      // Prepaid orders are settled the moment they are written; a COD order is
-      // money the seller has yet to collect, and stays 'pending' until they
-      // confirm the cash arrived.
-      payment_status: isCod ? 'pending' : 'paid',
-      paid_at: isCod ? null : new Date().toISOString(),
+      payment_id: payment.razorpay_payment_id,
+      payment_method: 'Razorpay',
+      // Every order is prepaid (migration 0085), so it is settled the moment it
+      // is written — there is no longer a 'pending' state waiting on cash.
+      payment_status: 'paid',
+      paid_at: new Date().toISOString(),
       channel: 'online',
     };
 
-    // Delivery is a single cart-level charge, so it is recorded against the
-    // first order of the checkout. Summed across the orders this request
-    // creates, total + shipping_fee + cod_fee equals exactly what the buyer was
-    // quoted — which is what lets a seller collect the right cash at the door.
-    const cartTotals = computeCartPricing(groupTotals, coupon, isCod ? groups.size : 0, terms);
-    let shippingToAssign = cartTotals.shipFee;
+    // Delivery is each boutique's own charge now, so every order carries its own
+    // — no more assigning the whole cart's delivery to the first order of the
+    // checkout. Summed across the orders this request creates, total +
+    // shipping_fee − platform_discount equals exactly what the buyer paid, which
+    // is what the amount binding above asserted against.
+    const cartTotals = computeCartPricing(groupTotals, coupon, shops, buyerPlace);
 
     // Claim the redemption before writing the orders. Done here — after pricing,
     // before the rows exist — so a code that ran out between the buyer loading
@@ -484,11 +678,9 @@ export default async function handler(req, res) {
         } catch (releaseErr) {
           console.error('place-order: stock release failed after coupon exhaustion:', releaseErr?.message ?? releaseErr);
         }
-        if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+        await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
         return res.status(409).json({
-          error: isCod
-            ? 'That coupon has just reached its redemption limit. Remove it and try again.'
-            : 'That coupon has just reached its redemption limit; your payment has been refunded. Remove it and try again.',
+          error: 'That coupon has just reached its redemption limit; your payment has been refunded. Remove it and try again.',
         });
       }
       couponApplied = coupon.code;
@@ -499,8 +691,7 @@ export default async function handler(req, res) {
     const created = [];
     try {
       for (const g of groups.values()) {
-        const shippingForThisOrder = shippingToAssign;
-        shippingToAssign = 0;
+        const shippingForThisOrder = cartTotals.perBoutiqueShipFee[g.boutique_id] ?? 0;
         // A seller coupon is funded by that seller: its discount is netted off
         // this boutique's goods total here, so the existing payout math (0025)
         // settles — and takes commission on — the discounted amount unchanged. A
@@ -510,9 +701,8 @@ export default async function handler(req, res) {
         // A platform coupon is funded by us, so it is NOT taken off `total` —
         // the seller is still paid for the full goods value. It is recorded
         // alongside instead, because it IS money the buyer no longer owes:
-        // total + shipping_fee + cod_fee − platform_discount is what they pay.
-        // Skipping this used to hand a COD buyer an undiscounted bill at the
-        // door (migration 0053).
+        // total + shipping_fee − platform_discount is what they pay, and it is
+        // what the payout credits back to the seller (migration 0053).
         const platformDiscount = cartTotals.perBoutiquePlatformDiscount[g.boutique_id] ?? 0;
         const { data: order, error: orderErr } = await supabase
           .from('orders')
@@ -524,15 +714,12 @@ export default async function handler(req, res) {
             discount: orderDiscount,
             platform_discount: platformDiscount,
             status: 'pending',
-            // One handling fee per delivery, stored on the order it belongs to
-            // so the seller knows the exact cash to collect at that door.
-            cod_fee: isCod ? terms.cod_fee : 0,
             // Which code paid for this, so redemptions are auditable (0049).
             coupon_code: couponApplied,
             shipping_fee: shippingForThisOrder,
             ...guestFields,
           })
-          .select('id, order_number, boutique_id, total, discount, platform_discount, cod_fee, shipping_fee, created_at')
+          .select('id, order_number, boutique_id, total, discount, platform_discount, shipping_fee, created_at')
           .single();
         if (orderErr) throw orderErr;
 
@@ -546,8 +733,11 @@ export default async function handler(req, res) {
           order_number: order.order_number,
           boutique_id: order.boutique_id,
           total: Number(order.total),
+          // Seller-funded coupon, already netted off `total`. Carried through so
+          // the buyer's receipt can name it as the boutique's own offer instead
+          // of quietly printing a line total that doesn't reconcile.
+          discount: Number(order.discount ?? 0),
           platform_discount: Number(order.platform_discount ?? 0),
-          cod_fee: Number(order.cod_fee ?? 0),
           shipping_fee: Number(order.shipping_fee ?? 0),
           created_at: order.created_at,
           lines: g.lines,
@@ -568,26 +758,27 @@ export default async function handler(req, res) {
       } catch (releaseErr) {
         console.error('place-order: stock release failed:', releaseErr?.message ?? releaseErr);
       }
-      if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+      await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
       return res.status(500).json({ error: 'Could not place the order. Please try again.', code: 'ORDER_WRITE_FAILED' });
     }
 
     // The order exists — everything from here is best-effort and must never
     // turn a successful checkout into an error for the buyer.
     await notifySellers(supabase, created, guestFields);
+    await emailOrderPlaced(supabase, created, guestFields, buyerEmail);
+    await queueWhatsApp(supabase, created, guestFields, buyerId);
 
     return res.status(200).json({
-      orders: created.map(({ id, order_number, boutique_id, total, platform_discount, cod_fee, shipping_fee, created_at }) => ({
+      orders: created.map(({ id, order_number, boutique_id, total, platform_discount, shipping_fee, created_at }) => ({
         id,
         order_number,
         boutique_id,
         total,
         platform_discount,
-        cod_fee,
         shipping_fee,
         created_at,
       })),
-      paid: !isCod,
+      paid: true,
       payment_method: guestFields.payment_method,
     });
   } catch (err) {

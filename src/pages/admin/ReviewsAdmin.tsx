@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { fetchAllReviews, setReviewHidden, deleteReview, type AdminReviewRow } from '@/data/adminReviews';
 import { logAdminAction } from '@/data/activityLog';
 import { StatCard, Select, SearchInput, EmptyState, IconButton, ConfirmDialog, Icon, T } from '@/components/admin/kit';
+import { useSeededSearch } from '@/hooks/useSeededSearch';
 
 const timeAgo = (iso: string) => {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -30,7 +31,7 @@ export function ReviewsAdmin() {
   const { data, loading, reload } = useAsync(() => fetchAllReviews(), []);
   const { showToast } = useShop();
   const { profile } = useAuth();
-  const [q, setQ] = useState('');
+  const [q, setQ] = useSeededSearch();
   const [filter, setFilter] = useState<Filter>('all');
   const [toDelete, setToDelete] = useState<AdminReviewRow | null>(null);
   const [busy, setBusy] = useState(false);

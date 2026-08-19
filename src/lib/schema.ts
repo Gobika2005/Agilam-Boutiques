@@ -45,8 +45,22 @@ export function organizationSchema(): JsonLd {
   return compact({
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
-    name: COMPANY.legalName || SITE_NAME,
-    alternateName: SITE_NAME,
+    /*
+     * The trading name, not `COMPANY.legalName`.
+     *
+     * Two things were wrong with using the legal name here. It is still a TODO
+     * placeholder in src/data/company.ts, so this published an unverified
+     * registered-entity claim as structured data; and the edge middleware emits
+     * `name: "MangaiMart"` on this exact same `@id`, so the two nodes merged
+     * into one entity asserting two different names. The brand a shopper types
+     * is the one that has to win, and `legalName` is deliberately not emitted
+     * until the real incorporated entity is confirmed.
+     */
+    name: SITE_NAME,
+    // Mirrors BRAND_ALTERNATE_NAMES in middleware.js — change both together.
+    // "Mangai Mart" as two words is a real share of own-brand search and had
+    // nothing anywhere tying that spelling to this domain.
+    alternateName: ['Mangai Mart', 'MangaiMart Boutique', 'MangaiMart India'],
     url: SITE_URL,
     logo: {
       '@type': 'ImageObject',
@@ -76,9 +90,9 @@ export function organizationSchema(): JsonLd {
       }),
     ],
     sameAs: [
-      COMPANY.social.instagram ? `https://instagram.com/${COMPANY.social.instagram}` : '',
-      COMPANY.social.facebook ? `https://facebook.com/${COMPANY.social.facebook}` : '',
-      COMPANY.social.youtube ? `https://youtube.com/@${COMPANY.social.youtube}` : '',
+      COMPANY.social.instagram,
+      COMPANY.social.facebook,
+      COMPANY.social.youtube,
     ].filter(Boolean),
   });
 }
@@ -238,7 +252,7 @@ export function productSchema(
 /* ── Boutique ───────────────────────────────────────────────────────────── */
 
 /**
- * A boutique is a real shop in a real Tamil Nadu town, so it is marked up as a
+ * A boutique is a real shop in a real town, so it is marked up as a
  * `ClothingStore` (a `LocalBusiness`) rather than a generic seller. This is
  * what makes "boutiques in Coimbatore" a query the site can win.
  */
@@ -253,18 +267,20 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
     logo: boutique.logo ? absoluteUrl(boutique.logo) : undefined,
     description:
       boutique.desc?.trim() ||
-      `${boutique.name} is a verified boutique in ${boutique.city}, Tamil Nadu, selling ethnic wear on ${SITE_NAME}.`,
+      `${boutique.name} is a verified boutique in ${boutique.city}, selling ethnic wear on ${SITE_NAME}.`,
     telephone: boutique.phone || undefined,
     address: compact({
       '@type': 'PostalAddress',
       streetAddress: boutique.area || undefined,
       addressLocality: boutique.city,
-      addressRegion: 'Tamil Nadu',
+      // No addressRegion: sellers are no longer assumed to be in one state, and
+      // `compact` drops the key rather than emitting a wrong one. Mirrors the
+      // same decision in middleware.js.
       addressCountry: 'IN',
     }),
     areaServed: { '@type': 'Country', name: 'India' },
     currenciesAccepted: 'INR',
-    paymentAccepted: 'UPI, Credit Card, Debit Card, Net Banking, Cash on Delivery',
+    paymentAccepted: 'UPI, Credit Card, Debit Card, Net Banking',
     foundingDate: boutique.since ? String(boutique.since) : undefined,
     hasMap: boutique.mapUrl || undefined,
     parentOrganization: { '@id': `${SITE_URL}/#organization` },
@@ -281,7 +297,18 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
             worstRating: 1,
           }
         : undefined,
-    makesOffer: productCount ? { '@type': 'Offer', itemOffered: { '@type': 'Product', name: `${productCount} pieces` } } : undefined,
+    /*
+     * The count only, as a count.
+     *
+     * This used to be `makesOffer` with `itemOffered: { Product, name: "12
+     * pieces" }` — which asserts that the shop sells a product called "12
+     * pieces". The edge middleware emits the real catalogue (an `OfferCatalog`
+     * of actual titles and URLs) on the same `@id`, so the two graphs merge and
+     * that phantom product merged in with them.
+     */
+    hasOfferCatalog: productCount
+      ? { '@type': 'OfferCatalog', name: `${boutique.name} catalogue`, numberOfItems: productCount }
+      : undefined,
   });
 }
 

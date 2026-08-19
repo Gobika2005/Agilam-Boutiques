@@ -58,6 +58,37 @@ export async function fetchReviews(productId: string): Promise<ReviewRow[]> {
   return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map(normalizeReview) as ReviewRow[];
 }
 
+/**
+ * Whether this buyer may review this piece — i.e. has had it delivered.
+ *
+ * The rule lives in the database (migration 0083); this is the same question
+ * asked ahead of time so the page can explain itself instead of offering a form
+ * that fails on submit. It is a courtesy, never the control: a client that
+ * skips this call still gets refused by RLS.
+ *
+ * Reads `order_items` with an inner join onto the buyer's own orders, which
+ * their own RLS already permits — no new grant, and a signed-out visitor simply
+ * gets `false`.
+ */
+export async function canReviewProduct(buyerId: string | null | undefined, productId: string): Promise<boolean> {
+  if (!buyerId) return false;
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('id, orders!inner(buyer_id, status)')
+    .eq('product_id', productId)
+    .eq('orders.buyer_id', buyerId)
+    .eq('orders.status', 'delivered')
+    .limit(1);
+  if (error) {
+    // Never block on a failed check — the write is guarded regardless, and a
+    // buyer who really has bought the piece should not be told otherwise by a
+    // dropped connection.
+    console.error('canReviewProduct failed:', error.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
 /** Fill in columns added by later migrations so an un-migrated DB still parses. */
 function normalizeReview<T extends Record<string, unknown>>(r: T): T & Pick<ReviewRow, 'images' | 'seller_reply' | 'seller_reply_at'> {
   return {
@@ -68,39 +99,13 @@ function normalizeReview<T extends Record<string, unknown>>(r: T): T & Pick<Revi
   };
 }
 
-export type TopReviewRow = ReviewRow & {
-  product_title: string | null;
-  boutique_name: string | null;
-};
-
-/**
- * The best real reviews across the whole catalogue, for the Home page
- * testimonials — highest rated first, ties broken by newest, and only ones
- * with actual written feedback (a bare star rating reads as filler there).
- * Empty list on any read failure, so Home just hides the section rather than
- * falling back to invented quotes.
+/*
+ * `fetchTopReviews` used to live here and fed the Home page's "What shoppers say
+ * about MangaiMart" section. It was the wrong source: these are reviews of a
+ * garment, and the cards printed "Saree · Boutique" under the buyer's name.
+ * That section now reads consented platform feedback via
+ * `fetchPublicPlatformReviews` in `src/data/feedback.ts` (migration 0084).
  */
-export async function fetchTopReviews(limit = 6): Promise<TopReviewRow[]> {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, products(title), boutiques(name)')
-    .neq('body', '')
-    .gte('rating', 4)
-    .order('rating', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) {
-    if (!isMissingTable(error)) console.error('fetchTopReviews failed:', error.message);
-    return [];
-  }
-  return (data ?? []).filter((r) => !(r as { hidden?: boolean }).hidden).map((row) => {
-    const { products, boutiques, ...rest } = row as unknown as ReviewRow & {
-      products: { title: string } | null;
-      boutiques: { name: string } | null;
-    };
-    return { ...normalizeReview(rest), product_title: products?.title ?? null, boutique_name: boutiques?.name ?? null };
-  });
-}
 
 export type BoutiqueReviewRow = ReviewRow & {
   product_title: string | null;
@@ -191,6 +196,14 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
   if (error) {
     if (isMissingTable(error)) {
       return { ok: false, error: 'Reviews are not enabled yet. Please try again later.' };
+    }
+    // The purchase rule from migration 0083. A buyer who gets here has usually
+    // had the form open since before their order changed state, so name the
+    // condition rather than showing them a generic failure they cannot act on.
+    // 42501 = insufficient_privilege, which is how PostgREST reports an RLS
+    // refusal on a write.
+    if (error.code === '42501' || /row-level security/i.test(error.message ?? '')) {
+      return { ok: false, error: 'You can review a piece once your order for it has been delivered.' };
     }
     console.error('submitReview failed:', error.message);
     return { ok: false, error: 'Could not save your review. Please try again.' };

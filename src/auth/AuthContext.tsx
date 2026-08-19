@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { resetSellerSearchScope } from '@/lib/search/sellerSources';
+import { setConsoleRole } from '@/data/consoleRole';
 import type { Role } from '@/types/database';
 
 type Profile = {
@@ -73,10 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try { sessionStorage.setItem('agx-auth-notice', DISABLED_MESSAGE); } catch { /* storage unavailable */ }
       await supabase.auth.signOut();
       setSession(null);
+      setConsoleRole(undefined);
       setProfile(null);
       return;
     }
     try { sessionStorage.removeItem('agx-auth-notice'); } catch { /* storage unavailable */ }
+    // Publish the role to the data layer before any console screen mounts —
+    // staff read orders and customers through the masking RPCs (0086).
+    setConsoleRole(prof?.role);
     setProfile(prof);
   }
 
@@ -185,7 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: pending },
+      // Without emailRedirectTo the confirmation link falls back to the project's
+      // Site URL, which sends everyone to whichever single host is configured
+      // there (prod, or worse, localhost). Send them back to the host they
+      // actually signed up on — /auth/callback then routes by role.
+      options: { data: pending, emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     // When email confirmation is off, Supabase returns a session immediately —
@@ -229,6 +239,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
+    // The seller search caches which boutique the signed-in user owns, in a
+    // module variable that outlives the React tree. Left alone, the next account
+    // signed in on this device would search the previous seller's shop until the
+    // tab was reloaded.
+    resetSellerSearchScope();
+    // Same reasoning for the console role — a module variable that outlives the
+    // tree would otherwise still say "staff" for whoever signs in next.
+    setConsoleRole(undefined);
   }
 
   async function refreshProfile() {

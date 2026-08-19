@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
 import { fetchMyBoutique } from '@/data/boutiques';
-import { readPendingOAuthRole, clearPendingOAuthRole } from '@/lib/authMethods';
+import { readPendingOAuthRole, readPendingOAuthNext, clearPendingOAuthRole } from '@/lib/authMethods';
+import { safeNext } from '@/auth/SignInGate';
 import { useToast } from '@/components/ui/Toast';
 
 /**
@@ -37,15 +38,20 @@ export function AuthCallback() {
 
     (async () => {
       const role = readPendingOAuthRole();
+      // Set when Google was reached through a gate (the checkout sign-in
+      // requirement), and validated the same way as the ?next= query param so a
+      // poisoned localStorage value can't redirect off-site.
+      const next = safeNext(readPendingOAuthNext());
       clearPendingOAuthRole();
       if (role === 'seller') {
         await claimRole('seller');
         // A boutique row can exist while the 7-step setup is still unfinished,
         // so completion — not mere existence — decides where they land.
         const boutique = await fetchMyBoutique(session.user.id).catch(() => null);
-        navigate(boutique?.onboarding_complete ? '/seller/dashboard' : '/seller/onboarding', { replace: true });
+        const home = boutique?.onboarding_complete ? '/seller/dashboard' : '/seller/onboarding';
+        navigate(next ?? home, { replace: true });
       } else {
-        navigate('/profile', { replace: true });
+        navigate(next ?? '/profile', { replace: true });
       }
     })();
   }, [session, loading, claimRole, navigate, toast]);

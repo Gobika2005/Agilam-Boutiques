@@ -4,6 +4,7 @@ import { ChatView } from '@/components/chat/ChatView';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
+import { isSignedIn } from '@/auth/SignInGate';
 import { useCatalog } from '@/state/CatalogContext';
 import { useShop } from '@/state/ShopContext';
 import {
@@ -33,7 +34,9 @@ export function Chat() {
   const { boutiqueById, loading: catalogLoading } = useCatalog();
   const { showToast } = useShop();
   const { session, loading: authLoading } = useAuth();
-  const signedIn = !!session;
+  // isSignedIn(), not `!!session` — an anonymous session is not an account. See
+  // the note in SignInGate.tsx; every other gate in the app asks the same way.
+  const signedIn = isSignedIn(session);
   const [live, setLive] = useState<{ conversationId: string; senderId: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const navState = location.state as { product?: ProductCard; order?: OrderCard } | null;
@@ -156,6 +159,10 @@ export function Chat() {
         pending={(authLoading || catalogLoading || (signedIn && !live)) && !failed}
         onProductClick={(pid) => navigate(`/products/${pid}`)}
         onOrderClick={(oid) => navigate(`/orders/${encodeURIComponent(oid)}/track`)}
+        // A buyer opening a conversation nobody has spoken in yet came here to
+        // ask something, so open it ready to type. Not passed on the seller
+        // side: they work through a queue and read before replying.
+        focusOnOpen
       />
       {!authLoading && !signedIn && (
         <AccountSheet

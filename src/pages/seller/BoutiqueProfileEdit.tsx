@@ -56,7 +56,7 @@ export function BoutiqueProfileEdit() {
     if (!file) return;
     setUploading(kind);
     try {
-      const url = await uploadBoutiqueImage(boutique.id, kind, file);
+      const url = await uploadBoutiqueImage(boutique.id, kind, file, boutique.name);
       await updateBoutique(boutique.id, kind === 'logo' ? { logo_url: url } : { cover_url: url });
       reload();
       showToast(kind === 'logo' ? 'Logo updated' : 'Cover updated');

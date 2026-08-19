@@ -1,5 +1,6 @@
 import { AppShell, type TabDef } from './AppShell';
 import { LoginPrompt } from '@/components/buyer/LoginPrompt';
+import { FeedbackPrompt } from '@/components/buyer/FeedbackPrompt';
 import { FloatingBag } from '@/components/buyer/FloatingBag';
 import { ProfileMenu } from '@/components/buyer/ProfileMenu';
 import { NotificationBellMenu, useUnreadMessageCount } from '@/components/notifications/NotificationBellMenu';
@@ -54,11 +55,14 @@ export function BuyerLayout() {
         profileTo="/profile"
         homeTo="/"
         searchable
-        headerAction={<NotificationBellMenu viewAllTo="/notifications" orderBasePath="" />}
+        headerAction={<NotificationBellMenu viewAllTo="/notifications" />}
         renderProfileMenu={(close) => <ProfileMenu close={close} />}
       />
       <FloatingBag />
       <LoginPrompt />
+      {/* Asks about a delivered order on the next visit. Self-silencing — see
+          useOrderFeedback; all four prompt surfaces share one answer. */}
+      <FeedbackPrompt />
     </>
   );
 }
