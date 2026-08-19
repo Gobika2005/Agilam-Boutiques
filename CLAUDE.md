@@ -30,8 +30,13 @@ deployed to Vercel.
 1. **Migrations are numbered and applied by hand.** The next one is `0092`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
-   (`0068a`/`0068b` are a split of two files that both shipped as `0068`; apply a
-   before b. Both are idempotent.)
+   (`0068a`/`0068b`, `0077a`/`0077b` and `0078a`/`0078b` are pairs that each
+   shipped under one number; apply a before b. All are idempotent.)
+   **Never run `supabase db push` against this project.** `schema_migrations` has
+   no record of the hand-applied history, so a push replays the ENTIRE series
+   over the live database — it did exactly that on 2026-08-19, reaching 0076
+   before a duplicate-version collision stopped it. Nothing broke only because
+   the files are idempotent.
 2. **Pricing is mirrored and must stay in step.** `src/lib/pricing.ts` (client) and
    `api/_pricing.js` (server) derive the same numbers, and `api/place-order.js`
    asserts the Razorpay payment matches to the paise. Change both together or

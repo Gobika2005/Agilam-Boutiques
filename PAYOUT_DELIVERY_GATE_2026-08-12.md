@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 **Branch:** `fix/seller-console-audit-2026-08`
-**Migration:** `0078_payout_delivery_gate.sql` — **must be applied by hand**
+**Migration:** `0078a_payout_delivery_gate.sql` — **must be applied by hand**
 **Edge Function:** `supabase/functions/payout-advice` — **must be deployed**
 
 ---
@@ -79,7 +79,7 @@ reference.
 
 ## What was built
 
-### Database — `0078_payout_delivery_gate.sql`
+### Database — `0078a_payout_delivery_gate.sql`
 
 - `platform_settings.payout_sla_hours` (default **8**) — the published promise.
   Deliberately *not* a settlement lock: refusing to pay until a timestamp matures
@@ -135,7 +135,7 @@ toast, never a failed payout.
 
 ## What needs the owner's hand
 
-1. **Apply `supabase/migrations/0078_payout_delivery_gate.sql`** in the Supabase
+1. **Apply `supabase/migrations/0078a_payout_delivery_gate.sql`** in the Supabase
    SQL editor. It is idempotent. Until it is applied, undelivered orders remain
    payable and hand-settled sellers stay silent.
 2. **Deploy the Edge Function:** `supabase functions deploy payout-advice`.

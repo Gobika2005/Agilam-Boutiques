@@ -2,7 +2,7 @@
 
 **Built 2026-08-12.** Buyer-side engagement feature. Complete end to end.
 
-**Migration `0077_shortlist_boards.sql` must be applied before any of this
+**Migration `0077b_shortlist_boards.sql` must be applied before any of this
 works.** Nothing else needs your hand — no env vars, no keys, no Vercel
 functions (the `api/` 12-function ceiling is untouched; every server call is a
 Supabase RPC).
@@ -71,7 +71,7 @@ to judge four sarees is a shopper standing in the shop.
 
 ## What was built
 
-### Database — `supabase/migrations/0077_shortlist_boards.sql`
+### Database — `supabase/migrations/0077b_shortlist_boards.sql`
 
 Four tables (`shortlist_boards`, `shortlist_items`, `shortlist_votes`,
 `shortlist_comments`), eight functions, two notification triggers. Idempotent
@@ -202,7 +202,7 @@ wobble — it's every buyer's private family conversation in a search index.
 
 ## To do on your side
 
-1. Run `0077_shortlist_boards.sql` in the Supabase SQL editor.
+1. Run `0077b_shortlist_boards.sql` in the Supabase SQL editor.
 2. Smoke test: save two pieces → Wishlist → **Ask my people** → open the link in
    a private window (you'll be anonymous, as a relative would be) → vote, leave
    a note → check the notification arrives and opens the board.
