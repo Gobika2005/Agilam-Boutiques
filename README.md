@@ -1,6 +1,9 @@
 # MangaiMart-Boutiques
 A multi-boutique marketplace web app — Buyer, Seller (boutique owner), and Admin experiences in one React + Supabase app, built from the MangaiMart design.
 
+📖 **All other documentation is in [`docs/`](docs/README.md)** — setup guides,
+how the shipped subsystems work, pending plans, and dated audit reports.
+
 ## Stack
 
 - React 18 + TypeScript + Vite
@@ -12,7 +15,7 @@ A multi-boutique marketplace web app — Buyer, Seller (boutique owner), and Adm
 
 1. **Create a Supabase project** at https://supabase.com (free tier is fine).
 2. **Run the schema**: open the SQL editor in your project, paste the contents of `supabase/schema.sql`, and run it. This creates all tables, RLS policies, and enables realtime for `messages`/`notifications`.
-2b. **Sample data — local and preview databases only, never production**: `supabase/seed.sql` fills the storefront and dashboards with demo boutiques, products, orders, conversations and ads. It also creates ten real auth accounts — including an **admin** — that all share one password published in the file's header, so seeding a production project hands out an admin login and makes the admin console show fake numbers. The file is locked for that reason; unlock it by uncommenting the `set app.allow_seed` line at its top, and run the whole file in one batch. It is idempotent. **To remove a seed that already ran** — including the demo accounts — run `supabase/purge_seed.sql`, which deletes only the seeded rows and leaves real data intact.
+2b. **Sample data — local and preview databases only, never production**: `supabase/seed.sql` fills the storefront and dashboards with demo boutiques, products, orders, conversations and ads. It also creates ten real auth accounts — including an **admin** — that all share one password published in the file's header, so seeding a production project hands out an admin login and makes the admin console show fake numbers. The file is locked for that reason; unlock it by uncommenting the `set app.allow_seed` line at its top, and run the whole file in one batch. It is idempotent. **To remove a seed that already ran** — including the demo accounts — run `supabase/scripts/purge_seed.sql`, which deletes only the seeded rows and leaves real data intact.
 3. **Email auth**: enabled by default on new Supabase projects (Authentication → Providers → Email). Buyers and sellers sign up with full name + email + password (+ boutique name for sellers) and a profile row (and boutique row for sellers) is created automatically on first sign-in — see `ensureProfile` in `src/auth/AuthContext.tsx`. If your project has "Confirm email" turned on, new users must click the confirmation link before they can sign in.
 4. **Create an admin user**: admin sign-in also uses email + password, but admin accounts aren't self-serve — create one manually:
    - Authentication → Users → Add user (email + password).

@@ -8,7 +8,7 @@
 --
 -- It is locked. To use it on a throwaway database, uncomment the `set` on the
 -- line marked UNLOCK below and run the file as a single batch.
--- To undo a seed that already happened, run `supabase/purge_seed.sql`.
+-- To undo a seed that already happened, run `supabase/scripts/purge_seed.sql`.
 --
 -- Run AFTER schema.sql, in the Supabase SQL editor (New query -> paste -> Run).
 -- Safe to run more than once: it deletes its own seed rows first, then reinserts.
@@ -39,7 +39,7 @@ do $$
 begin
   if coalesce(current_setting('app.allow_seed', true), '') <> 'yes' then
     raise exception 'seed.sql is locked — it plants demo accounts (including an admin with a published password) and fake catalogue data.'
-      using hint = 'Local/preview DB only: uncomment the "set app.allow_seed" line at the top of this file and run the whole file in one batch. Already seeded production by mistake? Run supabase/purge_seed.sql.';
+      using hint = 'Local/preview DB only: uncomment the "set app.allow_seed" line at the top of this file and run the whole file in one batch. Already seeded production by mistake? Run supabase/scripts/purge_seed.sql.';
   end if;
 end $$;
 

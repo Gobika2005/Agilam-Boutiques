@@ -23,7 +23,9 @@ deployed to Vercel.
 | `api/` | Serverless endpoints. `_`-prefixed files are helpers, not routes |
 | `supabase/migrations/` | Numbered SQL, `0001`…`0070` |
 | `supabase/functions/` | Deno Edge Functions — the escape hatch when `api/` is full |
+| `supabase/scripts/` | One-off SQL run by hand (`purge_seed.sql`) — not migrations |
 | `middleware.js` | Injects SEO meta + JSON-LD, serves robots.txt & sitemap |
+| `docs/` | `setup/` how-to, `architecture/` how it works, `plans/` not built yet, `archive/` dated reports |
 
 ## Rules that bite
 
@@ -73,7 +75,7 @@ deployed to Vercel.
    revoked from anon, so every policy using it MUST say `to authenticated`.
    That mistake in 0086 blanked the entire storefront — see 0087.
 8. **`supabase/seed.sql` is locked.** Its rows are real rows in the live DB, which
-   is why they show up in admin as "mock data". Purging is `purge_seed.sql`, run
+   is why they show up in admin as "mock data". Purging is `supabase/scripts/purge_seed.sql`, run
    by the user.
 9. **There is no cash on delivery.** Withdrawn in `0085`; every order is prepaid
    through Razorpay before `api/place-order.js` writes it, and DB triggers pin
@@ -102,5 +104,6 @@ goods − commission to the seller after delivery.
 ## Working style
 
 - The user applies migrations and holds the env secrets. Flag what needs their hand.
-- Reports go in dated markdown at the repo root (`*_QA_REPORT.md`, `*_AUDIT.md`).
+- Reports go in dated markdown under `docs/archive/<YYYY-MM>/` (`*_QA_REPORT.md`, `*_AUDIT.md`).
+  The repo root holds only `README.md` and `CLAUDE.md` — keep it that way.
 - Don't claim something is verified unless you ran it.

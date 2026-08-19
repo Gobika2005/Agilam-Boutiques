@@ -8,7 +8,7 @@
  * read from Supabase — nothing imported them any more, and keeping them around
  * invited them back onto a screen. Everything the app renders comes from the
  * database. Sample rows for a local database live in `supabase/seed.sql`,
- * which is locked; `supabase/purge_seed.sql` removes them again.
+ * which is locked; `supabase/scripts/purge_seed.sql` removes them again.
  */
 
 export const TONES = ['#F4D6E2', '#F1DCC7', '#E2DAEF', '#D7E7DE', '#F3DFD0', '#E7D9E6', '#DCE4EF', '#F0DAD4'];

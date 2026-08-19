@@ -11,3 +11,5 @@ dist
 *.tsbuildinfo
 supabase/_bundle.sql
 daily-report.log
+vite-dev.*.log
+playwright-browsers

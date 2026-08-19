@@ -200,7 +200,7 @@ export default function App() {
       {/* Buyer-facing banner while Platform Settings → Maintenance mode is on. */}
       <MaintenanceNotice />
       {/* Corner ribbon that marks non-production (TEST/staging) builds. Renders
-          nothing in production. See ENVIRONMENTS.md. */}
+          nothing in production. See docs/setup/ENVIRONMENTS.md. */}
       <EnvBadge />
       {/* Warms the next-most-likely storefront chunks once the browser is idle. */}
       <RoutePrefetch />

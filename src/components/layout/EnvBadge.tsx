@@ -5,7 +5,7 @@
  *
  * It renders on every environment EXCEPT production. The environment is read
  * from VITE_APP_ENV (set explicitly per Vercel environment — see
- * ENVIRONMENTS.md); it falls back to Vite's build MODE, so `vite --mode
+ * docs/setup/ENVIRONMENTS.md); it falls back to Vite's build MODE, so `vite --mode
  * staging` also lights it up. Production builds (VITE_APP_ENV=production, or the
  * default MODE of `production`) render nothing.
  */

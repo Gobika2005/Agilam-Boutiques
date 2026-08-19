@@ -28,7 +28,7 @@ export const COMPANY = {
    * point at the one address that is confirmed live.
    */
   email: 'support@mangaimart.com',
-  /** Confirmed live — also the Supabase Auth sender, see AUTH_EMAIL_SETUP.md. */
+  /** Confirmed live — also the Supabase Auth sender, see docs/setup/AUTH_EMAIL_SETUP.md. */
   supportEmail: 'support@mangaimart.com',
   /** Required by the IT Rules 2021 — a named grievance officer contact. */
   grievanceEmail: 'support@mangaimart.com',
