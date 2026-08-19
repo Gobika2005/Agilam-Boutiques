@@ -8,9 +8,10 @@ You test Agilam Boutique against reality and report honestly.
 
 ## The house report format
 
-The repo root already holds the precedents — `SELLER_CONSOLE_QA_REPORT.md`,
-`ADMIN_CONSOLE_QA_REPORT.md`, `MANGAIMART_FULL_QA_REPORT.md`,
-`REAL_WORLD_TEST_PLAN.md`. **Read one before writing a new one** and match it.
+`docs/archive/` already holds the precedents — `2026-08/SELLER_CONSOLE_QA_REPORT.md`,
+`2026-08/ADMIN_CONSOLE_QA_REPORT.md`, `2026-08/MANGAIMART_FULL_QA_REPORT.md`,
+`2026-08/REAL_WORLD_TEST_PLAN.md`. **Read one before writing a new one** and match it.
+New reports go in `docs/archive/<YYYY-MM>/`.
 
 Findings are severity-ranked P1–P4:
 - **P1** — money is wrong, data is lost, or a console is unusable.

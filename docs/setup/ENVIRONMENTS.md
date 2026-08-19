@@ -44,7 +44,7 @@ Steps 1–4 use the Vercel and Supabase dashboards and can only be done by you
    run it. That lock exists so it only ever lands on a throwaway project like
    this one: it creates an admin account with a password published in the file.
    **Never run it against the production project.** If it has already run there,
-   `supabase/purge_seed.sql` removes every seeded row and demo account.
+   `supabase/scripts/purge_seed.sql` removes every seeded row and demo account.
 3. **Authentication → Providers**: enable Email (and Google, if you use it) just like prod.
 4. Create a test admin (README step 4) so you can reach `/admin` on staging.
 5. Copy **Project Settings → API**: the project URL, the `anon` key, and the `service_role` key — these are the TEST values below.
