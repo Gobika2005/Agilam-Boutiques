@@ -444,3 +444,45 @@ renders verbatim. A template send stores only the parameters — the wording liv
 at Meta and we never held it — so those render as the template name plus the
 values passed. That is honest about what we have rather than reconstructing a
 body we do not.
+
+
+## Auto-reply: the conversation, not just the first line (2026-08-19)
+
+The first version answered once and then went quiet, which produced the worst
+possible flow: it asked for an order number and ignored the customer who sent
+one. Two fixes, both driven by what a real customer actually did.
+
+**The cooldown now compares the ANSWER, not the clock.** It used to suppress any
+second reply within five minutes — including the reply to its own question. It
+now composes the response first and only stays silent if the text is identical to
+the last one. A burst of "hi / hello? / there?" still gets one reply because each
+resolves to the same words; anything that moves the conversation forward always
+gets through.
+
+**An order number quoted in the message wins.** `AGL-XXXXXXXXXX` anywhere in the
+text is looked up directly, so a customer who ordered on a different handset can
+still be answered. A number we do not recognise gets told so, with the expected
+shape — "invalid" with no example is how a person gives up.
+
+**A phone number sent instead gets an explanation, not silence.** This was the
+reported bug. The first real customer replied `6379007829` when asked for an
+order number; that matched no `AGL-` pattern, fell back to "latest order for the
+sender", found nothing, produced the same words as before, and was suppressed.
+
+We still do NOT look orders up by a typed phone number, and that same message is
+the reason: it quoted a *different* handset's number than the one it was sent
+from. Supporting it would let anyone type any number and read that person's order
+status. The bot says that plainly instead.
+
+Verified by replaying the real sequence — greeting, bare phone, the same phone
+reformatted, then the order number — which produced exactly three replies, with
+the reformatted duplicate correctly suppressed.
+
+### Order-number lookup: the privacy call, stated plainly
+
+Quoting a valid order number returns its status to whoever sent it, with no
+second factor. That is the standard a courier tracking page holds: the number is
+the token, it is ten effectively-random characters, and the only thing it unlocks
+is a status line — no name, address, amount or action. Guessing one over WhatsApp
+costs a message per attempt against a space of billions. If you want it tighter,
+the obvious second factor is the last four digits of the ordering phone.

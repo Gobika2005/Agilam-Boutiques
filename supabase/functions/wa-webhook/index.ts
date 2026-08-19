@@ -195,47 +195,130 @@ async function sendText(supabase: any, to: string, body: string): Promise<void> 
  * so matching the trailing ten digits is what reconciles the two without a
  * migration.
  */
-async function autoReply(supabase: any, from: string, msisdnLocal: string): Promise<void> {
-  // Cooldown, read from the outbox itself.
-  const since = new Date(Date.now() - AUTO_REPLY_COOLDOWN_MINUTES * 60_000).toISOString();
-  const { data: recent } = await supabase
-    .from('whatsapp_outbox')
-    .select('id')
-    .eq('recipient', from)
-    .eq('template', 'auto_reply')
-    .gte('created_at', since)
-    .limit(1);
-  if (recent?.length) return;
+async function autoReply(supabase: any, from: string, msisdnLocal: string, incoming: string): Promise<void> {
+  // ── Which order are we talking about? ──────────────────────────────────────
+  //
+  // Two routes in, and the order matters. If the customer quoted an order
+  // number, that is the order they mean — even when they are messaging from a
+  // number that placed a dozen others. Only when they have quoted nothing do we
+  // fall back to "your most recent order on this handset".
+  const quoted = incoming.toUpperCase().match(/AGL-[A-Z0-9]{6,14}/)?.[0] ?? null;
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('order_number, status, created_at, delivered_at')
-    .like('guest_phone', `%${msisdnLocal}`)
-    .order('created_at', { ascending: false })
-    .limit(1);
+  // Asked for an order number, sent a phone number. This is not hypothetical —
+  // it is what the first real customer did, and the reason they then got
+  // silence: no AGL- match meant we fell back to "latest order for the sender",
+  // found nothing, and produced the same words as the previous reply, which the
+  // cooldown correctly suppressed. The dead end was ours, not theirs.
+  //
+  // We still will not look an order up by a typed number. The very message that
+  // exposed this quoted a DIFFERENT handset's number than the one it was sent
+  // from, which is exactly the abuse: anyone could type any number and read that
+  // person's order status. So the fix is to say so, not to comply and not to go
+  // quiet.
+  const digitsOnly = incoming.replace(/\D/g, '');
+  const looksLikePhone = !quoted && /^(91)?[6-9]\d{9}$/.test(digitsOnly);
 
-  const order = orders?.[0];
+  let order: { order_number: string; status: string; delivered_at: string | null } | null = null;
+  let quotedButUnknown = false;
+
+  if (quoted) {
+    // Exact match on the order number alone. That is the same standard a courier
+    // tracking page holds itself to: the number IS the token, it is ten
+    // effectively-random characters, and the only thing it unlocks here is a
+    // status line — no name, no address, no amount, nothing chargeable. Guessing
+    // one over WhatsApp costs a message per attempt against a space of billions.
+    const { data } = await supabase
+      .from('orders')
+      .select('order_number, status, delivered_at')
+      .eq('order_number', quoted)
+      .limit(1);
+    order = data?.[0] ?? null;
+    quotedButUnknown = !order;
+  } else {
+    const { data } = await supabase
+      .from('orders')
+      .select('order_number, status, delivered_at')
+      .like('guest_phone', `%${msisdnLocal}`)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    order = data?.[0] ?? null;
+  }
+
+  // ── Compose ───────────────────────────────────────────────────────────────
+  const closer = `Someone from our team will reply here shortly if you need anything else.`;
   let body: string;
 
   if (order) {
-    const line = STATUS_LINE[order.status as string] ?? 'is being processed';
+    const line = STATUS_LINE[order.status] ?? 'is being processed';
     const on =
       order.status === 'delivered' && order.delivered_at
         ? ` on ${new Date(order.delivered_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
         : '';
     body =
-      `Thanks for messaging MangaiMart.\n\n` +
-      `Your most recent order *${order.order_number}* ${line}${on}. ` +
-      `You can see the full details in the app under My Orders.\n\n` +
-      `Someone from our team will reply here shortly if you need anything else.`;
-  } else {
-    // No match is common and innocent: ordered on a different number, or never
-    // ordered at all. Say so without implying they have done something wrong.
+      `Thanks for messaging MangaiMart.
+
+` +
+      `Order *${order.order_number}* ${line}${on}. ` +
+      `You can see the full details in the app under My Orders.
+
+` +
+      `${closer}`;
+  } else if (looksLikePhone) {
     body =
-      `Thanks for messaging MangaiMart.\n\n` +
-      `We could not find a recent order against this number — if you ordered using a different mobile, please share the order number.\n\n` +
-      `Someone from our team will reply here shortly.`;
+      `Thanks — for your security we can only look up an order by its order number, not by phone number.
+
+` +
+      `Please reply with the order number. It starts with AGL- and is on your order confirmation, or in the app under My Orders.
+
+` +
+      `${closer}`;
+  } else if (quotedButUnknown) {
+    // They answered the question and the answer did not match. Say exactly that,
+    // and show the shape we expect — "invalid" with no example is how a person
+    // gives up.
+    body =
+      `Thanks — we could not find an order with the number *${quoted}*.
+
+` +
+      `Please check it and send it again. It looks like AGL-XXXXXXXXXX and is on your order confirmation.
+
+` +
+      `${closer}`;
+  } else {
+    // Common and innocent: ordered on a different handset, or never ordered.
+    // Ask for one specific thing, in a form they can recognise.
+    body =
+      `Thanks for messaging MangaiMart.
+
+` +
+      `We could not find a recent order against this number. If you ordered using a different mobile, reply with your order number — it starts with AGL- and is on your order confirmation.
+
+` +
+      `${closer}`;
   }
+
+  // ── Cooldown, on the ANSWER rather than the clock ──────────────────────────
+  //
+  // The first version suppressed any second reply inside five minutes, which
+  // created the worst possible flow: we asked for an order number and then sat
+  // silent when the customer sent one. The question was ignored by the very
+  // guard meant to stop us being annoying.
+  //
+  // So the guard now compares what we are about to say with what we last said.
+  // A burst of "hi", "hello?", "there?" still produces one reply, because each
+  // would resolve to the same text. A message that moves the conversation
+  // forward produces different text, and always gets through.
+  const since = new Date(Date.now() - AUTO_REPLY_COOLDOWN_MINUTES * 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from('whatsapp_outbox')
+    .select('params')
+    .eq('recipient', from)
+    .eq('template', 'auto_reply')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (recent?.[0]?.params?.[0] === body) return;
 
   await sendText(supabase, from, body);
 }
@@ -369,7 +452,7 @@ Deno.serve(async (req) => {
             // Meta hands us 91XXXXXXXXXX; `orders.guest_phone` holds whatever
             // checkout captured, so the last ten digits are the common ground.
             try {
-              await autoReply(supabase, from, from.slice(-10));
+              await autoReply(supabase, from, from.slice(-10), bodyText);
             } catch (err) {
               // Never fail the webhook over a reply. Meta retries a non-2xx and
               // eventually disables the subscription, which would cost us the
