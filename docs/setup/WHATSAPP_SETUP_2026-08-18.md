@@ -486,3 +486,74 @@ the token, it is ten effectively-random characters, and the only thing it unlock
 is a status line — no name, address, amount or action. Guessing one over WhatsApp
 costs a message per attempt against a space of billions. If you want it tighter,
 the obvious second factor is the last four digits of the ordering phone.
+
+
+---
+
+## Meta re-categorised two templates as MARKETING (2026-08-19)
+
+`seller_ad_decision` and `seller_low_stock` were submitted as `UTILITY` and Meta
+moved both to `MARKETING`. Everything else, including all seven buyer messages,
+held at `UTILITY`.
+
+**Meta is not obviously wrong.** Utility means a message about a transaction the
+recipient made. A low-stock alert is not that, and the wording made it worse:
+*"Restock it in your console so the listing keeps selling"* is a commercial
+prompt. `seller_ad_decision` is literally about an advertisement.
+
+Worth knowing before investing effort in fighting it: `seller_low_stock` passed as
+`UTILITY` on first submission with substantively the same wording, and was
+re-categorised on the second review. Review outcomes are not perfectly consistent.
+
+### Why it matters, in order of importance
+
+1. **Quality rating.** Marketing attracts more blocks and mutes, and a degraded
+   rating throttles the WHOLE number — including the order messages that actually
+   matter. This is the real cost, not the rupees.
+2. **Price.** Marketing runs roughly 5-6x utility in India. Check WhatsApp
+   Manager -> Billing for current rates rather than trusting a figure here.
+3. **Opt-outs.** Marketing must honour marketing opt-outs, and Meta may append its
+   own opt-out button.
+
+Nothing breaks in code: `whatsapp_outbox.category` is our own label for display
+only, and Meta bills by the template's own category. But the admin log will call
+these `utility` when Meta calls them marketing - worth correcting if they stay.
+
+### Two constraints the API confirmed
+
+```
+POST /<template-id>  with category  -> "You cannot update an approved template category."
+POST /<template-id>  while PENDING  -> "Message templates can only be edited if they have been rejected."
+```
+
+So a template in review cannot be edited at all, and the category can never be set
+by us - only Meta decides it, on each review. Editing an APPROVED template does
+work; nine were edited that way earlier the same day.
+
+### The plan
+
+**`seller_ad_decision` - appeal.** Business Support Home, before **20 Oct 2026**.
+The strongest case of the two: the seller *paid* for that campaign, so a status
+update on it is a transaction update. Free, and if it succeeds nothing else needs
+changing. Needs the owner's hands - it is a manual flow behind a login.
+
+**`seller_low_stock` - reword once the current review finishes.** The commercial
+prompt comes out entirely. Prepared body, ready to apply:
+
+```
+Stock alert for {{1}}.
+
+*{{2}}*
+Stock is now {{3}} units.
+
+You can update the stock level in your console.
+```
+
+Footer and button unchanged. Same three variables in the same order, so no code
+change either way.
+
+**If the edit does not restore `UTILITY`**, the fallback is a new template under a
+different name - a fresh submission gets a fresh categorisation, where an edit
+inherits the existing one. That would mean migration `0093` to repoint
+`wa_on_low_stock` (the trigger lives in 0090), so it is the more expensive option
+and worth trying the edit first.
