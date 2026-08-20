@@ -158,9 +158,19 @@ async function queueWhatsApp(supabase, created, guestFields, buyerId) {
       // One message per boutique order, not one per checkout — a bag spanning
       // two shops becomes two orders that ship and track separately, so a single
       // combined message would misdescribe what the buyer has.
+      //
+      // `order_received`, NOT `order_confirmed`. The order is written with
+      // status 'pending' (below), and the seller console offers Accept *and*
+      // Reject from that state — so at this moment the shop has agreed to
+      // nothing. The old template told the buyer their order was confirmed and
+      // that the boutique "will pack and dispatch it shortly", which the
+      // boutique may never do. This one says we have the order and their money,
+      // and that the shop is deciding; `order_accepted` (migration 0092) is what
+      // reports the decision. `order_confirmed` is left in place at Meta but
+      // unused — deleting it would lock the name for 30 days for no gain.
       const { error: buyerErr } = await supabase.rpc('wa_enqueue', {
         p_recipient: guestFields.guest_phone,
-        p_template: 'order_confirmed',
+        p_template: 'order_received',
         p_params: [
           buyerFirstName,
           order.order_number,
@@ -168,7 +178,7 @@ async function queueWhatsApp(supabase, created, guestFields, buyerId) {
           `₹${billed.toLocaleString('en-IN')}`,
           shop?.name ?? 'the boutique',
         ],
-        p_dedupe_key: `order:${order.id}:confirmed`,
+        p_dedupe_key: `order:${order.id}:received`,
         p_audience: 'buyer',
         p_order_id: order.id,
         p_boutique_id: order.boutique_id,
