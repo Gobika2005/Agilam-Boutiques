@@ -15,7 +15,9 @@
     "bundle-migrations": "node scripts/bundle-migrations.mjs",
     "lint": "eslint .",
     "verify:seo": "npm run build && node scripts/verify-seo.mjs",
-    "report:daily": "node scripts/daily-report.mjs --json",
+    "report:daily": "node scripts/daily-report.mjs",
+    "report:preview": "node scripts/daily-report.mjs --out daily-report-preview.html",
+    "report:ensure": "node scripts/daily-report.mjs --ensure",
     "report:send": "node scripts/daily-report.mjs --send"
   },
   "dependencies": {

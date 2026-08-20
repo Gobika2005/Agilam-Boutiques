@@ -186,23 +186,32 @@ function delta(now, prev) {
   return `<span style="color:${colour};">${up ? '&#9650;' : '&#9660;'} ${pct === null ? 'from nil' : Math.abs(pct) + '%'}</span>`;
 }
 
-/** One KPI tile. Rendered as a <td> so Outlook keeps the three of them in a row. */
-function tile(label, value, foot) {
-  return `<td width="33.33%" class="ag-tile" valign="top" style="padding:0 4px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.card};border:1px solid ${C.line};border-radius:12px;">
-      <tr><td style="padding:14px 12px;text-align:center;">
-        <div class="ag-kpi" style="font-family:${SERIF};font-size:24px;line-height:1.1;color:${C.ink};font-weight:700;white-space:nowrap;">${value}</div>
-        <div class="ag-kpi-label" style="font-family:${SANS};font-size:10.5px;line-height:1.4;color:${C.mute};text-transform:uppercase;letter-spacing:.07em;padding-top:6px;">${esc(label)}</div>
-        ${foot ? `<div style="font-family:${SANS};font-size:11px;line-height:1.4;padding-top:5px;">${foot}</div>` : ''}
-      </td></tr>
-    </table>
-  </td>`;
-}
-
+/**
+ * A row of KPI tiles.
+ *
+ * Each tile is a <td>, not a floated div: Outlook renders neither flex nor
+ * inline-block reliably, and a table row is the one construct guaranteed to
+ * keep three boxes side by side in every client.
+ *
+ * The gutter is padding on the inner faces only — no negative margin, which
+ * Outlook drops — so the outer edges of the row line up exactly with the full
+ * width panels above and below it. `tiles` are `[label, value, foot]`.
+ */
 function tileRow(tiles) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 -4px 10px;">
-    <tr>${tiles.join('')}</tr>
-  </table>`;
+  const cells = tiles.map(([label, value, foot], i) => {
+    const first = i === 0, last = i === tiles.length - 1;
+    const pad = `padding:0 ${last ? '0' : '4px'} 0 ${first ? '0' : '4px'};`;
+    return `<td width="${Math.floor(100 / tiles.length)}%" class="ag-tile" valign="top" style="${pad}">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.card};border:1px solid ${C.line};border-radius:12px;">
+        <tr><td style="padding:14px 8px;text-align:center;">
+          <div class="ag-kpi" style="font-family:${SERIF};font-size:24px;line-height:1.1;color:${C.ink};font-weight:700;white-space:nowrap;">${value}</div>
+          <div class="ag-kpi-label" style="font-family:${SANS};font-size:10.5px;line-height:1.4;color:${C.mute};text-transform:uppercase;letter-spacing:.07em;padding-top:6px;">${esc(label)}</div>
+          ${foot ? `<div style="font-family:${SANS};font-size:11px;line-height:1.4;padding-top:5px;">${foot}</div>` : ''}
+        </td></tr>
+      </table>
+    </td>`;
+  }).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;"><tr>${cells}</tr></table>`;
 }
 
 function heading(text) {
@@ -366,14 +375,14 @@ export function renderReport({ digest, probes = [], brief = '', appUrl = 'https:
 
   ${heading('Yesterday')}
   ${tileRow([
-    tile('Orders', String(num(o.count)), delta(o.count, o.prevCount)),
-    tile('GMV', inrShort(m.gmv), delta(m.gmv, m.prevGmv)),
-    tile(`Commission ${num(m.commissionPct) || 10}%`, inrShort(m.commission), 'on goods value'),
+    ['Orders', String(num(o.count)), delta(o.count, o.prevCount)],
+    ['GMV', inrShort(m.gmv), delta(m.gmv, m.prevGmv)],
+    [`Commission ${num(m.commissionPct) || 10}%`, inrShort(m.commission), 'on goods value'],
   ])}
   ${tileRow([
-    tile('Avg order', inrShort(m.aov), ''),
-    tile('Units sold', String(num(o.units)), ''),
-    tile('New buyers', String(num(g.newBuyers)), ''),
+    ['Avg order', inrShort(m.aov), ''],
+    ['Units sold', String(num(o.units)), ''],
+    ['New buyers', String(num(g.newBuyers)), ''],
   ])}
   ${panel(statRows([
     ['Goods value', inr(m.goods), '<span style="color:' + C.faint + ';">excl. delivery</span>'],
@@ -391,9 +400,9 @@ export function renderReport({ digest, probes = [], brief = '', appUrl = 'https:
 
   ${heading('Marketplace right now')}
   ${tileRow([
-    tile('Live products', String(num(cat.liveProducts)), ''),
-    tile('Live boutiques', String(num(cat.boutiquesLive)), num(cat.boutiquesPending) ? `+${num(cat.boutiquesPending)} pending` : ''),
-    tile('Buyers', String(num(cat.buyers)), num(g.newBuyers) ? `+${num(g.newBuyers)} yesterday` : ''),
+    ['Live products', String(num(cat.liveProducts)), ''],
+    ['Live boutiques', String(num(cat.boutiquesLive)), num(cat.boutiquesPending) ? `+${num(cat.boutiquesPending)} pending` : ''],
+    ['Buyers', String(num(cat.buyers)), num(g.newBuyers) ? `+${num(g.newBuyers)} yesterday` : ''],
   ])}
   ${panel(statRows([
     ['Out of stock', num(cat.outOfStock)

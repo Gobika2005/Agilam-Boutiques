@@ -202,7 +202,13 @@ begin
      set ok = coalesce(p_ok, false),
          sent_at = case when coalesce(p_ok, false) then now() else sent_at end,
          recipients = greatest(coalesce(p_recipients, 0), 0),
-         detail = left(coalesce(p_detail, ''), 500)
+         detail = left(coalesce(p_detail, ''), 500),
+         -- A reported FAILURE releases the claim immediately by backdating it.
+         -- Without this the fallback would have to wait out the staleness
+         -- window before it could retry a send that has already, definitively,
+         -- failed — and the fallback runs 45 minutes after the cloud, not a day.
+         claimed_at = case when coalesce(p_ok, false) then claimed_at
+                           else now() - interval '1 hour' end
    where day = v_day;
 end;
 $fn$;

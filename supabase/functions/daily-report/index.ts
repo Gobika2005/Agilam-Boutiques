@@ -48,8 +48,28 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const REPORT_TOKEN = Deno.env.get('REPORT_TOKEN') ?? '';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
-const REPORT_FROM = Deno.env.get('REPORT_FROM') ?? Deno.env.get('EMAIL_FROM') ?? 'noreply@mangaimart.com';
-const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\/$/, '');
+/**
+ * The sender.
+ *
+ * Falls back to a real address on the platform's own verified domain, never to
+ * the mail provider's shared sandbox domain — that sender is only permitted to
+ * deliver to the provider account owner's own address, so with more than one
+ * admin on the list it would silently drop the report for everyone else.
+ * `reports@` rather than `noreply@` because a reply here should reach a human.
+ */
+const REPORT_FROM = Deno.env.get('REPORT_FROM')
+  ?? Deno.env.get('EMAIL_FROM')
+  ?? 'MangaiMart Reports <reports@mangaimart.com>';
+/**
+ * Which site this report is ABOUT — always a real origin, never a dev server.
+ * A localhost value (copied in from the repo .env by habit) would probe nothing
+ * and mail every admin a red "storefront is down" banner. Same reasoning as the
+ * pinned logo URL in api/_email.js: it must be true from the reader's phone.
+ */
+const rawAppUrl = (Deno.env.get('APP_URL') ?? '').trim().replace(/\/$/, '');
+const APP_URL = (!rawAppUrl || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(rawAppUrl))
+  ? 'https://mangaimart.com'
+  : rawAppUrl;
 const ADMIN_PATH = (Deno.env.get('ADMIN_PATH') ?? '').trim().replace(/^\/+|\/+$/g, '');
 /** Extra addresses that are not admin accounts. Optional, comma-separated. */
 const EXTRA_TO = (Deno.env.get('REPORT_TO') ?? '').split(',').map((s) => s.trim()).filter(Boolean);

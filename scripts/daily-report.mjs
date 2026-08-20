@@ -1,29 +1,43 @@
 /**
- * Daily owner report — yesterday's trading, mailed as HTML.
+ * Daily admin report — FALLBACK sender, and the local tool for looking at one.
  *
- * Runs as a plain Node script, NOT a Vercel serverless function. That is
- * deliberate: this project is on Vercel's Hobby plan, which caps both cron jobs
- * and serverless functions, and `api/` already sits at 12 routable functions
- * with the single cron slot spent on the ads lifecycle sweep. The schedule
- * therefore lives outside Vercel — a Windows Scheduled Task invoking
- * scripts/daily-report.cmd.
+ * The primary sender is the `daily-report` Supabase Edge Function on a pg_cron
+ * tick at 01:30 UTC (07:00 IST). This script exists for the morning that does
+ * not happen: Supabase paused, the function undeployed, Resend rejecting from
+ * that IP. It runs from Windows Task Scheduler 45 minutes later, asks the
+ * database whether today's report has already gone out, and sends it only if it
+ * has not.
  *
- * All figures come from the `daily_digest` RPC (migrations 0060 + 0062), called
- * with the PUBLIC anon key plus a shared token. There is deliberately no
- * second, direct-table implementation: two copies of the same arithmetic drift,
- * which is the failure this codebase already guards against between
- * src/lib/pricing.ts and api/_pricing.js. The RPC is the only source of truth,
- * and it is also why the service-role key is never needed here.
+ * That "asks first" is `claim_report_run()`, and it is what makes two senders
+ * safe. The claim is a row keyed on the day, so the two callers race for a
+ * primary-key insert and exactly one wins — no clock comparison, no config
+ * telling this script when the cloud runs, nothing to keep in step.
  *
- * Two modes:
- *   node scripts/daily-report.mjs --json
- *   node scripts/daily-report.mjs --send [--brief brief.txt]
+ * The template is NOT defined here. It lives in
+ * supabase/functions/_shared/reportTemplate.js and is imported verbatim by both
+ * senders, because two copies of a report drift and a drifting report is one
+ * nobody trusts — the same rule that binds src/lib/pricing.ts to api/_pricing.js.
+ *
+ * All figures come from the `daily_digest` RPC (0060 → 0062 → 0093) and the
+ * recipient list from `report_recipients`, both called with the PUBLIC anon key
+ * plus REPORT_TOKEN. The service-role key is deliberately never used here.
+ *
+ * Modes:
+ *   node scripts/daily-report.mjs                  # print the digest as JSON
+ *   node scripts/daily-report.mjs --html           # print the email HTML
+ *   node scripts/daily-report.mjs --out mail.html  # …and write it to a file
+ *   node scripts/daily-report.mjs --ensure         # send ONLY if nobody has
+ *   node scripts/daily-report.mjs --send           # send regardless (manual)
+ *   node scripts/daily-report.mjs --send --to me@example.com   # test recipient
+ *   node scripts/daily-report.mjs --send --brief brief.md      # add commentary
  *
  * Env: SUPABASE_URL, SUPABASE_ANON_KEY, REPORT_TOKEN
- *      RESEND_API_KEY, REPORT_TO, REPORT_FROM   (--send only)
+ *      RESEND_API_KEY, REPORT_FROM                (sending only)
+ *      APP_URL, ADMIN_PATH, REPORT_TO             (optional)
  * A repo .env is loaded when present; real environment variables always win.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { renderReport, renderText, subjectFor } from '../supabase/functions/_shared/reportTemplate.js';
 
 function loadDotEnv() {
   const file = new URL('../.env', import.meta.url);
@@ -38,16 +52,35 @@ function loadDotEnv() {
       process.env[key] = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
     }
   }
-  // The app stores these VITE_-prefixed; both are public and ship in the
-  // browser bundle anyway. Nothing aliases the service-role key.
+  // The app stores these VITE_-prefixed; both are public and ship in the browser
+  // bundle anyway. Nothing here aliases the service-role key.
   process.env.SUPABASE_URL ??= process.env.VITE_SUPABASE_URL;
   process.env.SUPABASE_ANON_KEY ??= process.env.VITE_SUPABASE_ANON_KEY;
+  process.env.APP_URL ??= process.env.VITE_APP_URL;
+  process.env.ADMIN_PATH ??= process.env.VITE_ADMIN_PATH;
 }
 loadDotEnv();
 
-const inr = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/**
+ * Which site this report is ABOUT — always production, never the dev server.
+ *
+ * The repo `.env` carries `APP_URL=http://localhost:5173`, because every other
+ * consumer of it is a local dev process. Inheriting that here would have the
+ * fallback sender probe a Vite server that is not running and mail every admin a
+ * red banner saying the storefront is down. Same reasoning as the pinned logo
+ * URL in api/_email.js: the value has to be true from the reader's phone, not
+ * from the machine that sent it. `REPORT_APP_URL` overrides, for staging.
+ */
+function productionUrl() {
+  const raw = (process.env.REPORT_APP_URL || process.env.APP_URL || '').trim().replace(/\/$/, '');
+  if (!raw || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(raw)) {
+    return 'https://mangaimart.com';
+  }
+  return raw;
+}
+
+const APP_URL = productionUrl();
+const ADMIN_PATH = (process.env.ADMIN_PATH || '').trim().replace(/^\/+|\/+$/g, '');
 
 function requireEnv(...names) {
   const missing = names.filter((n) => !process.env[n]);
@@ -57,191 +90,185 @@ function requireEnv(...names) {
   }
 }
 
-async function fetchDigest() {
+/**
+ * Call a token-gated report RPC.
+ *
+ * Straight to PostgREST rather than through supabase-js: constructing a Supabase
+ * client also constructs a RealtimeClient, which needs a native WebSocket.
+ * Nothing here wants realtime, and this script has no dependencies at all.
+ */
+async function rpc(name, args = {}) {
   requireEnv('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'REPORT_TOKEN');
-  // Straight to PostgREST rather than through supabase-js: constructing a
-  // Supabase client also constructs a RealtimeClient, which needs a native
-  // WebSocket and therefore Node 22+. Nothing here wants realtime.
-  const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/daily_digest`, {
+  const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
       Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ p_token: process.env.REPORT_TOKEN }),
+    body: JSON.stringify({ p_token: process.env.REPORT_TOKEN, ...args }),
   });
-  const body = await res.json();
+  const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(`daily_digest failed (${res.status}): ${body?.message ?? JSON.stringify(body)}`);
+    throw new Error(`${name} failed (${res.status}): ${body?.message ?? JSON.stringify(body)}`);
   }
   return body;
 }
 
-// ── rendering ────────────────────────────────────────────────────────────────
-// Email HTML, so: tables not flexbox, inline styles only, no external assets.
+/**
+ * The live half of "is the platform working" — the part no database query can
+ * answer. Mirrors supabase/functions/daily-report/index.ts on purpose: whichever
+ * sender wins the day, the reader sees the same two checks.
+ */
+async function probeSite() {
+  const probes = [];
 
-const C = {
-  ink: '#111827', mute: '#6b7280', line: '#e5e7eb',
-  good: '#047857', bad: '#b91c1c', soft: '#f9fafb',
-};
+  try {
+    const r = await fetch(`${APP_URL}/`, { redirect: 'follow', signal: AbortSignal.timeout(10_000) });
+    probes.push({
+      name: 'Storefront',
+      ok: r.ok,
+      detail: r.ok ? `HTTP ${r.status}` : `Storefront returned HTTP ${r.status}`,
+      critical: true,
+    });
+  } catch (err) {
+    probes.push({ name: 'Storefront', ok: false, detail: `Storefront unreachable: ${err?.message ?? err}`, critical: true });
+  }
 
-function delta(now, prev) {
-  now = Number(now) || 0; prev = Number(prev) || 0;
-  if (now === prev) return `<span style="color:${C.mute}">level</span>`;
-  const up = now > prev;
-  const pct = prev === 0 ? null : Math.round(((now - prev) / prev) * 100);
-  return `<span style="color:${up ? C.good : C.bad}">${up ? '▲' : '▼'} ${
-    pct === null ? 'from nil' : Math.abs(pct) + '%'}</span>`;
+  // /api/health replays the exact reads place-order does and probes the live
+  // Razorpay account — the failure that is invisible from the outside, where
+  // the shop browses perfectly while every checkout dies (CLAUDE.md rule 6).
+  try {
+    const r = await fetch(`${APP_URL}/api/health`, { signal: AbortSignal.timeout(15_000) });
+    const b = await r.json().catch(() => null);
+    const ready = b?.checkoutReady === true;
+    const why = [
+      b?.database?.ok === false ? `database: ${b?.database?.error ?? 'failing'}` : '',
+      b?.razorpay?.ok === false ? `payments: ${b?.razorpay?.error ?? 'failing'}` : '',
+    ].filter(Boolean).join('; ');
+    probes.push({
+      name: 'Checkout',
+      ok: ready,
+      detail: ready ? 'Orders can be written and paid' : `Checkout is DOWN — ${why || `HTTP ${r.status}`}`,
+      critical: true,
+    });
+  } catch (err) {
+    probes.push({ name: 'Checkout', ok: false, detail: `/api/health unreachable: ${err?.message ?? err}`, critical: true });
+  }
+
+  return probes;
 }
 
-function section(title, inner) {
-  return `<h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;
-    color:${C.mute};margin:26px 0 8px;border-bottom:1px solid ${C.line};padding-bottom:5px">${title}</h2>${inner}`;
-}
-
-function kv(rows) {
-  return `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows.filter(Boolean).map(
-    ([k, v, note]) => `<tr>
-      <td style="padding:5px 0;color:#4b5563">${k}</td>
-      <td style="padding:5px 0;text-align:right;font-weight:600;white-space:nowrap">${v}</td>
-      <td style="padding:5px 0 5px 12px;font-size:12px;white-space:nowrap">${note ?? ''}</td>
-    </tr>`).join('')}</table>`;
-}
-
-/** Horizontal bars: the only chart shape that survives every email client. */
-function trendTable(trend) {
-  if (!trend?.length) return '';
-  const max = Math.max(...trend.map((t) => Number(t.gmv) || 0), 1);
-  return `<table style="width:100%;border-collapse:collapse;font-size:13px">${trend.map((t) => {
-    const gmv = Number(t.gmv) || 0;
-    const pct = Math.round((gmv / max) * 100);
-    return `<tr>
-      <td style="padding:3px 0;color:${C.mute};white-space:nowrap;width:62px">${esc(t.date)}</td>
-      <td style="padding:3px 8px;width:100%">
-        <div style="background:${gmv ? C.ink : C.line};height:8px;border-radius:4px;width:${Math.max(pct, 2)}%"></div>
-      </td>
-      <td style="padding:3px 0;text-align:right;white-space:nowrap">${t.orders} ord</td>
-      <td style="padding:3px 0 3px 10px;text-align:right;white-space:nowrap;font-weight:600">${inr(gmv)}</td>
-    </tr>`;
-  }).join('')}</table>`;
-}
-
-function listTable(rows, cols) {
-  if (!rows?.length) return `<p style="margin:0;font-size:13px;color:${C.mute}">Nothing yesterday.</p>`;
-  return `<table style="width:100%;border-collapse:collapse;font-size:13px">${rows.map((r) => `<tr>
-    <td style="padding:4px 0">${esc(r[cols[0]])}</td>
-    <td style="padding:4px 8px;text-align:right;color:${C.mute};white-space:nowrap">${r[cols[1]]}</td>
-    <td style="padding:4px 0;text-align:right;font-weight:600;white-space:nowrap">${inr(r[cols[2]])}</td>
-  </tr>`).join('')}</table>`;
-}
-
-function renderHtml(d, brief) {
-  const m = d.money ?? {}, o = d.orders ?? {}, a = d.actions ?? {}, g = d.growth ?? {}, p = d.pipeline ?? {};
-
-  const actionItems = [
-    a.boutiquesPending && `${a.boutiquesPending} boutique(s) awaiting verification${
-      a.boutiqueNames?.length ? ' — ' + a.boutiqueNames.map(esc).join(', ') : ''}`,
-    a.adsPending && `${a.adsPending} ad(s) pending review`,
-    a.payoutsDueCount && `${inr(a.payoutsDueValue)} across ${a.payoutsDueCount} delivered order(s) awaiting manual payout`,
-    a.outOfStock && `${a.outOfStock} product(s) out of stock — listed but unbuyable`,
-    a.lowStock && `${a.lowStock} product(s) down to 3 or fewer`,
-  ].filter(Boolean);
-
-  // Masthead, matching every other email the platform sends (api/_email.js).
-  // Pinned to the production origin, not APP_URL: this script runs from a cloud
-  // routine whose APP_URL may be anything, and a logo that 404s makes the one
-  // report the owner reads every morning look broken. The data tables below stay
-  // left/right aligned — a centred number column cannot be scanned.
-  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:620px;margin:0 auto;color:${C.ink}">
-  <div style="text-align:center;padding:6px 0 18px;border-bottom:1px solid ${C.line};margin-bottom:20px">
-    <img src="https://mangaimart.com/mangaimart-wordmark.png" width="190" alt="MangaiMart"
-         style="display:block;margin:0 auto 12px;width:190px;max-width:70%;height:auto;border:0" />
-    <h1 style="font-size:19px;margin:0 0 2px;text-align:center">Daily report</h1>
-    <p style="margin:0;color:${C.mute};font-size:13px;text-align:center">${esc(d.day)}</p>
-  </div>
-
-  ${brief ? `<div style="background:${C.soft};border-left:3px solid ${C.ink};padding:12px 16px;
-    margin-bottom:20px;white-space:pre-wrap;font-size:14px;line-height:1.55">${esc(brief)}</div>` : ''}
-
-  ${section('Yesterday', kv([
-    ['Orders', o.count ?? 0, delta(o.count, o.prevCount)],
-    ['GMV', inr(m.gmv), delta(m.gmv, m.prevGmv)],
-    ['Goods value', inr(m.goods), 'excl. shipping'],
-    [`Commission (${m.commissionPct ?? 10}%)`, inr(m.commission), 'on goods value'],
-    ['Average order', inr(m.aov)],
-    (o.units ? ['Units sold', o.units] : null),
-    (m.prepaidCount ? ['Prepaid', `${m.prepaidCount} · ${inr(m.prepaidValue)}`] : null),
-    // Cash on delivery was withdrawn (migration 0085); this line only appears if
-    // a legacy cash order is still unsettled, and is expected to stay absent.
-    (m.codCount ? ['COD receivable (legacy)', `${m.codCount} · ${inr(m.codValue)}`, 'sellers hold this cash'] : null),
-    (Number(m.platformDiscount) ? ['Platform coupons', '−' + inr(m.platformDiscount), 'our cost'] : null),
-    (o.cancelled ? ['Cancelled', o.cancelled, 'excluded above'] : null),
-    (o.offline ? ['Offline / POS', o.offline, 'walk-in, no commission'] : null),
-  ]))}
-
-  ${section('Last 7 days', trendTable(d.trend))}
-
-  ${section('Pipeline', kv([
-    ['Pending', p.pending ?? 0],
-    ['Shipped', p.shipped ?? 0],
-    ['Delivered', p.delivered ?? 0],
-  ]))}
-
-  ${section('Top boutiques', listTable(d.boutiques, ['name', 'orders', 'gmv']))}
-  ${section('Top products', listTable(d.products, ['title', 'qty', 'revenue']))}
-
-  ${section('Growth', kv([
-    ['New buyers', g.newBuyers ?? 0],
-    ['New boutiques', g.newSellers ?? 0],
-    ['Products listed', g.newProducts ?? 0],
-    ['Reviews posted', g.newReviews ?? 0],
-  ]))}
-
-  ${section('Needs you', actionItems.length
-    ? `<ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.7">${
-        actionItems.map((i) => `<li>${i}</li>`).join('')}</ul>`
-    : `<p style="margin:0;font-size:14px;color:${C.good}">Nothing.</p>`)}
-
-  <p style="margin-top:26px;color:#9ca3af;font-size:11px;line-height:1.5">
-    Covers ${esc(d.day)}, 00:00–24:00 IST. Cancelled orders are excluded from every money figure.
-    Commission is calculated on goods value, not order totals. Settle payouts in the console's Payouts screen.
-  </p>
-</div>`;
-}
-
-async function send(html, subject) {
-  requireEnv('RESEND_API_KEY', 'REPORT_TO', 'REPORT_FROM');
-  const res = await fetch('https://api.resend.com/emails', {
+/**
+ * One message per recipient, through Resend's batch endpoint. Per-recipient
+ * rather than a shared `to`: admins should not learn each other's personal
+ * addresses from a system mail, and one bad address should not fail the send.
+ */
+async function sendAll(recipients, subject, html, text) {
+  requireEnv('RESEND_API_KEY');
+  const from = process.env.REPORT_FROM || process.env.EMAIL_FROM || 'MangaiMart Reports <reports@mangaimart.com>';
+  // The sender must be on a domain we have verified with the provider. The
+  // provider's own shared sandbox domain is permitted to deliver ONLY to the
+  // account owner's address, so with several admins on the list it would send
+  // to one of them and silently drop the rest — a failure with no error to see.
+  if (/@[\w.-]*resend\.dev\b/i.test(from)) {
+    throw new Error(`REPORT_FROM is set to a provider sandbox sender (${from}), which only delivers to the Resend account owner. Use an address on the verified mangaimart.com domain.`);
+  }
+  const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: process.env.REPORT_FROM,
-      to: process.env.REPORT_TO.split(',').map((s) => s.trim()),
-      subject,
-      html,
-    }),
+    body: JSON.stringify(recipients.map((to) => ({ from, to: [to], subject, html, text }))),
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
-  return res.json();
+  const out = await res.text();
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${out.slice(0, 300)}`);
+  return out;
 }
 
+// ── main ─────────────────────────────────────────────────────────────────────
+
 const args = process.argv.slice(2);
+const has = (name) => args.includes(name);
 const value = (name) => { const i = args.indexOf(name); return i === -1 ? null : args[i + 1]; };
 
-const digest = await fetchDigest();
+const wantsSend = has('--send') || has('--ensure');
+const digest = await rpc('daily_digest');
 
-if (args.includes('--send')) {
-  const briefPath = value('--brief');
-  const brief = briefPath && existsSync(briefPath) ? readFileSync(briefPath, 'utf8').trim() : '';
-  const subject = `MangaiMart — ${digest.orders?.count ?? 0} orders, ${inr(digest.money?.gmv)} — ${digest.day}`;
-  const out = await send(renderHtml(digest, brief), subject);
-  console.log(`Sent to ${process.env.REPORT_TO} (id ${out.id ?? 'n/a'})`);
-} else if (args.includes('--html')) {
-  console.log(renderHtml(digest, ''));
+if (!wantsSend) {
+  if (has('--html') || has('--out')) {
+    const html = renderReport({
+      digest,
+      probes: has('--no-probe') ? [] : await probeSite(),
+      appUrl: APP_URL,
+      adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
+      source: 'preview',
+    });
+    const out = value('--out');
+    if (out) {
+      writeFileSync(out, html, 'utf8');
+      console.log(`Wrote ${out}`);
+    } else {
+      console.log(html);
+    }
+  } else {
+    console.log(JSON.stringify(digest, null, 2));
+  }
+  process.exit(0);
+}
+
+// --ensure is the scheduled fallback: it must be silent and exit 0 when the
+// cloud already sent, because Task Scheduler reads a non-zero exit as a fault
+// and the normal case is "nothing to do".
+if (has('--ensure')) {
+  const claimed = await rpc('claim_report_run', { p_source: 'local' });
+  if (!claimed) {
+    console.log(`Already sent for ${digest.day} — nothing to do.`);
+    process.exit(0);
+  }
+  console.log(`Cloud did not send for ${digest.day}. Sending from here.`);
 } else {
-  console.log(JSON.stringify(digest, null, 2));
+  // A manual --send still claims, so the row records who sent and the cloud
+  // does not send a second copy an hour later.
+  await rpc('claim_report_run', { p_source: 'manual' }).catch(() => false);
+}
+
+const override = (value('--to') || '').split(',').map((s) => s.trim()).filter(Boolean);
+const fromDb = override.length ? [] : await rpc('report_recipients');
+const extra = (process.env.REPORT_TO || '').split(',').map((s) => s.trim()).filter(Boolean);
+const recipients = Array.from(new Set(
+  override.length ? override : fromDb.map((r) => r.email).concat(extra),
+));
+
+if (recipients.length === 0) {
+  await rpc('finish_report_run', { p_ok: false, p_detail: 'no admin recipients' }).catch(() => {});
+  console.error('No admin account has an email address on file — nothing sent.');
+  process.exit(1);
+}
+
+const briefPath = value('--brief');
+const brief = briefPath && existsSync(briefPath) ? readFileSync(briefPath, 'utf8').trim() : '';
+const probes = await probeSite();
+const html = renderReport({
+  digest,
+  probes,
+  brief,
+  appUrl: APP_URL,
+  adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
+  source: has('--ensure') ? 'backup sender — the scheduled cloud run did not report success' : 'sent manually',
+});
+
+try {
+  await sendAll(recipients, subjectFor(digest, probes), html, renderText(digest, probes));
+  await rpc('finish_report_run', {
+    p_ok: true,
+    p_recipients: recipients.length,
+    p_detail: `${has('--ensure') ? 'local fallback' : 'manual'} → ${recipients.length} admin(s)`,
+  }).catch(() => {});
+  console.log(`Sent to ${recipients.length} admin(s): ${recipients.join(', ')}`);
+} catch (err) {
+  await rpc('finish_report_run', { p_ok: false, p_detail: String(err?.message ?? err) }).catch(() => {});
+  console.error(String(err?.message ?? err));
+  process.exit(1);
 }
