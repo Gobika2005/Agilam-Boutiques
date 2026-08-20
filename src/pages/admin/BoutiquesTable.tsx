@@ -27,7 +27,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 
 export function BoutiquesTable() {
   const { showToast } = useShop();
-  const { data: rows, loading, reload } = useAsync(() => fetchAllBoutiquesAdmin(), []);
+  const { data: rows, loading, error, reload } = useAsync(() => fetchAllBoutiquesAdmin(), []);
   const [q, setQ] = useSeededSearch();
   const [status, setStatus] = useState<StatusFilter>('all');
 
@@ -81,10 +81,18 @@ export function BoutiquesTable() {
               <span>BOUTIQUE</span><span>CITY</span><span>RATING</span><span>REVIEWS</span><span>STATUS</span><span style={css('text-align:right;')}>ACTIONS</span>
             </div>
             {loading && <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>Loading boutiques…</div>}
-            {!loading && all.length === 0 && (
+            {/* A failed query used to render as "No boutiques yet." — identical to an
+                empty marketplace, which sent us hunting for missing rows when the
+                real cause was a permission or an unapplied migration. Say which. */}
+            {!loading && error && (
+              <div style={css('padding:20px;color:var(--ag-bad-text);font-size:13.5px;')}>
+                Could not load boutiques — {error}
+              </div>
+            )}
+            {!loading && !error && all.length === 0 && (
               <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>No boutiques yet.</div>
             )}
-            {!loading && all.length > 0 && boutiques.length === 0 && (
+            {!loading && !error && all.length > 0 && boutiques.length === 0 && (
               <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>No boutiques match this search or filter.</div>
             )}
             {boutiques.map((b, i) => {

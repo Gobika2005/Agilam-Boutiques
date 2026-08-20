@@ -359,13 +359,25 @@ export interface AdminBoutiqueRow extends BoutiqueRow {
   owner: { full_name: string } | null;
 }
 
+/**
+ * Every boutique, whatever its status, for the admin table and the approval
+ * queue.
+ *
+ * Goes through `selectBoutiques` for exactly the reason the storefront does:
+ * this list names four optional column groups (0023, 0076, 0077a, 0078b), and
+ * naming a column the database does not have — or has not granted — fails the
+ * WHOLE query, not just that column. Without the ladder a single unapplied
+ * migration emptied both admin screens while the storefront, which already had
+ * it, carried on working.
+ */
 export async function fetchAllBoutiquesAdmin(): Promise<AdminBoutiqueRow[]> {
-  const { data, error } = await supabase
-    .from('boutiques')
-    .select(`${BOUTIQUE_COLUMNS}, owner:profiles!boutiques_owner_id_fkey(full_name)`)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as AdminBoutiqueRow[];
+  const data = await selectBoutiques((cols) =>
+    supabase
+      .from('boutiques')
+      .select(`${cols}, owner:profiles!boutiques_owner_id_fkey(full_name)`)
+      .order('created_at', { ascending: false }),
+  );
+  return ((data ?? []) as unknown as AdminBoutiqueRow[]).map(withCity);
 }
 
 /**

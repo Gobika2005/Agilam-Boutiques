@@ -42,7 +42,7 @@ export function Approvals() {
   const { showToast } = useShop();
   const [tab, setTab] = useState<Tab>('pending');
   const [selected, setSelected] = useState<AdminBoutiqueRow | null>(null);
-  const { data: rows, loading, reload } = useAsync(() => fetchAllBoutiquesAdmin(), []);
+  const { data: rows, loading, error, reload } = useAsync(() => fetchAllBoutiquesAdmin(), []);
 
   const all = rows ?? [];
   const list = all.filter((b) => b.status === tab);
@@ -115,7 +115,15 @@ export function Approvals() {
             ))}
           </div>
         )}
-        {!loading && list.length === 0 && (
+        {/* Distinguish "the queue is empty" from "the query failed" — they used to
+            render as the same sentence, which hides a permission error behind
+            what looks like an empty marketplace. */}
+        {!loading && error && (
+          <div style={css('padding:20px;color:var(--ag-bad-text);font-size:13.5px;')}>
+            Could not load boutiques — {error}
+          </div>
+        )}
+        {!loading && !error && list.length === 0 && (
           <div style={css('padding:20px;color:var(--ag-muted);font-size:13.5px;')}>
             No boutiques in “{BOUTIQUE_STATUS_LABEL[tab]}”.
           </div>

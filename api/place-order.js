@@ -744,6 +744,54 @@ export default async function handler(req, res) {
         });
       }
     } catch (writeErr) {
+      // ── Lost the race for this payment ──────────────────────────────────
+      // `orders_payment_boutique_uniq` (migration 0092) is the structural half
+      // of the replay guard near the top of this handler. That guard is a
+      // SELECT and this INSERT is many awaits later — the token check, the
+      // product read, a Razorpay fetch, possibly a capture, the stock
+      // reservation and the coupon claim all sit in between — so two requests
+      // carrying the same genuine {order_id, payment_id, signature} can both
+      // pass it. The unique index is what makes only one of them land.
+      //
+      // This is NOT a failed checkout: the request that won wrote the real
+      // order for this payment. Both compensations below would therefore do
+      // damage here — a refund would reverse money a live order is holding,
+      // and releasing every reserved unit would give away stock the winner's
+      // order has already committed. So release only what THIS request
+      // reserved and did not turn into an order, and leave the payment alone.
+      //
+      // Matched on the index name so that the OTHER unique on this table
+      // (`order_number`) still falls through to the refund path below, where a
+      // genuine write failure belongs.
+      const constraint = `${writeErr?.message ?? ''} ${writeErr?.details ?? ''} ${writeErr?.constraint ?? ''}`;
+      if (writeErr?.code === '23505' && constraint.includes('orders_payment_boutique_uniq')) {
+        const written = new Set(created.map((o) => o.boutique_id));
+        const unwritten = [];
+        for (const g of groups.values()) {
+          if (written.has(g.boutique_id)) continue;
+          for (const l of g.lines) unwritten.push({ product_id: l.product_id, qty: l.qty });
+        }
+        if (unwritten.length > 0) {
+          try {
+            await supabase.rpc('release_stock', { p_items: unwritten });
+          } catch (releaseErr) {
+            console.error('place-order: stock release failed after duplicate settlement:', releaseErr?.message ?? releaseErr);
+          }
+        }
+        // With both requests iterating the same boutiques in the same order the
+        // loser collides on its first insert and has written nothing, which is
+        // the ordinary case. A partial write means the two requests interleaved
+        // across boutiques — the union is still exactly one order per boutique
+        // (that is what the index guarantees), but it is worth a loud line.
+        console.warn(
+          'place-order: duplicate settlement for payment', payment.razorpay_payment_id,
+          created.length
+            ? `— this request had already written ${created.length} order(s) before colliding; reconcile by hand`
+            : '— nothing written, reserved stock released, payment left alone',
+        );
+        return res.status(409).json({ error: 'This payment has already been used for an order.' });
+      }
+
       console.error('place-order: order write failed after reservation:', {
         message: writeErr?.message ?? String(writeErr),
         code: writeErr?.code,
