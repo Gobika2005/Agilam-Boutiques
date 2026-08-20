@@ -61,6 +61,12 @@ export function ProductsAdmin() {
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
 
+  // Rejecting asks WHY before it writes (migration 0092). The reason reaches the
+  // seller in their console and in the seller_product_rejected WhatsApp message,
+  // so refusing without one just moves the conversation to support.
+  const [rejecting, setRejecting] = useState<{ rows: AdminProductRow[]; bulk: boolean } | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
+
   const changeFilter = (fn: () => void) => { fn(); setPage(0); setSelected(new Set()); };
   const log = (action: string, entity_id: string, meta?: Record<string, unknown>) =>
     logAdminAction({ actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin', action, entity_type: 'product', entity_id, meta });
@@ -69,6 +75,7 @@ export function ProductsAdmin() {
   const toggleAll = () => setSelected((s) => s.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)));
 
   const changeStatus = async (p: AdminProductRow, next: ProductStatus) => {
+    if (next === 'rejected') { setRejectNote(''); setRejecting({ rows: [p], bulk: false }); return; }
     try {
       await setProductStatus(p.id, next);
       await log(`product.${next}`, p.id, { title: p.title });
@@ -86,8 +93,35 @@ export function ProductsAdmin() {
     } catch (e) { showToast(errMessage(e, 'Update failed')); }
   };
 
+  const doReject = async () => {
+    if (!rejecting) return;
+    const note = rejectNote.trim() || null;
+    const ids = rejecting.rows.map((r) => r.id);
+    setBusy(true);
+    try {
+      if (rejecting.bulk) {
+        await bulkSetProductStatus(ids, 'rejected', note);
+        await log('product.bulk_rejected', ids.join(','), { count: ids.length, note });
+        showToast(`${ids.length} listings rejected`);
+        setSelected(new Set());
+      } else {
+        await setProductStatus(ids[0], 'rejected', note);
+        await log('product.rejected', ids[0], { title: rejecting.rows[0]?.title, note });
+        showToast(`${rejecting.rows[0]?.title} rejected`);
+      }
+      setRejecting(null);
+      reload();
+    } catch (e) { showToast(errMessage(e, 'Update failed')); }
+    finally { setBusy(false); }
+  };
+
   const bulk = async (next: ProductStatus) => {
     const ids = [...selected];
+    if (next === 'rejected') {
+      setRejectNote('');
+      setRejecting({ rows: rows.filter((r) => selected.has(r.id)), bulk: true });
+      return;
+    }
     try {
       await bulkSetProductStatus(ids, next);
       await log(`product.bulk_${next}`, ids.join(','), { count: ids.length });
@@ -204,6 +238,37 @@ export function ProductsAdmin() {
         confirmLabel="Delete" danger busy={busy}
         onConfirm={doDelete} onCancel={() => setConfirmDelete(null)}
       />
+
+      <ConfirmDialog
+        open={!!rejecting}
+        title={rejecting?.bulk ? 'Reject selected listings?' : 'Reject this listing?'}
+        message={
+          rejecting?.bulk
+            ? `${rejecting.rows.length} listings will be hidden from buyers, and each seller is told why.`
+            : `${rejecting?.rows[0]?.title ?? ''} will be hidden from buyers, and the seller is told why.`
+        }
+        confirmLabel="Reject" danger busy={busy}
+        onConfirm={doReject}
+        onCancel={() => setRejecting(null)}
+      >
+        <label style={css(`display:block;margin-top:14px;font-size:12px;font-weight:800;color:${T.muted};`)}>
+          Reason the seller will see
+          <textarea
+            rows={3}
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            placeholder="e.g. The photos show a different colour to the one listed."
+            style={css(`display:block;width:100%;margin-top:6px;border:1.5px solid ${T.field};border-radius:12px;background:var(--ag-surface);font-size:13.5px;font-family:inherit;color:var(--ag-ink);padding:10px 12px;box-sizing:border-box;resize:vertical;line-height:1.5;`)}
+          />
+        </label>
+        {/* Optional on purpose: a moderator clearing an obvious spam listing at
+            speed should not be blocked. Left blank, the seller is asked to open
+            their console instead of being quoted an empty reason. */}
+        <div style={css(`font-size:11.5px;color:${T.muted};margin-top:6px;line-height:1.5;`)}>
+          Sent to the seller on WhatsApp and shown in their console. Leave blank and they
+          are asked to check their console instead.
+        </div>
+      </ConfirmDialog>
 
       <Drawer
         open={!!editProduct}

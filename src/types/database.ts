@@ -230,6 +230,10 @@ export interface Database {
           /** Hidden because its boutique was rejected, not by the seller
            *  (migration 0038) — re-approval clears it and the listing returns. */
           auto_hidden: boolean;
+          /** Why moderation refused this listing (migration 0092). Shown to the
+           *  seller and quoted in the seller_product_rejected WhatsApp message;
+           *  cleared when the listing is approved. Mirrors boutiques.review_note. */
+          review_note: string | null;
           /** SEO slug, `title-slug-idprefix` (migration 0057). */
           slug: string | null;
           description: string;
