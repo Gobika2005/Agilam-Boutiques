@@ -50,6 +50,21 @@ const C = {
 
 const SANS = "Arial,Helvetica,sans-serif";
 const SERIF = "Georgia,'Times New Roman',serif";
+
+/**
+ * The wordmark, pinned to the production origin — not derived from APP_URL,
+ * which is localhost in a dev environment and a broken image in every inbox.
+ * PNG rather than the smaller WebP beside it in /public: Outlook on Windows
+ * cannot decode WebP and would fall back to the alt text.
+ *
+ * The `<img>` that uses this carries font styling of its own. That is not
+ * decoration for the image — it styles the ALT TEXT, which is what a reader
+ * actually sees for the first few seconds while a client holds remote images
+ * back, and permanently if they never allow them. Unstyled, that fallback is
+ * 11px black serif and reads as a defect; styled, the masthead still says
+ * MangaiMart in brand pink. Width and height are also set as HTML attributes,
+ * because Outlook ignores the CSS and would otherwise reserve no space.
+ */
 const LOGO = 'https://mangaimart.com/mangaimart-wordmark.png';
 
 // ── primitives ───────────────────────────────────────────────────────────────
@@ -436,8 +451,8 @@ ${HEAD_STYLE}</head>
 
     <tr><td align="center" style="background:${C.cream};border:1px solid ${C.line};border-radius:14px;padding:20px 20px 16px;">
       <a href="${esc(appUrl)}" style="text-decoration:none;">
-        <img src="${LOGO}" width="170" alt="MangaiMart" class="ag-logo"
-             style="display:block;margin:0 auto 10px;width:170px;max-width:60%;height:auto;border:0;outline:none;" />
+        <img src="${LOGO}" width="170" height="68" alt="MangaiMart" class="ag-logo"
+             style="display:block;margin:0 auto 10px;width:170px;max-width:60%;height:auto;border:0;outline:none;font-family:${SERIF};font-size:22px;font-weight:700;color:${C.brand};text-decoration:none;" />
       </a>
       <h1 class="ag-h1" style="margin:0;font-family:${SERIF};font-size:20px;line-height:1.3;color:${C.ink};font-weight:700;">Daily report</h1>
       <p style="margin:4px 0 0;font-family:${SANS};font-size:12.5px;color:${C.mute};">${esc(d.day ?? '')}</p>
