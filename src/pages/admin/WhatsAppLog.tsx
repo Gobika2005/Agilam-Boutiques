@@ -6,9 +6,11 @@ import { useAuth } from '@/auth/AuthContext';
 import { logAdminAction } from '@/data/activityLog';
 import {
   fetchWaThreads, fetchWaThreadMessages, revealMsisdn,
-  type WaThread, type WaMessage,
+  fetchWaStats, fetchWaFailures,
+  type WaThread, type WaMessage, type WaStats, type WaFailure,
 } from '@/data/whatsapp';
-import { Card, EmptyState, GhostButton, Icon, SearchInput, T } from '@/components/admin/kit';
+import { fetchSettings, saveSettings } from '@/data/settings';
+import { Card, EmptyState, GhostButton, Icon, SearchInput, T, Toggle } from '@/components/admin/kit';
 
 /**
  * WhatsApp message log — every conversation on the platform number, read-only.
@@ -86,6 +88,39 @@ const sameDay = (a: string, b: string) => {
   return !Number.isNaN(x.getTime()) && !Number.isNaN(y.getTime()) && x.toDateString() === y.toDateString();
 };
 
+type Tick = 'sent' | 'delivered' | 'read';
+
+/**
+ * Which tick an outbound message has earned.
+ *
+ * TWO FIELDS, AND THEY ARE NOT INTERCHANGEABLE. `wa_thread_messages` (0091)
+ * returns `o.category, o.status, o.delivery_status, o.last_error` as
+ * `msg_type, status, delivery, err`, so:
+ *
+ *   `delivery` is META'S receipt — 'sent' | 'delivered' | 'read' | 'failed' —
+ *     and is NULL until a receipt actually arrives on the webhook.
+ *   `status` is OUR OUTBOX queue state — 'queued' | 'sent' | 'failed' |
+ *     'suppressed' | 'stale'.
+ *
+ * The null case is the one that matters: a message handed to Meta that has not
+ * been acknowledged yet is `status='sent'` with `delivery=null`, and that is
+ * precisely the single-tick state. Reading ticks off `delivery` alone would
+ * leave every such message with no indicator at all.
+ *
+ * Returns null for anything the ticks cannot honestly express (queued,
+ * suppressed, stale, failed) — those keep a text pill, because inventing a
+ * glyph for them would be asking the reader to learn a vocabulary nobody
+ * published.
+ */
+function tickFor(m: WaMessage): Tick | null {
+  if (m.dir !== 'out') return null;
+  if (m.delivery === 'failed' || m.status === 'failed') return null;
+  if (m.delivery === 'read') return 'read';
+  if (m.delivery === 'delivered') return 'delivered';
+  if (m.delivery === 'sent' || (!m.delivery && m.status === 'sent')) return 'sent';
+  return null;
+}
+
 export function WhatsAppLog() {
   const { data, loading, error } = useAsync(() => fetchWaThreads(200), []);
   const [query, setQuery] = useState('');
@@ -110,38 +145,28 @@ export function WhatsAppLog() {
   // is selected.
   const selected = filtered.find((t) => t.thread_key === openKey) ?? null;
 
-  if (loading) return <div style={css(`color:${T.muted};font-size:13.5px;`)}>Loading conversations…</div>;
-
-  if (error) {
-    return (
-      <Card>
-        <div style={css('font-weight:800;font-size:14.5px;margin-bottom:6px;')}>Message log unavailable</div>
-        <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;`)}>
-          This screen needs migration <strong>0091</strong> applied. Until then the outbox still
-          records everything sent — only the threaded view is missing.
-        </div>
-      </Card>
-    );
-  }
+  // The order-updates panel below is NOT gated on any of this. It reads the
+  // outbox (migration 0090) while the thread list needs 0091, and these are
+  // applied by hand one at a time — so an early return here would strand the
+  // send kill switch on a database that has 0090 but not 0091, and the switch
+  // no longer has a home in Settings to fall back to.
+  const blocked = loading ? (
+    <div style={css(`color:${T.muted};font-size:13.5px;`)}>Loading conversations…</div>
+  ) : error ? (
+    <Card>
+      <div style={css('font-weight:800;font-size:14.5px;margin-bottom:6px;')}>Message log unavailable</div>
+      <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;`)}>
+        This screen needs migration <strong>0091</strong> applied. Until then the outbox still
+        records everything sent — only the threaded view is missing.
+      </div>
+    </Card>
+  ) : null;
 
   return (
     <div style={css('display:flex;flex-direction:column;gap:14px;max-width:1180px;')}>
-      <Card>
-        <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:8px;')}>
-          <Icon name="forum" size={19} color="var(--ag-crimson)" />
-          <div style={css('font-weight:800;font-size:15px;flex:1;')}>WhatsApp conversations</div>
-          <span style={css(`font-size:11.5px;font-weight:700;color:${T.muted};`)}>
-            {threads.length} thread{threads.length === 1 ? '' : 's'}
-          </span>
-        </div>
-        <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.65;`)}>
-          Everything sent and received on the platform number. Read-only —{' '}
-          <strong>replies are written in Meta Business Suite</strong>, so one customer is never
-          answered from two places. Customer numbers are hidden until you ask for one, and each
-          reveal is recorded in the audit trail.
-        </div>
-      </Card>
+      <OrderUpdatesCard />
 
+      {blocked ?? (
       <div className="agx-wa-inbox" data-view={selected ? 'thread' : 'list'}>
         <div className="agx-wa-pane-list" style={css('display:flex;flex-direction:column;gap:10px;min-width:0;')}>
           <SearchInput value={query} onChange={setQuery} placeholder="Search name, message or visible digits" />
@@ -189,7 +214,149 @@ export function WhatsAppLog() {
           )}
         </div>
       </div>
+      )}
     </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * WhatsApp order updates
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The kill switch, plus the only two numbers that tell you whether the pipeline
+ * is alive: what is waiting and what has given up.
+ *
+ * WHY THIS PANEL EXISTS AT ALL
+ * Everything about WhatsApp sending happens where nobody is looking — a Postgres
+ * trigger queues a row, a pg_cron tick wakes an Edge Function, and Meta either
+ * accepts it or does not. When the access token expires, nothing breaks: orders
+ * still place, statuses still change, and messages simply stop arriving. Without
+ * a failure count on a screen somebody opens, that is invisible until a customer
+ * complains. A rising `Failed` here with the same Meta error on every row is the
+ * signal, and the error text names the cause.
+ *
+ * It lives on this screen rather than in Settings because this is where anyone
+ * wondering "did that message go out?" already is — the queue counters and the
+ * conversation that proves it are one glance apart.
+ *
+ * THE SWITCH SAVES ITSELF
+ * In Settings it rode along with the commission form's Save button. There is no
+ * such button here, so it writes on tap — the same way the Razorpay account
+ * switch does, and for the same reason: it is an operational control, and one
+ * that must not carry an unrelated half-finished edit along with it. The UI
+ * moves first and rolls back if the write fails, so the switch never shows a
+ * state the database does not have.
+ *
+ * The counts are a snapshot, not a subscription — this is an operational check
+ * somebody performs, not a dashboard worth a realtime channel.
+ */
+function OrderUpdatesCard() {
+  const { showToast } = useShop();
+  const { profile } = useAuth();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState<WaStats | null>(null);
+  const [failures, setFailures] = useState<WaFailure[]>([]);
+  const [open, setOpen] = useState(false);
+
+  const refresh = () => {
+    void fetchWaStats().then(setStats);
+    void fetchWaFailures().then(setFailures);
+  };
+  useEffect(() => {
+    refresh();
+    void fetchSettings().then((s) => setOn(s.whatsapp_enabled));
+  }, []);
+
+  const toggle = async (next: boolean) => {
+    if (saving || on === null) return;
+    setSaving(true);
+    setOn(next);
+    const res = await saveSettings({ whatsapp_enabled: next }, profile?.id);
+    setSaving(false);
+    if (!res.ok) {
+      setOn(!next);              // put the switch back where the database has it
+      showToast(res.error);
+      return;
+    }
+    showToast(next ? 'WhatsApp order updates ON' : 'WhatsApp order updates OFF');
+    // Turning the platform's outbound messaging on or off is worth attributing.
+    void logAdminAction({
+      actor_id: profile?.id,
+      actor_name: profile?.full_name ?? 'Admin',
+      action: next ? 'whatsapp.updates_enabled' : 'whatsapp.updates_disabled',
+      entity_type: 'settings',
+    });
+  };
+
+  const pill = (label: string, value: number, tone: string) => (
+    <div key={label} style={css('flex:1;min-width:74px;border:1px solid var(--ag-border-soft);border-radius:12px;padding:10px 12px;background:var(--ag-surface-2);')}>
+      <div style={css(`font-size:18px;font-weight:900;color:${tone};line-height:1.2;`)}>{value}</div>
+      <div style={css(`font-size:11px;font-weight:700;color:${T.muted};margin-top:2px;`)}>{label}</div>
+    </div>
+  );
+
+  return (
+    <Card>
+      <div style={css('display:flex;align-items:center;gap:14px;')}>
+        {/* --ag-good-*, not the --ag-ok-* this card used in Settings: those two
+            tokens are not defined anywhere, so the "enabled" chip was rendering
+            with no background and an uncoloured icon in both themes. */}
+        <div style={css(`width:44px;height:44px;border-radius:13px;background:${on ? 'var(--ag-good-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;flex:none;`)}>
+          <Icon name="chat" size={22} color={on ? 'var(--ag-good-text)' : T.muted} />
+        </div>
+        <div style={css('flex:1;min-width:0;')}>
+          <div style={css('font-weight:800;font-size:14.5px;')}>WhatsApp order updates</div>
+          <div style={css(`font-size:12.5px;color:${T.muted};margin-top:2px;line-height:1.55;`)}>
+            Confirmation, shipped, delivered and refund messages to buyers, and new-order,
+            payout and low-stock alerts to sellers. While this is off, messages are still
+            queued but nothing is sent — so you can check the queue before going live.
+          </div>
+        </div>
+        {on !== null && <Toggle on={on} onChange={toggle} label="WhatsApp order updates" />}
+      </div>
+
+      {stats && (
+        <>
+          <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;')}>
+            {pill('Waiting', stats.queued, 'var(--ag-ink)')}
+            {pill('Sent', stats.sent, 'var(--ag-good-text)')}
+            {pill('Failed', stats.failed, stats.failed > 0 ? 'var(--ag-crimson)' : T.muted)}
+            {pill('Opted out', stats.suppressed, T.muted)}
+            {/* Queued past its usefulness and dropped — a spike here means the
+                drainer stopped running, not that Meta refused anything. */}
+            {pill('Expired', stats.stale, T.muted)}
+          </div>
+
+          <div style={css('display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;')}>
+            <span style={css(`flex:1;font-size:11.5px;color:${T.muted};font-weight:600;`)}>
+              {stats.newest ? `Latest queued ${new Date(stats.newest).toLocaleString('en-IN')}` : 'Nothing queued yet.'}
+            </span>
+            {failures.length > 0 && (
+              <GhostButton onClick={() => setOpen((v) => !v)}>
+                {open ? 'Hide failures' : `Show ${failures.length} failure${failures.length === 1 ? '' : 's'}`}
+              </GhostButton>
+            )}
+            <GhostButton onClick={refresh}>Refresh</GhostButton>
+          </div>
+        </>
+      )}
+
+      {open && failures.map((f) => (
+        <div key={f.id} style={css('border-top:1px solid var(--ag-border-soft);padding:10px 0;')}>
+          <div style={css('display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;')}>
+            <span style={css('font-weight:700;font-size:12.5px;')}>{f.template}</span>
+            <span style={css(`font-size:11.5px;color:${T.muted};font-weight:600;`)}>
+              {f.recipient_masked} · {f.audience} · {f.attempts} attempt{f.attempts === 1 ? '' : 's'} · {new Date(f.created_at).toLocaleString('en-IN')}
+            </span>
+          </div>
+          {/* Meta's own words, verbatim. Paraphrasing an API error is how the
+              actual cause gets lost between here and the fix. */}
+          <div style={css('font-size:11.5px;color:var(--ag-crimson);margin-top:3px;font-weight:600;word-break:break-word;')}>{f.last_error ?? 'No error recorded'}</div>
+        </div>
+      ))}
+    </Card>
   );
 }
 
@@ -345,14 +512,49 @@ function DaySeparator({ iso }: { iso: string }) {
   );
 }
 
+/**
+ * The delivery tick, WhatsApp's vocabulary: one tick sent, two delivered, two
+ * coloured once it has been seen. The "seen" colour is --ag-crimson rather than
+ * WhatsApp's blue, which is why the bubble behind it is held at a light blush —
+ * a saturated pink fill would swallow the one mark that has to stand out.
+ *
+ * `title`/`aria-label` carry the word, because a tick count is a convention and
+ * not everyone reading this screen will know it.
+ */
+function DeliveryTick({ tick }: { tick: Tick }) {
+  const read = tick === 'read';
+  const label = read ? 'Seen' : tick === 'delivered' ? 'Delivered' : 'Sent';
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      role="img"
+      style={css('display:inline-flex;align-items:center;line-height:0;')}
+    >
+      <Icon
+        name={tick === 'sent' ? 'check' : 'done_all'}
+        size={14}
+        color={read ? 'var(--ag-crimson)' : T.muted}
+      />
+    </span>
+  );
+}
+
 function Bubble({ m }: { m: WaMessage }) {
   const out = m.dir === 'out';
+  const tick = tickFor(m);
+  // A failure always speaks in words — `err` when Meta gave a reason, the bare
+  // state when it did not, so the row is never silently blank.
+  const failed = out && (m.delivery === 'failed' || m.status === 'failed');
+  // Only the states no tick covers: queued, suppressed, stale.
+  const pill = out && !tick && !failed ? m.status : null;
+
   return (
     <div style={css(`display:flex;justify-content:${out ? 'flex-end' : 'flex-start'};`)}>
       <div
         style={css(
           'max-width:78%;border-radius:14px;padding:8px 11px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;' +
-            // Outbound gets a real green (--ag-wa-* in index.css). Before this
+            // Outbound is the brand blush (--ag-wa-* in index.css). Before this
             // both directions were near-identical surface tints and only the
             // alignment told them apart.
             (out
@@ -361,14 +563,15 @@ function Bubble({ m }: { m: WaMessage }) {
         )}
       >
         {m.body || <span style={css(`color:${T.muted};`)}>[{m.msg_type ?? 'message'}]</span>}
-        <div style={css(`display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px;font-size:10px;color:${T.muted};font-weight:700;`)}>
+        <div style={css(`display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px;font-size:10px;color:${T.muted};font-weight:700;`)}>
           <span>{fmtClock(m.at)}</span>
-          {/* Outbound only. `status` carries the outbox category — 'service' is a
-              free auto-reply inside the 24h window, 'utility' is a billed
-              template send. Worth seeing at a glance when reading a thread. */}
-          {out && m.status && <span style={css('padding:1px 6px;border-radius:99px;background:var(--ag-surface-2);')}>{m.status}</span>}
-          {out && m.delivery && <span style={css('padding:1px 6px;border-radius:99px;background:var(--ag-surface-2);')}>{m.delivery}</span>}
-          {out && m.err && <span style={css('padding:1px 6px;border-radius:99px;background:var(--ag-bad-bg);color:var(--ag-bad-text);')}>{m.err}</span>}
+          {tick && <DeliveryTick tick={tick} />}
+          {pill && <span style={css('padding:1px 6px;border-radius:99px;background:var(--ag-surface-2);')}>{pill}</span>}
+          {failed && (
+            <span style={css('padding:1px 6px;border-radius:99px;background:var(--ag-bad-bg);color:var(--ag-bad-text);')}>
+              {m.err || 'failed'}
+            </span>
+          )}
         </div>
       </div>
     </div>

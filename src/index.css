@@ -52,12 +52,16 @@
      is for text ON a light surface and was 4.35:1, just under AA. The "20% off"
      badge now uses -text rather than the accent, which measured 2.79:1. */
   --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
-  /* Outbound WhatsApp bubbles in the admin message log. A real green rather
-     than a rose tint: this is the one console screen that mirrors a third-party
-     app, and staff scan it for "who said what" — the familiar colour does that
-     work before any label is read. No separate foreground token: --ag-ink lands
-     at 15.7:1 on this and --ag-muted (the timestamp) at 5.2:1. */
-  --ag-wa-out-bg: #DCF8C6; --ag-wa-out-border: #C3E8A6;
+  /* Outbound bubbles in the admin WhatsApp log. Brand blush, not WhatsApp's
+     green: the console reads as MangaiMart, and the green fought the crimson
+     everything else on the page is built from.
+
+     Deliberately a shade deeper than --ag-surface-2 (#FDEEF4) so the bubble
+     still separates from the rose chips it sits near. Held at #FCDDE9 because
+     the bubble carries three foregrounds that all have to clear AA on it:
+     --ag-ink 14.3:1, --ag-muted (the timestamp) 4.70:1, and --ag-crimson (the
+     "seen" tick) 5.16:1. A pinker fill drops muted under 4.5. */
+  --ag-wa-out-bg: #FCDDE9; --ag-wa-out-border: #F4C2D6;
   /* Rating stars are informative icons, so they need 3:1, not the 1.78:1 the
      old #E0B84B gave on a light card. Still unmistakably gold. */
   --ag-star: #AD7D08;
@@ -100,11 +104,9 @@
      while ink lands at 13.6:1 and muted body text at 5.2:1. */
   --ag-unread: #301E29;
   --ag-good: #43C489; --ag-good-bg: #143026; --ag-good-text: #6FE0AE;
-  /* Dark outbound bubble — WhatsApp's own dark green, but taken down from the
-     #10362C first picked here: the bubble's own timestamp and status pills are
-     --ag-muted, which measured 4.39:1 on that, just under AA for text this
-     small. At #0D2E25 muted clears at 4.85:1 and --ag-ink at 12.7:1. */
-  --ag-wa-out-bg: #0D2E25; --ag-wa-out-border: #1B5443;
+  /* Dark outbound bubble. Same three-foreground constraint as the light one:
+     --ag-ink 14.0:1, --ag-muted 5.34:1, --ag-crimson (the "seen" tick) 4.55:1. */
+  --ag-wa-out-bg: #341825; --ag-wa-out-border: #55283E;
   /* On the dark surfaces the original gold already clears 3:1 comfortably
      (≈10:1), so dark mode keeps the brighter star. */
   --ag-star: #E0B84B;
@@ -1078,7 +1080,7 @@ span[style*="Material Symbols Outlined"] {
   --ag-shimmer-2: #F9F0F4;
   --ag-unread: #FFF3F8;
   --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
-  --ag-wa-out-bg: #DCF8C6; --ag-wa-out-border: #C3E8A6;
+  --ag-wa-out-bg: #FCDDE9; --ag-wa-out-border: #F4C2D6;
   --ag-star: #AD7D08;
   --ag-warn-bg: #FBF0DA; --ag-warn-text: #8A6420;
   --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;

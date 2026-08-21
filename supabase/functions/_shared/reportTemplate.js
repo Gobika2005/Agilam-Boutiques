@@ -480,17 +480,39 @@ ${HEAD_STYLE}</head>
 /**
  * Subject line.
  *
- * Front-loaded with the verdict, because on a phone the subject is often the
- * whole report: a quiet morning should be answerable without opening anything.
+ * One fixed structure, so a week of these stacks in the inbox as a legible
+ * series and a mail rule can match them:
+ *
+ *   MangaiMart Daily Report · 20 Aug 2026 · 14 orders, ₹48,250
+ *   MangaiMart Daily Report · 19 Aug 2026 · 9 orders, ₹31,900 · Attention needed
+ *   Action required · MangaiMart Daily Report · 18 Aug 2026 · 14 orders, ₹48,250
+ *
+ * No emoji. They render inconsistently across clients, read as marketing in a
+ * business report, and a leading pictograph is a mild spam signal — a bad trade
+ * for a sender whose whole job is to arrive.
+ *
+ * Severity moves position rather than shouting: an amber note is appended, where
+ * it costs nothing if truncated, while a red one is prepended, because that is
+ * the one case that must survive a phone cutting the line at ~40 characters.
+ * The action-queue count is deliberately NOT here — it is the first heading in
+ * the body, and the subject stays readable by carrying fewer things.
  */
 export function subjectFor(digest, probes) {
   const d = digest ?? {};
   const v = assess(d, probes);
-  const flag = v.level === 'ok' ? '' : v.level === 'warn' ? '⚠ ' : '🔴 ';
+
+  // "Thu 20 Aug 2026" → "20 Aug 2026". The weekday is noise beside a real date,
+  // and those four characters are the ones a narrow inbox truncates.
+  const date = String(d.day ?? '').replace(/^[A-Za-z]{3}\s+/, '').trim();
+
   const orders = num(d.orders?.count);
-  const todo = actionLines(d, '', '').length;
-  const tail = todo ? ` · ${todo} to action` : '';
-  return `${flag}MangaiMart — ${orders} order${orders === 1 ? '' : 's'}, ${inr(d.money?.gmv)}${tail} — ${d.day ?? ''}`;
+  const parts = ['MangaiMart Daily Report'];
+  if (date) parts.push(date);
+  parts.push(`${orders} order${orders === 1 ? '' : 's'}, ${inr(d.money?.gmv)}`);
+  if (v.level === 'warn') parts.push('Attention needed');
+
+  const line = parts.join(' · ');
+  return v.level === 'down' ? `Action required · ${line}` : line;
 }
 
 /** Plain-text alternative. Some clients show it, and spam filters like seeing it. */

@@ -101,6 +101,14 @@ async function rpc(name, args = {}) {
   requireEnv('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'REPORT_TOKEN');
   const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
+    // EVERY fetch here carries a timeout, and that is not belt-and-braces.
+    // Node's fetch has no default timeout at all: on a half-open socket it waits
+    // for ever. This task is triggered by StartWhenAvailable, so it typically
+    // fires seconds after the machine wakes, with the network still coming up —
+    // which is exactly how 21 Aug 2026 was lost. The run claimed the day, hung
+    // on the next call, and never wrote an exit code or released the claim, so
+    // no report went out and nothing said why.
+    signal: AbortSignal.timeout(20_000),
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
       Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
@@ -176,6 +184,9 @@ async function sendAll(recipients, subject, html, text) {
   }
   const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
+    // Longer than the RPC timeout — this one is carrying the whole message body
+    // to a third party — but still bounded. See the note in rpc().
+    signal: AbortSignal.timeout(45_000),
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
@@ -234,32 +245,41 @@ if (has('--ensure')) {
   await rpc('claim_report_run', { p_source: 'manual' }).catch(() => false);
 }
 
-const override = (value('--to') || '').split(',').map((s) => s.trim()).filter(Boolean);
-const fromDb = override.length ? [] : await rpc('report_recipients');
-const extra = (process.env.REPORT_TO || '').split(',').map((s) => s.trim()).filter(Boolean);
-const recipients = Array.from(new Set(
-  override.length ? override : fromDb.map((r) => r.email).concat(extra),
-));
-
-if (recipients.length === 0) {
-  await rpc('finish_report_run', { p_ok: false, p_detail: 'no admin recipients' }).catch(() => {});
-  console.error('No admin account has an email address on file — nothing sent.');
-  process.exit(1);
-}
-
-const briefPath = value('--brief');
-const brief = briefPath && existsSync(briefPath) ? readFileSync(briefPath, 'utf8').trim() : '';
-const probes = await probeSite();
-const html = renderReport({
-  digest,
-  probes,
-  brief,
-  appUrl: APP_URL,
-  adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
-  source: has('--ensure') ? 'backup sender — the scheduled cloud run did not report success' : 'sent manually',
-});
-
+/**
+ * Everything from here on is inside one try/catch, and that boundary matters as
+ * much as the timeouts.
+ *
+ * The claim is already held at this point. Any failure past it — resolving
+ * recipients, probing the site, Resend refusing the batch — must report itself
+ * back, because `finish_report_run(ok => false)` backdates the claim and hands
+ * the day straight back. A throw that escaped this block would leave the row
+ * claimed, unsent and silent until the staleness window expired, which for a
+ * once-a-day job means no report at all.
+ */
 try {
+  const override = (value('--to') || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const fromDb = override.length ? [] : await rpc('report_recipients');
+  const extra = (process.env.REPORT_TO || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const recipients = Array.from(new Set(
+    override.length ? override : fromDb.map((r) => r.email).concat(extra),
+  ));
+
+  if (recipients.length === 0) {
+    throw new Error('No admin account has an email address on file — nothing sent.');
+  }
+
+  const briefPath = value('--brief');
+  const brief = briefPath && existsSync(briefPath) ? readFileSync(briefPath, 'utf8').trim() : '';
+  const probes = await probeSite();
+  const html = renderReport({
+    digest,
+    probes,
+    brief,
+    appUrl: APP_URL,
+    adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
+    source: has('--ensure') ? 'backup sender — the scheduled cloud run did not report success' : 'sent manually',
+  });
+
   await sendAll(recipients, subjectFor(digest, probes), html, renderText(digest, probes));
   await rpc('finish_report_run', {
     p_ok: true,
@@ -268,7 +288,8 @@ try {
   }).catch(() => {});
   console.log(`Sent to ${recipients.length} admin(s): ${recipients.join(', ')}`);
 } catch (err) {
-  await rpc('finish_report_run', { p_ok: false, p_detail: String(err?.message ?? err) }).catch(() => {});
-  console.error(String(err?.message ?? err));
+  const message = String(err?.message ?? err);
+  await rpc('finish_report_run', { p_ok: false, p_detail: message }).catch(() => {});
+  console.error(message);
   process.exit(1);
 }

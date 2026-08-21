@@ -81,6 +81,12 @@ const json = (body: unknown, status = 200) =>
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
+    // Bounded, like every other fetch here. Deno's fetch has no default timeout,
+    // and a hang would burn the function's whole wall clock and then be killed
+    // by the platform — which skips the catch below, so the day would stay
+    // claimed with no finish record and no report. The local sender lost
+    // 21 Aug 2026 to exactly that shape of failure.
+    signal: AbortSignal.timeout(20_000),
     headers: {
       apikey: ANON_KEY,
       Authorization: `Bearer ${ANON_KEY}`,
@@ -168,6 +174,9 @@ async function sendAll(recipients: string[], subject: string, html: string, text
   if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
   const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
+    // Longer than the RPC timeout — this one carries every message body — but
+    // still bounded. See the note in rpc().
+    signal: AbortSignal.timeout(45_000),
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(recipients.map((to) => ({ from: REPORT_FROM, to: [to], subject, html, text }))),
   });

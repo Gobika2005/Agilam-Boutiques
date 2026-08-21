@@ -7,9 +7,8 @@ import {
   fetchSettings, saveSettings, setRazorpayAccount,
   type PlatformSettings, type RazorpayAccount,
 } from '@/data/settings';
-import { fetchWaStats, fetchWaFailures, type WaStats, type WaFailure } from '@/data/whatsapp';
 import { logAdminAction } from '@/data/activityLog';
-import { Card, ConfirmDialog, GhostButton, Icon, T } from '@/components/admin/kit';
+import { Card, ConfirmDialog, GhostButton, Icon, T, Toggle } from '@/components/admin/kit';
 
 type NumField = { key: keyof PlatformSettings; label: string; help: string; prefix?: string; suffix?: string };
 
@@ -141,7 +140,6 @@ export function Settings() {
         </div>
       </Card>
 
-      <WhatsAppCard on={form.whatsapp_enabled} onChange={(v) => set('whatsapp_enabled', v)} />
 
       <Card>
         <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:12px;')}>
@@ -373,132 +371,5 @@ function PaymentAccountCard({ initial }: { initial: RazorpayAccount }) {
         onCancel={() => setPending(null)}
       />
     </Card>
-  );
-}
-
-/**
- * On/off switch.
- *
- * `role="switch"` + `aria-checked` because the state was conveyed by background
- * colour alone: a screen reader announced only "Toggle, button", and anyone who
- * cannot separate crimson from grey had nothing to read the state from. The
- * visible on/off word covers the latter.
- */
-/* ────────────────────────────────────────────────────────────────────────────
- * WhatsApp order updates
- * ──────────────────────────────────────────────────────────────────────────── */
-
-/**
- * The kill switch, plus the only two numbers that tell you whether the pipeline
- * is alive: what is waiting and what has given up.
- *
- * WHY THIS PANEL EXISTS AT ALL
- * Everything about WhatsApp sending happens where nobody is looking — a Postgres
- * trigger queues a row, a pg_cron tick wakes an Edge Function, and Meta either
- * accepts it or does not. When the access token expires (Phase 0.6's warning
- * about the 24-hour token is exactly this failure), nothing breaks: orders still
- * place, statuses still change, and messages simply stop arriving. Without a
- * failure count on a screen somebody opens, that is invisible until a customer
- * complains. A rising `Failed` here with the same Meta error on every row is the
- * signal, and the error text names the cause.
- *
- * The counts are a snapshot, not a subscription — this is an operational check
- * somebody performs, not a dashboard worth a realtime channel.
- */
-function WhatsAppCard({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  const [stats, setStats] = useState<WaStats | null>(null);
-  const [failures, setFailures] = useState<WaFailure[]>([]);
-  const [open, setOpen] = useState(false);
-
-  const refresh = () => {
-    void fetchWaStats().then(setStats);
-    void fetchWaFailures().then(setFailures);
-  };
-  useEffect(refresh, []);
-
-  const pill = (label: string, value: number, tone: string) => (
-    <div key={label} style={css(`flex:1;min-width:74px;border:1px solid var(--ag-border-soft);border-radius:12px;padding:10px 12px;background:var(--ag-surface-2);`)}>
-      <div style={css(`font-size:18px;font-weight:900;color:${tone};line-height:1.2;`)}>{value}</div>
-      <div style={css(`font-size:11px;font-weight:700;color:${T.muted};margin-top:2px;`)}>{label}</div>
-    </div>
-  );
-
-  return (
-    <Card>
-      <div style={css('display:flex;align-items:center;gap:14px;')}>
-        <div style={css(`width:44px;height:44px;border-radius:13px;background:${on ? 'var(--ag-ok-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;flex:none;`)}>
-          <Icon name="chat" size={22} color={on ? 'var(--ag-ok-text)' : T.muted} />
-        </div>
-        <div style={css('flex:1;min-width:0;')}>
-          <div style={css('font-weight:800;font-size:14.5px;')}>WhatsApp order updates</div>
-          <div style={css(`font-size:12.5px;color:${T.muted};margin-top:2px;line-height:1.55;`)}>
-            Confirmation, shipped, delivered and refund messages to buyers, and new-order,
-            payout and low-stock alerts to sellers. While this is off, messages are still
-            queued but nothing is sent — so you can check the queue before going live.
-          </div>
-        </div>
-        <Toggle on={on} onChange={onChange} label="WhatsApp order updates" />
-      </div>
-
-      {stats && (
-        <>
-          <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;')}>
-            {pill('Waiting', stats.queued, 'var(--ag-ink)')}
-            {pill('Sent', stats.sent, 'var(--ag-ok-text)')}
-            {pill('Failed', stats.failed, stats.failed > 0 ? 'var(--ag-crimson)' : T.muted)}
-            {pill('Opted out', stats.suppressed, T.muted)}
-            {/* Queued past its usefulness and dropped — a spike here means the
-                drainer stopped running, not that Meta refused anything. */}
-            {pill('Expired', stats.stale, T.muted)}
-          </div>
-
-          <div style={css('display:flex;align-items:center;gap:12px;margin-top:12px;')}>
-            <span style={css(`flex:1;font-size:11.5px;color:${T.muted};font-weight:600;`)}>
-              {stats.newest ? `Latest queued ${new Date(stats.newest).toLocaleString('en-IN')}` : 'Nothing queued yet.'}
-            </span>
-            {failures.length > 0 && (
-              <GhostButton onClick={() => setOpen((v) => !v)}>
-                {open ? 'Hide failures' : `Show ${failures.length} failure${failures.length === 1 ? '' : 's'}`}
-              </GhostButton>
-            )}
-            <GhostButton onClick={refresh}>Refresh</GhostButton>
-          </div>
-        </>
-      )}
-
-      {open && failures.map((f) => (
-        <div key={f.id} style={css('border-top:1px solid var(--ag-border-soft);padding:10px 0;')}>
-          <div style={css('display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;')}>
-            <span style={css('font-weight:700;font-size:12.5px;')}>{f.template}</span>
-            <span style={css(`font-size:11.5px;color:${T.muted};font-weight:600;`)}>
-              {f.recipient_masked} · {f.audience} · {f.attempts} attempt{f.attempts === 1 ? '' : 's'} · {new Date(f.created_at).toLocaleString('en-IN')}
-            </span>
-          </div>
-          {/* Meta's own words, verbatim. Paraphrasing an API error is how the
-              actual cause gets lost between here and the fix. */}
-          <div style={css('font-size:11.5px;color:var(--ag-crimson);margin-top:3px;font-weight:600;word-break:break-word;')}>{f.last_error ?? 'No error recorded'}</div>
-        </div>
-      ))}
-    </Card>
-  );
-}
-
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <div style={css('display:flex;align-items:center;gap:9px;flex:none;')}>
-      <span style={css(`font-size:11.5px;font-weight:800;letter-spacing:.03em;color:${on ? 'var(--ag-crimson)' : T.muted};`)}>
-        {on ? 'ON' : 'OFF'}
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        onClick={() => onChange(!on)}
-        style={css(`width:50px;height:29px;border-radius:99px;border:none;cursor:pointer;flex:none;padding:3px;display:flex;justify-content:${on ? 'flex-end' : 'flex-start'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};transition:.15s;`)}
-      >
-        <span style={css('width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);')} />
-      </button>
-    </div>
   );
 }
