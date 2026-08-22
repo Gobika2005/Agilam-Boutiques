@@ -173,6 +173,31 @@ const COMING_SOON_TTL_MS = 10_000;
 let comingSoonCache = { at: 0, on: false };
 
 /**
+ * Force coming-soon ON for this deployment, ignoring the database.
+ *
+ * WHY THIS EXISTS
+ * The real switch is a row in `platform_settings`, and preview deployments read
+ * the SAME Supabase project as production. That makes the database flag
+ * untestable by definition: turning it on to see the page on a preview URL
+ * takes the live marketplace down at the same moment. This variable is the way
+ * to rehearse the whole thing — the block, the 503, the admin bypass, the page
+ * itself — against a preview deploy while production carries on selling.
+ *
+ * IGNORED IN PRODUCTION, ON PURPOSE
+ * Not a stylistic choice: an env var that could hide production would be a
+ * lock-out with no key. It beats the database, so the admin toggle could not
+ * switch it back off — undoing it would mean editing Vercel settings and
+ * waiting for a redeploy, with the shop dark throughout. Refusing it in
+ * production means the only thing that can hide the live site is the toggle
+ * that can also un-hide it.
+ *
+ * Set `COMING_SOON=1` in Vercel, scoped to the Preview environment only.
+ */
+const COMING_SOON_FORCED =
+  VERCEL_ENV !== "production" &&
+  ["1", "true", "on", "yes"].includes((process.env.COMING_SOON || "").trim().toLowerCase());
+
+/**
  * Is the public site currently hidden?
  *
  * FAILS OPEN, DELIBERATELY. A database timeout, a missing migration 0096, a
@@ -183,6 +208,9 @@ let comingSoonCache = { at: 0, on: false };
  * not a security control, and nothing behind it depends on it.
  */
 async function isComingSoon() {
+  // Forced on for a preview deploy — skip the round trip entirely, and stay
+  // deterministic no matter what the shared database currently says.
+  if (COMING_SOON_FORCED) return true;
   const now = Date.now();
   if (now - comingSoonCache.at < COMING_SOON_TTL_MS) return comingSoonCache.on;
   const { ok, rows } = await dbTry("platform_settings?id=eq.1&select=coming_soon");
