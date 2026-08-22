@@ -29,7 +29,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0094`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0095`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b`, `0077a`/`0077b` and `0078a`/`0078b` are pairs that each
@@ -103,6 +103,12 @@ goods − commission to the seller after delivery.
 
 ## Working style
 
+- **Commit to `Selvakumar`, never to `main`.** `main` is production — Vercel
+  deploys it, and only the owner pushes there. All session work lands on the
+  `Selvakumar` staging branch; the owner reviews it and merges to `main` when
+  they choose. An employee works on `work/<name>` branches and opens PRs into
+  `Selvakumar`. See `docs/setup/TEAM_GIT_WORKFLOW.md`. (This replaced the old
+  single-author "commit straight to main" rule on 2026-08-22.)
 - The user applies migrations and holds the env secrets. Flag what needs their hand.
 - Reports go in dated markdown under `docs/archive/<YYYY-MM>/` (`*_QA_REPORT.md`, `*_AUDIT.md`).
   The repo root holds only `README.md` and `CLAUDE.md` — keep it that way.

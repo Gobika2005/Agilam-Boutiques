@@ -1,0 +1,113 @@
+# CI gate for employee work.
+#
+# Runs on every PR into main or Selvakumar, and on every push to a work branch.
+# A red check is the signal not to spend review time on the diff yet.
+#
+# Secrets are deliberately split by blast radius:
+#   - lint and build need NO secrets (build only needs a throwaway admin path)
+#   - verify-seo needs the Supabase anon key, which is public by design
+#     (Vite inlines it into the shipped bundle), so it is safe in Actions.
+# The service-role key, Razorpay secrets and the REAL VITE_ADMIN_PATH are
+# never referenced here and must never be added as Actions secrets — a
+# collaborator with write access can run a workflow that prints them.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, Selvakumar]
+  push:
+    branches: [Selvakumar, 'work/**', 'feat/**', 'fix/**']
+
+# A second push to the same branch cancels the first — saves Actions minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: eslint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  build:
+    name: typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # vite.config.ts throws if VITE_ADMIN_PATH is missing. We only need to
+      # prove the code COMPILES, and this bundle is never published, so a
+      # throwaway segment is correct here — do not put the real one in secrets.
+      - run: npm run build
+        env:
+          VITE_ADMIN_PATH: ci-build-only
+
+  migrations:
+    name: migration numbering
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Migrations are hand-applied in order and never renumbered after the
+      # fact, so two branches claiming the same number is a merge-time trap.
+      # Exempted history:
+      #   0068a/b, 0077a/b, 0078a/b - intentional pairs, apply a before b.
+      #   0092                      - an ACCIDENTAL collision already in main
+      #                               (order_replay_and_wa_enqueue_lockdown +
+      #                               whatsapp_more_events). Left as-is because
+      #                               renumbering an applied migration desyncs
+      #                               the hand-applied history.
+      # Do not add to this list to make a new collision go away - rebase and
+      # take the next free number instead.
+      - name: Reject duplicate migration numbers
+        run: |
+          dupes=$(ls supabase/migrations \
+            | grep -oE '^[0-9]{4}' \
+            | sort | uniq -d \
+            | grep -vE '^(0068|0077|0078|0092)$' || true)
+          if [ -n "$dupes" ]; then
+            echo "::error::Duplicate migration number(s): $dupes"
+            echo "Migrations are applied by hand in order and are never renumbered."
+            echo "Rebase onto the target branch and take the next free number."
+            exit 1
+          fi
+          echo "Migration numbering OK. Highest: $(ls supabase/migrations | grep -oE '^[0-9]{4}' | sort | tail -1)"
+
+  seo:
+    name: crawler-visible SEO
+    runs-on: ubuntu-latest
+    # Forks cannot read secrets, so this job would always fail there. Skip it
+    # rather than show a permanently red check on a fork PR.
+    if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Skip if Supabase secrets are not configured
+        id: guard
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VITE_SUPABASE_URL secret not set — skipping verify:seo."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.configured == 'true'
+        run: npm run verify:seo
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ADMIN_PATH: ci-build-only

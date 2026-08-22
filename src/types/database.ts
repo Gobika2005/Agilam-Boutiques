@@ -638,6 +638,11 @@ export interface Database {
            *  a settlement lock. */
           payout_sla_hours: number;
           maintenance_mode: boolean;
+          /** Coming-soon mode (migration 0096). True makes middleware.js serve
+           *  the launching-soon page with HTTP 503 for every public path; the
+           *  admin console is exempt so the switch stays reachable. Stronger
+           *  than `maintenance_mode`, which only adds a banner. */
+          coming_soon: boolean;
           support_email: string;
           /** Which Razorpay merchant account collects money (migration 0064).
            *  Names an env-var slot, never a key. */

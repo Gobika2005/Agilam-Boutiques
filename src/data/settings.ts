@@ -48,6 +48,11 @@ export interface PlatformSettings {
    *  outbox filling and unsent — the triggers always queue, so the queue can be
    *  inspected before a single message goes out. */
   whatsapp_enabled: boolean;
+  /** Coming-soon mode (migration 0096). True takes the storefront and the
+   *  seller console off the air behind a "launching soon" page, served by
+   *  middleware.js at the edge with HTTP 503. Distinct from `maintenance_mode`,
+   *  which only adds a banner to a site that keeps working. */
+  coming_soon: boolean;
   updated_at: string | null;
 }
 
@@ -62,6 +67,11 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   // Off until the Meta credentials are set and the templates are approved. A
   // deployment without migration 0090 also lands here, and must stay off.
   whatsapp_enabled: false,
+  // Off unless the database says otherwise. A deployment without migration 0096
+  // has no such column, `merge()` keeps this default, and the site stays up —
+  // failing OPEN is right here: the alternative is a missing migration hiding a
+  // live marketplace behind a launch page.
+  coming_soon: false,
   updated_at: null,
 };
 
@@ -149,6 +159,41 @@ export async function setRazorpayAccount(account: RazorpayAccount, updatedBy?: s
     return { ok: false, error: 'Could not switch the payment account. Please try again.' };
   }
   publish({ ...current, razorpay_account: account });
+  return { ok: true };
+}
+
+/**
+ * Put the public site behind the coming-soon page, or take it back off.
+ *
+ * Its own write, for both of `setRazorpayAccount`'s reasons:
+ *
+ *   • It takes effect the moment it is tapped, not when someone remembers to
+ *     press "Save changes" — and it must not ride along with an unrelated
+ *     half-finished edit to the commission rate.
+ *   • It writes a column added in migration 0096. Sent inside the main settings
+ *     patch, a database that has not run 0096 yet would fail the ENTIRE form,
+ *     taking commission, the return window and the payout hold down with it.
+ *     Isolated, a missing column breaks only this switch — and says so.
+ *
+ * The edge reads `platform_settings` directly on the next request, so the site
+ * goes dark (or comes back) without a redeploy. Give the CDN a moment: the
+ * shell is cached, so a page or two may still serve from the edge cache.
+ */
+export async function setComingSoon(on: boolean, updatedBy?: string | null): Promise<SaveResult> {
+  const { error } = await supabase
+    .from('platform_settings')
+    .update({ coming_soon: on, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null })
+    .eq('id', 1);
+  if (error) {
+    if (isMissingTable(error)) return { ok: false, error: 'Settings are not enabled yet — apply migration 0048.' };
+    // PGRST204 = "column not found in schema cache", i.e. 0096 hasn't been run.
+    if (error.code === 'PGRST204' || /coming_soon/i.test(error.message ?? '')) {
+      return { ok: false, error: 'Coming-soon mode needs migration 0096 applied first.' };
+    }
+    console.error('setComingSoon failed:', error.message);
+    return { ok: false, error: 'Could not change coming-soon mode. Please try again.' };
+  }
+  publish({ ...current, coming_soon: on });
   return { ok: true };
 }
 

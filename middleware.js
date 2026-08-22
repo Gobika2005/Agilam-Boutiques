@@ -157,6 +157,126 @@ function notFoundMeta() {
     notFound: true
   };
 }
+/* ────────────────────────────────────────────────────────────────────────────
+ * Coming-soon mode (migration 0096)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * How long the edge may keep serving a stale answer for "is the site hidden?".
+ *
+ * Every request would otherwise cost a round trip to Postgres before a single
+ * byte reaches the browser. Ten seconds is short enough that flipping the switch
+ * looks instant to the person who flipped it, and long enough that a burst of
+ * traffic does not turn into a burst of database reads.
+ */
+const COMING_SOON_TTL_MS = 10_000;
+let comingSoonCache = { at: 0, on: false };
+
+/**
+ * Is the public site currently hidden?
+ *
+ * FAILS OPEN, DELIBERATELY. A database timeout, a missing migration 0096, a
+ * revoked grant — every one of them returns false and serves the real site. The
+ * alternative is a transient Supabase blip taking a live marketplace off the
+ * air, which is a far worse failure than a few seconds of the site staying up
+ * when it should have been hidden. The switch is for a pre-launch site; it is
+ * not a security control, and nothing behind it depends on it.
+ */
+async function isComingSoon() {
+  const now = Date.now();
+  if (now - comingSoonCache.at < COMING_SOON_TTL_MS) return comingSoonCache.on;
+  const { ok, rows } = await dbTry("platform_settings?id=eq.1&select=coming_soon");
+  // Only a query that actually succeeded is allowed to change the answer, and
+  // only a literal `true` turns it on: a 400 for an unknown column (0096 not
+  // applied) leaves the previous value rather than reading as "off then on".
+  const on = ok && rows[0]?.coming_soon === true;
+  comingSoonCache = { at: now, on: ok ? on : false };
+  return comingSoonCache.on;
+}
+
+/**
+ * Paths that still work while the site is hidden.
+ *
+ * The admin console is the important one and it is not a convenience: the
+ * toggle lives inside the console, so hiding the console would leave nobody
+ * able to turn it back off.
+ *
+ * `/auth/` is here because password-reset and OAuth callbacks land there — an
+ * admin who has to reset a password mid-blackout would otherwise be stopped at
+ * the door. Letting a buyer sign in changes nothing: every page they could go
+ * on to open is still behind the gate.
+ *
+ * Static assets never reach this code at all — the `config.matcher` at the top
+ * of this file already excludes anything with a file extension — so the
+ * console's own JavaScript and CSS load normally.
+ */
+function bypassesComingSoon(pathname) {
+  return (
+    pathname === `/${ADMIN_SEGMENT}` ||
+    pathname.startsWith(`/${ADMIN_SEGMENT}/`) ||
+    pathname.startsWith("/auth/")
+  );
+}
+
+/**
+ * The page itself.
+ *
+ * Written as one self-contained document with inline CSS — it must render with
+ * no build output, no bundle and no second request, because the whole point is
+ * that the application is not being served. Colours are literal here for the
+ * same reason: the `--ag-*` token layer lives in a stylesheet this page does
+ * not load. It is theme-aware through `prefers-color-scheme` instead.
+ */
+function comingSoonHtml(origin) {
+  const wa = "https://wa.me/919344294969";
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${SITE_NAME} — Launching soon</title>
+<meta name="description" content="${SITE_NAME} is launching soon. Handpicked Indian ethnic wear from independent boutiques.">
+<!-- Not indexable while hidden: the 503 below already tells a crawler to come
+     back, and this makes sure the holding page itself never becomes the result
+     anyone finds for the brand. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #FBF6F2; color: #241019;
+  }
+  .wrap { max-width: 420px; }
+  img { width: 112px; height: auto; margin: 0 auto 28px; display: block; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 0 0 12px; font-weight: 800; letter-spacing: -.01em; }
+  p { font-size: 15px; line-height: 1.65; margin: 0 0 28px; color: #775D66; }
+  a.cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 22px; border-radius: 999px; text-decoration: none;
+    background: #B02454; color: #fff; font-weight: 700; font-size: 14.5px;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #120A0E; color: #F7ECF0; }
+    p { color: #A98D99; }
+    a.cta { background: #E85088; color: #120A0E; }
+  }
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <img src="${origin}/mangaimart-logo.png" alt="${SITE_NAME}">
+    <h1>Launching soon</h1>
+    <p>${SITE_NAME} is getting ready — handpicked Indian ethnic wear from independent boutiques. We&rsquo;ll be open very shortly.</p>
+    <a class="cta" href="${wa}" rel="noopener">Chat with us on WhatsApp</a>
+  </main>
+</body>
+</html>`;
+}
+
 /**
  * One PostgREST read, reporting whether it actually succeeded.
  *
@@ -2235,6 +2355,33 @@ export default async function middleware(request) {
         }
       });
     }
+    // ── Coming-soon mode ────────────────────────────────────────────────────
+    //
+    // Sits AFTER robots.txt and BEFORE everything else on purpose.
+    //
+    // robots.txt keeps answering 200 so a crawler can still read the rules —
+    // 503-ing it makes Google pause crawling the domain wholesale, which is a
+    // bigger hammer than this needs. Everything below, sitemaps and the
+    // merchant feed included, goes dark: advertising URLs that all answer 503
+    // is worse than advertising none.
+    //
+    // 503 + Retry-After, never 200. A holding page served as 200 tells Google
+    // the real pages have been REPLACED, and it will drop them from the index;
+    // 503 says "temporarily unavailable" and the existing rankings survive.
+    if (!bypassesComingSoon(pathname) && (await isComingSoon())) {
+      return new Response(comingSoonHtml(origin), {
+        status: 503,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "retry-after": "3600",
+          // Never let a CDN or a browser hold on to the holding page: the moment
+          // the switch goes off, the next request must get the real site.
+          "cache-control": "no-store, must-revalidate",
+          "x-robots-tag": "noindex"
+        }
+      });
+    }
+
     const sitemapHeaders = {
       "content-type": "application/xml; charset=utf-8",
       "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}, stale-while-revalidate=86400`

@@ -4,7 +4,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import {
-  fetchSettings, saveSettings, setRazorpayAccount,
+  fetchSettings, saveSettings, setRazorpayAccount, setComingSoon,
   type PlatformSettings, type RazorpayAccount,
 } from '@/data/settings';
 import { logAdminAction } from '@/data/activityLog';
@@ -68,7 +68,12 @@ export function Settings() {
     // immediate write (see PaymentAccountCard), so an emergency switch never
     // waits on "Save changes", and a deployment without migration 0064 can still
     // save commission and fees.
-    const { updated_at: _u, razorpay_account: _r, ...patch } = form;
+    //
+    // `coming_soon` is left out for exactly the same two reasons (see
+    // ComingSoonCard and `setComingSoon`). Sending it here would also mean a
+    // database without migration 0096 could no longer save the commission rate
+    // at all — the whole form would fail on the one unknown column.
+    const { updated_at: _u, razorpay_account: _r, coming_soon: _c, ...patch } = form;
     const res = await saveSettings(patch, profile?.id);
     setSaving(false);
     if (!res.ok) { showToast(res.error); return; }
@@ -110,6 +115,8 @@ export function Settings() {
           <Toggle on={form.maintenance_mode} onChange={(v) => set('maintenance_mode', v)} label="Maintenance mode" />
         </div>
       </Card>
+
+      <ComingSoonCard initial={form.coming_soon} />
 
       <PaymentAccountCard initial={form.razorpay_account} />
 
@@ -171,6 +178,85 @@ export function Settings() {
         </button>
       </div>
     </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Coming-soon mode
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Takes the public site off the air behind a "launching soon" page.
+ *
+ * NOT the same switch as maintenance mode above it. That one leaves the site
+ * working and adds a banner; this one replaces the site. Two switches because
+ * merging them would mean losing the banner the moment you wanted the harder
+ * mode.
+ *
+ * Saves on tap rather than through the form's Save button — see `setComingSoon`
+ * for why it must be its own write. Turning it ON asks first: it hides the
+ * marketplace from every buyer and seller on the platform, and that is not
+ * something to do with a mis-tap. Turning it OFF is immediate, because nobody
+ * needs protecting from putting their shop back.
+ *
+ * The console itself is never hidden — the edge exempts the admin segment — so
+ * this card is always reachable to undo.
+ */
+function ComingSoonCard({ initial }: { initial: boolean }) {
+  const { showToast } = useShop();
+  const { profile } = useAuth();
+  const [on, setOn] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const apply = async (next: boolean) => {
+    setBusy(true);
+    const res = await setComingSoon(next, profile?.id);
+    setBusy(false);
+    setConfirming(false);
+    if (!res.ok) { showToast(res.error); return; }
+    setOn(next);
+    showToast(next ? 'Site hidden — visitors now see the coming-soon page' : 'Site is live again');
+    void logAdminAction({
+      actor_id: profile?.id,
+      actor_name: profile?.full_name ?? 'Admin',
+      action: next ? 'settings.coming_soon_on' : 'settings.coming_soon_off',
+      entity_type: 'settings',
+    });
+  };
+
+  return (
+    <Card style={on ? 'border:1.5px solid var(--ag-crimson);' : ''}>
+      <div style={css('display:flex;align-items:center;gap:14px;')}>
+        <div style={css(`width:44px;height:44px;border-radius:13px;background:${on ? 'var(--ag-bad-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;flex:none;`)}>
+          <Icon name="visibility_off" size={24} color={on ? 'var(--ag-bad-text)' : T.muted} />
+        </div>
+        <div style={css('flex:1;min-width:0;')}>
+          <div style={css('font-weight:800;font-size:14.5px;')}>Coming soon mode</div>
+          <div style={css(`font-size:12.5px;color:${T.muted};margin-top:2px;line-height:1.55;`)}>
+            {on
+              ? 'The storefront and seller console are hidden. Everyone sees the launching-soon page. This console stays open.'
+              : 'Hide the storefront and seller console behind a launching-soon page. This console stays open, so you can switch it back.'}
+          </div>
+        </div>
+        <Toggle
+          on={on}
+          onChange={(v) => (v ? setConfirming(true) : void apply(false))}
+          label="Coming soon mode"
+        />
+      </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title="Hide the whole site?"
+        message="Every buyer and seller will see the launching-soon page instead of the marketplace. Nobody can browse, order or manage a shop until you switch this back off. The admin console stays reachable."
+        confirmLabel="Hide the site"
+        danger
+        busy={busy}
+        onConfirm={() => void apply(true)}
+        onCancel={() => setConfirming(false)}
+      />
+    </Card>
   );
 }
 

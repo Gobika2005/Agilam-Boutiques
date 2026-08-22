@@ -86,38 +86,50 @@ either, so you can run it as often as you like.
 
 ---
 
-## 3. Schedule it  ⟵ *your hand, once, in the SQL editor*
+## 3. Schedule it  ✅ *done 22 Aug 2026*
+
+`cron.job` id **4**, `daily-report`, `30 1 * * *`, active — 01:30 UTC = 07:00 IST.
+pg_cron schedules in UTC and India has no daylight saving, so this never needs
+revisiting. Registered from `supabase/migrations/0094_schedule_daily_report.sql`.
+
+Check it is still there, and whether it ran:
 
 ```sql
-select cron.schedule('daily-report', '30 1 * * *', $$
-  select net.http_post(
-    url := 'https://<project-ref>.supabase.co/functions/v1/daily-report',
-    headers := '{"Authorization":"Bearer <service-role-key>"}'::jsonb
-  );
-$$);
+select jobname, schedule, active from cron.job where jobname = 'daily-report';
+
+select status, return_message, start_time
+from cron.job_run_details
+where jobid = (select jobid from cron.job where jobname = 'daily-report')
+order by start_time desc limit 7;
 ```
 
-01:30 UTC = 07:00 IST. pg_cron runs in UTC and does not follow IST — India has
-no daylight saving, so this never needs revisiting.
+`cron.job_run_details` tells you whether pg_cron *fired*; `report_runs` (below)
+tells you whether the mail actually went out. They answer different questions —
+a job that fired and a report that sent are not the same thing.
 
-Check it registered: `select * from cron.job where jobname = 'daily-report';`
+## 4. The Windows task — the backup  ✅ *done 22 Aug 2026*
 
----
+Daily at **07:45**, repeating **hourly for 12 hours**, hidden window, WakeToRun,
+10-minute kill limit, 3 restarts on failure. Runs `--ensure`, which asks the
+database whether the report already went out and exits 0 doing nothing if it
+did — so on a normal morning it writes one line to `daily-report.log` and stops.
 
-## 4. Repoint the Windows task  ⟵ *your hand*
+The 45-minute gap after the cloud run is deliberate: a cloud run that claimed the
+day and then died mid-send releases its claim after 25 minutes, and the fallback
+has to start *after* that window, not inside it.
 
-`scripts/daily-report.cmd` now runs `--ensure` instead of `--send`. Change the
-existing **Agilam Daily Report** task to start at **07:45** local (Task
-Scheduler → the task → Triggers → Edit). Leave everything else alone.
+The hourly repeat and the hidden window are not belt-and-braces — they are the
+scars from three consecutive missed mornings, all of them the machine's fault
+rather than the report's:
 
-`--ensure` asks the database whether the report already went out and exits 0
-doing nothing if it did — so on a normal morning this task writes one line to
-`daily-report.log` and stops. It only sends when the cloud run did not report
-success. Running it by hand at any hour is harmless.
+| Date | Failure | Exit code |
+|---|---|---|
+| 20 Aug | machine asleep at 07:00, ran late at 08:17 | 0 (sent) |
+| 21 Aug | claimed the day, then hung on a half-open socket | `0x41306` terminated |
+| 22 Aug | console closed mid-run, died before writing a log line | `0xC000013A` Ctrl-C |
 
-The 45-minute gap is deliberate: a cloud run that claimed the day and then died
-mid-send releases its claim after 25 minutes, and the fallback has to start
-after that window, not inside it.
+Hence: timeouts on every fetch, a hidden window with no console to close, and
+twelve chances a day instead of one.
 
 ---
 
