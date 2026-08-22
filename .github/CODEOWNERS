@@ -1,0 +1,36 @@
+# Anything touching money, auth or the schema lands on the owner's desk loudly,
+# so it cannot slip past inside a 40-file diff.
+#
+# NOTE: this file only AUTO-REQUESTS review by default. It becomes a hard gate
+# only when the main ruleset has "Require review from Code Owners" enabled.
+
+# Default: owner reviews everything.
+*                                   @ssk6379007829-beep
+
+# --- Money -------------------------------------------------------------
+# The client and server pricing mirrors must change together or legitimate
+# checkouts start failing on the paise assertion in place-order.
+/src/lib/pricing.ts                 @ssk6379007829-beep
+/api/_pricing.js                    @ssk6379007829-beep
+/api/place-order.js                 @ssk6379007829-beep
+/api/create-order.js                @ssk6379007829-beep
+/api/razorpay-webhook.js            @ssk6379007829-beep
+/api/_settings.js                   @ssk6379007829-beep
+/src/data/settings.ts               @ssk6379007829-beep
+/src/lib/deliveryZone.ts            @ssk6379007829-beep
+
+# --- Security boundary --------------------------------------------------
+# RLS is the security boundary, not client-side checks. A policy with no TO
+# clause attaches to anon; one calling a helper anon cannot execute fails the
+# whole read 42501 (this blanked the storefront once already).
+/supabase/migrations/               @ssk6379007829-beep
+/supabase/functions/                @ssk6379007829-beep
+/supabase/seed.sql                  @ssk6379007829-beep
+/src/lib/adminPath.ts               @ssk6379007829-beep
+/middleware.js                      @ssk6379007829-beep
+
+# --- Config that can leak or break the build ----------------------------
+/.env.example                       @ssk6379007829-beep
+/.github/                           @ssk6379007829-beep
+/vercel.json                        @ssk6379007829-beep
+/vite.config.ts                     @ssk6379007829-beep
