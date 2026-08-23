@@ -6,8 +6,9 @@
 --
 -- Order of operations:
 --   1. apply 0099, deploy the app
---   2. every admin/staff signs in and enrols an authenticator app
---      (console -> Security, or the screen the console now shows them)
+--   2. every admin/staff signs in and enrols an authenticator app. There is no
+--      Security page to visit — the console shows the enrolment screen by
+--      itself to any session that has not been verified.
 --   3. apply this file. It checks step 2 actually happened and stops if not.
 --
 -- == HOW THIS ENFORCES 2FA ACROSS ~72 POLICY CLAUSES BY CHANGING TWO FUNCTIONS =

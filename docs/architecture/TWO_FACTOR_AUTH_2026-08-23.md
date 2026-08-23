@@ -184,6 +184,32 @@ console keeps asking for a code; it just stops being the database that insists.
 
 ---
 
+## Where 2FA appears in the UI
+
+There are three places, and only one of them is a page you navigate to.
+
+1. **The gate** — not a menu item. `RequireRole` hands any unverified console
+   session to `RequireMfa`, which renders the QR (no authenticator yet) or the
+   keypad (has one) *in place of* the console. You do not find it; it finds you.
+2. **"Your security" card** — admin **Settings**, top of the page, and
+   **StaffHome** for employees. Staff cannot open Settings (`STAFF_ROUTES`), so
+   the same component is mounted in both rather than living somewhere half the
+   console cannot reach. Shows registered devices, backup codes remaining,
+   Regenerate, and Add a device.
+3. **Users → `lock_reset`** — resets somebody *else's* 2FA. Hidden for your own
+   row, and only shown for admin/staff who are actually enrolled, so it is
+   invisible everywhere until people start enrolling.
+
+### There is no "turn two-factor off"
+
+Deliberate, and the one piece of this worth not "fixing" later. After 0100 an
+account with no verified factor can never reach `aal2`, and the console requires
+`aal2` — so a disable button is a silent, permanent self-lockout whose only
+remedy is pasting the rollback SQL into the Supabase editor. `removeAuthenticator`
+drops a **spare** device and refuses to remove the last one. Clearing a factor
+for real is an admin action against someone else's account, through
+`mfa-recovery`, where the person doing it still has a working console.
+
 ## Recovery paths, in the order to try them
 
 1. **Backup code** — on the challenge screen, "Lost your phone? Use a backup
@@ -212,6 +238,7 @@ automatically on their next successful challenge.
 | `src/lib/mfa.ts` | Client wrapper over `supabase.auth.mfa` |
 | `src/components/auth/MfaGate.tsx` | Enrol / challenge / recover screen |
 | `src/components/auth/MfaStepUp.tsx` | Inline gate for the seller bank block |
+| `src/components/admin/SecurityCard.tsx` | "Your security" — devices, backup codes, add a device. Mounted on Settings **and** StaffHome |
 | `src/auth/RequireMfa.tsx` | Console gate, wired into `RequireRole` |
 
 The gate is lazily loaded and builds to its own ~8.8 kB chunk, so none of it

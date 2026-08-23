@@ -173,6 +173,7 @@ const Deliveries = lazyNamed(() => import('@/pages/admin/Deliveries'), 'Deliveri
 const AdminSearch = lazyNamed(() => import('@/pages/admin/AdminSearch'), 'AdminSearch');
 const Feedback = lazyNamed(() => import('@/pages/admin/Feedback'), 'Feedback');
 const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Settings');
+const AdminProfile = lazyNamed(() => import('@/pages/admin/Profile'), 'Profile');
 const StaffHome = lazyNamed(() => import('@/pages/admin/StaffHome'), 'StaffHome');
 const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
 
@@ -450,6 +451,10 @@ export default function App() {
             for months, so bookmarks and old notification links exist. */}
         <Route path="reports" element={<Navigate to={adminPath('overview')} replace />} />
         <Route path="payments" element={<Payments />} />
+        {/* The sidebar calls this screen "Payouts", and so did the daily
+            report's Settle link until 0101 — every one of those emails is still
+            in an inbox. Cheaper to answer the old URL than to leave it 404ing. */}
+        <Route path="payouts" element={<Navigate to={adminPath('payments')} replace />} />
         {/* The outgoing side of the ledger — spends with their receipts (0056). */}
         <Route path="expenses" element={<Expenses />} />
         <Route path="whatsapp" element={<WhatsAppLog />} />
@@ -467,6 +472,10 @@ export default function App() {
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="audit" element={<Audit />} />
         <Route path="settings" element={<AdminSettings />} />
+        {/* Reached from the header avatar, not the sidebar — hence its OFF_NAV
+            entry in AdminLayout. Open to staff as well (STAFF_ROUTES): it is
+            their own account, with no platform data on it. */}
+        <Route path="profile" element={<AdminProfile />} />
         {/* "See all results" from the header search box. */}
         <Route path="search" element={<AdminSearch />} />
       </Route>

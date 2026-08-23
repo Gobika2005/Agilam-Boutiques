@@ -116,20 +116,57 @@ export async function verifiedFactorId(): Promise<string | null> {
   return data?.totp?.find((f) => f.status === 'verified')?.id ?? null;
 }
 
-/**
- * Turn 2FA off for the signed-in user.
- *
- * Supabase requires aal2 to unenrol a verified factor, which is the correct
- * behaviour and worth not working around: without it, a stolen aal1 session
- * could strip the protection it had just been stopped by.
- */
-export async function disableMfa(): Promise<void> {
+export type Authenticator = { id: string; name: string; createdAt: string | null };
+
+/** The registered authenticators, for the Security card's device list. */
+export async function listAuthenticators(): Promise<Authenticator[]> {
   const { data } = await supabase.auth.mfa.listFactors();
-  for (const factor of data?.all ?? []) {
-    const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
-    if (error) throw new Error(friendlyMfaError(error.message));
-  }
+  return (data?.totp ?? [])
+    .filter((f) => f.status === 'verified')
+    .map((f) => ({ id: f.id, name: f.friendly_name || 'Authenticator', createdAt: f.created_at ?? null }));
 }
+
+/**
+ * Remove ONE authenticator — the lost-laptop case, where the account still has
+ * another device registered.
+ *
+ * Refuses to remove the last one, and that guard is the important part of this
+ * function. After migration 0100 an account with no verified factor can never
+ * reach aal2, and `is_admin()` requires aal2, so "turn off my 2FA" from inside
+ * the console is a permanent self-lockout with no error message — the console
+ * simply stops returning data on the next sign-in. The only way back would be
+ * the rollback SQL in 0100.
+ *
+ * So there is deliberately no "turn 2FA off" anywhere in the console. Removing
+ * a spare device is safe and useful; removing your only one is not an action
+ * this app offers.
+ */
+export async function removeAuthenticator(factorId: string): Promise<void> {
+  const factors = await listAuthenticators();
+  if (factors.length <= 1) {
+    throw new Error(
+      'This is your only authenticator. Add a second device before removing this one — an account with no authenticator cannot open the console at all.',
+    );
+  }
+  const { error } = await supabase.auth.mfa.unenroll({ factorId });
+  if (error) throw new Error(friendlyMfaError(error.message));
+}
+
+/*
+ * There is deliberately no `disableMfa()`.
+ *
+ * An earlier draft had one, and it was a trap. After migration 0100 an account
+ * with no verified factor can never reach aal2, and `is_admin()`/`is_staff()`
+ * require aal2 — so "turn off my two-factor" is a silent, permanent lockout
+ * from the console, recoverable only by pasting 0100's rollback SQL into the
+ * Supabase editor. Supabase's own aal2 requirement for unenrolling does not
+ * help: the session doing the damage is aal2 by definition.
+ *
+ * `removeAuthenticator` above covers the legitimate case (drop a spare device)
+ * and refuses to remove the last one. Clearing a factor for real is an admin
+ * action against SOMEBODY ELSE's account, through `mfa-recovery`, where the
+ * person still has a working console to fix it from.
+ */
 
 /**
  * Issue ten fresh single-use backup codes, invalidating any earlier set.

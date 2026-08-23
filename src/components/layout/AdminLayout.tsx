@@ -47,6 +47,7 @@ const NAV = [
 const OFF_NAV = [
   { label: 'Notifications', icon: 'notifications', to: adminPath('notifications'), title: 'Notifications', sub: 'Alerts across the marketplace' },
   { label: 'Search', icon: 'search', to: adminPath('search'), title: 'Search', sub: 'Everything the console can find' },
+  { label: 'My profile', icon: 'account_circle', to: adminPath('profile'), title: 'My profile', sub: 'Your account, password and appearance' },
 ];
 
 /** Stable object identity — the search hook keys its effect on this. */
@@ -176,7 +177,17 @@ export function AdminLayout() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
               </button>
               <NotificationBellMenu viewAllTo={adminPath('notifications')} />
-              <button onClick={logout} title="Log out" style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}>
+              {/* The avatar opens YOUR ACCOUNT. It used to call logout(): the one
+                  control on the page showing your own name ended your session on
+                  a single stray click, with no confirmation. Logging out is now a
+                  deliberate choice on the profile page, and the sidebar and
+                  mobile tab bar keep their own Log out buttons. */}
+              <button
+                onClick={() => navigate(adminPath('profile'))}
+                title="My profile"
+                aria-label="My profile"
+                style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}
+              >
                 {initial(profile?.full_name ?? 'Admin K')}
               </button>
             </div>

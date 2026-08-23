@@ -36,6 +36,11 @@ export const STAFF_ROUTES = [
   'broadcast',
   'notifications',
   'search',
+  // Their OWN account page — name, password, theme, sign out. Nothing on it is
+  // platform data, and the avatar that opens it lives in the shared console
+  // header, so leaving it off this list would give every employee a header
+  // button that bounces them out of the page they just asked for.
+  'profile',
 ] as const;
 
 /** Console roles. Both land in the admin console; they see different amounts. */
