@@ -20,6 +20,8 @@ import {
 } from '@/components/admin/kit';
 import { Customers } from '@/pages/admin/Customers';
 import { logAdminAction } from '@/data/activityLog';
+import { adminResetMfa, enrolledUserIds } from '@/lib/mfa';
+import { isConsoleRole } from '@/lib/staffAccess';
 import {
   fetchUsers,
   setUserStatus,
@@ -138,6 +140,12 @@ function UserDirectory() {
   // sorts to the top of page 0; reload()'s background refresh can miss it if the
   // admin isn't on a freshly-loaded page 0, so we reset to page 0 and hard-reload.
   const [refreshKey, setRefreshKey] = useState(0);
+  // Who has 2FA on. Fetched once for the whole page rather than per row —
+  // `mfa_enrollment_status()` returns only the enrolled ids, so this is a small
+  // set even when the directory is not.
+  const [mfaRefreshKey, setMfaRefreshKey] = useState(0);
+  const { data: mfaOn } = useAsync(() => enrolledUserIds(), [mfaRefreshKey]);
+  const [resetMfaUser, setResetMfaUser] = useState<AdminUserRow | null>(null);
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, role, status }), [page, search, role, status]);
   const { data, loading, reload, error } = useAsync(() => fetchUsers(q), [q, refreshKey]);
   const rows = data?.rows ?? [];
@@ -213,6 +221,34 @@ function UserDirectory() {
       showFreshest();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Delete failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Clear a colleague's 2FA so they can enrol a new authenticator.
+   *
+   * The support call this answers: an admin or staff member has lost their phone
+   * AND run out of backup codes, so they cannot reach aal2, and after migration
+   * 0100 that means they cannot reach the console at all. This is the door.
+   *
+   * It is also, unavoidably, a door — which is why the Edge Function re-checks
+   * that the caller is a live admin at aal2 rather than trusting this screen,
+   * and why every use lands in the audit trail as `mfa.admin_reset`.
+   */
+  const doResetMfa = async () => {
+    if (!resetMfaUser) return;
+    setBusy(true);
+    try {
+      await adminResetMfa(resetMfaUser.id);
+      // The Edge Function writes its own audit row (it knows how many factors it
+      // actually removed), so nothing is logged from here.
+      showToast(`${resetMfaUser.full_name || 'That account'} can now set up two-factor again`);
+      setResetMfaUser(null);
+      setMfaRefreshKey((k) => k + 1);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Reset failed');
     } finally {
       setBusy(false);
     }
@@ -351,6 +387,20 @@ function UserDirectory() {
                   }}
                 />
               )}
+              {/* Reset 2FA. Offered only for console accounts that actually have
+                  a factor to clear — a buyer's optional 2FA is theirs to manage
+                  with their own backup codes, and an un-enrolled account has
+                  nothing to reset. Not offered for yourself: you would be
+                  removing the factor your current session is standing on, and
+                  the recovery path for your own phone is a backup code. */}
+              {isConsoleRole(user.role) && user.id !== profile?.id && mfaOn?.has(user.id) && (
+                <IconButton
+                  icon="lock_reset"
+                  tone="warn"
+                  title="Reset two-factor"
+                  onClick={() => setResetMfaUser(user)}
+                />
+              )}
               {/* Admins can't be deleted (change their role first); can't delete self. */}
               {user.id !== profile?.id && user.role !== 'admin' && (
                 <IconButton
@@ -447,6 +497,17 @@ function UserDirectory() {
       >
         <ReasonField value={reason} onChange={setReason} placeholder="e.g. Repeated chargebacks on delivered orders" />
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!resetMfaUser}
+        title="Reset two-factor authentication?"
+        message={`${resetMfaUser?.full_name || 'This account'} will lose their current authenticator and any unused backup codes, and will be asked to set up a new one the next time they sign in. Until they do, they cannot open the console. Only do this after you are certain who you are talking to — this is the one step that removes someone's second factor.`}
+        confirmLabel="Reset two-factor"
+        danger
+        busy={busy}
+        onConfirm={doResetMfa}
+        onCancel={() => setResetMfaUser(null)}
+      />
 
       <ConfirmDialog
         open={!!confirm}

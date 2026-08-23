@@ -1279,6 +1279,33 @@ export interface Database {
         Args: { p_id: string; p_status: string };
         Returns: unknown;
       };
+      /**
+       * Issue ten single-use 2FA backup codes, replacing any earlier set
+       * (migration 0099). Requires an aal2 session — you can only mint bypass
+       * codes for a factor you have just proved you hold.
+       *
+       * The clear-text codes are returned exactly once and stored only as
+       * sha256 hashes, so there is nowhere to read them back from.
+       */
+      mfa_backup_codes_generate: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+      /** How many unused backup codes the caller has left (migration 0099). */
+      mfa_backup_codes_remaining: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      /**
+       * Which accounts have a verified second factor (migration 0099).
+       *
+       * `auth.mfa_factors` is not readable from the browser; this is the narrow
+       * view of it the admin Users page needs to show who is enrolled.
+       */
+      mfa_enrollment_status: {
+        Args: Record<string, never>;
+        Returns: { user_id: string; verified_at: string }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
