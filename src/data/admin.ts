@@ -314,6 +314,12 @@ export interface RefundRow {
   name: string;
   boutique: string;
   total: number;
+  /** The seller's delivery charge on this order — the buyer paid it, so a
+   *  refund owes it back. */
+  shipping_fee: number;
+  /** Platform-funded coupon money the buyer never paid. Refunding it would be
+   *  handing them ours. */
+  platform_discount: number;
   status: OrderStatus;
   payment_id: string | null;
   /** Whether money actually reached us — the only thing that makes an order
@@ -322,7 +328,30 @@ export interface RefundRow {
   payment_status: PaymentStatus;
   refunded: boolean;
   refunded_at: string | null;
+  /** Razorpay's refund reference (0097). NULL on a row that was flagged by hand
+   *  before real refunds existed — which is how the console tells them apart. */
+  refund_id: string | null;
+  refund_amount: number | null;
+  refund_status: 'pending' | 'processed' | 'failed' | null;
   created_at: string;
+}
+
+/**
+ * What the buyer actually paid for this one order — and therefore what a refund
+ * has to send back.
+ *
+ * One Razorpay payment can cover several orders (a cart spanning three boutiques
+ * writes three rows against one payment), and each row carries its own slice.
+ * From api/place-order.js:669-714 that slice is `total + shipping_fee -
+ * platform_discount`: `total` alone drops the delivery charge the buyer paid and
+ * keeps the platform-funded discount they didn't.
+ *
+ * Mirrored server-side by `buyerPaidRupees` in api/_refunds.js — the server is
+ * what actually refunds, so this is a display of that number, never the source
+ * of it.
+ */
+export function buyerPaid(r: Pick<RefundRow, 'total' | 'shipping_fee' | 'platform_discount'>): number {
+  return r.total + r.shipping_fee - r.platform_discount;
 }
 
 /**
@@ -351,15 +380,13 @@ export function isRefundCandidate(r: RefundRow): boolean {
 }
 
 /**
- * The refund workbench feed — recent orders with their refund flag, so the admin
- * can see the refund history and mark refund-worthy orders (rejected/cancelled)
- * as refunded. Money movement through Razorpay is a server step; this records
- * the platform's refund decision (the `refunded` flag from migration 0006).
+ * The refund workbench feed — recent orders with their refund state, so the
+ * admin can see the history and refund the ones that fell through.
  */
 export async function fetchRefunds(): Promise<RefundRow[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, order_number, total, status, payment_id, payment_status, refunded, refunded_at, created_at, guest_name, boutique:boutiques(name), buyer:profiles!orders_buyer_id_fkey(full_name)')
+    .select('id, order_number, total, shipping_fee, platform_discount, status, payment_id, payment_status, refunded, refunded_at, refund_id, refund_amount, refund_status, created_at, guest_name, boutique:boutiques(name), buyer:profiles!orders_buyer_id_fkey(full_name)')
     .order('created_at', { ascending: false })
     .limit(150);
   if (error) throw error;
@@ -374,22 +401,64 @@ export async function fetchRefunds(): Promise<RefundRow[]> {
     name: r.buyer?.full_name ?? r.guest_name ?? 'Guest',
     boutique: r.boutique?.name ?? '—',
     total: Number(r.total),
+    shipping_fee: Number(r.shipping_fee ?? 0),
+    platform_discount: Number(r.platform_discount ?? 0),
     status: r.status,
     payment_id: r.payment_id,
     payment_status: r.payment_status ?? 'pending',
     refunded: r.refunded,
     refunded_at: r.refunded_at,
+    refund_id: r.refund_id ?? null,
+    refund_amount: r.refund_amount == null ? null : Number(r.refund_amount),
+    refund_status: r.refund_status ?? null,
     created_at: r.created_at,
   }));
 }
 
-export async function setOrderRefunded(id: string, refunded: boolean): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Issue a real refund.
+ *
+ * The money moves server-side: the browser cannot hold a Razorpay secret, and
+ * the amount must be re-derived from the order rather than trusted from here.
+ * `/api/verify-payment` re-reads the order, works out what the buyer actually
+ * paid, refunds it on whichever merchant account holds the payment, and only
+ * then records it. See api/_refunds.js.
+ */
+export async function refundOrder(id: string, reason?: string): Promise<{ ok: boolean; error?: string; refundId?: string | null }> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { ok: false, error: 'Admin session expired. Please sign in again.' };
+
+  try {
+    const res = await fetch('/api/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'refund-order', orderId: id, reason }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: body?.error ?? 'Could not issue the refund.' };
+    return { ok: true, refundId: body?.refund_id ?? null };
+  } catch (e) {
+    console.error('refundOrder failed:', e);
+    return { ok: false, error: 'Could not reach the refund service. Please try again.' };
+  }
+}
+
+/**
+ * Un-flag an order that was marked refunded BY HAND, before 0097.
+ *
+ * Deliberately not offered for a real gateway refund: once Razorpay has the
+ * instruction the money is gone, and a button that quietly implies otherwise is
+ * worse than no button. Those rows are corrected in the Razorpay dashboard.
+ */
+export async function clearLegacyRefundFlag(id: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('orders')
-    .update({ refunded, refunded_at: refunded ? new Date().toISOString() : null })
-    .eq('id', id);
+    .update({ refunded: false, refunded_at: null })
+    .eq('id', id)
+    .is('refund_id', null);
   if (error) {
-    console.error('setOrderRefunded failed:', error.message);
+    console.error('clearLegacyRefundFlag failed:', error.message);
     return { ok: false, error: 'Could not update the refund. Please try again.' };
   }
   return { ok: true };

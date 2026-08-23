@@ -6,7 +6,8 @@ import { useAuth } from '@/auth/AuthContext';
 import { useAsync } from '@/hooks/useAsync';
 import { useDebounced } from '@/hooks/useDebounced';
 import { logAdminAction } from '@/data/activityLog';
-import { fetchOrdersAdminPaged, updateOrderStatus, setOrderRefunded } from '@/data/orders';
+import { fetchOrdersAdminPaged, updateOrderStatus } from '@/data/orders';
+import { refundOrder, clearLegacyRefundFlag, buyerPaid } from '@/data/admin';
 import { canSeePlatformMoney } from '@/lib/staffAccess';
 import type { OrderWithDetails } from '@/data/types';
 import { useSettings } from '@/data/settings';
@@ -31,6 +32,8 @@ export function OrdersAdmin() {
   const search = useDebounced(rawSearch, 300);
   const [status, setStatus] = useState<'all' | 'pending' | 'shipped' | 'delivered' | 'rejected' | 'refunded'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
+  // A refund moves real money — never let a second click start a second one.
+  const [busyRefund, setBusyRefund] = useState(false);
 
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, status }), [page, search, status]);
   const { data, loading, reload } = useAsync(() => fetchOrdersAdminPaged(q), [q]);
@@ -51,13 +54,40 @@ export function OrdersAdmin() {
     } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
   };
 
+  /**
+   * Send the money back. Real Razorpay refund, server-side — see
+   * api/_refunds.js for why the amount is re-derived there rather than sent
+   * from here.
+   */
   const refund = async (o: OrderWithDetails) => {
-    try {
-      await setOrderRefunded(o.id, !o.refunded);
-      await log(o.refunded ? 'order.unrefund' : 'order.refund', o.id, { order: o.order_number, amount: o.total });
-      showToast(`${o.order_number} ${o.refunded ? 'refund cleared' : 'marked refunded'}`);
-      reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    if (busyRefund) return;
+    setBusyRefund(true);
+    const res = await refundOrder(o.id, 'Refunded from the Orders console');
+    setBusyRefund(false);
+    if (!res.ok) { showToast(res.error ?? 'Refund failed'); return; }
+    await log('order.refund', o.id, {
+      order: o.order_number,
+      amount: buyerPaid({
+        total: o.total,
+        shipping_fee: o.shipping_fee ?? 0,
+        platform_discount: o.platform_discount ?? 0,
+      }),
+      refund_id: res.refundId,
+    });
+    showToast(`${o.order_number} refunded`);
+    reload();
+  };
+
+  /** Only for rows flagged by hand before 0097 — see clearLegacyRefundFlag. */
+  const clearFlag = async (o: OrderWithDetails) => {
+    if (busyRefund) return;
+    setBusyRefund(true);
+    const res = await clearLegacyRefundFlag(o.id);
+    setBusyRefund(false);
+    if (!res.ok) { showToast(res.error ?? 'Update failed'); return; }
+    await log('order.unrefund', o.id, { order: o.order_number });
+    showToast(`${o.order_number} refund flag cleared`);
+    reload();
   };
 
   const columns: Column<OrderWithDetails>[] = [
@@ -133,10 +163,16 @@ export function OrdersAdmin() {
             {canAct && open.status !== 'rejected' && (
               <GhostButton icon="cancel" tone="danger" onClick={() => setStatusFor(open, 'rejected')}>Cancel order</GhostButton>
             )}
-            {canAct && (
-              <GhostButton icon="currency_rupee" tone={open.refunded ? 'default' : 'primary'} onClick={() => refund(open)}>
-                {open.refunded ? 'Clear refund' : 'Mark refunded'}
+            {/* Once Razorpay holds the instruction the money is gone, so a real
+                refund gets no "undo" — only a row flagged by hand before 0097
+                can still be un-flagged. */}
+            {canAct && !open.refunded && (
+              <GhostButton icon="currency_rupee" tone="primary" disabled={busyRefund} onClick={() => refund(open)}>
+                {busyRefund ? 'Refunding…' : 'Refund buyer'}
               </GhostButton>
+            )}
+            {canAct && open.refunded && !open.refund_id && (
+              <GhostButton icon="undo" disabled={busyRefund} onClick={() => clearFlag(open)}>Clear refund flag</GhostButton>
             )}
           </div>
         )}

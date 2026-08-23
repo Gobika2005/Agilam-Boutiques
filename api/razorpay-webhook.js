@@ -20,9 +20,16 @@ import { verifyWebhookSignature, webhookConfigured } from './_razorpay.js';
  *     because place-order legitimately writes the order milliseconds after
  *     capture and racing a refund would cancel good orders.
  *
+ * It also resolves refund outcomes (0097). An admin refund is recorded as
+ * 'pending' the instant Razorpay accepts it; `refund.processed` confirms the
+ * buyer has the money and `refund.failed` says they do not — the latter puts the
+ * order back in the refund workbench, because nothing else in the system would
+ * ever notice.
+ *
  * Setup: add this URL as a webhook in the Razorpay dashboard for the
- * `payment.captured` and `order.paid` events, using RAZORPAY_WEBHOOK_SECRET as
- * the secret. Without the secret configured the endpoint is an inert 200 no-op.
+ * `payment.captured`, `order.paid`, `refund.processed` and `refund.failed`
+ * events, using RAZORPAY_WEBHOOK_SECRET as the secret. Without the secret
+ * configured the endpoint is an inert 200 no-op.
  *
  * With a backup merchant account configured, add the SAME webhook in that
  * account's dashboard too and set RAZORPAY_WEBHOOK_SECRET_B (or reuse one secret
@@ -84,6 +91,66 @@ export default async function handler(req, res) {
   const paymentEntity = event?.payload?.payment?.entity;
   const paymentId = paymentEntity?.id ?? null;
   const orderId = paymentEntity?.order_id ?? event?.payload?.order?.entity?.id ?? null;
+
+  // ── Refund outcomes (0097) ────────────────────────────────────────────────
+  // /admin/refunds records a refund as 'pending' the moment Razorpay accepts it,
+  // because the money is already committed and the payout run must stop counting
+  // the order as owed. This is where that pending state resolves — and the only
+  // place we ever learn that a refund FAILED and the buyer is still out of pocket.
+  if (type === 'refund.processed' || type === 'refund.failed') {
+    const refundEntity = event?.payload?.refund?.entity;
+    const refundId = refundEntity?.id ?? null;
+    if (!refundId) return res.status(200).json({ ok: true, ignored: type });
+
+    const supabase = serviceClient(supabaseUrl, serviceRoleKey);
+    if (!supabase) {
+      console.error('razorpay-webhook: Supabase not configured; cannot record refund', refundId);
+      return res.status(200).json({ ok: true, reconciled: false });
+    }
+
+    try {
+      const { data: order } = await supabase
+        .from('orders')
+        .select('id, order_number, refund_status')
+        .eq('refund_id', refundId)
+        .limit(1)
+        .maybeSingle();
+
+      // Not ours to reconcile — an ad refund (api/_ads.js) or a dashboard refund
+      // on a payment we never issued one for.
+      if (!order) return res.status(200).json({ ok: true, ignored: 'refund not on an order', refundId });
+
+      const status = type === 'refund.processed' ? 'processed' : 'failed';
+      if (order.refund_status === status) {
+        return res.status(200).json({ ok: true, reconciled: true, unchanged: true });
+      }
+
+      const { error: markErr } = await supabase.rpc('mark_order_refunded', {
+        p_order_id: order.id,
+        p_refund_id: refundId,
+        p_amount: null,
+        p_status: status,
+        p_reason: null,
+      });
+      if (markErr) {
+        console.error('razorpay-webhook: could not record refund outcome', refundId, markErr.message ?? markErr);
+        return res.status(200).json({ ok: true, reconciled: false });
+      }
+
+      if (status === 'failed') {
+        // mark_order_refunded has just put `refunded` back to false, so the order
+        // returns to the refund workbench and to the payout run. Someone has to
+        // look at it: the buyer asked for their money and did not get it.
+        console.error(
+          `razorpay-webhook: REFUND FAILED for order ${order.order_number} (${refundId}) on the '${account.key}' account — buyer has not been refunded`,
+        );
+      }
+      return res.status(200).json({ ok: true, reconciled: true, refundId, status });
+    } catch (err) {
+      console.error('razorpay-webhook: refund reconciliation failed', err?.message ?? err);
+      return res.status(200).json({ ok: true, reconciled: false });
+    }
+  }
 
   // Only captured-payment events need reconciling; ack everything else.
   if (!paymentId || (type !== 'payment.captured' && type !== 'order.paid')) {

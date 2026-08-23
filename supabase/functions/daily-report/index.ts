@@ -182,7 +182,75 @@ async function sendAll(recipients: string[], subject: string, html: string, text
   });
   const body = await res.text();
   if (!res.ok) throw new Error(`Resend ${res.status}: ${body.slice(0, 300)}`);
-  return body;
+
+  // Keep the per-message ids. "Accepted by Resend" and "arrived in three
+  // inboxes" are different claims, and without the ids there is no handle on a
+  // specific message afterwards — no way to ask the provider what happened to
+  // the one that a reader says never came.
+  try {
+    const parsed = JSON.parse(body) as { data?: Array<{ id?: string }> };
+    return (parsed?.data ?? []).map((m) => m?.id).filter(Boolean) as string[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Do the whole job. Returns a result rather than a Response, so it can be run
+ * either inline (dry runs, manual `sync=1`) or detached in the background.
+ */
+async function runReport(force: boolean) {
+  try {
+    if (!force) {
+      const claimed = await rpc<boolean>('claim_report_run', { p_source: 'cloud' });
+      if (!claimed) return { ok: true, skipped: 'already sent today' };
+    }
+
+    const [digest, recipientRows, probes] = await Promise.all([
+      rpc<Record<string, unknown>>('daily_digest', {}),
+      rpc<Array<{ email: string; name: string }>>('report_recipients', {}),
+      probeSite(),
+    ]);
+
+    const recipients = Array.from(new Set(
+      recipientRows.map((r) => r.email).concat(EXTRA_TO).filter(Boolean),
+    ));
+
+    if (recipients.length === 0) {
+      // Not an error worth retrying — there is genuinely nobody to tell. Still
+      // recorded, because "no report arrived" and "no admin has an email address
+      // on file" look identical from an inbox.
+      await rpc('finish_report_run', { p_ok: false, p_recipients: 0, p_detail: 'no admin recipients' });
+      return { ok: false, error: 'No admin accounts with an email address' };
+    }
+
+    const html = renderReport({
+      digest,
+      probes,
+      appUrl: APP_URL,
+      adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
+      source: 'scheduled from Supabase',
+    });
+    const subject = subjectFor(digest, probes);
+
+    const ids = await sendAll(recipients, subject, html, renderText(digest, probes));
+    await rpc('finish_report_run', {
+      p_ok: true,
+      p_recipients: recipients.length,
+      p_detail: `cloud -> ${recipients.length}: ${ids.join(' ')}`,
+    });
+
+    return { ok: true, recipients: recipients.length, ids, subject };
+  } catch (err) {
+    const message = (err as Error)?.message ?? String(err);
+    console.error('[daily-report]', message);
+    // Record the failure so the row is not left claimed-but-silent: that is what
+    // lets the local fallback take the day over.
+    try {
+      await rpc('finish_report_run', { p_ok: false, p_recipients: 0, p_detail: message });
+    } catch { /* failing to record a failure must not mask the first one */ }
+    return { ok: false, error: message };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -201,64 +269,55 @@ Deno.serve(async (req) => {
   const body = req.method === 'POST'
     ? await req.json().catch(() => ({})) as Record<string, unknown>
     : {};
-  // `dry` renders and returns the HTML without sending or claiming — how you
-  // look at a change to the template. `force` skips the claim, for a resend.
+  // `dry` renders and returns the HTML without sending or claiming — how you look
+  // at a template change. `force` skips the claim, for a deliberate resend.
+  // `sync` waits for the work and returns its result, for testing by hand.
   const dry = url.searchParams.get('dry') === '1' || body.dry === true;
   const force = url.searchParams.get('force') === '1' || body.force === true;
+  const sync = url.searchParams.get('sync') === '1' || body.sync === true;
 
-  try {
-    if (!dry && !force) {
-      const claimed = await rpc<boolean>('claim_report_run', { p_source: 'cloud' });
-      if (!claimed) return json({ ok: true, skipped: 'already sent today' });
-    }
-
-    const [digest, recipientRows, probes] = await Promise.all([
+  if (dry) {
+    const [digest, probes] = await Promise.all([
       rpc<Record<string, unknown>>('daily_digest', {}),
-      rpc<Array<{ email: string; name: string }>>('report_recipients', {}),
       probeSite(),
     ]);
-
-    const recipients = Array.from(new Set(
-      recipientRows.map((r) => r.email).concat(EXTRA_TO).filter(Boolean),
-    ));
-
     const html = renderReport({
       digest,
       probes,
       appUrl: APP_URL,
       adminUrl: ADMIN_PATH ? `${APP_URL}/${ADMIN_PATH}` : '',
-      source: 'scheduled from Supabase',
+      source: 'preview',
     });
-    const subject = subjectFor(digest, probes);
-
-    if (dry) {
-      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-    }
-
-    if (recipients.length === 0) {
-      // Not an error worth retrying — there is genuinely nobody to tell. It is
-      // still recorded, because "no report arrived" and "no admin has an email
-      // address on file" look identical from an inbox.
-      await rpc('finish_report_run', { p_ok: false, p_recipients: 0, p_detail: 'no admin recipients' });
-      return json({ ok: false, error: 'No admin accounts with an email address' }, 200);
-    }
-
-    await sendAll(recipients, subject, html, renderText(digest, probes));
-    await rpc('finish_report_run', {
-      p_ok: true,
-      p_recipients: recipients.length,
-      p_detail: `cloud → ${recipients.length} admin(s)`,
-    });
-
-    return json({ ok: true, recipients: recipients.length, subject });
-  } catch (err) {
-    const message = (err as Error)?.message ?? String(err);
-    console.error('[daily-report]', message);
-    // Record the failure so the row is not left claimed-but-silent: that is what
-    // lets the local fallback take the day over 25 minutes later.
-    try {
-      await rpc('finish_report_run', { p_ok: false, p_recipients: 0, p_detail: message });
-    } catch { /* the failure to record a failure is not worth masking the first */ }
-    return json({ ok: false, error: message }, 500);
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
+
+  const work = runReport(force);
+
+  if (sync) return json(await work);
+
+  /**
+   * ANSWER FIRST, WORK AFTER — and this is load-bearing, not a nicety.
+   *
+   * pg_net, which is what calls this, has a DEFAULT timeout of 5 seconds. A real
+   * run takes about nine: two live site probes, three RPCs and the Resend batch.
+   * So every scheduled run was being cut off at five seconds and the report was
+   * never sent from the cloud — for four days the laptop fallback quietly
+   * carried it, which is exactly the dependency the cloud sender existed to
+   * remove. It failed silently because pg_net records the timeout, not the
+   * report, and `report_runs` only ever saw the fallback succeed.
+   *
+   * Handing the promise to the runtime and returning immediately makes this
+   * immune to the caller's timeout, whatever it is set to — no cron edit
+   * required, and no repeat of this if the schedule is ever rebuilt by hand.
+   * The outcome is still durable: runReport() writes it to `report_runs`.
+   */
+  const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (rt && typeof rt.waitUntil === 'function') {
+    rt.waitUntil(work.catch((err) => console.error('[daily-report background]', err)));
+    return json({ ok: true, accepted: true, note: 'sending in background' }, 202);
+  }
+
+  // No waitUntil available (older runtime, local serve): fall back to waiting,
+  // because dropping the promise here would abandon the send mid-flight.
+  return json(await work);
 });

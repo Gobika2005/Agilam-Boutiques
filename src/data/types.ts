@@ -240,6 +240,13 @@ export interface OrderWithDetails {
   /** Platform-funded coupon discount (migration 0053). Not deducted from
    *  `total` — the seller is paid in full — but it is off what the buyer owes. */
   platform_discount?: number;
+  /** Migration 0097. Razorpay's own reference for the refund, and where it got
+   *  to. Optional for the same reason as the 0063 columns below: the SELECT
+   *  drops them when the migration has not been applied yet. A `refunded` row
+   *  with no `refund_id` was flagged by hand before real refunds existed. */
+  refund_id?: string | null;
+  refund_amount?: number | null;
+  refund_status?: 'pending' | 'processed' | 'failed' | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   /** Migration 0063. Optional because the SELECT falls back to a column list
