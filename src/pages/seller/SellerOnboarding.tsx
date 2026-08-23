@@ -19,6 +19,7 @@ import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
+import { MfaStepUp } from '@/components/auth/MfaStepUp';
 import { useIfscLookup, type IfscStatus } from '@/hooks/useIfscLookup';
 import {
   fetchMyBoutique,
@@ -296,6 +297,11 @@ export function SellerOnboarding() {
   const [accountConsent, setAccountConsent] = useState(false);
   const [sellerConsent, setSellerConsent] = useState(false);
   const [step, setStep] = useState(1);
+  // True once this boutique has a payout account saved. It gates the second
+  // factor on step 6: there is nothing to steal until there is an account on
+  // file, and asking for one before then would put a QR code in the middle of
+  // first-time registration.
+  const [bankOnFile, setBankOnFile] = useState(false);
   // A boutique that has already been submitted re-opens the wizard from the
   // profile hub to edit its details rather than to register — no consent
   // re-acceptance, no re-submission for review, just save-in-place.
@@ -414,6 +420,9 @@ export function SellerOnboarding() {
           // to retype a number they already confirmed once.
           bankAccountNumberConfirm: priv?.bank_account_number ?? '',
         });
+        // Whether there is an established payout destination to protect — see
+        // the note on the step 6 block below.
+        setBankOnFile(!!priv?.bank_account_number);
         // Resume on the step after the last completed one, capped at review.
         setStep(Math.min(7, Math.max(1, (row.onboarding_step ?? 0) + 1)));
       } catch (e) {
@@ -951,6 +960,22 @@ export function SellerOnboarding() {
 
         {step === 6 && (
           <SectionCard subtitle="MangaiMart transfers your earnings to this bank account. These details stay private — buyers and other sellers can never see them.">
+            {/*
+              The second factor is asked for here and nowhere else in the seller
+              console, and only once there is an account already saved.
+
+              The fraud worth stopping is a stolen password quietly repointing an
+              established seller's settlements at somebody else's bank — it is
+              silent, and by the time it shows up the money has moved. A seller
+              typing their details in for the first time has nothing to redirect
+              yet, so gating that would buy no security and would drop an
+              authenticator-app QR code into the middle of a seven-step
+              registration, which is exactly how sellers get lost.
+            */}
+            <MfaStepUp
+              reason="You’re changing where your earnings are paid. Verify with your authenticator app before editing these details."
+              disabled={!bankOnFile}
+            >
             <Field
               label="Account holder name"
               value={form.bankAccountName}
@@ -985,6 +1010,7 @@ export function SellerOnboarding() {
               error={errors.bankIfsc}
             />
             <IfscStatusLine status={ifscStatus} />
+            </MfaStepUp>
           </SectionCard>
         )}
 

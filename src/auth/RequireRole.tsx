@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { canOpen, isConsoleRole } from '@/lib/staffAccess';
 import { adminPath } from '@/lib/adminPath';
+import { RequireMfa } from './RequireMfa';
 import type { Role } from '@/types/database';
 
 export function homeFor(role: Role | undefined) {
@@ -33,7 +34,12 @@ export function RequireRole({ role, children }: { role: Role; children: ReactNod
     if (!canOpen(profile.role, location.pathname)) {
       return <Navigate to={homeFor(profile.role)} replace />;
     }
-    return <>{children}</>;
+    // Two-factor is required for the whole console. Like the check above this is
+    // presentation, not protection — after migration 0100 `is_admin()` and
+    // `is_staff()` both require aal2, so an unverified session gets an empty
+    // console from the database whether or not it reaches this line. Rendering
+    // the gate is what turns that into a QR code instead of a mystery.
+    return <RequireMfa>{children}</RequireMfa>;
   }
 
   if (profile.role !== role) return <Navigate to={homeFor(profile.role)} replace />;

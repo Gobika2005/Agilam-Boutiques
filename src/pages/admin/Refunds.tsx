@@ -4,7 +4,7 @@ import { fmtInr } from '@/lib/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
-import { fetchRefunds, setOrderRefunded, isRefundCandidate, moneyCollected, type RefundRow } from '@/data/admin';
+import { fetchRefunds, refundOrder, clearLegacyRefundFlag, buyerPaid, isRefundCandidate, moneyCollected, type RefundRow } from '@/data/admin';
 import { logAdminAction } from '@/data/activityLog';
 import { StatCard, Select, SearchInput, DataTable, StatusPill, GhostButton, ConfirmDialog, Avatar, T, type Column } from '@/components/admin/kit';
 import { useSeededSearch } from '@/hooks/useSeededSearch';
@@ -35,7 +35,9 @@ export function Refunds() {
     !r.refunded && (r.status === 'rejected' || r.status === 'cancelled') && !moneyCollected(r);
 
   const refundedList = all.filter((r) => r.refunded);
-  const refundedAmount = refundedList.reduce((s, r) => s + r.total, 0);
+  // `refund_amount` is what the gateway actually sent back; `buyerPaid` is the
+  // best estimate for a row refunded by hand before 0097 recorded it.
+  const refundedAmount = refundedList.reduce((s, r) => s + (r.refund_amount ?? buyerPaid(r)), 0);
   const candidates = all.filter(isRefundCandidate);
   const unpaid = all.filter(isUnpaidWriteOff);
 
@@ -53,19 +55,33 @@ export function Refunds() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, filter, search]);
 
-  const confirmToggle = async () => {
+  /**
+   * Confirm the dialog. Two different actions share it, and which one runs is
+   * decided by the row, not by a mode flag:
+   *
+   *   • not refunded          → issue a real Razorpay refund
+   *   • refunded, no refund_id → clear a flag someone set by hand pre-0097
+   *
+   * A row with a refund_id never opens this dialog at all: the money is gone and
+   * there is nothing here that could bring it back.
+   */
+  const confirmAction = async () => {
     if (!target) return;
+    const reversing = target.refunded;
     setBusy(true);
-    const next = !target.refunded;
-    const res = await setOrderRefunded(target.id, next);
+    const res = reversing
+      ? await clearLegacyRefundFlag(target.id)
+      : await refundOrder(target.id, 'Refunded from the Refunds console');
     setBusy(false);
     if (!res.ok) { showToast(res.error ?? 'Failed'); return; }
     void logAdminAction({
       actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin',
-      action: next ? 'order.refund' : 'order.refund_reverse', entity_type: 'order', entity_id: target.order_number,
-      meta: { total: target.total },
+      action: reversing ? 'order.refund_reverse' : 'order.refund', entity_type: 'order', entity_id: target.order_number,
+      meta: reversing
+        ? { total: target.total }
+        : { amount: buyerPaid(target), refund_id: 'refundId' in res ? res.refundId : null },
     });
-    showToast(next ? `${target.order_number} marked refunded` : `${target.order_number} refund reversed`);
+    showToast(reversing ? `${target.order_number} refund flag cleared` : `${target.order_number} refunded`);
     setTarget(null);
     reload();
   };
@@ -101,8 +117,32 @@ export function Refunds() {
       },
     },
     { key: 'status', header: 'ORDER', width: '110px', render: (r) => <StatusPill status={r.status} /> },
-    { key: 'refund', header: 'REFUND', width: '120px', render: (r) => r.refunded ? <StatusPill status="refunded" /> : <span style={css(`font-size:12px;color:${T.muted};`)}>—</span> },
-    { key: 'total', header: 'AMOUNT', width: '110px', align: 'right', render: (r) => <span style={css('font-weight:800;font-size:13px;')}>{fmtInr(r.total)}</span> },
+    {
+      key: 'refund', header: 'REFUND', width: '150px',
+      render: (r) => {
+        if (!r.refunded) return <span style={css(`font-size:12px;color:${T.muted};`)}>—</span>;
+        return (
+          <div style={css('display:flex;flex-direction:column;gap:2px;min-width:0;')}>
+            <StatusPill status="refunded" />
+            {/* The gateway reference is the whole point of the column now: it is
+                what an operator quotes when a buyer says the money never came,
+                and its absence is what marks a row refunded by hand. */}
+            <span style={css(`font-size:10.5px;font-weight:700;color:${r.refund_status === 'pending' ? 'var(--ag-gold-text)' : T.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`)}>
+              {r.refund_id
+                ? (r.refund_status === 'pending' ? 'with the bank · ' : '') + r.refund_id
+                : 'recorded by hand'}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'total', header: 'AMOUNT', width: '110px', align: 'right',
+      // What the buyer paid for THIS order — goods + the seller's delivery
+      // charge − any platform-funded discount — which is what a refund sends
+      // back. `total` alone understated every order that carried delivery.
+      render: (r) => <span style={css('font-weight:800;font-size:13px;')}>{fmtInr(r.refund_amount ?? buyerPaid(r))}</span>,
+    },
     {
       key: 'act', header: '', width: '150px', align: 'right',
       render: (r) => (
@@ -111,9 +151,12 @@ export function Refunds() {
               rather than offered and then explained away in the dialog. */}
           {!r.refunded && !moneyCollected(r) ? (
             <span style={css(`font-size:11.5px;font-weight:700;color:${T.muted};`)}>Nothing to refund</span>
+          ) : r.refunded && r.refund_id ? (
+            // Sent to Razorpay. There is no undo, so no button pretends there is.
+            <span style={css(`font-size:11.5px;font-weight:700;color:${T.muted};`)}>Sent to Razorpay</span>
           ) : (
             <GhostButton tone={r.refunded ? 'default' : 'primary'} icon={r.refunded ? 'undo' : 'currency_rupee'} onClick={() => setTarget(r)}>
-              {r.refunded ? 'Reverse' : 'Refund'}
+              {r.refunded ? 'Clear flag' : 'Refund'}
             </GhostButton>
           )}
         </div>
@@ -129,7 +172,7 @@ export function Refunds() {
         <StatCard label="Awaiting refund" value={String(candidates.length)} icon="pending_actions" tint="var(--ag-warn-bg)" ic="var(--ag-gold-text)" sub={candidates.length ? 'action needed' : 'clear'} />
         {/* Money the platform is actually holding and owes back — not the value
             of every failed order, which is what this used to total. */}
-        <StatCard label="Owed to buyers" value={compactInr(candidates.reduce((s, r) => s + r.total, 0))} icon="account_balance_wallet" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" sub={unpaid.length ? `${unpaid.length} unpaid write-offs excluded` : undefined} />
+        <StatCard label="Owed to buyers" value={compactInr(candidates.reduce((s, r) => s + buyerPaid(r), 0))} icon="account_balance_wallet" tint="var(--ag-info-bg)" ic="var(--ag-info-text)" sub={unpaid.length ? `${unpaid.length} unpaid write-offs excluded` : undefined} />
       </div>
 
       <div style={css('display:flex;gap:10px;flex-wrap:wrap;align-items:center;')}>
@@ -143,7 +186,7 @@ export function Refunds() {
         <span style={css(`font-size:12px;color:${T.muted};font-weight:600;`)}>
           {filter === 'unpaid'
             ? 'Rejected or cancelled before any money changed hands — usually abandoned COD. Listed for the record; there is nothing to refund.'
-            : 'Only orders the platform actually collected money for can be refunded. Marking one records the decision; the Razorpay movement is a separate settlement step.'}
+            : 'Only orders the platform actually collected money for can be refunded. Refunding sends the money back through Razorpay immediately — there is no undo.'}
         </span>
       </div>
 
@@ -151,12 +194,16 @@ export function Refunds() {
 
       <ConfirmDialog
         open={!!target}
-        title={target?.refunded ? 'Reverse this refund?' : 'Mark as refunded?'}
-        message={target ? `${target.order_number} · ${fmtInr(target.total)} to ${target.name}. ${target.refunded ? 'This clears the refunded flag.' : 'Confirm the buyer has been (or will be) refunded.'}` : ''}
-        confirmLabel={target?.refunded ? 'Reverse' : 'Mark refunded'}
+        title={target?.refunded ? 'Clear the refunded flag?' : 'Refund this buyer?'}
+        message={target
+          ? target.refunded
+            ? `${target.order_number} · this row was marked refunded by hand, with no Razorpay refund behind it. Clearing the flag puts the order back in the workbench and back into the seller's payout.`
+            : `${fmtInr(buyerPaid(target))} goes back to ${target.name} for ${target.order_number}, through Razorpay, now. This cannot be undone from here.`
+          : ''}
+        confirmLabel={target?.refunded ? 'Clear flag' : 'Refund now'}
         danger={!target?.refunded}
         busy={busy}
-        onConfirm={confirmToggle}
+        onConfirm={confirmAction}
         onCancel={() => setTarget(null)}
       />
     </div>

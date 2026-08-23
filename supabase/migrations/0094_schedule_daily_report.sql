@@ -43,11 +43,20 @@ $do$;
 select cron.unschedule('daily-report')
 where exists (select 1 from cron.job where jobname = 'daily-report');
 
+-- timeout_milliseconds is NOT decoration. pg_net defaults to FIVE SECONDS, and a
+-- real run of this function takes about nine: two live site probes, three RPCs
+-- and the Resend batch. That default cut off the very first scheduled run
+-- (23 Aug 2026, 01:30 UTC) at five seconds. It failed silently: pg_net logs the
+-- timeout, `report_runs` only ever showed the laptop fallback succeeding at
+-- 08:02, and nothing anywhere said "the cloud sender is dead". The function now answers in about a second and finishes the
+-- work in the background, so this is the second line of defence rather than the
+-- first; keep both.
 select cron.schedule('daily-report', '30 1 * * *', $job$
   select net.http_post(
-    url     := 'https://mtxmuaskmyhnqczctwlp.supabase.co/functions/v1/daily-report',
-    headers := '{"Authorization":"Bearer <REPORT_TOKEN>","Content-Type":"application/json"}'::jsonb,
-    body    := '{}'::jsonb
+    url                  := 'https://mtxmuaskmyhnqczctwlp.supabase.co/functions/v1/daily-report',
+    headers              := '{"Authorization":"Bearer <REPORT_TOKEN>","Content-Type":"application/json"}'::jsonb,
+    body                 := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
 $job$);
 

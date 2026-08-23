@@ -195,7 +195,22 @@ async function sendAll(recipients, subject, html, text) {
   });
   const out = await res.text();
   if (!res.ok) throw new Error(`Resend ${res.status}: ${out.slice(0, 300)}`);
-  return out;
+
+  // Parse out the per-message ids. The batch endpoint answers 200 with one
+  // object per recipient, and until now this function threw that away — so a
+  // send that Resend accepted and a send that actually reached three inboxes
+  // were indistinguishable from the log and from report_runs. The ids are what
+  // you quote to Resend (or paste into its dashboard) to see delivery,
+  // bounce or complaint for a specific recipient.
+  let ids = [];
+  try {
+    const parsed = JSON.parse(out);
+    ids = (parsed?.data ?? []).map((m) => m?.id).filter(Boolean);
+  } catch { /* a 2xx that is not JSON is odd but not a send failure */ }
+  if (ids.length && ids.length !== recipients.length) {
+    console.error(`WARNING: ${recipients.length} recipients but ${ids.length} message ids returned`);
+  }
+  return ids;
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
@@ -280,13 +295,16 @@ try {
     source: has('--ensure') ? 'backup sender — the scheduled cloud run did not report success' : 'sent manually',
   });
 
-  await sendAll(recipients, subjectFor(digest, probes), html, renderText(digest, probes));
+  const ids = await sendAll(recipients, subjectFor(digest, probes), html, renderText(digest, probes));
   await rpc('finish_report_run', {
     p_ok: true,
     p_recipients: recipients.length,
-    p_detail: `${has('--ensure') ? 'local fallback' : 'manual'} → ${recipients.length} admin(s)`,
+    // Ids recorded, not just a count: "3 admins" is a claim, an id per admin is
+    // evidence, and it is the only handle on a message once it has left here.
+    p_detail: `${has('--ensure') ? 'local fallback' : 'manual'} -> ${recipients.length}: ${ids.join(' ')}`,
   }).catch(() => {});
-  console.log(`Sent to ${recipients.length} admin(s): ${recipients.join(', ')}`);
+  recipients.forEach((to, i) => console.log(`  ${to}  ${ids[i] ?? '(no id returned)'}`));
+  console.log(`Sent to ${recipients.length} admin(s).`);
 } catch (err) {
   const message = String(err?.message ?? err);
   await rpc('finish_report_run', { p_ok: false, p_detail: message }).catch(() => {});

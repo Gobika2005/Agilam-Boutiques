@@ -7,32 +7,61 @@ import type { Paged } from './adminUsers';
 const BASE_SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, accepted_at, shipped_at, delivered_at, guest_name, guest_phone, guest_city, guest_address, guest_pincode, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, platform_discount, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, product_id, title, price, qty, size, color, product:products(image_url, tone))`;
 
 /**
- * Courier-tracking columns from migration 0063. Split out for the same reason
- * as the sales counters in `src/data/boutiques.ts`: naming a column that does
- * not exist yet fails the WHOLE query, and this SELECT feeds every order screen
- * in all three consoles. An un-migrated deploy must lose the tracking detail,
- * not the orders.
+ * Columns that only exist once a particular migration has been applied. Split
+ * out for the same reason as the sales counters in `src/data/boutiques.ts`:
+ * naming a column that does not exist yet fails the WHOLE query, and this SELECT
+ * feeds every order screen in all three consoles. An un-migrated deploy must
+ * lose the detail, not the orders.
+ *
+ * Migrations here are applied by hand, so "not applied yet" is a normal state
+ * for a deploy to be in, not an error.
  */
-const TRACKING_COLUMNS = 'packed_at, out_for_delivery_at, delivery_disputed, delivery_disputed_at';
+const OPTIONAL_GROUPS = [
+  {
+    columns: 'packed_at, out_for_delivery_at, delivery_disputed, delivery_disputed_at',
+    warn: '[orders] courier tracking columns unavailable — apply migration 0063.',
+    available: true,
+  },
+  {
+    columns: 'refund_id, refund_amount, refund_status',
+    warn: '[orders] refund columns unavailable — apply migration 0097.',
+    available: true,
+  },
+];
 
-const SELECT = `${BASE_SELECT}, ${TRACKING_COLUMNS}`;
+function currentSelect(): string {
+  const extra = OPTIONAL_GROUPS.filter((g) => g.available).map((g) => g.columns);
+  return extra.length ? `${BASE_SELECT}, ${extra.join(', ')}` : BASE_SELECT;
+}
 
-let trackingAvailable = true;
+/**
+ * Which group to give up on when a select fails on a missing column. PostgREST
+ * names the offending column in its message, so prefer the group that actually
+ * matches; fall back to dropping the last one still in play.
+ */
+function retireGroupFor(message: string | undefined): boolean {
+  const live = OPTIONAL_GROUPS.filter((g) => g.available);
+  if (live.length === 0) return false;
+  const named = live.find((g) =>
+    g.columns.split(',').some((c) => (message ?? '').includes(c.trim())),
+  );
+  const victim = named ?? live[live.length - 1];
+  victim.available = false;
+  console.warn(victim.warn);
+  return true;
+}
 
 async function selectOrders<T>(
   run: (columns: string) => PromiseLike<{ data: T; error: { message?: string; code?: string } | null }>,
 ): Promise<T> {
-  if (trackingAvailable) {
-    const { data, error } = await run(SELECT);
+  // At most one attempt per optional group, plus the bare base select.
+  for (;;) {
+    const { data, error } = await run(currentSelect());
     if (!error) return data;
     // 42703 = undefined_column, 42501 = insufficient_privilege (not granted).
     if (error.code !== '42703' && error.code !== '42501') throw error;
-    trackingAvailable = false;
-    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
+    if (!retireGroupFor(error.message)) throw error;
   }
-  const { data, error } = await run(BASE_SELECT);
-  if (error) throw error;
-  return data;
 }
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
@@ -216,14 +245,14 @@ export async function markOrderPacked(id: string) {
  * any prepaid order by design, which is now every order.
  */
 
-/** Flag/unflag an order as refunded (independent of the fulfilment status). */
-export async function setOrderRefunded(id: string, refunded: boolean) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ refunded, refunded_at: refunded ? new Date().toISOString() : null })
-    .eq('id', id);
-  if (error) throw error;
-}
+/**
+ * Refunding lives in `src/data/admin.ts` — `refundOrder` (issues the real
+ * Razorpay refund through /api/verify-payment) and `clearLegacyRefundFlag`.
+ *
+ * The flag-only `setOrderRefunded` that used to live here was removed with 0097.
+ * It wrote `refunded = true` and nothing else, which is how the console came to
+ * show "Refunded" for orders whose buyers had not been paid back.
+ */
 
 export interface OrdersQuery {
   page: number;
@@ -298,16 +327,14 @@ export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<Order
     return query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
   };
 
-  if (trackingAvailable) {
-    const { data, error, count } = await run(SELECT);
+  // Same progressive fallback as `selectOrders`, kept here because `count` has
+  // to ride along with the rows.
+  for (;;) {
+    const { data, error, count } = await run(currentSelect());
     if (!error) return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
     if (error.code !== '42703' && error.code !== '42501') throw error;
-    trackingAvailable = false;
-    console.warn('[orders] courier tracking columns unavailable — apply migration 0063.');
+    if (!retireGroupFor(error.message)) throw error;
   }
-  const { data, error, count } = await run(BASE_SELECT);
-  if (error) throw error;
-  return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
 }
 
 export async function createOrder(input: {

@@ -364,6 +364,14 @@ export interface Database {
           total: number;
           refunded: boolean;
           refunded_at: string | null;
+          /** The gateway's side of the refund (migration 0097). `refunded` is
+           *  the platform's position; these three are what Razorpay actually
+           *  did. A refunded row with a null `refund_id` was flagged by hand
+           *  before real refunds existed. */
+          refund_id: string | null;
+          refund_amount: number | null;
+          refund_status: 'pending' | 'processed' | 'failed' | null;
+          refund_reason: string | null;
           created_at: string;
           // ── Per-milestone timestamps (migration 0042) ────────────────────
           accepted_at: string | null;
@@ -1270,6 +1278,33 @@ export interface Database {
       staff_set_order_status: {
         Args: { p_id: string; p_status: string };
         Returns: unknown;
+      };
+      /**
+       * Issue ten single-use 2FA backup codes, replacing any earlier set
+       * (migration 0099). Requires an aal2 session — you can only mint bypass
+       * codes for a factor you have just proved you hold.
+       *
+       * The clear-text codes are returned exactly once and stored only as
+       * sha256 hashes, so there is nowhere to read them back from.
+       */
+      mfa_backup_codes_generate: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+      /** How many unused backup codes the caller has left (migration 0099). */
+      mfa_backup_codes_remaining: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      /**
+       * Which accounts have a verified second factor (migration 0099).
+       *
+       * `auth.mfa_factors` is not readable from the browser; this is the narrow
+       * view of it the admin Users page needs to show who is enrolled.
+       */
+      mfa_enrollment_status: {
+        Args: Record<string, never>;
+        Returns: { user_id: string; verified_at: string }[];
       };
     };
     Enums: Record<string, never>;
