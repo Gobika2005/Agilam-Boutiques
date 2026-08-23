@@ -9,6 +9,7 @@ import {
 } from '@/data/settings';
 import { logAdminAction } from '@/data/activityLog';
 import { Card, ConfirmDialog, GhostButton, Icon, T, Toggle } from '@/components/admin/kit';
+import { SecurityCard } from '@/components/admin/SecurityCard';
 
 type NumField = { key: keyof PlatformSettings; label: string; help: string; prefix?: string; suffix?: string };
 
@@ -102,6 +103,15 @@ export function Settings() {
 
   return (
     <div style={css('display:flex;flex-direction:column;gap:16px;max-width:760px;')}>
+      {/* Your own two-factor, first on the page.
+          Everything below this line is platform configuration and belongs to
+          the business; this one card is about the person reading it. It sits at
+          the top because it is the only place in the console to check backup
+          codes or add a second device, and a setting nobody can find is a
+          setting nobody uses. StaffHome mounts the same card, since staff
+          cannot open this page at all. */}
+      <SecurityCard />
+
       {/* Maintenance mode banner-toggle */}
       <Card style={form.maintenance_mode ? 'border:1.5px solid var(--ag-warn-text);' : ''}>
         <div style={css('display:flex;align-items:center;gap:14px;')}>

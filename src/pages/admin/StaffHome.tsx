@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { fetchAllOrdersAdmin } from '@/data/orders';
 import { StatCard, SectionCard, EmptyState, Icon, T } from '@/components/admin/kit';
 import { adminPath } from '@/lib/adminPath';
+import { SecurityCard } from '@/components/admin/SecurityCard';
 
 /**
  * The employee's landing page — the console's Overview is the revenue screen
@@ -138,6 +139,11 @@ export function StaffHome() {
           </div>
         )}
       </SectionCard>
+
+      {/* Staff cannot open Settings (STAFF_ROUTES), so this is their only way to
+          manage their own two-factor — check backup codes, add a second device.
+          Same component the admin Settings page mounts. */}
+      <SecurityCard />
 
       <div style={css(`display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--ag-surface-2);color:${T.muted};font-size:12.5px;line-height:1.6;`)}>
         <Icon name="lock" size={18} color={T.muted} />
