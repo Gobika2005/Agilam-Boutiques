@@ -159,9 +159,29 @@ export function actionLines(digest, appUrl, adminUrl) {
         (a.boutiqueNames?.length ? ` — ${a.boutiqueNames.map(esc).join(', ')}` : ''),
       cta: link('/boutiques', 'Review'),
     },
+    // NET of the 10% settlement rate, and settleable orders only — the same
+    // figure the console offers to transfer (migration 0101). The route is
+    // /payments; the sidebar calls it Payouts, which is how this link spent
+    // months pointing at a page that does not exist.
     num(a.payoutsDueCount) && {
       text: `${inr(a.payoutsDueValue)} across ${num(a.payoutsDueCount)} delivered order(s) awaiting payout`,
-      cta: link('/payouts', 'Settle'),
+      cta: link('/payments', 'Settle'),
+    },
+    // The published promise, broken. Reads as "of that" because overdue money
+    // is always a subset of the line above it.
+    num(a.payoutsOverdueSellers) && {
+      text: `${inr(a.payoutsOverdueValue)} of that is past the payout promise to ` +
+        `${num(a.payoutsOverdueSellers)} seller(s)` +
+        (a.payoutsOverdueNames?.length ? ` — ${a.payoutsOverdueNames.map(esc).join(', ')}` : ''),
+      cta: link('/payments', 'Settle'),
+    },
+    // Owed, but unpayable. A chase-the-seller job, so it points at the boutique
+    // record rather than at the settlement screen.
+    num(a.payoutsBlockedSellers) && {
+      text: `${inr(a.payoutsBlockedValue)} owed to ${num(a.payoutsBlockedSellers)} seller(s) ` +
+        `with no bank account on file` +
+        (a.payoutsBlockedNames?.length ? ` — ${a.payoutsBlockedNames.map(esc).join(', ')}` : ''),
+      cta: link('/boutiques', 'Chase'),
     },
     num(a.refundsDue) && {
       text: `${num(a.refundsDue)} approved return(s) awaiting refund`,
