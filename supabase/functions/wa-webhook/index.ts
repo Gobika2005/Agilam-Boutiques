@@ -202,11 +202,17 @@ async function autoReply(supabase: any, from: string, msisdnLocal: string, incom
   // number, that is the order they mean — even when they are messaging from a
   // number that placed a dozen others. Only when they have quoted nothing do we
   // fall back to "your most recent order on this handset".
-  const quoted = incoming.toUpperCase().match(/AGL-[A-Z0-9]{6,14}/)?.[0] ?? null;
+  //
+  // Both prefixes, permanently. Orders placed from 2026-08-25 are `MM-`; every
+  // order before it is `AGL-` and keeps that number for life, so dropping the
+  // old prefix here would make a two-year-old confirmation email unquotable.
+  // The `\b` guards the two-letter prefix — without it `COMM-2024ABCDEF` in a
+  // customer's message would parse as an order number.
+  const quoted = incoming.toUpperCase().match(/\b(?:MM|AGL)-[A-Z0-9]{6,14}\b/)?.[0] ?? null;
 
   // Asked for an order number, sent a phone number. This is not hypothetical —
   // it is what the first real customer did, and the reason they then got
-  // silence: no AGL- match meant we fell back to "latest order for the sender",
+  // silence: no prefix match meant we fell back to "latest order for the sender",
   // found nothing, and produced the same words as the previous reply, which the
   // cooldown correctly suppressed. The dead end was ours, not theirs.
   //
@@ -268,19 +274,21 @@ async function autoReply(supabase: any, from: string, msisdnLocal: string, incom
       `Thanks — for your security we can only look up an order by its order number, not by phone number.
 
 ` +
-      `Please reply with the order number. It starts with AGL- and is on your order confirmation, or in the app under My Orders.
+      `Please reply with the order number. It starts with MM- (or AGL- on older orders) and is on your order confirmation, or in the app under My Orders.
 
 ` +
       `${closer}`;
   } else if (quotedButUnknown) {
     // They answered the question and the answer did not match. Say exactly that,
     // and show the shape we expect — "invalid" with no example is how a person
-    // gives up.
+    // gives up. Both shapes, because an order placed before 2026-08-25 is still
+    // AGL- and telling that customer their own number looks wrong is worse than
+    // saying nothing.
     body =
       `Thanks — we could not find an order with the number *${quoted}*.
 
 ` +
-      `Please check it and send it again. It looks like AGL-XXXXXXXXXX and is on your order confirmation.
+      `Please check it and send it again. It looks like MM-XXXXXXXXXX, or AGL-XXXXXXXXXX on older orders, and is on your order confirmation.
 
 ` +
       `${closer}`;
@@ -291,7 +299,7 @@ async function autoReply(supabase: any, from: string, msisdnLocal: string, incom
       `Thanks for messaging MangaiMart.
 
 ` +
-      `We could not find a recent order against this number. If you ordered using a different mobile, reply with your order number — it starts with AGL- and is on your order confirmation.
+      `We could not find a recent order against this number. If you ordered using a different mobile, reply with your order number — it starts with MM- (or AGL- on older orders) and is on your order confirmation.
 
 ` +
       `${closer}`;

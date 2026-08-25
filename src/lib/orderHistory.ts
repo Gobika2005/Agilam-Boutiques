@@ -24,7 +24,7 @@ export type PlacedOrderItem = {
 };
 
 export type PlacedOrder = {
-  /** Display id, e.g. `#AGL-1234567`. */
+  /** Display id, e.g. `#MM-1234567` (`#AGL-…` on pre-2026-08-25 orders). */
   id: string;
   /**
    * The `orders` row's uuid. Deep links built from a DB id — notably an order
