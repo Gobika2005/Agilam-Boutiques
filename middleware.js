@@ -555,13 +555,40 @@ const SUPPORT_PHONE = "+91 93442 94969";
 
 function orgNode(origin) {
   return {
-    "@type": "Organization",
+    /*
+     * Two types, not one. `OnlineStore` (a subtype of Organization) is the
+     * type Google's own merchant documentation asks a shopping site to
+     * declare, and it says something `Organization` alone does not: that this
+     * domain IS the shop, rather than a company that happens to have a site.
+     * Both nodes carrying this @id \u2014 here and in src/lib/schema.ts \u2014 must
+     * declare the SAME types, or the two merge into one entity making two
+     * different claims about what it is.
+     */
+    "@type": ["Organization", "OnlineStore"],
     "@id": `${origin}/#organization`,
     name: SITE_NAME,
     alternateName: BRAND_ALTERNATE_NAMES,
     url: origin,
-    logo: `${origin}${DEFAULT_OG_IMAGE}`,
+    /*
+     * An ImageObject with real dimensions, not a bare URL string. Google's
+     * logo guidance wants a resolvable image it can size without fetching it
+     * first, and a knowledge panel is built from the logo it trusts.
+     *
+     * 1200x1200 is measured from public/mangaimart-logo.png, not assumed. An
+     * earlier comment in this file put it at 1254x1254; it was never that.
+     */
+    logo: {
+      "@type": "ImageObject",
+      url: `${origin}${DEFAULT_OG_IMAGE}`,
+      width: 1200,
+      height: 1200,
+      caption: SITE_NAME
+    },
+    image: `${origin}${DEFAULT_OG_IMAGE}`,
     description: DEFAULT_DESCRIPTION,
+    slogan: "India\u2019s independent boutiques, in one place.",
+    areaServed: { "@type": "Country", name: "India" },
+    knowsLanguage: ["en", "ta"],
     email: SUPPORT_EMAIL,
     telephone: SUPPORT_PHONE,
     foundingDate: "2024",
@@ -1080,7 +1107,11 @@ async function metaForBoutique(slug, origin) {
 }
 const STATIC_META = {
   "/": {
-    title: "Boutique Ethnic Wear Online \u2014 Sarees, Kurta Sets & More",
+    // Brand FIRST, and short enough to survive truncation \u2014 see titleWithBrand.
+    // The home page is the result an own-name search returns, so legibility of
+    // the name beats a third and fourth keyword here. The category terms this
+    // gave up are carried by /collections and /shop, which is where they rank.
+    title: "MangaiMart: Boutique Ethnic Wear Online in India",
     description: "Shop verified independent boutiques across India in one place. Sarees, kurta sets, kurtis and lehengas from independent shops, with direct chat to the owner and delivery across India."
   },
   "/collections": {
@@ -1514,7 +1545,22 @@ function hubNav(origin, self) {
     // /inspire was in the sitemap and in no crawlable link anywhere, which is
     // the definition of an orphan: Google will take the URL and then discount
     // and rarely recrawl it. Every other hub carries it now.
-    ["/inspire", "Inspire feed"]
+    ["/inspire", "Inspire feed"],
+    /*
+     * /sell, /about and /help were reachable from the sitemap and the React
+     * footer, and from no crawlable link on any hub. That matters more than it
+     * looks: sitelinks are chosen from a site's internal link graph, and the
+     * seller-recruitment pages are exactly the kind of destination that earns
+     * one \u2014 two of the five sitelinks a comparable marketplace gets are its
+     * supplier pages. Orphaned from the hubs, ours could never be candidates.
+     *
+     * The anchor text carries the brand on purpose. An internal link reading
+     * "Sell on MangaiMart" is also a name signal, which is the other half of
+     * what the titles above are for.
+     */
+    ["/sell", "Sell on MangaiMart"],
+    ["/about", "About MangaiMart"],
+    ["/help", "Help & support"]
   ]
     .filter(([path]) => path !== self)
     .map(([path, label]) => `<a href="${origin}${path}">${label}</a>`)
@@ -1550,7 +1596,10 @@ async function homeHubPrerender(origin) {
     ([slug, name]) => `<li><a href="${escapeHtml(`${origin}/collections/${slug}`)}">${escapeHtml(name)}</a></li>`
   );
   return hubDocument(
-    "Boutique Ethnic Wear Online",
+    // The brand belongs in this H1. It is the only H1 on `/`, and headings sit
+    // alongside og:site_name and WebSite.name in what Google reads to decide
+    // whether a result is headed "MangaiMart" or bare "mangaimart.com".
+    "MangaiMart \u2014 Boutique Ethnic Wear Online",
     STATIC_META["/"].description,
     [
       categoryRows.length ? `<h2>Shop by category</h2>\n${linkList(categoryRows)}` : "",
@@ -1816,8 +1865,25 @@ function isNonCanonicalHost(url) {
   if (VERCEL_ENV !== "production") return false;
   return url.hostname.toLowerCase() !== CANONICAL_HOST;
 }
+/**
+ * The document title, with the brand appended \u2014 unless it already leads with it.
+ *
+ * Every title used to get " \xB7 MangaiMart" glued on the end unconditionally. On
+ * the home page that produced a 68-character title, and Google truncates at
+ * around 60 characters: the brand was the part that got cut, so the one query
+ * that matters most \u2014 somebody typing our name \u2014 returned a result with our
+ * name nowhere in it. The entity pages now lead with the brand instead, and
+ * this stops those being stamped with it twice.
+ *
+ * The suffix is still right for every other page: a product title has to be the
+ * first thing read, and the brand tail is what tells a scanner whose shop it
+ * is. Mirrors the same rule in src/lib/pageMeta.ts \u2014 change both together.
+ */
+function titleWithBrand(title) {
+  return title.startsWith(SITE_NAME) ? title : `${title} \xB7 ${SITE_NAME}`;
+}
 function headFor(meta, canonical, origin, pathname, forceNoindex) {
-  const title = meta ? `${meta.title} \xB7 ${SITE_NAME}` : SITE_NAME;
+  const title = meta ? titleWithBrand(meta.title) : SITE_NAME;
   const description = meta?.description || DEFAULT_DESCRIPTION;
   const image = meta?.image ? meta.image.startsWith("http") ? meta.image : `${origin}${meta.image}` : `${origin}${DEFAULT_OG_IMAGE}`;
   const robots = forceNoindex || isNoIndex(pathname) || meta?.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
@@ -1839,7 +1905,7 @@ function headFor(meta, canonical, origin, pathname, forceNoindex) {
     // No og:image:width/height. They were hardcoded to 1200x630, which is not
     // the shape of ANY image this actually serves: a product photo is portrait,
     // a boutique logo is square, and the brand fallback (mangaimart-logo.png)
-    // is 1254x1254. A declared size that does not match the file is worse than
+    // is 1200x1200. A declared size that does not match the file is worse than
     // none — the scraper reserves the wrong box and crops or drops the preview.
     // Restore these only alongside a purpose-built 1.91:1 share image.
     `<meta property="og:image:alt" content="${escapeHtml(meta?.title || SITE_NAME)}" />`,

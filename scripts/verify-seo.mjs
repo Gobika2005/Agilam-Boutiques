@@ -263,7 +263,16 @@ for (const child of ['/sitemap-pages.xml', '/sitemap-boutiques.xml', '/sitemap-p
  * hollow for the whole of the previous audit.
  */
 function orgProblems(o) {
-  const org = (o.graph || []).find((n) => n['@type'] === 'Organization');
+  /*
+   * `@type` may be a string OR an array. The node declares
+   * ['Organization', 'OnlineStore'] — OnlineStore is the type Google's
+   * merchant documentation asks a shopping site for, and JSON-LD allows a node
+   * to be several types at once. A strict `=== 'Organization'` compare here
+   * silently stopped finding the node the moment that second type was added,
+   * and reported it as "no Organization node" — a missing entity, which is
+   * the opposite of what had happened. Match the way a parser does.
+   */
+  const org = (o.graph || []).find((n) => [].concat(n['@type'] || []).includes('Organization'));
   if (!org) return ['no Organization node'];
   const problems = [];
   if (org.name !== 'MangaiMart') problems.push(`name is "${org.name}", expected MangaiMart`);

@@ -30,9 +30,11 @@ export function TrackOrder() {
   const { orders, refresh, refreshing } = useBuyerOrders();
 
   const decoded = id ? decodeURIComponent(id) : undefined;
-  // Three handles resolve to the same order: the display id (`#AGL-…`, what the
-  // orders list links with), the bare order number, and the DB row uuid — which
-  // is what an order notification carries, so tapping one has to land here too.
+  // Three handles resolve to the same order: the display id (`#MM-…`, or
+  // `#AGL-…` on orders placed before 2026-08-25 — what the orders list links
+  // with), the bare order number, and the DB row uuid — which is what an order
+  // notification carries, so tapping one has to land here too. All three are
+  // exact string matches, so the prefix change needs nothing here.
   const order = useMemo(
     () => orders.find((o) => o.id === decoded || o.orderNumber === decoded || o.rowId === decoded),
     [orders, decoded],

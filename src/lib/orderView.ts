@@ -7,7 +7,7 @@ import type { OrderWithDetails } from '@/data/types';
  */
 export type OrderView = {
   id: string;       // real uuid — used for routing and fetching
-  number: string;   // '#AGL-2481' for display
+  number: string;   // '#MM-2481' for display ('#AGL-…' on pre-2026-08-25 orders)
   customer: string;
   city: string | null;
   phone: string | null;

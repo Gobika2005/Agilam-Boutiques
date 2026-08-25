@@ -51,7 +51,7 @@ const buyer = {
 
 const order = {
   id: 'e3b0c442-98fc-1c14-9afb-f4c8996fb924',
-  order_number: 'AGL-1042',
+  order_number: 'MM-1042',
   payment_id: 'pay_QxRt7ZmK1a2B3c',
   // 19:41 UTC on the 16th is 01:11 IST on the 17th — the receipt must say the
   // 17th, because that is the date the buyer's phone showed when they paid.

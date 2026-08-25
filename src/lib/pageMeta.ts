@@ -144,7 +144,15 @@ export function usePageMeta(opts: PageMetaOptions): void {
   useEffect(() => {
     const previousTitle = document.title;
 
-    const fullTitle = title ? clampTitle(`${title} · ${SITE_NAME}`, 70) : SITE_NAME;
+    /*
+     * The brand tail is skipped when the title already opens with the brand.
+     * Mirrors titleWithBrand() in middleware.js — the home page and the other
+     * entity pages lead with "MangaiMart" so the name survives Google's ~60
+     * character truncation, and appending it again would print it twice.
+     */
+    const fullTitle = title
+      ? clampTitle(title.startsWith(SITE_NAME) ? title : `${title} · ${SITE_NAME}`, 70)
+      : SITE_NAME;
     const desc = clampDescription(description || DEFAULT_DESCRIPTION);
     const url = canonicalUrl(canonical || pathname);
     const ogImage = image ? absoluteUrl(image) : DEFAULT_OG_IMAGE;

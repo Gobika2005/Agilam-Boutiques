@@ -343,7 +343,10 @@ export async function createOrder(input: {
   total: number;
   items: { product_id?: string; title: string; price: number; qty: number; size?: string; color?: string }[];
 }) {
-  const order_number = 'AGL-' + Math.floor(1000 + Math.random() * 9000);
+  // NOTE: nothing calls this. Real orders are placed by api/place-order.js,
+  // which prices server-side and generates the `MM-` number there. Kept in step
+  // with that prefix so it can't reintroduce `AGL-` if it ever gets wired up.
+  const order_number = 'MM-' + Math.floor(1000 + Math.random() * 9000);
   const { data, error } = await supabase
     .from('orders')
     .insert({ order_number, buyer_id: input.buyer_id, boutique_id: input.boutique_id, total: input.total })

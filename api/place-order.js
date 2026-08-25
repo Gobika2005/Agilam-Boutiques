@@ -44,9 +44,14 @@ function orderNumber() {
   // Time component keeps numbers roughly sortable; 4 hex chars of CSPRNG entropy
   // make same-millisecond collisions vanishingly unlikely. The DB `unique`
   // constraint on order_number remains the final guard.
+  //
+  // `MM-` since 2026-08-25, for MangaiMart. Orders placed before that carry the
+  // old `AGL-` prefix and keep it FOREVER — their receipts, invoices and
+  // confirmation emails are already in buyers' inboxes. Anything that reads an
+  // order number back (wa-webhook's parser, Track Order) must accept both.
   const ts = Date.now().toString(36).toUpperCase().slice(-6);
   const rand = crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `AGL-${ts}${rand}`;
+  return `MM-${ts}${rand}`;
 }
 
 // Auto-refund a captured payment we've decided not to fulfil (wrong amount, or

@@ -43,7 +43,14 @@ function compact<T extends JsonLd>(obj: T): T {
  */
 export function organizationSchema(): JsonLd {
   return compact({
-    '@type': 'Organization',
+    /*
+     * Mirrors orgNode() in middleware.js, which declares the same two types on
+     * this same @id. `OnlineStore` is what Google's merchant documentation asks
+     * a shopping site to declare, and both copies must agree: two nodes sharing
+     * an @id merge into one entity, so a type list that differs makes that one
+     * entity claim two different things about what it is.
+     */
+    '@type': ['Organization', 'OnlineStore'],
     '@id': `${SITE_URL}/#organization`,
     /*
      * The trading name, not `COMPANY.legalName`.
@@ -65,9 +72,17 @@ export function organizationSchema(): JsonLd {
     logo: {
       '@type': 'ImageObject',
       url: absoluteUrl('/mangaimart-logo.png'),
+      // Measured from the file in public/, not assumed — a logo Google cannot
+      // size without fetching is one it is slower to trust for a knowledge panel.
+      width: 1200,
+      height: 1200,
       caption: SITE_NAME,
     },
+    image: absoluteUrl('/mangaimart-logo.png'),
     description: COMPANY.description,
+    slogan: 'India’s independent boutiques, in one place.',
+    areaServed: { '@type': 'Country', name: 'India' },
+    knowsLanguage: ['en', 'ta'],
     email: COMPANY.email,
     telephone: COMPANY.phone,
     foundingDate: String(COMPANY.foundedYear),
