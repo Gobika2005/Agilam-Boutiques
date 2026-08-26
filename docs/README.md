@@ -73,5 +73,4 @@ New QA reports and audits go in `archive/<YYYY-MM>/`.
 ---
 
 [qa-test-prompt.md](qa-test-prompt.md) — the full-application test brief a QA
-pass is run from (was `supabase/testingagent`, which had no extension and sat
-among the SQL).
+pass is run from (was `supabase/testingagent`, which had no extension and sat  among the SQL).
