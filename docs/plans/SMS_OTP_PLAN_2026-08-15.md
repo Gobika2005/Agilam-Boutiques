@@ -312,4 +312,4 @@ Phase 0 runs in the background from today. **Phase 1 and Phase 2's migration +
 `SMS_DRY_RUN=true`** — the only thing that genuinely blocks on DLT is the first
 real send. Phase 3 should wait until Phase 2 has put verified numbers on seller
 profiles, otherwise most sends resolve to the unverified `boutiques.phone` and
-skip.
+skip it.
