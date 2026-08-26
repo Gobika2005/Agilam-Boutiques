@@ -103,12 +103,15 @@ goods − commission to the seller after delivery.
 
 ## Working style
 
-- **Commit to `Selvakumar`, never to `main`.** `main` is production — Vercel
-  deploys it, and only the owner pushes there. All session work lands on the
-  `Selvakumar` staging branch; the owner reviews it and merges to `main` when
-  they choose. An employee works on `work/<name>` branches and opens PRs into
-  `Selvakumar`. See `docs/setup/TEAM_GIT_WORKFLOW.md`. (This replaced the old
-  single-author "commit straight to main" rule on 2026-08-22.)
+- **Never commit to `main`.** `main` is production — Vercel deploys it, and only
+  the owner pushes there. Two people work this repo, one branch each:
+  `Selvakumar` is Selva's, `gobi` is the owner's (mangaimartt@gmail.com — the
+  branch this assistant commits to by default). `Selvakumar` stays the single
+  staging branch: `gobi` opens PRs into `Selvakumar`, and the owner reviews and
+  merges `Selvakumar` to `main` when they choose. Other employees work on
+  `work/<name>` branches and also PR into `Selvakumar`. See
+  `docs/setup/TEAM_GIT_WORKFLOW.md`. (The single-author "commit straight to
+  main" rule was replaced on 2026-08-22; the `gobi` branch was added 2026-08-26.)
 - The user applies migrations and holds the env secrets. Flag what needs their hand.
 - Reports go in dated markdown under `docs/archive/<YYYY-MM>/` (`*_QA_REPORT.md`, `*_AUDIT.md`).
   The repo root holds only `README.md` and `CLAUDE.md` — keep it that way.
